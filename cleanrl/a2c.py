@@ -11,7 +11,6 @@ import argparse
 import numpy as np
 import gym
 import time
-from datetime import datetime
 import random
 
 if __name__ == "__main__":
@@ -83,8 +82,8 @@ loss_fn = nn.MSELoss()
 
 # TRY NOT TO MODIFY: start the game
 experiment_name = "".join(
-        [datetime.now().isoformat()] + 
-        [ f"|{arg}={getattr(args, arg)}" for arg in vars(args)]
+        [time.strftime('%Y.%m.%d.%H.%M.%z')] + 
+        [ f"__{getattr(args, arg)}" for arg in vars(args)]
 )
 writer = SummaryWriter(f"runs/{experiment_name}")
 next_obs = env.reset()
@@ -141,4 +140,4 @@ while global_step < args.total_timesteps:
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
-    writer.add_scalar("charts/global_step", rewards.sum(), global_step)
+    writer.add_scalar("charts/global_step", global_step, global_step)
