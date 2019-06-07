@@ -83,7 +83,6 @@ def main(args):
     env.seed(args.seed)
     model = ActorCritic()    
     n_rollout = 5
-    print_interval = 20
     score = 0.0
     
     experiment_name = "".join(
@@ -113,7 +112,8 @@ def main(args):
             model.train_net()
         
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/episode_reward", score/print_interval, global_step)
+        writer.add_scalar("charts/episode_reward", score, global_step)
+        score = 0.0
         writer.add_scalar("charts/global_step", global_step, global_step)
     env.close()
 
