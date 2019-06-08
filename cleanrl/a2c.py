@@ -4,8 +4,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from torch.distributions.categorical import Categorical
 from tensorboardX import SummaryWriter
+from common import preprocess_obs_space, preprocess_ac_space
 
 import argparse
 import numpy as np
@@ -14,8 +14,10 @@ import time
 import random
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='CNN with different dilation factors')
+    parser = argparse.ArgumentParser(description='A2C agent')
     # Common arguments
+    parser.add_argument('--gym-id', type=str, default="CartPole-v0",
+                       help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=5,
@@ -39,7 +41,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
 # TRY NOT TO MODIFY: setup the environment
-env = gym.make("CartPole-v0")
+env = gym.make(args.gym_id)
 if not args.seed:
     args.seed = int(time.time())
 random.seed(args.seed)
@@ -47,17 +49,19 @@ np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 env.seed(args.seed)
+input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space)
+output_shape, preprocess_ac_fn = preprocess_ac_space(env.action_space)
 
 # TODO: initialize agent here:
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        self.fc1 = nn.Linear(4, 120)
+        self.fc1 = nn.Linear(input_shape, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, env.action_space.n)
 
     def forward(self, x):
-        x = torch.Tensor(x)
+        x = preprocess_obs_fn(x)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
@@ -66,11 +70,11 @@ class Policy(nn.Module):
 class Value(nn.Module):
     def __init__(self):
         super(Value, self).__init__()
-        self.fc1 = nn.Linear(4, 64)
+        self.fc1 = nn.Linear(input_shape, 64)
         self.fc2 = nn.Linear(64, 1)
 
     def forward(self, x):
-        x = torch.Tensor(x)
+        x = preprocess_obs_fn(x)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         return x
@@ -86,10 +90,9 @@ experiment_name = "".join(
         [ f"__{getattr(args, arg)}" for arg in vars(args)]
 )
 writer = SummaryWriter(f"runs/{experiment_name}")
-next_obs = env.reset()
 global_step = 0
 while global_step < args.total_timesteps:
-    next_obs = env.reset()
+    next_obs = np.array(env.reset())
     actions = torch.zeros((args.episode_length,))
     rewards, dones = np.zeros((2, args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
@@ -106,16 +109,13 @@ while global_step < args.total_timesteps:
         
         # TODO: put action logic here
         logits = pg.forward(obs[step])
-        value = vf.forward(obs[step])
-        probs = Categorical(logits=logits)
-        action = probs.sample()
-        neglogprobs[step] = -probs.log_prob(action)
-        values[step] = value
-        entropys[step] = probs.entropy()
+        values[step] = vf.forward(obs[step])
+        probs, action, neglogprobs[step], entropys[step] = preprocess_ac_fn(logits)
         
         # TRY NOT TO MODIFY: execute the game and log data.
         actions[step] = action
         next_obs, rewards[step], dones[step], _ = env.step(int(actions[step].numpy()))
+        next_obs = np.array(next_obs)
         if dones[step]:
             break
     
