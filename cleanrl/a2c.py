@@ -60,7 +60,7 @@ class Policy(nn.Module):
         x = torch.Tensor(x)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
+        x = self.fc3(x)
         return x
 
 class Value(nn.Module):
@@ -74,7 +74,7 @@ class Value(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         return x
-    
+
 pg = Policy()
 vf = Value()
 optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.learning_rate)
@@ -120,12 +120,10 @@ while global_step < args.total_timesteps:
             break
     
     # TODO: training.
-    next_value = vf.forward(next_obs).detach().numpy()
-    # use the value function to bootstrap 
-    returns = np.append(np.zeros_like(rewards), next_value, axis=-1)
-    for t in reversed(range(rewards.shape[0])):
+    # calculate the discounted rewards, or namely, returns
+    returns = np.zeros_like(rewards)
+    for t in reversed(range(rewards.shape[0]-1)):
         returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-    returns = returns[:-1]
     # advantages are returns - baseline, value estimates in our case
     advantages = returns - values.detach().numpy()
     
