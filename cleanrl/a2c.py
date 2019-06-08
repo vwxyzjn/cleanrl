@@ -92,7 +92,7 @@ while global_step < args.total_timesteps:
     next_obs = env.reset()
     actions = torch.zeros((args.episode_length,))
     rewards, dones = np.zeros((2, args.episode_length))
-    observations = np.empty((args.episode_length,) + env.observation_space.shape)
+    obs = np.empty((args.episode_length,) + env.observation_space.shape)
     
     # TODO: put other storage logic here
     values = torch.zeros((args.episode_length))
@@ -102,11 +102,11 @@ while global_step < args.total_timesteps:
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
         global_step += 1
-        observations[step] = next_obs.copy()
+        obs[step] = next_obs.copy()
         
         # TODO: put action logic here
-        logits = pg.forward(observations[step])
-        value = vf.forward(observations[step])
+        logits = pg.forward(obs[step])
+        value = vf.forward(obs[step])
         probs = Categorical(logits=logits)
         action = probs.sample()
         neglogprobs[step] = -probs.log_prob(action)
