@@ -58,7 +58,7 @@ class Policy(nn.Module):
         super(Policy, self).__init__()
         self.fc1 = nn.Linear(input_shape, 120)
         self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, env.action_space.n)
+        self.fc3 = nn.Linear(84, output_shape)
 
     def forward(self, x):
         x = preprocess_obs_fn(x)
