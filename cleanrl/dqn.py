@@ -1,10 +1,11 @@
-# Reference: http://inoryy.com/post/tensorflow2-deep-reinforcement-learning/
+# Reference: https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from tensorboardX import SummaryWriter
+from stable_baselines.deepq.replay_buffer import ReplayBuffer
 
 from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
@@ -16,7 +17,7 @@ import random
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A2C agent')
     # Common arguments
-    parser.add_argument('--exp-name', type=str, default="a2c",
+    parser.add_argument('--exp-name', type=str, default="dqn",
                        help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="CartPole-v0",
                        help='the id of the gym environment')
@@ -34,14 +35,22 @@ if __name__ == "__main__":
                        help='run the script in production mode and use wandb to log outputs')
     
     # Algorithm specific arguments
+    parser.add_argument('--buffer-size', type=int, default=50000,
+                        help='the replay memory buffer size')
     parser.add_argument('--gamma', type=float, default=0.99,
                        help='the discount factor gamma')
-    parser.add_argument('--vf-coef', type=float, default=0.25,
-                       help="value function's coefficient the loss function")
+    parser.add_argument('--target-network-frequency', type=int, default=500,
+                       help="the timesteps it takes to update the target network")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                        help='the maximum norm for the gradient clipping')
-    parser.add_argument('--ent-coef', type=float, default=0.01,
-                       help="policy entropy's coefficient the loss function")
+    parser.add_argument('--batch-size', type=int, default=32,
+                       help="the batch size of sample from the reply memory")
+    parser.add_argument('--start-e', type=float, default=1,
+                       help="the starting epsilon for exploration")
+    parser.add_argument('--end-e', type=float, default=0.05,
+                       help="the ending epsilon for exploration")
+    parser.add_argument('--exploration-duration', type=int, default=25000,
+                       help="the time it takes from start-e to go end-e")
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -54,12 +63,13 @@ torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 env.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space)
-output_shape, preprocess_ac_fn = preprocess_ac_space(env.action_space)
+output_shape, preprocess_ac_fn = preprocess_ac_space(env.action_space, stochastic=False)
 
 # TODO: initialize agent here:
-class Policy(nn.Module):
+er = ReplayBuffer(args.buffer_size)
+class QNetwork(nn.Module):
     def __init__(self):
-        super(Policy, self).__init__()
+        super(QNetwork, self).__init__()
         self.fc1 = nn.Linear(input_shape, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, output_shape)
@@ -70,22 +80,15 @@ class Policy(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+    
+def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
+    slope =  (end_e - start_e) / duration
+    return max(slope * t + start_e, end_e)
 
-class Value(nn.Module):
-    def __init__(self):
-        super(Value, self).__init__()
-        self.fc1 = nn.Linear(input_shape, 64)
-        self.fc2 = nn.Linear(64, 1)
-
-    def forward(self, x):
-        x = preprocess_obs_fn(x)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        return x
-
-pg = Policy()
-vf = Value()
-optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.learning_rate)
+q_network = QNetwork()
+target_network = QNetwork()
+target_network.load_state_dict(q_network.state_dict())
+optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
 
 # TRY NOT TO MODIFY: start the game
@@ -115,33 +118,46 @@ while global_step < args.total_timesteps:
         obs[step] = next_obs.copy()
         
         # TODO: put action logic here
-        logits = pg.forward(obs[step])
-        values[step] = vf.forward(obs[step])
-        probs, actions[step], neglogprobs[step], entropys[step] = preprocess_ac_fn(logits)
+        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_duration, global_step)
+        if random.random() < epsilon:
+            actions[step] = random.randint(0, env.action_space.n - 1)
+        else:
+            logits = target_network.forward([obs[step]])
+            probs, actions[step], neglogprobs[step], entropys[step] = preprocess_ac_fn(logits)
+            actions[step] = actions[step][0]
+        
         
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
         next_obs = np.array(next_obs)
-        if dones[step]:
+        done_int = 1 if dones[step] else 0
+        er.add(obs[step], actions[step], rewards[step], next_obs, done_int)
+        
+        # TODO: training.
+        if global_step < 1000:
+            if done_int:
+                break
+            continue
+        s_obs, s_actions, s_rewards, s_next_obses, s_dones = er.sample(args.batch_size)
+        target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
+        td_target = torch.Tensor(s_rewards) + args.gamma * target_max * (1 - torch.Tensor(s_dones))
+        old_val = q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1)).squeeze()
+        loss = loss_fn(td_target, old_val)
+
+        # optimize the midel
+        optimizer.zero_grad()
+        loss.backward()
+        writer.add_scalar("charts/loss", loss, global_step)
+        nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
+        optimizer.step()
+        
+        # update the target network
+        if global_step % args.target_network_frequency == 0:
+            target_network.load_state_dict(q_network.state_dict())
+        
+        if done_int:
             break
     
-    # TODO: training.
-    # calculate the discounted rewards, or namely, returns
-    returns = np.zeros_like(rewards)
-    for t in reversed(range(rewards.shape[0]-1)):
-        returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-    # advantages are returns - baseline, value estimates in our case
-    advantages = returns - values.detach().numpy()
-    
-    vf_loss = loss_fn(torch.Tensor(returns), torch.Tensor(values)) * args.vf_coef
-    pg_loss = torch.Tensor(advantages) * neglogprobs
-    loss = (pg_loss - entropys * args.ent_coef).mean() + vf_loss
-    
-    optimizer.zero_grad()
-    loss.backward()
-    nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
-    optimizer.step()
-
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
 env.close()

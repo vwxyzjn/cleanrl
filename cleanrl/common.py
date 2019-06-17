@@ -11,11 +11,11 @@ from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 def preprocess_obs_space(obs_space: Space):
     if isinstance(obs_space, Discrete):
         return (obs_space.n,
-                lambda x, obs_space=obs_space: F.one_hot(torch.LongTensor([x]), obs_space.n).float())
+                lambda x, obs_space=obs_space: F.one_hot(torch.LongTensor(x), obs_space.n).float())
 
     elif isinstance(obs_space, Box):
         return (np.array(obs_space.shape).prod(),
-                lambda x, obs_space=obs_space: torch.Tensor([x.flatten()]).float())
+                lambda x, obs_space=obs_space: torch.Tensor(x).float())
 
     # elif isinstance(obs_space, MultiBinary):
     #     observation_ph = tf.placeholder(shape=(batch_size, obs_space.n), dtype=tf.int32, name=name)
@@ -34,25 +34,28 @@ def preprocess_obs_space(obs_space: Space):
         raise NotImplementedError("Error: the model does not support input space of type {}".format(
             type(obs_space).__name__))
 
-def preprocess_ac_space(ac_space: Space):
+def preprocess_ac_space(ac_space: Space, stochastic=True):
     if isinstance(ac_space, Discrete):
         return (ac_space.n,
-                lambda logits, ac_space=ac_space: __preprocess_ac_space_discrete(logits, ac_space))
+                lambda logits, ac_space=ac_space, stochastic=stochastic: __preprocess_ac_space_discrete(logits, ac_space, stochastic))
 
     elif isinstance(ac_space, MultiDiscrete):
         return (ac_space.nvec.sum(),
-                lambda logits, ac_space=ac_space: __preprocess_ac_space_multi_discrete(logits, ac_space))
+                lambda logits, ac_space=ac_space, stochastic=stochastic: __preprocess_ac_space_multi_discrete(logits, ac_space, stochastic))
 
     else:
         raise NotImplementedError("Error: the model does not support output space of type {}".format(
             type(ac_space).__name__))
 
-def __preprocess_ac_space_discrete(logits: torch.Tensor, ac_space: Space):
+def __preprocess_ac_space_discrete(logits: torch.Tensor, ac_space: Space, stochastic=True):
     probs = Categorical(logits=logits)
-    action = probs.sample()
-    return probs, int(action), -probs.log_prob(action), probs.entropy()
+    if stochastic:
+        action = probs.sample()
+    else:
+        action = torch.argmax(probs.probs, dim=1)
+    return probs, action.tolist(), -probs.log_prob(action), probs.entropy()
 
-def __preprocess_ac_space_multi_discrete(logits: torch.Tensor, ac_space: Space):
+def __preprocess_ac_space_multi_discrete(logits: torch.Tensor, ac_space: Space, stochastic=True):
     logits_categories = torch.split(logits, ac_space.nvec.tolist(), dim=1)
     action = []
     probs_categories = []
@@ -60,7 +63,10 @@ def __preprocess_ac_space_multi_discrete(logits: torch.Tensor, ac_space: Space):
     neglogprob = torch.tensor(0.)
     for i in range(len(logits_categories)):
         probs_categories.append(Categorical(logits=logits_categories[i]))
-        action.append(probs_categories[i].sample().int().squeeze())
+        if stochastic:
+            action.append(probs_categories[i].sample().int().squeeze())
+        else:
+            action.append(torch.argmax(probs_categories[i]))
         neglogprob -= probs_categories[i].log_prob(action[i]).squeeze()
         action[i] = int(action[i])
         probs_entropies += probs_categories[i].entropy().squeeze()
