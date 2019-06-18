@@ -15,7 +15,7 @@ def preprocess_obs_space(obs_space: Space):
 
     elif isinstance(obs_space, Box):
         return (np.array(obs_space.shape).prod(),
-                lambda x, obs_space=obs_space: torch.Tensor(x).float())
+                lambda x, obs_space=obs_space: torch.Tensor(x).float().view(torch.Tensor(x).shape[0], -1))
 
     # elif isinstance(obs_space, MultiBinary):
     #     observation_ph = tf.placeholder(shape=(batch_size, obs_space.n), dtype=tf.int32, name=name)
@@ -59,15 +59,15 @@ def __preprocess_ac_space_multi_discrete(logits: torch.Tensor, ac_space: Space, 
     logits_categories = torch.split(logits, ac_space.nvec.tolist(), dim=1)
     action = []
     probs_categories = []
-    probs_entropies = torch.tensor(0.)
-    neglogprob = torch.tensor(0.)
+    probs_entropies = torch.zeros((logits.shape[0]))
+    neglogprob = torch.zeros((logits.shape[0]))
     for i in range(len(logits_categories)):
         probs_categories.append(Categorical(logits=logits_categories[i]))
         if stochastic:
             action.append(probs_categories[i].sample().int().squeeze())
         else:
-            action.append(torch.argmax(probs_categories[i]))
-        neglogprob -= probs_categories[i].log_prob(action[i]).squeeze()
-        action[i] = int(action[i])
-        probs_entropies += probs_categories[i].entropy().squeeze()
+            action.append(torch.argmax(probs_categories[i].probs, dim=1))
+        neglogprob -= probs_categories[i].log_prob(action[i])
+        probs_entropies += probs_categories[i].entropy()
+    action = torch.stack(action).transpose(0, 1).tolist()
     return probs_categories, action, neglogprob, probs_entropies
