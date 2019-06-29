@@ -64,7 +64,7 @@ def __preprocess_ac_space_multi_discrete(logits: torch.Tensor, ac_space: Space, 
     for i in range(len(logits_categories)):
         probs_categories.append(Categorical(logits=logits_categories[i]))
         if stochastic:
-            action.append(probs_categories[i].sample().int().squeeze())
+            action.append(probs_categories[i].sample())
         else:
             action.append(torch.argmax(probs_categories[i].probs, dim=1))
         neglogprob -= probs_categories[i].log_prob(action[i])
