@@ -115,9 +115,10 @@ while global_step < args.total_timesteps:
         obs[step] = next_obs.copy()
         
         # TODO: put action logic here
-        logits = pg.forward(obs[step])
-        values[step] = vf.forward(obs[step])
+        logits = pg.forward([obs[step]])
+        values[step] = vf.forward([obs[step]])
         probs, actions[step], neglogprobs[step], entropys[step] = preprocess_ac_fn(logits)
+        actions[step] = actions[step][0]
         
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
