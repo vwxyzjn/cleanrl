@@ -14,9 +14,9 @@ import time
 import random
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='A2C agent')
+    parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
-    parser.add_argument('--exp-name', type=str, default="a2c",
+    parser.add_argument('--exp-name', type=str, default="ppo",
                        help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="CartPole-v0",
                        help='the id of the gym environment')
@@ -139,15 +139,15 @@ while global_step < args.total_timesteps:
     advantages = returns - values.detach().numpy()
 
     neglogprobs = neglogprobs.detach()
+    non_empty_idx = np.argmax(dones) + 1
     for _ in range(args.update_frequency):
-        current_probs, _, _, _ = preprocess_ac_fn(pg.forward(obs[:np.argmax(dones)+1]))
-        current_neglogprobs = -current_probs.log_prob(torch.LongTensor(actions[:np.argmax(dones)+1].astype(np.int)))
-        ratio = torch.exp(neglogprobs[:np.argmax(dones)+1] - current_neglogprobs)
-        surrogate1 = ratio * torch.Tensor(advantages)[:np.argmax(dones)+1]
-        surrogate2 = torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef) * torch.Tensor(advantages)[:np.argmax(dones)+1]
+        current_probs, _, new_neglogprobs, _ = preprocess_ac_fn(pg.forward(obs[:non_empty_idx]), action=actions[:non_empty_idx])
+        ratio = torch.exp(neglogprobs[:non_empty_idx] - new_neglogprobs)
+        surrogate1 = ratio * torch.Tensor(advantages)[:non_empty_idx]
+        surrogate2 = torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef) * torch.Tensor(advantages)[:non_empty_idx]
         clip = torch.min(surrogate1, surrogate2)
         vf_loss = loss_fn(torch.Tensor(returns), torch.Tensor(values)) * args.vf_coef
-        loss = vf_loss - (clip + entropys[:np.argmax(dones)+1] * args.ent_coef).mean()
+        loss = vf_loss - (clip + entropys[:non_empty_idx] * args.ent_coef).mean()
         
         optimizer.zero_grad()
         loss.backward(retain_graph=True)

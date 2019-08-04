@@ -37,25 +37,30 @@ def preprocess_obs_space(obs_space: Space):
 def preprocess_ac_space(ac_space: Space, stochastic=True):
     if isinstance(ac_space, Discrete):
         return (ac_space.n,
-                lambda logits, ac_space=ac_space, stochastic=stochastic: __preprocess_ac_space_discrete(logits, ac_space, stochastic))
+                lambda logits, ac_space=ac_space, stochastic=stochastic, action=[]: __preprocess_ac_space_discrete(logits, ac_space, stochastic, action))
 
     elif isinstance(ac_space, MultiDiscrete):
         return (ac_space.nvec.sum(),
-                lambda logits, ac_space=ac_space, stochastic=stochastic: __preprocess_ac_space_multi_discrete(logits, ac_space, stochastic))
+                lambda logits, ac_space=ac_space, stochastic=stochastic, action=[]: __preprocess_ac_space_multi_discrete(logits, ac_space, stochastic))
 
     else:
         raise NotImplementedError("Error: the model does not support output space of type {}".format(
             type(ac_space).__name__))
 
-def __preprocess_ac_space_discrete(logits: torch.Tensor, ac_space: Space, stochastic=True):
+def __preprocess_ac_space_discrete(logits: torch.Tensor, ac_space: Space, stochastic=True, action=[]):
     probs = Categorical(logits=logits)
-    if stochastic:
-        action = probs.sample()
+    if len(action) == 0:
+        if stochastic:
+            action = probs.sample()
+        else:
+            action = torch.argmax(probs.probs, dim=1)
     else:
-        action = torch.argmax(probs.probs, dim=1)
+        probs.sample() # This seems to be a bug with pytorch
+        action = torch.LongTensor(action.astype(np.int))
+        print(-probs.log_prob(action))
     return probs, action.tolist(), -probs.log_prob(action), probs.entropy()
 
-def __preprocess_ac_space_multi_discrete(logits: torch.Tensor, ac_space: Space, stochastic=True):
+def __preprocess_ac_space_multi_discrete(logits: torch.Tensor, ac_space: Space, stochastic=True, action=[]):
     logits_categories = torch.split(logits, ac_space.nvec.tolist(), dim=1)
     action = []
     probs_categories = []
@@ -63,10 +68,11 @@ def __preprocess_ac_space_multi_discrete(logits: torch.Tensor, ac_space: Space, 
     neglogprob = torch.zeros((logits.shape[0]))
     for i in range(len(logits_categories)):
         probs_categories.append(Categorical(logits=logits_categories[i]))
-        if stochastic:
-            action.append(probs_categories[i].sample())
-        else:
-            action.append(torch.argmax(probs_categories[i].probs, dim=1))
+        if len(action) == 0:
+            if stochastic:
+                action.append(probs_categories[i].sample())
+            else:
+                action.append(torch.argmax(probs_categories[i].probs, dim=1))
         neglogprob -= probs_categories[i].log_prob(action[i])
         probs_entropies += probs_categories[i].entropy()
     action = torch.stack(action).transpose(0, 1).tolist()
