@@ -55,9 +55,7 @@ def __preprocess_ac_space_discrete(logits: torch.Tensor, ac_space: Space, stocha
         else:
             action = torch.argmax(probs.probs, dim=1)
     else:
-        probs.sample() # This seems to be a bug with pytorch
         action = torch.LongTensor(action.astype(np.int))
-        print(-probs.log_prob(action))
     return probs, action.tolist(), -probs.log_prob(action), probs.entropy()
 
 def __preprocess_ac_space_multi_discrete(logits: torch.Tensor, ac_space: Space, stochastic=True, action=[]):
