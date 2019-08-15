@@ -41,7 +41,7 @@ def preprocess_ac_space(ac_space: Space, stochastic=True):
 
     elif isinstance(ac_space, MultiDiscrete):
         return (ac_space.nvec.sum(),
-                lambda logits, ac_space=ac_space, stochastic=stochastic, action=[]: __preprocess_ac_space_multi_discrete(logits, ac_space, stochastic))
+                lambda logits, ac_space=ac_space, stochastic=stochastic, action=[]: __preprocess_ac_space_multi_discrete(logits, ac_space, stochastic, action))
 
     else:
         raise NotImplementedError("Error: the model does not support output space of type {}".format(
@@ -66,7 +66,7 @@ def __preprocess_ac_space_multi_discrete(logits: torch.Tensor, ac_space: Space, 
     neglogprob = torch.zeros((logits.shape[0]))
     for i in range(len(logits_categories)):
         probs_categories.append(Categorical(logits=logits_categories[i]))
-        if len(action) == 0:
+        if len(action) != ac_space.shape:
             if stochastic:
                 action.append(probs_categories[i].sample())
             else:
