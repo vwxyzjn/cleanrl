@@ -26,7 +26,7 @@ if __name__ == "__main__":
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=200,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=50000,
+    parser.add_argument('--total-timesteps', type=int, default=100000,
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
@@ -53,6 +53,8 @@ np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 env.seed(args.seed)
+env.action_space.seed(args.seed)
+env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space)
 output_shape, preprocess_ac_fn = preprocess_ac_space(env.action_space)
 
@@ -80,7 +82,7 @@ class Value(nn.Module):
     def forward(self, x):
         x = preprocess_obs_fn(x)
         x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
+        x = self.fc2(x)
         return x
 
 pg = Policy()
@@ -122,6 +124,8 @@ while global_step < args.total_timesteps:
         
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
+        if rewards[step] < 0:
+            rewards[step] = 0
         next_obs = np.array(next_obs)
         if dones[step]:
             break
@@ -145,4 +149,7 @@ while global_step < args.total_timesteps:
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
+    writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
+    writer.add_scalar("losses/entropy", entropys.mean().item(), global_step)
+    writer.add_scalar("losses/policy_loss", pg_loss.mean().item(), global_step)
 env.close()

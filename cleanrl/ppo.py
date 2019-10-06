@@ -57,6 +57,8 @@ np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 env.seed(args.seed)
+env.action_space.seed(args.seed)
+env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space)
 output_shape, preprocess_ac_fn = preprocess_ac_space(env.action_space)
 
@@ -156,4 +158,6 @@ while global_step < args.total_timesteps:
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
+    writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
+    writer.add_scalar("losses/entropy", entropys.mean().item(), global_step)
 env.close()

@@ -62,6 +62,8 @@ np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 env.seed(args.seed)
+env.action_space.seed(args.seed)
+env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space)
 output_shape, preprocess_ac_fn = preprocess_ac_space(env.action_space, stochastic=False)
 
@@ -147,7 +149,7 @@ while global_step < args.total_timesteps:
         # optimize the midel
         optimizer.zero_grad()
         loss.backward()
-        writer.add_scalar("charts/loss", loss, global_step)
+        writer.add_scalar("losses/td_loss", loss, global_step)
         nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
         optimizer.step()
         
