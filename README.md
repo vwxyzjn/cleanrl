@@ -15,6 +15,12 @@ This repository focuses on a clean and minimal implementation of reinforcement l
 ## Get started
 
 ```bash
-pip install -e .
+$ pip install -e .
+$ cd cleanrl
+$ python a2c.py \
+    --seed 1 \
+    --gym-id CartPole-v0 \
+    --total-timesteps 50000 \
+$ tensorboard --logdir runs
 ```
 
