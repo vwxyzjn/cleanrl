@@ -4,9 +4,9 @@ This repository focuses on a clean and minimal implementation of reinforcement l
 
 * Most algorithms are self-contained in single files with a common dependency file [common.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/common.py) that handles different gym spaces.
 
-* Easy logging of training processes using Tensorboard and Integration with wandb.com to log experiments on the cloud.
+* Easy logging of training processes using Tensorboard and Integration with wandb.com to log experiments on the cloud. Check out https://app.wandb.ai/costa-huang/cleanrltest.
 
-* Being able to debug in Python’s interactive shell.
+* Being able to debug *directly* in Python’s interactive shell.
 
 * Convenient use of commandline arguments for hyper-parameters tuning.
 
@@ -42,7 +42,7 @@ $ python a2c.py \
     --gym-id CartPole-v0 \
     --total-timesteps 50000 \
     --prod-mode True \
-    --wandb-project-name cleanrltest \
+    --wandb-project-name cleanrltest 
 # Then go to https://app.wandb.ai/${WANDB_USERNAME}/cleanrltest/
 ```
 
