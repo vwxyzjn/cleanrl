@@ -10,17 +10,24 @@ This repository focuses on a clean and minimal implementation of reinforcement l
 
 * Convenient use of commandline arguments for hyper-parameters tuning.
 
-![alt text](wandb.png)
+![wandb.png](wandb.png)
 
 ## Get started
 
+To run experiments locally, give the following a try:
+
 ```bash
+$ git clone https://github.com/vwxyzjn/cleanrl.git && cd cleanrl
 $ pip install -e .
 $ cd cleanrl
 $ python a2c.py \
     --seed 1 \
     --gym-id CartPole-v0 \
     --total-timesteps 50000 \
+# open another temrminal and enter `cd cleanrl/cleanrl`
 $ tensorboard --logdir runs
 ```
 
+![demo.gif](demo.gif)
+
+To use wandb integration, signup at https://wandb.com and 

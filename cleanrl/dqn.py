@@ -33,6 +33,8 @@ if __name__ == "__main__":
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
     parser.add_argument('--prod-mode', type=bool, default=False,
                        help='run the script in production mode and use wandb to log outputs')
+    parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
+                       help="the wandb's project name")
     
     # Algorithm specific arguments
     parser.add_argument('--buffer-size', type=int, default=50000,
@@ -100,7 +102,7 @@ writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
 if args.prod_mode:
     import wandb
-    wandb.init(project="cleanRL", tensorboard=True, config=vars(args), name=experiment_name)
+    wandb.init(project=args.wandb_project_name, tensorboard=True, config=vars(args), name=experiment_name)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
 global_step = 0
 while global_step < args.total_timesteps:
