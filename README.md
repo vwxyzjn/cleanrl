@@ -30,4 +30,23 @@ $ tensorboard --logdir runs
 
 ![demo.gif](demo.gif)
 
-To use wandb integration, signup at https://wandb.com and 
+To use wandb integration, signup at https://wandb.com and copy the API key.
+Then run
+
+```bash
+$ cd cleanrl
+$ pip install wandb
+$ wandb login ${WANBD_API_KEY}
+$ python a2c.py \
+    --seed 1 \
+    --gym-id CartPole-v0 \
+    --total-timesteps 50000 \
+    --prod-mode True \
+    --wandb-project-name cleanrltest \
+# Then go to https://app.wandb.ai/${WANDB_USERNAME}/cleanrltest/
+```
+
+Checkout the demo sites at [https://app.wandb.ai/costa-huang/cleanrltest](https://app.wandb.ai/costa-huang/cleanrltest)
+
+![demo2.gif](demo2.gif)
+
