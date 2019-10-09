@@ -5,7 +5,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from tensorboardX import SummaryWriter
-from stable_baselines.deepq.replay_buffer import ReplayBuffer
 
 from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
@@ -68,6 +67,34 @@ env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space)
 output_shape, preprocess_ac_fn = preprocess_ac_space(env.action_space, stochastic=False)
+
+# https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/deepq/replay_buffer.py
+class ReplayBuffer(object):
+    def __init__(self, size):
+        self._storage = []
+        self._maxsize = size
+        self._next_idx = 0
+
+    def add(self, obs_t, action, reward, obs_tp1, done):
+        data = (obs_t, action, reward, obs_tp1, done)
+        if self._next_idx >= len(self._storage):
+            self._storage.append(data)
+        else:
+            self._storage[self._next_idx] = data
+        self._next_idx = (self._next_idx + 1) % self._maxsize
+
+    def sample(self, batch_size):
+        idxes = [random.randint(0, len(self._storage) - 1) for _ in range(batch_size)]
+        obses_t, actions, rewards, obses_tp1, dones = [], [], [], [], []
+        for i in idxes:
+            data = self._storage[i]
+            obs_t, action, reward, obs_tp1, done = data
+            obses_t.append(np.array(obs_t, copy=False))
+            actions.append(np.array(action, copy=False))
+            rewards.append(reward)
+            obses_tp1.append(np.array(obs_tp1, copy=False))
+            dones.append(done)
+        return np.array(obses_t), np.array(actions), np.array(rewards), np.array(obses_tp1), np.array(dones)
 
 # TODO: initialize agent here:
 er = ReplayBuffer(args.buffer_size)
