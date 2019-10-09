@@ -1,12 +1,14 @@
 # CleanRL (Clean Implementation of RL Algorithms)
 
+### This project is WIP currently at 0.1 release, expect breaking changes.
+
 This repository focuses on a clean and minimal implementation of reinforcement learning algorithms that focuses on easy experimental research. The highlights features of this repo is:
 
 * Most algorithms are self-contained in single files with a common dependency file [common.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/common.py) that handles different gym spaces.
 
 * Easy logging of training processes using Tensorboard and Integration with wandb.com to log experiments on the cloud. Check out https://app.wandb.ai/costa-huang/cleanrltest.
 
-* **Easily Customizable and being able to debug *directly* in Python’s interactive shell (Especially if you use the Spyder editor from Anaconda :) ).
+* **Easily Customizable** and being able to debug *directly* in Python’s interactive shell (Especially if you use the Spyder editor from Anaconda :) ).
 
 * Convenient use of commandline arguments for hyper-parameters tuning.
 
