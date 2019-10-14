@@ -12,6 +12,8 @@ This repository focuses on a clean and minimal implementation of reinforcement l
 
 * Convenient use of commandline arguments for hyper-parameters tuning.
 
+* Benchmarking https://app.wandb.ai/costa-huang/cleanrl.benchmark/reports?view=costa-huang%2Fbenchmark 
+
 ![wandb.png](wandb.png)
 
 ## Get started
