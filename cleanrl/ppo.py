@@ -64,7 +64,7 @@ env.seed(args.seed)
 env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space)
-output_shape, preprocess_ac_fn = preprocess_ac_space(env.action_space)
+output_shape = preprocess_ac_space(env.action_space)
 
 # ALGO LOGIC: initialize agent here:
 class Policy(nn.Module):
