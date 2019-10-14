@@ -4,12 +4,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 
 from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
 import numpy as np
 import gym
+from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
 
@@ -96,7 +97,7 @@ class ReplayBuffer(object):
             dones.append(done)
         return np.array(obses_t), np.array(actions), np.array(rewards), np.array(obses_tp1), np.array(dones)
 
-# TODO: initialize agent here:
+# ALGO LOGIC: initialize agent here:
 er = ReplayBuffer(args.buffer_size)
 class QNetwork(nn.Module):
     def __init__(self):
@@ -123,7 +124,7 @@ optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
 
 # TRY NOT TO MODIFY: start the game
-experiment_name = f"{time.strftime('%b%d_%H-%M-%S')}__{args.exp_name}__{args.seed}"
+experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}"
 writer = SummaryWriter(f"runs/{experiment_name}")
 writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
@@ -138,7 +139,7 @@ while global_step < args.total_timesteps:
     rewards, dones = np.zeros((2, args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
     
-    # TODO: put other storage logic here
+    # ALGO LOGIC: put other storage logic here
     values = torch.zeros((args.episode_length))
     neglogprobs = torch.zeros((args.episode_length,))
     entropys = torch.zeros((args.episode_length,))
@@ -148,15 +149,17 @@ while global_step < args.total_timesteps:
         global_step += 1
         obs[step] = next_obs.copy()
         
-        # TODO: put action logic here
+        # ALGO LOGIC: put action logic here
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_duration, global_step)
+
+        # ALGO LOGIC: `env.action_space` specific logic
         if random.random() < epsilon:
-            actions[step] = random.randint(0, env.action_space.n - 1)
+            actions[step] = env.action_space.sample()
         else:
             logits = target_network.forward([obs[step]])
-            probs, actions[step], neglogprobs[step], entropys[step] = preprocess_ac_fn(logits)
-            actions[step] = actions[step][0]
-        
+            if isinstance(env.action_space, Discrete):
+                action = torch.argmax(logits, dim=1)
+                actions[step] = action.tolist()[0]
         
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
@@ -164,7 +167,7 @@ while global_step < args.total_timesteps:
         done_int = 1 if dones[step] else 0
         er.add(obs[step], actions[step], rewards[step], next_obs, done_int)
         
-        # TODO: training.
+        # ALGO LOGIC: training.
         if global_step < 1000:
             if done_int:
                 break
@@ -192,3 +195,4 @@ while global_step < args.total_timesteps:
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
 env.close()
+writer.close()

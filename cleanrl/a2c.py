@@ -4,12 +4,14 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from tensorboardX import SummaryWriter
+from torch.distributions.categorical import Categorical
+from torch.utils.tensorboard import SummaryWriter
 
 from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
 import numpy as np
 import gym
+from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
 
@@ -60,7 +62,7 @@ env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space)
 output_shape, preprocess_ac_fn = preprocess_ac_space(env.action_space)
 
-# TODO: initialize agent here:
+# ALGO LOGIC: initialize agent here:
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
@@ -93,7 +95,7 @@ optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.le
 loss_fn = nn.MSELoss()
 
 # TRY NOT TO MODIFY: start the game
-experiment_name = f"{time.strftime('%b%d_%H-%M-%S')}__{args.exp_name}__{args.seed}"
+experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}"
 writer = SummaryWriter(f"runs/{experiment_name}")
 writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
@@ -108,7 +110,7 @@ while global_step < args.total_timesteps:
     rewards, dones = np.zeros((2, args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
     
-    # TODO: put other storage logic here
+    # ALGO LOGIC: put other storage logic here
     values = torch.zeros((args.episode_length))
     neglogprobs = torch.zeros((args.episode_length,))
     entropys = torch.zeros((args.episode_length,))
@@ -118,11 +120,30 @@ while global_step < args.total_timesteps:
         global_step += 1
         obs[step] = next_obs.copy()
         
-        # TODO: put action logic here
+        # ALGO LOGIC: put action logic here
         logits = pg.forward([obs[step]])
         values[step] = vf.forward([obs[step]])
-        probs, actions[step], neglogprobs[step], entropys[step] = preprocess_ac_fn(logits)
-        actions[step] = actions[step][0]
+
+        # ALGO LOGIC: `env.action_space` specific logic
+        if isinstance(env.action_space, Discrete):
+            probs = Categorical(logits=logits)
+            action = probs.sample()
+            actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], -probs.log_prob(action), probs.entropy()
+    
+        elif isinstance(env.action_space, MultiDiscrete):
+            logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
+            action = []
+            probs_categories = []
+            probs_entropies = torch.zeros((logits.shape[0]))
+            neglogprob = torch.zeros((logits.shape[0]))
+            for i in range(len(logits_categories)):
+                probs_categories.append(Categorical(logits=logits_categories[i]))
+                if len(action) != env.action_space.shape:
+                    action.append(probs_categories[i].sample())
+                neglogprob -= probs_categories[i].log_prob(action[i])
+                probs_entropies += probs_categories[i].entropy()
+            action = torch.stack(action).transpose(0, 1).tolist()
+            actions[step], neglogprobs[step], entropys[step] = action[0], neglogprob, probs_entropies
         
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
@@ -130,7 +151,7 @@ while global_step < args.total_timesteps:
         if dones[step]:
             break
     
-    # TODO: training.
+    # ALGO LOGIC: training.
     # calculate the discounted rewards, or namely, returns
     returns = np.zeros_like(rewards)
     for t in reversed(range(rewards.shape[0]-1)):
@@ -153,3 +174,4 @@ while global_step < args.total_timesteps:
     writer.add_scalar("losses/entropy", entropys.mean().item(), global_step)
     writer.add_scalar("losses/policy_loss", pg_loss.mean().item(), global_step)
 env.close()
+writer.close()

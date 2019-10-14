@@ -57,3 +57,11 @@ Checkout the demo sites at [https://app.wandb.ai/costa-huang/cleanrltest](https:
 ## Contribution
 
 Any comments, help, or PRs are more than welcome!
+
+## Feature TODOs:
+
+- [x] Add automatic benchmark 
+    - Completed. See https://app.wandb.ai/costa-huang/cleanrl.benchmark/reports?view=costa-huang%2Fbenchmark
+- [ ] Support continuous action spaces
+- [ ] Support using GPU
+- [ ] Support using multiprocessing
