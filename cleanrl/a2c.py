@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
+from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
 from cleanrl.common import preprocess_obs_space, preprocess_ac_space
@@ -20,15 +21,15 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default="a2c",
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="CartPole-v0",
+    parser.add_argument('--gym-id', type=str, default="BipedalWalker-v2",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
-    parser.add_argument('--seed', type=int, default=5,
+    parser.add_argument('--seed', type=int, default=1571109047,
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=200,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=100000,
+    parser.add_argument('--total-timesteps', type=int, default=4000000,
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
@@ -95,7 +96,7 @@ optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.le
 loss_fn = nn.MSELoss()
 
 # TRY NOT TO MODIFY: start the game
-experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}"
+experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
 writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
@@ -129,6 +130,12 @@ while global_step < args.total_timesteps:
             probs = Categorical(logits=logits)
             action = probs.sample()
             actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], -probs.log_prob(action), probs.entropy()
+
+        elif isinstance(env.action_space, Box):
+            mean, std = torch.split(logits, int(output_shape/2), dim=1)
+            probs = Normal(mean, torch.abs(std))
+            action = probs.sample()
+            actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], -probs.log_prob(action).sum(), probs.entropy().sum()
     
         elif isinstance(env.action_space, MultiDiscrete):
             logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
