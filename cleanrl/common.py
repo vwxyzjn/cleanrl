@@ -36,12 +36,14 @@ def preprocess_obs_space(obs_space: Space):
 
 def preprocess_ac_space(ac_space: Space, stochastic=True):
     if isinstance(ac_space, Discrete):
-        return (ac_space.n,
-                lambda logits, ac_space=ac_space, stochastic=stochastic, action=[]: __preprocess_ac_space_discrete(logits, ac_space, stochastic, action))
+        return ac_space.n
 
     elif isinstance(ac_space, MultiDiscrete):
-        return (ac_space.nvec.sum(),
-                lambda logits, ac_space=ac_space, stochastic=stochastic, action=[]: __preprocess_ac_space_multi_discrete(logits, ac_space, stochastic, action))
+        return ac_space.nvec.sum()
+
+    elif isinstance(ac_space, Box):
+        # first half of the logits for mean and second half for std
+        return np.prod(ac_space.shape) * 2
 
     else:
         raise NotImplementedError("Error: the model does not support output space of type {}".format(

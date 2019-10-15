@@ -99,7 +99,7 @@ optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.le
 loss_fn = nn.MSELoss()
 
 # TRY NOT TO MODIFY: start the game
-experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}"
+experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
 writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
