@@ -63,5 +63,6 @@ Any comments, help, or PRs are more than welcome!
 - [x] Add automatic benchmark 
     - Completed. See https://app.wandb.ai/costa-huang/cleanrl.benchmark/reports?view=costa-huang%2Fbenchmark
 - [ ] Support continuous action spaces
-- [ ] Support using GPU
+    - WIP. It's kind of hard... Implementation can be very tricky.
+- [x] Support using GPU
 - [ ] Support using multiprocessing
