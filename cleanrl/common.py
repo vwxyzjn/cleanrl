@@ -8,14 +8,14 @@ from torch.distributions.categorical import Categorical
 import numpy as np
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 
-def preprocess_obs_space(obs_space: Space):
+def preprocess_obs_space(obs_space: Space, device: str):
     if isinstance(obs_space, Discrete):
         return (obs_space.n,
-                lambda x, obs_space=obs_space: F.one_hot(torch.LongTensor(x), obs_space.n).float())
+                lambda x, obs_space=obs_space: F.one_hot(torch.LongTensor(x), obs_space.n).float().to(device))
 
     elif isinstance(obs_space, Box):
         return (np.array(obs_space.shape).prod(),
-                lambda x, obs_space=obs_space: torch.Tensor(x).float().view(torch.Tensor(x).shape[0], -1))
+                lambda x, obs_space=obs_space: torch.Tensor(x).float().view(torch.Tensor(x).shape[0], -1).to(device))
 
     # elif isinstance(obs_space, MultiBinary):
     #     observation_ph = tf.placeholder(shape=(batch_size, obs_space.n), dtype=tf.int32, name=name)

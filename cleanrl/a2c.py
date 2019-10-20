@@ -21,11 +21,11 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default="a2c",
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="BipedalWalker-v2",
+    parser.add_argument('--gym-id', type=str, default="Taxi-v2",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
-    parser.add_argument('--seed', type=int, default=1571109047,
+    parser.add_argument('--seed', type=int, default=0,
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=200,
                        help='the maximum length of each episode')
@@ -33,6 +33,8 @@ if __name__ == "__main__":
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
+    parser.add_argument('--cuda', type=bool, default=True,
+                       help='whether to use CUDA whenever possible')
     parser.add_argument('--prod-mode', type=bool, default=False,
                        help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
@@ -52,6 +54,7 @@ if __name__ == "__main__":
         args.seed = int(time.time())
 
 # TRY NOT TO MODIFY: setup the environment
+device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 env = gym.make(args.gym_id)
 random.seed(args.seed)
 np.random.seed(args.seed)
@@ -60,7 +63,7 @@ torch.backends.cudnn.deterministic = args.torch_deterministic
 env.seed(args.seed)
 env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
-input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space)
+input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
 
 # ALGO LOGIC: initialize agent here:
@@ -90,8 +93,8 @@ class Value(nn.Module):
         x = self.fc2(x)
         return x
 
-pg = Policy()
-vf = Value()
+pg = Policy().to(device)
+vf = Value().to(device)
 optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
 
@@ -112,9 +115,9 @@ while global_step < args.total_timesteps:
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
     
     # ALGO LOGIC: put other storage logic here
-    values = torch.zeros((args.episode_length))
-    neglogprobs = torch.zeros((args.episode_length,))
-    entropys = torch.zeros((args.episode_length,))
+    values = torch.zeros((args.episode_length), device=device)
+    neglogprobs = torch.zeros((args.episode_length,), device=device)
+    entropys = torch.zeros((args.episode_length,), device=device)
     
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
@@ -141,8 +144,8 @@ while global_step < args.total_timesteps:
             logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
             action = []
             probs_categories = []
-            probs_entropies = torch.zeros((logits.shape[0]))
-            neglogprob = torch.zeros((logits.shape[0]))
+            probs_entropies = torch.zeros((logits.shape[0]), device=device)
+            neglogprob = torch.zeros((logits.shape[0]), device=device)
             for i in range(len(logits_categories)):
                 probs_categories.append(Categorical(logits=logits_categories[i]))
                 if len(action) != env.action_space.shape:
@@ -164,10 +167,10 @@ while global_step < args.total_timesteps:
     for t in reversed(range(rewards.shape[0]-1)):
         returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
     # advantages are returns - baseline, value estimates in our case
-    advantages = returns - values.detach().numpy()
+    advantages = returns - values.detach().cpu().numpy()
     
-    vf_loss = loss_fn(torch.Tensor(returns), torch.Tensor(values)) * args.vf_coef
-    pg_loss = torch.Tensor(advantages) * neglogprobs
+    vf_loss = loss_fn(torch.Tensor(returns).to(device), values) * args.vf_coef
+    pg_loss = torch.Tensor(advantages).to(device) * neglogprobs
     loss = (pg_loss - entropys * args.ent_coef).mean() + vf_loss
     
     optimizer.zero_grad()

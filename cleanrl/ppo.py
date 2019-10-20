@@ -28,10 +28,12 @@ if __name__ == "__main__":
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=200,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=50000,
+    parser.add_argument('--total-timesteps', type=int, default=100000,
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
+    parser.add_argument('--cuda', type=bool, default=True,
+                       help='whether to use CUDA whenever possible')
     parser.add_argument('--prod-mode', type=bool, default=False,
                        help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
@@ -55,6 +57,7 @@ if __name__ == "__main__":
         args.seed = int(time.time())
 
 # TRY NOT TO MODIFY: setup the environment
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 env = gym.make(args.gym_id)
 random.seed(args.seed)
 np.random.seed(args.seed)
@@ -63,7 +66,7 @@ torch.backends.cudnn.deterministic = args.torch_deterministic
 env.seed(args.seed)
 env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
-input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space)
+input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
 
 # ALGO LOGIC: initialize agent here:
@@ -90,11 +93,11 @@ class Value(nn.Module):
     def forward(self, x):
         x = preprocess_obs_fn(x)
         x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
+        x = self.fc2(x)
         return x
 
-pg = Policy()
-vf = Value()
+pg = Policy().to(device)
+vf = Value().to(device)
 optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
 
@@ -115,9 +118,9 @@ while global_step < args.total_timesteps:
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
     
     # ALGO LOGIC: put other storage logic here
-    values = torch.zeros((args.episode_length))
-    neglogprobs = torch.zeros((args.episode_length,))
-    entropys = torch.zeros((args.episode_length,))
+    values = torch.zeros((args.episode_length), device=device)
+    neglogprobs = torch.zeros((args.episode_length,), device=device)
+    entropys = torch.zeros((args.episode_length,), device=device)
     
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
@@ -161,7 +164,7 @@ while global_step < args.total_timesteps:
     for t in reversed(range(rewards.shape[0]-1)):
         returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
     # advantages are returns - baseline, value estimates in our case
-    advantages = returns - values.detach().numpy()
+    advantages = returns - values.detach().cpu().numpy()
 
     neglogprobs = neglogprobs.detach()
     non_empty_idx = np.argmax(dones) + 1
@@ -170,7 +173,7 @@ while global_step < args.total_timesteps:
         logits = pg.forward(obs[:non_empty_idx])
         if isinstance(env.action_space, Discrete):
             probs = Categorical(logits=logits)
-            new_neglogprobs = -probs.log_prob(torch.LongTensor(actions[:non_empty_idx].astype(np.int)))
+            new_neglogprobs = -probs.log_prob(torch.LongTensor(actions[:non_empty_idx].astype(np.int)).to(device))
     
         elif isinstance(env.action_space, MultiDiscrete):
             logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
@@ -184,10 +187,10 @@ while global_step < args.total_timesteps:
             new_neglogprobs = neglogprob
 
         ratio = torch.exp(neglogprobs[:non_empty_idx] - new_neglogprobs)
-        surrogate1 = ratio * torch.Tensor(advantages)[:non_empty_idx]
-        surrogate2 = torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef) * torch.Tensor(advantages)[:non_empty_idx]
+        surrogate1 = ratio * torch.Tensor(advantages)[:non_empty_idx].to(device)
+        surrogate2 = torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef) * torch.Tensor(advantages)[:non_empty_idx].to(device)
         clip = torch.min(surrogate1, surrogate2)
-        vf_loss = loss_fn(torch.Tensor(returns), torch.Tensor(values)) * args.vf_coef
+        vf_loss = loss_fn(torch.Tensor(returns).to(device), values) * args.vf_coef
         loss = vf_loss - (clip + entropys[:non_empty_idx] * args.ent_coef).mean()
         
         optimizer.zero_grad()
