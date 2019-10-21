@@ -43,7 +43,7 @@ def preprocess_ac_space(ac_space: Space, stochastic=True):
 
     elif isinstance(ac_space, Box):
         # first half of the logits for mean and second half for std
-        return np.prod(ac_space.shape) * 2
+        return np.prod(ac_space.shape)
 
     else:
         raise NotImplementedError("Error: the model does not support output space of type {}".format(

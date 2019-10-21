@@ -14,11 +14,12 @@ import gym
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
+import os
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
-    parser.add_argument('--exp-name', type=str, default="ppo",
+    parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).strip(".py"),
                        help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="CartPole-v0",
                        help='the id of the gym environment')
