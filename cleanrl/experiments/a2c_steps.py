@@ -35,7 +35,7 @@ if __name__ == "__main__":
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
-    parser.add_argument('--cuda', type=bool, default=True,
+    parser.add_argument('--cuda', type=bool, default=False,
                        help='whether to use CUDA whenever possible')
     parser.add_argument('--prod-mode', type=bool, default=False,
                        help='run the script in production mode and use wandb to log outputs')
@@ -194,7 +194,7 @@ while global_step < args.total_timesteps:
             if c_step+num_steps >= done_idx:
                 next_value = vf.forward([next_obs])
             else:
-                next_value = vf.forward([obs[end_idx+1]])
+                next_value = torch.Tensor([[rewards[end_idx+1]]]).to(device)
         batch_returns = np.append(np.zeros_like(batch_rewards), next_value[0][0].detach().cpu())
         for t in reversed(range(batch_rewards.shape[0])):
             batch_returns[t] = batch_rewards[t] + args.gamma * batch_returns[t+1] * (1-dones[t])
