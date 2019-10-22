@@ -192,7 +192,7 @@ while global_step < args.total_timesteps:
         batch_rewards = rewards[c_step:end_idx]
         with torch.no_grad():
             if c_step+num_steps >= done_idx:
-                next_value = vf.forward([next_obs])
+                next_value = torch.Tensor([[0]]).to(device)
             else:
                 next_value = torch.Tensor([[rewards[end_idx+1]]]).to(device)
         batch_returns = np.append(np.zeros_like(batch_rewards), next_value[0][0].detach().cpu())
