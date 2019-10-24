@@ -66,3 +66,4 @@ Any comments, help, or PRs are more than welcome!
     - WIP. It's kind of hard... Implementation can be very tricky.
 - [x] Support using GPU
 - [ ] Support using multiprocessing
+- [ ] `global_step` should be incremented after the step in the episode ends.

@@ -27,15 +27,15 @@ if __name__ == "__main__":
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
-    parser.add_argument('--seed', type=int, default=0,
+    parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
-    parser.add_argument('--episode-length', type=int, default=200,
+    parser.add_argument('--episode-length', type=int, default=1000,
                        help='the maximum length of each episode')
     parser.add_argument('--total-timesteps', type=int, default=4000000,
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
-    parser.add_argument('--cuda', type=bool, default=False,
+    parser.add_argument('--cuda', type=bool, default=True,
                        help='whether to use CUDA whenever possible')
     parser.add_argument('--prod-mode', type=bool, default=False,
                        help='run the script in production mode and use wandb to log outputs')
@@ -67,6 +67,7 @@ env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
+
 # ALGO LOGIC: initialize agent here:
 class Policy(nn.Module):
     def __init__(self):
@@ -78,6 +79,7 @@ class Policy(nn.Module):
         # orthogonal initialization and layer scaling
         self.layer_norm(self.fc1, std=1.0)
         self.layer_norm(self.fc2, std=1.0)
+        self.layer_norm(self.fc_mean, std=0.05)
 
     @staticmethod
     def layer_norm(layer, std=1.0, bias_const=0.0):
@@ -103,6 +105,7 @@ class Value(nn.Module):
         # orthogonal initialization and layer scaling
         self.layer_norm(self.fc1, std=1.0)
         self.layer_norm(self.fc2, std=1.0)
+        self.layer_norm(self.fc3, std=0.01)
     @staticmethod
     def layer_norm(layer, std=1.0, bias_const=0.0):
         torch.nn.init.orthogonal_(layer.weight, std)
@@ -133,7 +136,7 @@ while global_step < args.total_timesteps:
     next_obs = np.array(env.reset())
     actions = np.empty((args.episode_length,), dtype=object)
     rewards, dones = np.zeros((2, args.episode_length))
-    obs = np.empty((args.episode_length,) + env.observation_space.shape)
+    obs = np.zeros((args.episode_length,) + env.observation_space.shape)
     
     # ALGO LOGIC: put other storage logic here
     values = torch.zeros((args.episode_length), device=device)
@@ -181,7 +184,7 @@ while global_step < args.total_timesteps:
         next_obs = np.array(next_obs)
         if dones[step]:
             break
-    
+
     # ALGO LOGIC: training.
     # calculate the discounted rewards, or namely, returns
     num_steps = 5
@@ -192,9 +195,9 @@ while global_step < args.total_timesteps:
         batch_rewards = rewards[c_step:end_idx]
         with torch.no_grad():
             if c_step+num_steps >= done_idx:
-                next_value = torch.Tensor([[0]]).to(device)
+                next_value = vf.forward([next_obs]) #torch.Tensor([[0]]).to(device)
             else:
-                next_value = torch.Tensor([[rewards[end_idx+1]]]).to(device)
+                next_value = vf.forward([obs[end_idx]])
         batch_returns = np.append(np.zeros_like(batch_rewards), next_value[0][0].detach().cpu())
         for t in reversed(range(batch_rewards.shape[0])):
             batch_returns[t] = batch_rewards[t] + args.gamma * batch_returns[t+1] * (1-dones[t])
@@ -209,10 +212,10 @@ while global_step < args.total_timesteps:
             raise Exception()
         
         optimizer.zero_grad()
-        loss.backward(retain_graph=True)
+        loss.backward()
         nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
         optimizer.step()
-        c_step += num_steps-1
+        c_step += num_steps
         
     # returns = np.zeros_like(rewards)
     # for t in reversed(range(rewards.shape[0]-1)):

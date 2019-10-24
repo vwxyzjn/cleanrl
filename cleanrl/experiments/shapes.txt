@@ -1,0 +1,10 @@
+Let num_step = 5
+obs     = [x, x, x, x, x, x]
+actions = [a, a, a, a, a]
+rewards = [1, 1, 1, 1, 1]
+values  = [v, v, v, v, v, next_value]
+masks   = [1, 1, 1, 1, 1, 1] # also called `dones`
+dones   = [0, 0, 0, 0, 0, 0]
+returns = [r, r, r, r, r, next_value]
+
+(0,5) (5, 10)
