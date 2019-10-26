@@ -41,7 +41,7 @@ done
 wait
 
 # LunarLander-v2
-# Considered solved when reward > 200 points
+# TODO: add docs on the goal rewards
 for seed in {1..2}
 do
     (sleep 0.3 && nohup python a2c.py \
@@ -78,33 +78,14 @@ wait
 # obs: Box, ac: Box 
 ##################################
 # BipedalWalker-v2
-# Considered solved when reward > 200 points
+# TODO: add docs on the goal rewards
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup python a2c.py \
+    (sleep 0.3 && nohup python a2c_continuous_action.py \
     --seed $seed \
     --gym-id BipedalWalker-v2 \
-    --total-timesteps 4000000 \
-    --wandb-project-name cleanrl.benchmark \
-    --prod-mode True
-    ) >& /dev/null &
-done
-for seed in {1..2}
-do
-    (sleep 0.3 && nohup python ppo.py \
-    --seed $seed \
-    --gym-id BipedalWalker-v2 \
-    --total-timesteps 4000000 \
-    --wandb-project-name cleanrl.benchmark \
-    --prod-mode True
-    ) >& /dev/null &
-done
-for seed in {1..2}
-do
-    (sleep 0.3 && nohup python dqn.py \
-    --seed $seed \
-    --gym-id BipedalWalker-v2 \
-    --total-timesteps 4000000 \
+    --total-timesteps 2000000 \
+    --episode-length 1600 \
     --wandb-project-name cleanrl.benchmark \
     --prod-mode True
     ) >& /dev/null &
@@ -112,33 +93,104 @@ done
 wait
 
 # Pendulum-v0
-# Considered solved when reward > 200 points
+# TODO: add docs on the goal rewards
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup python a2c.py \
+    (sleep 0.3 && nohup python a2c_continuous_action.py \
     --seed $seed \
     --gym-id Pendulum-v0 \
-    --total-timesteps 4000000 \
+    --total-timesteps 2000000 \
+    --episode-length 200 \
     --wandb-project-name cleanrl.benchmark \
     --prod-mode True
     ) >& /dev/null &
 done
+wait
+
+# HopperBulletEnv-v0
+# TODO: add docs on the goal rewards
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup python ppo.py \
+    (sleep 0.3 && nohup python a2c_continuous_action.py \
     --seed $seed \
-    --gym-id Pendulum-v0 \
-    --total-timesteps 4000000 \
+    --gym-id HopperBulletEnv-v0 \
+    --total-timesteps 2000000 \
+    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --prod-mode True
     ) >& /dev/null &
 done
+wait
+
+# InvertedPendulumBulletEnv-v0
+# TODO: add docs on the goal rewards
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup python dqn.py \
+    (sleep 0.3 && nohup python a2c_continuous_action.py \
     --seed $seed \
-    --gym-id Pendulum-v0 \
-    --total-timesteps 4000000 \
+    --gym-id InvertedPendulumBulletEnv-v0 \
+    --total-timesteps 2000000 \
+    --episode-length 1000 \
+    --wandb-project-name cleanrl.benchmark \
+    --prod-mode True
+    ) >& /dev/null &
+done
+wait
+
+# Walker2DBulletEnv-v0
+# TODO: add docs on the goal rewards
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup python a2c_continuous_action.py \
+    --seed $seed \
+    --gym-id Walker2DBulletEnv-v0 \
+    --total-timesteps 2000000 \
+    --episode-length 1000 \
+    --wandb-project-name cleanrl.benchmark \
+    --prod-mode True
+    ) >& /dev/null &
+done
+wait
+
+# HumanoidBulletEnv-v0
+# TODO: add docs on the goal rewards
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup python a2c_continuous_action.py \
+    --seed $seed \
+    --gym-id HumanoidBulletEnv-v0 \
+    --total-timesteps 2000000 \
+    --episode-length 1000 \
+    --wandb-project-name cleanrl.benchmark \
+    --prod-mode True
+    ) >& /dev/null &
+done
+wait
+
+# HalfCheetahBulletEnv-v0
+# TODO: add docs on the goal rewards
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup python a2c_continuous_action.py \
+    --seed $seed \
+    --gym-id HalfCheetahBulletEnv-v0 \
+    --total-timesteps 2000000 \
+    --episode-length 1000 \
+    --wandb-project-name cleanrl.benchmark \
+    --prod-mode True
+    ) >& /dev/null &
+done
+wait
+
+# ReacherBulletEnv-v0
+# TODO: add docs on the goal rewards
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup python a2c_continuous_action.py \
+    --seed $seed \
+    --gym-id ReacherBulletEnv-v0 \
+    --total-timesteps 2000000 \
+    --episode-length 150 \
     --wandb-project-name cleanrl.benchmark \
     --prod-mode True
     ) >& /dev/null &
@@ -182,38 +234,3 @@ do
     ) >& /dev/null &
 done
 wait
-
-# # Breakout-v0
-# # Pixels input
-# # Considered solved when reward > 200 points
-# for seed in {1..2}
-# do
-#     (sleep 0.3 && nohup python a2c.py \
-#     --seed $seed \
-#     --gym-id Taxi-v2 \
-#     --total-timesteps 1000000 \
-# --wandb-project-name cleanrl.benchmark \#     
-# --prod-mode True
-#     ) >& /dev/null &
-# done
-# for seed in {1..2}
-# do
-#     (sleep 0.3 && nohup python ppo.py \
-#     --seed $seed \
-#     --gym-id Taxi-v2 \
-#     --total-timesteps 1000000 \
-# --wandb-project-name cleanrl.benchmark \#     
-# --prod-mode True
-#     ) >& /dev/null &
-# done
-# for seed in {1..2}
-# do
-#     (sleep 0.3 && nohup python dqn.py \
-#     --seed $seed \
-#     --gym-id Taxi-v2 \
-#     --total-timesteps 1000000 \
-# --wandb-project-name cleanrl.benchmark \#     
-# --prod-mode True
-#     ) >& /dev/null &
-# done
-# wait
