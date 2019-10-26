@@ -21,13 +21,13 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).strip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="InvertedPendulumBulletEnv-v0",
+    parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=0,
                        help='seed of the experiment')
-    parser.add_argument('--episode-length', type=int, default=200,
+    parser.add_argument('--episode-length', type=int, default=2000,
                        help='the maximum length of each episode')
     parser.add_argument('--total-timesteps', type=int, default=4000000,
                        help='total timesteps of the experiments')
@@ -71,25 +71,20 @@ class Policy(nn.Module):
         super(Policy, self).__init__()
         self.fc1 = nn.Linear(input_shape, 120)
         self.fc2 = nn.Linear(120, 84)
+        # init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+        #                        constant_(x, 0))
+        
         self.fc_mean = nn.Linear(84, output_shape)
-        self.logstd = nn.Parameter(torch.zeros(1, output_shape))
-        # orthogonal initialization and layer scaling
-        self.layer_norm(self.fc1, std=1.0)
-        self.layer_norm(self.fc2, std=1.0)
-        self.layer_norm(self.fc_mean, std=0.01)
-
-    @staticmethod
-    def layer_norm(layer, std=1.0, bias_const=0.0):
-        torch.nn.init.orthogonal_(layer.weight, std)
-        torch.nn.init.constant_(layer.bias, bias_const)
+        self.logstd = nn.Linear(output_shape, output_shape)
 
     def forward(self, x):
         x = preprocess_obs_fn(x)
-        x = torch.tanh(self.fc1(x))
-        x = torch.tanh(self.fc2(x))
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
         
         action_mean = self.fc_mean(x)
-        action_logstd = self.logstd.expand_as(action_mean)
+        zeros = torch.zeros(action_mean.size(), device=device)
+        action_logstd = self.logstd(zeros)
         
         return action_mean, action_logstd.exp()
 
@@ -175,12 +170,9 @@ while global_step < args.total_timesteps:
     
     # ALGO LOGIC: training.
     # calculate the discounted rewards, or namely, returns
-    gae = 0
     returns = np.zeros_like(rewards)
     for t in reversed(range(rewards.shape[0]-1)):
-        delta = rewards[t] + args.gamma * values[t+1] * dones[t+1] - values[t]
-        gae = delta + args.gamma * 0.95 * dones[t+1] * gae
-        returns[t] = gae + values[t]
+        returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
     # advantages are returns - baseline, value estimates in our case
     advantages = returns - values.detach().cpu().numpy()
     

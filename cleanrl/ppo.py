@@ -1,5 +1,3 @@
-# Reference: http://inoryy.com/post/tensorflow2-deep-reinforcement-learning/
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
