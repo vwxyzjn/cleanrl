@@ -62,8 +62,21 @@ Any comments, help, or PRs are more than welcome!
 
 - [x] Add automatic benchmark 
     - Completed. See https://app.wandb.ai/costa-huang/cleanrl.benchmark/reports?view=costa-huang%2Fbenchmark
-- [ ] Support continuous action spaces
-    - WIP. It's kind of hard... Implementation can be very tricky.
+- [x] Support continuous action spaces
+    - Preliminary support with [a2c_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/a2c_continuous_action.py)
 - [x] Support using GPU
 - [ ] Support using multiprocessing
-- [ ] `global_step` should be incremented after the step in the episode ends.
+
+## References
+
+I have been heavily inspired by the many repos and blog posts. Below contains a incomplete list of them.
+
+* http://inoryy.com/post/tensorflow2-deep-reinforcement-learning/
+* https://github.com/seungeunrho/minimalRL
+* https://github.com/Shmuma/Deep-Reinforcement-Learning-Hands-On
+* https://github.com/hill-a/stable-baselines
+
+The following ones helped me a lot with the continuous action space handling:
+
+* https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail
+* https://github.com/zhangchuheng123/Reinforcement-Implementation/blob/master/code/ppo.py
