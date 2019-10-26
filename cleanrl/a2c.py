@@ -106,6 +106,7 @@ if args.prod_mode:
     import wandb
     wandb.init(project=args.wandb_project_name, tensorboard=True, config=vars(args), name=experiment_name)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
+    wandb.save(os.path.abspath(__file__))
 global_step = 0
 while global_step < args.total_timesteps:
     next_obs = np.array(env.reset())
