@@ -2,17 +2,17 @@
 
 ### This project is WIP currently at 0.1 release, expect breaking changes.
 
-This repository focuses on a clean and minimal implementation of reinforcement learning algorithms that focuses on easy experimental research. The highlights features of this repo is:
+This repository focuses on a clean and minimal implementation of reinforcement learning algorithms that focuses on easy experimental research. The highlight features of this repo are:
 
 * Most algorithms are self-contained in single files with a common dependency file [common.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/common.py) that handles different gym spaces.
 
-* Easy logging of training processes using Tensorboard and Integration with wandb.com to log experiments on the cloud. Check out https://app.wandb.ai/costa-huang/cleanrltest.
+* Easy logging of training processes using Tensorboard and Integration with wandb.com to log experiments on the cloud. Check out https://cleanrl.costa.sh.
 
-* **Easily Customizable** and being able to debug *directly* in Python’s interactive shell (Especially if you use the Spyder editor from Anaconda :) ).
+* **Hackable** and being able to debug *directly* in Python’s interactive shell (Especially if you use the Spyder editor from Anaconda :) ).
 
 * Convenient use of commandline arguments for hyper-parameters tuning.
 
-* Benchmarking https://app.wandb.ai/costa-huang/cleanrl.benchmark/reports?view=costa-huang%2Fbenchmark 
+* Benchmarked in many types of games. https://cleanrl.costa.sh
 
 ![wandb.png](wandb.png)
 
@@ -54,9 +54,45 @@ Checkout the demo sites at [https://app.wandb.ai/costa-huang/cleanrltest](https:
 
 ![demo2.gif](demo2.gif)
 
-## Contribution
+## User's Guide for Researcher (Please read this if consider using CleanRL)
 
-Any comments, help, or PRs are more than welcome!
+CleanRL focuses on early and mid stages of RL research, where one would try to understand ideas and do hacky experimentation with the algorithms. If your goal does not include messing with different parts of RL algorithms, perhaps library like [stable-baselines](https://github.com/hill-a/stable-baselines), [ray](https://github.com/ray-project/ray), or [catalyst](https://github.com/catalyst-team/catalyst) would be more suited for your use cases since they are built to be highly optimized, concurrent and fast.
+
+CleanRL, however, is built to provide a simplified and streamlined approach to conduct RL experiment. Let's give an example. Say you are interested in implementing the [GAE (Generalized Advantage Estimation) technique](https://arxiv.org/abs/1506.02438) to see if it improves the A2C's performance on `CartPole-v0`. The workflow roughly looks like this:
+
+1. Make a copy of `cleanrl/cleanrl/a2c.py` to `cleanrl/cleanrl/experiments/a2c_gae.py`
+2. Implement the GAE technique. This should relatively simple because you don't have to navigate into dozens of files and find the some function named `compute_advantages()`
+3. Run `python cleanrl/cleanrl/experiments/a2c_gae.py` in the terminal or using an interactive shell like [Spyder](https://www.spyder-ide.org/). The latter gives you the ability to stop the program at any time and execute arbitrary code; so you can program on the fly.
+4. Open another terminal and type `tensorboard --logdir cleanrl/cleanrl/experiments/runs` and checkout the `episode_rewards`, `losses/policy_loss`, etc. If something appears not right, go to step 2 and continue.
+5. If the technique works, you want to see if it works with other games such as `Taxi-v3` or different parameters as well. Execute 
+    ```
+    $ wandb login ${WANBD_API_KEY}
+    $ for seed in {1..2}
+        do
+            (sleep 0.3 && nohup python a2c_gae.py \
+            --seed $seed \
+            --gym-id CartPole-v0 \
+            --total-timesteps 30000 \
+            --wandb-project-name myRLproject \
+            --prod-mode True
+            ) >& /dev/null &
+        done
+    $ for seed in {1..2}
+        do
+            (sleep 0.3 && nohup python a2c_gae.py \
+            --seed $seed \
+            --gym-id Taxi-v3 \   # different env
+            --total-timesteps 30000 \
+            --gamma 0.8 \ # a lower discount factor
+            --wandb-project-name myRLproject \
+            --prod-mode True
+            ) >& /dev/null &
+        done
+    ```
+    And then you can monitor the performances and keep good track of all the parameters used in your experiments
+6. Continue this process
+
+This pipline described above should give you an idea of how to use CleanRL for your research.
 
 ## Feature TODOs:
 
