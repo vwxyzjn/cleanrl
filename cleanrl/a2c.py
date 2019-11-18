@@ -133,12 +133,6 @@ while global_step < args.total_timesteps:
             probs = Categorical(logits=logits)
             action = probs.sample()
             actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], -probs.log_prob(action), probs.entropy()
-
-        elif isinstance(env.action_space, Box):
-            mean, std = torch.split(logits, int(output_shape/2), dim=1)
-            probs = Normal(mean, torch.abs(std))
-            action = probs.sample()
-            actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], -probs.log_prob(action).sum(), probs.entropy().sum()
     
         elif isinstance(env.action_space, MultiDiscrete):
             logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
