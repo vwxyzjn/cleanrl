@@ -54,8 +54,8 @@ if __name__ == "__main__":
                        help="the starting epsilon for exploration")
     parser.add_argument('--end-e', type=float, default=0.05,
                        help="the ending epsilon for exploration")
-    parser.add_argument('--exploration-duration', type=int, default=25000,
-                       help="the time it takes from start-e to go end-e")
+    parser.add_argument('--exploration-fraction', type=float, default=0.8,
+                       help="the fraction of `total-timesteps` it takes from start-e to go end-e")
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -155,7 +155,7 @@ while global_step < args.total_timesteps:
         obs[step] = next_obs.copy()
         
         # ALGO LOGIC: put action logic here
-        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_duration, global_step)
+        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
 
         # ALGO LOGIC: `env.action_space` specific logic
         if random.random() < epsilon:
