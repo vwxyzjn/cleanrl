@@ -146,8 +146,6 @@ while global_step < args.total_timesteps:
     
     # ALGO LOGIC: put other storage logic here
     values = torch.zeros((args.episode_length), device=device)
-    neglogprobs = torch.zeros((args.episode_length,), device=device)
-    entropys = torch.zeros((args.episode_length,), device=device)
     
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
