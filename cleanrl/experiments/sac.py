@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).strip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="BipedalWalker-v2",
+    parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
@@ -81,7 +81,7 @@ class Policy(nn.Module):
         #                        constant_(x, 0))
         
         self.fc_mean = nn.Linear(84, output_shape)
-        self.logstd = nn.Linear(output_shape, output_shape)
+        self.logstd = nn.Linear(84, output_shape)
 
     def forward(self, x):
         x = preprocess_obs_fn(x)
@@ -89,8 +89,11 @@ class Policy(nn.Module):
         x = F.relu(self.fc2(x))
         
         action_mean = self.fc_mean(x)
-        zeros = torch.zeros(action_mean.size(), device=device)
-        action_logstd = self.logstd(zeros)
+        # https://github.com/sweetice/Deep-reinforcement-learning-with-pytorch/blob/master/Char09%20SAC/SAC.py#L231
+        min_log_std=-20
+        max_log_std=2
+        action_logstd = self.logstd(x)
+        action_logstd = torch.clamp(action_logstd, min_log_std, max_log_std)
         
         return action_mean, action_logstd.exp()
 
@@ -256,8 +259,6 @@ while global_step < args.total_timesteps:
             nn.utils.clip_grad_norm_(list(pg.parameters()), args.max_grad_norm)
             policy_optimizer.step()
 
-
-            
             # update the target network
             if global_step % args.target_network_frequency == 0:
                 vf_target.load_state_dict(vf.state_dict())
