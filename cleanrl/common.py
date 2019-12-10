@@ -34,3 +34,10 @@ def preprocess_ac_space(ac_space: Space, stochastic=True):
     else:
         raise NotImplementedError("Error: the model does not support output space of type {}".format(
             type(ac_space).__name__))
+
+def preprocess_obs_ac_concat( obs_space: Space, ac_space: Space, device: str):
+    if isinstance( obs_space, Box) and isinstance( ac_space, Box):
+        return (np.array(obs_space.shape).prod() + np.array(ac_space.shape).prod(),
+                lambda x, obs_space=obs_space, ac_space=ac_space: torch.Tensor(x).float().view(torch.Tensor(x).shape[0], -1).to(device))
+    else:
+        raise NotImplementedError("Error: the model does not support obs_space and act_space differnt of Box (yet).")
