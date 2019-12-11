@@ -53,6 +53,10 @@ if __name__ == "__main__":
                        help='the maximum norm for the gradient clipping')
     parser.add_argument('--batch-size', type=int, default=32,
                        help="the batch size of sample from the reply memory")
+    parser.add_argument('--tau', type=float, default=0.005,
+                       help="target smoothing coefficient (default: 0.005)")
+    parser.add_argument('--alpha', type=float, default=0.2,
+                       help="Entropy regularization coefficient.")
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -222,7 +226,7 @@ while global_step < args.total_timesteps:
                 soft_q_val2 = soft_q_network2.forward(s_obs, resampled_action).view(-1)
                 min_soft_q_val = torch.min(soft_q_val1, soft_q_val2)
             soft_v_val = vf.forward(s_obs).view(-1)
-            v_loss = loss_fn(soft_v_val, (min_soft_q_val - logprobs * 0.2))
+            v_loss = loss_fn(soft_v_val, (min_soft_q_val - logprobs * args.alpha))
             
             # soft q loss
             soft_q_val1 = soft_q_network1.forward(s_obs, s_actions).view(-1)
@@ -239,16 +243,17 @@ while global_step < args.total_timesteps:
                 soft_q_val1 = soft_q_network1.forward(s_obs, resampled_action).view(-1)
                 soft_q_val2 = soft_q_network2.forward(s_obs, resampled_action).view(-1)
                 min_soft_q_val = torch.min(soft_q_val1, soft_q_val2)
-            pi_loss = (0.2 * logprobs - min_soft_q_val).mean()
+            pi_loss = (args.alpha * logprobs - min_soft_q_val).mean()
 
             # optimize the midel
             loss = v_loss + soft_q_loss1 + soft_q_loss2 # + pi_loss
             values_optimizer.zero_grad()
             loss.backward()
             writer.add_scalar("losses/soft_value_loss", v_loss.item(), global_step)
-            writer.add_scalar("losses/soft_q_value_loss", soft_q_loss1.mean().item(), global_step)
-            writer.add_scalar("losses/policy_loss", pi_loss.mean().item(), global_step)
-            writer.add_scalar("losses/loss", loss, global_step)
+            writer.add_scalar("losses/soft_q_value_1_loss", soft_q_loss1.item(), global_step)
+            writer.add_scalar("losses/soft_q_value_2_loss", soft_q_loss2.item(), global_step)
+            writer.add_scalar("losses/policy_loss", pi_loss.item(), global_step)
+            writer.add_scalar("losses/loss", loss.item(), global_step)
             nn.utils.clip_grad_norm_(list(vf.parameters())
              + list(soft_q_network1.parameters())
              + list(soft_q_network2.parameters()), args.max_grad_norm)
@@ -260,8 +265,8 @@ while global_step < args.total_timesteps:
             policy_optimizer.step()
 
             # update the target network
-            if global_step % args.target_network_frequency == 0:
-                vf_target.load_state_dict(vf.state_dict())
+            for param, target_param in zip(vf.parameters(), vf_target.parameters()):
+                target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
