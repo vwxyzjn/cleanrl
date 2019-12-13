@@ -27,7 +27,7 @@ if __name__ == "__main__":
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
-    parser.add_argument('--seed', type=int, default=1,
+    parser.add_argument('--seed', type=int, default=2,
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=2000,
                        help='the maximum length of each episode')
@@ -94,10 +94,12 @@ class Policy(nn.Module):
         
         action_mean = self.fc_mean(x)
         # https://github.com/sweetice/Deep-reinforcement-learning-with-pytorch/blob/master/Char09%20SAC/SAC.py#L231
+        # https://github.com/openai/spinningup/blob/master/spinup/algos/sac/core.py
         min_log_std=-20
         max_log_std=2
         action_logstd = self.logstd(x)
-        action_logstd = torch.clamp(action_logstd, min_log_std, max_log_std)
+        action_logstd = min_log_std + 0.5 * (max_log_std - min_log_std) * (action_logstd + 1)
+        # action_logstd = torch.clamp(action_logstd, min_log_std, max_log_std)
         
         return action_mean, action_logstd.exp()
 
@@ -165,6 +167,7 @@ vf_target.load_state_dict(vf.state_dict())
 values_optimizer = optim.Adam(list(vf.parameters()) + list(soft_q_network1.parameters()) + list(soft_q_network2.parameters()), lr=args.learning_rate)
 policy_optimizer = optim.Adam(list(pg.parameters()), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
+min_Val = torch.tensor(1e-7).float()
 
 # TRY NOT TO MODIFY: start the game
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -200,11 +203,17 @@ while global_step < args.total_timesteps:
         if isinstance(env.action_space, Box):
             probs = Normal(logits, std)
             action = probs.sample()
-            clipped_action = torch.clamp(action, torch.min(torch.Tensor(env.action_space.low)), torch.min(torch.Tensor(env.action_space.high)))
+            
+            # action squashing. The reparamaterization trick
+            action = torch.tanh(action)
+            action *= env.action_space.high[0]
+            #print(pg.fc1.weight.grad)
+            
+            # clipped_action = torch.clamp(action, torch.min(torch.Tensor(env.action_space.low)), torch.min(torch.Tensor(env.action_space.high)))
             actions[step], entropys[step] = action.tolist()[0], probs.entropy().sum()
     
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards[step], dones[step], _ = env.step(clipped_action.tolist()[0])
+        next_obs, rewards[step], dones[step], _ = env.step(action.tolist()[0])
         next_obs = np.array(next_obs)
         er.add(obs[step], actions[step], rewards[step], next_obs, dones[step])
         if dones[step]:
@@ -220,10 +229,12 @@ while global_step < args.total_timesteps:
             logits, std = pg.forward(s_obs)
             probs = Normal(logits, std)
             with torch.no_grad():
-                resampled_action = probs.sample()
-                logprobs = probs.log_prob(resampled_action).sum(1)
-                soft_q_val1 = soft_q_network1.forward(s_obs, resampled_action).view(-1)
-                soft_q_val2 = soft_q_network2.forward(s_obs, resampled_action).view(-1)
+                resampled_action = probs.rsample()
+                resampled_action_tanh = torch.tanh(resampled_action)
+                logprobs = probs.log_prob(resampled_action).sum(1) - torch.log((1 - resampled_action_tanh.pow(2) + min_Val)).sum(1)
+                #resampled_action_tanh *= env.action_space.high[0]
+                soft_q_val1 = soft_q_network1.forward(s_obs, resampled_action_tanh).view(-1)
+                soft_q_val2 = soft_q_network2.forward(s_obs, resampled_action_tanh).view(-1)
                 min_soft_q_val = torch.min(soft_q_val1, soft_q_val2)
             soft_v_val = vf.forward(s_obs).view(-1)
             v_loss = loss_fn(soft_v_val, (min_soft_q_val - logprobs * args.alpha))
@@ -237,11 +248,13 @@ while global_step < args.total_timesteps:
             soft_q_loss2 = loss_fn(soft_q_val2, soft_td_target)
             
             # actor loss
-            resampled_action = probs.sample()
-            logprobs = probs.log_prob(resampled_action).sum(1)
+            resampled_action = probs.rsample()
+            resampled_action_tanh = torch.tanh(resampled_action)
+            logprobs = probs.log_prob(resampled_action).sum(1) - torch.log((1 - resampled_action_tanh.pow(2) + min_Val)).sum(1)
+            #resampled_action_tanh *= env.action_space.high[0]
             with torch.no_grad():
-                soft_q_val1 = soft_q_network1.forward(s_obs, resampled_action).view(-1)
-                soft_q_val2 = soft_q_network2.forward(s_obs, resampled_action).view(-1)
+                soft_q_val1 = soft_q_network1.forward(s_obs, resampled_action_tanh).view(-1)
+                soft_q_val2 = soft_q_network2.forward(s_obs, resampled_action_tanh).view(-1)
                 min_soft_q_val = torch.min(soft_q_val1, soft_q_val2)
             pi_loss = (args.alpha * logprobs - min_soft_q_val).mean()
 
