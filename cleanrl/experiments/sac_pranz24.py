@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).strip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
+    parser.add_argument('--gym-id', type=str, default="Pendulum-v0",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
@@ -79,80 +79,6 @@ assert isinstance(env.action_space, Box), "only continuous action space is suppo
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        self.fc1 = nn.Linear(input_shape, 120)
-        self.fc2 = nn.Linear(120, 84)
-        # init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-        #                        constant_(x, 0))
-        
-        self.fc_mean = nn.Linear(84, output_shape)
-        self.logstd = nn.Linear(84, output_shape)
-
-    def forward(self, x):
-        x = preprocess_obs_fn(x)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        
-        action_mean = self.fc_mean(x)
-        # https://github.com/sweetice/Deep-reinforcement-learning-with-pytorch/blob/master/Char09%20SAC/SAC.py#L231
-        # https://github.com/openai/spinningup/blob/master/spinup/algos/sac/core.py
-        min_log_std=-20
-        max_log_std=2
-        action_logstd = self.logstd(x)
-        action_logstd = min_log_std + 0.5 * (max_log_std - min_log_std) * (action_logstd + 1)
-        # action_logstd = torch.clamp(action_logstd, min_log_std, max_log_std)
-        
-        return action_mean, action_logstd.exp()
-
-class PolicyNetwork(nn.Module):
-    def __init__(self):
-        super(PolicyNetwork,self).__init__()
-
-        self.linear1 = nn.Linear(input_shape,120)
-        self.linear2 = nn.Linear(120,84)
-
-        self.linear3a = nn.Linear(84,output_shape)
-        self.linear3b = nn.Linear(84,output_shape)
-
-
-        # rescale actions
-        self.action_scale = torch.FloatTensor(
-            (env.action_space.high - env.action_space.low) / 2.)
-        self.action_bias = torch.FloatTensor(
-            (env.action_space.high + env.action_space.low) / 2.)
-
-    def forward(self,x):
-        x = preprocess_obs_fn(x)
-        x = F.relu(self.linear1(x))
-        x = F.relu(self.linear2(x))
-        mean = self.linear3a(x)
-        log_std = self.linear3b(x)
-
-        # constrain log value in finite range to avoid NaN loss values
-        log_std = torch.clamp(log_std, min=-20., max=2)
-        
-        return mean, log_std
-
-    def sample_action(self,s):
-        mean, log_std = self.forward(s)
-        std = log_std.exp()
-
-        # calculate action using reparameterization trick and action scaling
-        normal = Normal(mean, std)
-        xi = normal.rsample()
-        yi = torch.tanh(xi)
-        a = yi * self.action_scale + self.action_bias
-        log_pi = normal.log_prob(xi)
-
-        # enforcing action bound (appendix of paper)
-        log_pi -= torch.log(self.action_scale * (1 - yi.pow(2)) + 1e-6)
-        log_pi = log_pi.sum(1,keepdim=True)
-        mean = torch.tanh(mean)*self.action_scale + self.action_bias
-
-        return a, log_pi, mean
-
-class GaussianPolicy(nn.Module):
-    def __init__(self):
-        super(GaussianPolicy, self).__init__()
         
         self.linear1 = nn.Linear(input_shape, 120)
         self.linear2 = nn.Linear(120, 84)
@@ -192,7 +118,7 @@ class GaussianPolicy(nn.Module):
     def to(self, device):
         self.action_scale = self.action_scale.to(device)
         self.action_bias = self.action_bias.to(device)
-        return super(GaussianPolicy, self).to(device)
+        return super(Policy, self).to(device)
 
 class SoftQNetwork(nn.Module):
     def __init__(self):
@@ -237,7 +163,7 @@ class ReplayBuffer(object):
         return np.array(obses_t), np.array(actions), np.array(rewards), np.array(obses_tp1), np.array(dones)
 
 er = ReplayBuffer(args.buffer_size)
-pg = GaussianPolicy().to(device)
+pg = Policy().to(device)
 soft_q_network1 = SoftQNetwork().to(device)
 soft_q_network2 = SoftQNetwork().to(device)
 soft_q_network1_target = SoftQNetwork().to(device)
@@ -280,16 +206,6 @@ while global_step < args.total_timesteps:
         #values[step] = vf.forward([obs[step]])
 
         # ALGO LOGIC: `env.action_space` specific logic
-#        if isinstance(env.action_space, Box):
-#            probs = Normal(logits, std)
-#            action = probs.sample()
-#            
-#            # action squashing. The reparamaterization trick
-#            action = torch.tanh(action)
-#            action *= env.action_space.high[0]
-#            #print(pg.fc1.weight.grad)
-#            
-#            # clipped_action = torch.clamp(action, torch.min(torch.Tensor(env.action_space.low)), torch.min(torch.Tensor(env.action_space.high)))
         actions[step] = action.tolist()[0]
     
         # TRY NOT TO MODIFY: execute the game and log data.
@@ -302,10 +218,6 @@ while global_step < args.total_timesteps:
         # ALGO LOGIC: training.
         if len(er._storage) > 2000:
             s_obs, s_actions, s_rewards, s_next_obses, s_dones = er.sample(args.batch_size)
-            # soft value loss
-            # TODO: Importantly, we do not use actions from the replay buffer here: 
-            # these actions are sampled fresh from the current version of the policy.
-            # original paper: LOL where the actions are sampled according to the current policy, instead of the replay buffer
             with torch.no_grad():
                 next_state_action, next_state_log_pi, _ = pg.sample(s_next_obses)
                 qf1_next_target = soft_q_network1_target.forward(s_next_obses, next_state_action)
