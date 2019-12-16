@@ -159,7 +159,7 @@ while global_step < args.total_timesteps:
         if random.random() < epsilon:
             actions[step] = env.action_space.sample()
         else:
-            logits = target_network.forward([obs[step]])
+            logits = target_network.forward(obs[step].reshape(1, -1))
             if isinstance(env.action_space, Discrete):
                 action = torch.argmax(logits, dim=1)
                 actions[step] = action.tolist()[0]

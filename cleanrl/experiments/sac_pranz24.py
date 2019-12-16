@@ -202,8 +202,8 @@ while global_step < args.total_timesteps:
         obs[step] = next_obs.copy()
         
         # ALGO LOGIC: put action logic here
-        action, _, _ = pg.sample([obs[step]])
-        #values[step] = vf.forward([obs[step]])
+        action, _, _ = pg.sample(obs[step].reshape(1, -1))
+        #values[step] = vf.forward(obs[step].reshape(1, -1))
 
         # ALGO LOGIC: `env.action_space` specific logic
         actions[step] = action.tolist()[0]
