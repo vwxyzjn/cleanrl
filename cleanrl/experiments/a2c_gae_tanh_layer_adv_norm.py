@@ -138,8 +138,8 @@ while global_step < args.total_timesteps:
         obs[step] = next_obs.copy()
         
         # ALGO LOGIC: put action logic here
-        logits, std = pg.forward(obs[step].reshape(1, -1))
-        values[step] = vf.forward(obs[step].reshape(1, -1))
+        logits, std = pg.forward(obs[step:step+1])
+        values[step] = vf.forward(obs[step:step+1])
 
         # ALGO LOGIC: `env.action_space` specific logic
         if isinstance(env.action_space, Discrete):

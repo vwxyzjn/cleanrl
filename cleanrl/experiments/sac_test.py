@@ -27,7 +27,7 @@ if __name__ == "__main__":
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
-    parser.add_argument('--seed', type=int, default=2,
+    parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=2000,
                        help='the maximum length of each episode')
@@ -98,7 +98,8 @@ class Policy(nn.Module):
         min_log_std=-20
         max_log_std=2
         action_logstd = self.logstd(x)
-        action_logstd = min_log_std + 0.5 * (max_log_std - min_log_std) * (action_logstd + 1)
+        action_logstd = torch.clamp(action_logstd, min=min_log_std, max=max_log_std)
+        # action_logstd = min_log_std + 0.5 * (max_log_std - min_log_std) * (action_logstd + 1)
         # action_logstd = torch.clamp(action_logstd, min_log_std, max_log_std)
         
         return action_mean, action_logstd.exp()
@@ -168,6 +169,10 @@ values_optimizer = optim.Adam(list(vf.parameters()) + list(soft_q_network1.param
 policy_optimizer = optim.Adam(list(pg.parameters()), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
 min_Val = torch.tensor(1e-7).float()
+action_scale = torch.FloatTensor(
+    (env.action_space.high - env.action_space.low) / 2.)
+action_bias = torch.FloatTensor(
+    (env.action_space.high + env.action_space.low) / 2.)
 
 # TRY NOT TO MODIFY: start the game
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -202,11 +207,12 @@ while global_step < args.total_timesteps:
         # ALGO LOGIC: `env.action_space` specific logic
         if isinstance(env.action_space, Box):
             probs = Normal(logits, std)
-            action = probs.sample()
+            action = probs.rsample()
             
             # action squashing. The reparamaterization trick
             action = torch.tanh(action)
-            action *= env.action_space.high[0]
+            action = action * action_scale + action_bias
+            # action *= env.action_space.high[0]
             #print(pg.fc1.weight.grad)
             
             # clipped_action = torch.clamp(action, torch.min(torch.Tensor(env.action_space.low)), torch.min(torch.Tensor(env.action_space.high)))
@@ -229,12 +235,13 @@ while global_step < args.total_timesteps:
             logits, std = pg.forward(s_obs)
             probs = Normal(logits, std)
             with torch.no_grad():
-                resampled_action = probs.rsample()
-                resampled_action_tanh = torch.tanh(resampled_action)
-                logprobs = probs.log_prob(resampled_action).sum(1) - torch.log((1 - resampled_action_tanh.pow(2) + min_Val)).sum(1)
+                x_t = probs.rsample()
+                y_t = torch.tanh(x_t)
+                resampled_action = y_t * action_scale + action_bias
+                logprobs = probs.log_prob(x_t).sum(1) - torch.log(action_scale * (1 - y_t.pow(2)) + min_Val).sum(1)
                 #resampled_action_tanh *= env.action_space.high[0]
-                soft_q_val1 = soft_q_network1.forward(s_obs, resampled_action_tanh).view(-1)
-                soft_q_val2 = soft_q_network2.forward(s_obs, resampled_action_tanh).view(-1)
+                soft_q_val1 = soft_q_network1.forward(s_obs, resampled_action).view(-1)
+                soft_q_val2 = soft_q_network2.forward(s_obs, resampled_action).view(-1)
                 min_soft_q_val = torch.min(soft_q_val1, soft_q_val2)
             soft_v_val = vf.forward(s_obs).view(-1)
             v_loss = loss_fn(soft_v_val, (min_soft_q_val - logprobs * args.alpha))
@@ -248,13 +255,14 @@ while global_step < args.total_timesteps:
             soft_q_loss2 = loss_fn(soft_q_val2, soft_td_target)
             
             # actor loss
-            resampled_action = probs.rsample()
-            resampled_action_tanh = torch.tanh(resampled_action)
-            logprobs = probs.log_prob(resampled_action).sum(1) - torch.log((1 - resampled_action_tanh.pow(2) + min_Val)).sum(1)
-            #resampled_action_tanh *= env.action_space.high[0]
+            x_t = probs.rsample()
+            y_t = torch.tanh(x_t)
+            resampled_action = y_t * action_scale + action_bias
+            logprobs = probs.log_prob(x_t).sum(1) - torch.log(action_scale * (1 - y_t.pow(2)) + min_Val).sum(1)
+            #resampled_action *= env.action_space.high[0]
             with torch.no_grad():
-                soft_q_val1 = soft_q_network1.forward(s_obs, resampled_action_tanh).view(-1)
-                soft_q_val2 = soft_q_network2.forward(s_obs, resampled_action_tanh).view(-1)
+                soft_q_val1 = soft_q_network1.forward(s_obs, resampled_action).view(-1)
+                soft_q_val2 = soft_q_network2.forward(s_obs, resampled_action).view(-1)
                 min_soft_q_val = torch.min(soft_q_val1, soft_q_val2)
             pi_loss = (args.alpha * logprobs - min_soft_q_val).mean()
 

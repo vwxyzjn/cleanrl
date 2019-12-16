@@ -9,9 +9,12 @@ import numpy as np
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 
 def preprocess_obs_space(obs_space: Space, device: str):
+    """
+    The `preprocess_obs_fn` expects the observation in the shape of ()
+    """
     if isinstance(obs_space, Discrete):
         def preprocess_obs_fn(x: torch.Tensor):
-            return F.one_hot(torch.LongTensor(x.reshape(-1)), obs_space.n).float().to(device)
+            return F.one_hot(torch.LongTensor(x), obs_space.n).float().to(device)
         return (obs_space.n, preprocess_obs_fn)
 
     elif isinstance(obs_space, Box):
