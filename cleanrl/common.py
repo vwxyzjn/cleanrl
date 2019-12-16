@@ -51,9 +51,3 @@ def preprocess_ac_space(ac_space: Space, stochastic=True):
     else:
         raise NotImplementedError("Error: the model does not support output space of type {}".format(
             type(ac_space).__name__))
-
-def __preprocess_obs_space_discrete(x: torch.Tensor, obs_space: Space, device: str):
-    return F.one_hot(torch.LongTensor(x), obs_space.n).float().to(device)
-
-def __preprocess_obs_space_discrete(x: torch.Tensor, obs_space: Space, device: str):
-    return torch.Tensor(x).float().view(torch.Tensor(x).shape[0], -1).to(device)
