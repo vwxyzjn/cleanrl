@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).strip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="Pendulum-v0",
+    parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
@@ -35,7 +35,7 @@ if __name__ == "__main__":
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
-    parser.add_argument('--cuda', type=bool, default=False,
+    parser.add_argument('--cuda', type=bool, default=True,
                        help='whether to use CUDA whenever possible')
     parser.add_argument('--prod-mode', type=bool, default=False,
                        help='run the script in production mode and use wandb to log outputs')
@@ -128,7 +128,7 @@ class SoftQNetwork(nn.Module):
         self.fc3 = nn.Linear(84, 1)
 
     def forward(self, x, a):
-        x, a = preprocess_obs_fn(x), preprocess_obs_fn(a)
+        x = preprocess_obs_fn(x)
         x = torch.cat([x, a], 1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
@@ -225,8 +225,8 @@ while global_step < args.total_timesteps:
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - args.alpha * next_state_log_pi
                 next_q_value = torch.Tensor(s_rewards).to(device) + (1 - torch.Tensor(s_dones).to(device)) * args.gamma * (min_qf_next_target).view(-1)
 
-            qf1 = soft_q_network1.forward(s_obs, s_actions).view(-1)
-            qf2 = soft_q_network2.forward(s_obs, s_actions).view(-1)
+            qf1 = soft_q_network1.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
+            qf2 = soft_q_network2.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
             # qf1, qf2 = critic(state_batch, action_batch)  # Two Q-functions to mitigate positive bias in the policy improvement step
             qf1_loss = loss_fn(qf1, next_q_value)
             qf2_loss = loss_fn(qf2, next_q_value)
