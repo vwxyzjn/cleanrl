@@ -37,10 +37,12 @@ if __name__ == "__main__":
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
     parser.add_argument('--cuda', type=bool, default=True,
                        help='whether to use CUDA whenever possible')
-    parser.add_argument('--prod-mode', type=bool, default=False,
+    parser.add_argument('--prod-mode', type=bool, default=True,
                        help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                        help="the wandb's project name")
+    parser.add_argument('--wandb-entity', type=str, default=None,
+                       help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
     parser.add_argument('--buffer-size', type=int, default=50000,
@@ -182,7 +184,7 @@ writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
 if args.prod_mode:
     import wandb
-    wandb.init(project=args.wandb_project_name, tensorboard=True, config=vars(args), name=experiment_name)
+    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, tensorboard=True, config=vars(args), name=experiment_name)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
     wandb.save(os.path.abspath(__file__))
 global_step = 0

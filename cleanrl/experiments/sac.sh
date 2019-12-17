@@ -9,6 +9,7 @@ do
     --total-timesteps 2000000 \
     --episode-length 1600 \
     --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
     --prod-mode True
     ) >& /dev/null &
 done
@@ -20,10 +21,10 @@ do
     --total-timesteps 2000000 \
     --episode-length 200 \
     --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
     --prod-mode True
     ) >& /dev/null &
 done
-wait
 for seed in {1..2}
 do
     (sleep 0.3 && nohup python sac_pranz24.py \
@@ -32,6 +33,7 @@ do
     --total-timesteps 2000000 \
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
     --prod-mode True
     ) >& /dev/null &
 done
@@ -43,10 +45,10 @@ do
     --total-timesteps 2000000 \
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
     --prod-mode True
     ) >& /dev/null &
 done
-wait
 for seed in {1..2}
 do
     (sleep 0.3 && nohup python sac_pranz24.py \
@@ -55,6 +57,7 @@ do
     --total-timesteps 2000000 \
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
     --prod-mode True
     ) >& /dev/null &
 done
@@ -66,10 +69,10 @@ do
     --total-timesteps 2000000 \
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
     --prod-mode True
     ) >& /dev/null &
 done
-wait
 for seed in {1..2}
 do
     (sleep 0.3 && nohup python sac_pranz24.py \
@@ -78,6 +81,7 @@ do
     --total-timesteps 2000000 \
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
     --prod-mode True
     ) >& /dev/null &
 done
@@ -89,7 +93,7 @@ do
     --total-timesteps 2000000 \
     --episode-length 150 \
     --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
     --prod-mode True
     ) >& /dev/null &
 done
-wait
