@@ -57,6 +57,8 @@ if __name__ == "__main__":
                        help="target smoothing coefficient (default: 0.005)")
     parser.add_argument('--alpha', type=float, default=0.2,
                        help="Entropy regularization coefficient.")
+    parser.add_argument('--autotuning-entropy', type=bool, default=True,
+                       help='Enables autotuning of the alpha entropy coefficient')
 
     # Neural Network Parametrization
     parser.add_argument('--policy-hid-sizes', nargs='+', type=int, default=(120,84,))
@@ -181,28 +183,6 @@ class QValue( nn.Module):
 
         return self._layers[-1](x)
 
-class Value( nn.Module):
-    def __init__( self):
-        super().__init__()
-        self._layers = nn.ModuleList()
-
-        # TODO: Unelegant, refactor and use that for all the networks
-        current_dim = input_shape
-        for hsize in args.value_hid_sizes:
-            self._layers.append( nn.Linear( current_dim, hsize))
-            current_dim = hsize
-
-        self._layers.append( nn.Linear( args.value_hid_sizes[-1], 1))
-
-    def forward(self, x):
-        if not isinstance( x, torch.Tensor):
-            x = preprocess_obs_fn(x)
-
-        for layer in self._layers[:-1]:
-            x = F.relu( layer( x))
-
-        return self._layers[-1](x)
-
 buffer = SimpleReplayBuffer( env.observation_space, env.action_space, args.buffer_size, args.batch_size)
 buffer.set_seed( args.seed) # Seedable buffer for reproducibility
 
@@ -212,9 +192,8 @@ pg = Policy().to(device)
 # Defining the agent's policy: Gaussian
 qf1 = QValue().to(device)
 qf2 = QValue().to(device)
-
-vf = Value().to( device)
-vf_target = Value().to( device)
+qf1_target = QValue().to(device)
+qf2_target = QValue().to(device)
 
 # MODIFIED: Helper function to update target value function network
 def update_target_value( vf, vf_target, tau):
@@ -223,12 +202,22 @@ def update_target_value( vf, vf_target, tau):
 
 # Sync weights of the QValues
 # Setting tau to 1.0 is equivalent to Hard Update
-update_target_value( vf, vf_target, 1.0)
+update_target_value( qf1, qf1_target, 1.0)
+update_target_value( qf2, qf2_target, 1.0)
 
-q_optimizer = optim.Adam( list(qf1.parameters()) + list(qf2.parameters()),
+q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()),
     lr=args.learning_rate)
-p_optimizer = optim.Adam( list(pg.parameters()), lr=args.learning_rate)
-v_optimizer = optim.Adam( list(vf.parameters()), lr=args.learning_rate)
+p_optimizer = optim.Adam(list(pg.parameters()), lr=args.learning_rate)
+
+# MODIFIED: SAC Automatic Entropy Tuning support
+if args.autotuning_entropy:
+    # This is only an Heuristic of the minimal entropy we should constraint to
+    target_entropy = - np.prod( env.action_space.shape)
+    log_alpha = torch.Tensor( [ 0.,]).to(device).requires_grad_()
+    alpha = 1.0 # Since log_alpha is 0 ...
+    a_optimizer = optim.Adam( [log_alpha], lr=args.learning_rate) # TODO: Different learning rate for alpha ?
+else:
+    alpha = args.alpha
 
 mse_loss_fn = nn.MSELoss()
 
@@ -261,9 +250,17 @@ def test_agent( env, policy, eval_episodes=1):
 
 # TRY NOT TO MODIFY: start the game
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-writer = SummaryWriter(f"runs/{experiment_name}")
-writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
-        '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
+
+# TODO: Cleanup debug
+# Mote: Doing this to skip writer creatiopn when testing stuff, otherwise, Tensorboard gets pissed
+# and breaks all the logs haha
+debug = False
+
+if not debug:
+    writer = SummaryWriter(f"runs/{experiment_name}")
+    writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
+            '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
+
 if args.prod_mode:
     import wandb
     wandb.init(project=args.wandb_project_name, tensorboard=True, config=vars(args), name=experiment_name)
@@ -305,69 +302,75 @@ while global_step < args.total_timesteps:
             observation_batch, action_batch, reward_batch, \
                 terminals_batch, next_observation_batch = buffer.sample(args.batch_size)
 
-            # Value function loss and updates
+            # Q function losses and update
             with torch.no_grad():
-                resampled_actions, resampled_logp_pis = pg.get_actions(observation_batch)
+                next_state_actions, next_state_logp_pis = pg.get_actions(next_observation_batch)
 
-                qf1_values = qf1.forward( observation_batch, resampled_actions)
-                qf2_values = qf2.forward( observation_batch, resampled_actions)
+                qf1_next_target = qf1_target.forward(next_observation_batch, next_state_actions)
+                qf2_next_target = qf2_target.forward(next_observation_batch, next_state_actions)
 
-                min_qf_values = torch.min( qf1_values, qf2_values)
+                min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_logp_pis
 
-                v_backup = (min_qf_values - args.alpha * resampled_logp_pis).view(-1)
-
-            v_values = vf.forward( observation_batch).view(-1)
-
-            vf_loss = mse_loss_fn( v_values, v_backup)
-
-            # V gradient steps
-            v_optimizer.zero_grad()
-            vf_loss.backward()
-            v_optimizer.step()
-
-            # Q function losses and updates
-            with torch.no_grad():
-
-                vf_target_next_state_values = vf_target.forward( next_observation_batch).view(-1)
-
-                q_backup = torch.Tensor(reward_batch).to(device) + \
+                next_q_value = torch.Tensor(reward_batch).to(device) + \
                     (1 - torch.Tensor(terminals_batch).to(device)) * args.gamma * \
-                        vf_target_next_state_values
+                        min_qf_next_target.view(-1)
 
             q1_values = qf1.forward(observation_batch, action_batch).view(-1)
             q2_values = qf2.forward(observation_batch, action_batch).view(-1)
 
-            qf1_loss = mse_loss_fn(q1_values, q_backup)
-            qf2_loss = mse_loss_fn(q2_values, q_backup)
+            qf1_loss = mse_loss_fn(q1_values, next_q_value)
+            qf2_loss = mse_loss_fn(q2_values, next_q_value)
             qf_loss = qf1_loss + qf2_loss
+
+            # pi, log_pi, _ = pg.sample(s_obs)
+            resampled_actions, logp_pis = pg.get_actions(observation_batch)
+
+            qf1_pi = qf1.forward(observation_batch, resampled_actions)
+            qf2_pi = qf2.forward(observation_batch, resampled_actions)
+            min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
+
+            # TODO: Need to detach alpha ?
+            policy_loss = ((alpha * logp_pis) - min_qf_pi).mean()
 
             # Q functions gradient steps
             q_optimizer.zero_grad()
             qf_loss.backward()
             q_optimizer.step()
 
-            # Policy loss and updates
-            resampled_actions, logp_pis = pg.get_actions(observation_batch)
-
-            # Apparently, no_grad() breaks the learning here.
-            qf1_pi = qf1.forward(observation_batch, resampled_actions)
-            qf2_pi = qf2.forward(observation_batch, resampled_actions)
-
-            min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
-
-            policy_loss = ((args.alpha * logp_pis) - min_qf_pi).mean()
-
             # Policy gradient step
             p_optimizer.zero_grad()
             policy_loss.backward()
             p_optimizer.step()
 
-            # Measures entropy after the update
+            # Alpha update
+            # TODO: Verify if we need to detach anything
+            if args.autotuning_entropy:
+                # Following Soft Actor Critic algorithms and Applications
+                # https://arxiv.org/abs/1812.05905 , Page 7,8
+                # Src: https://github.com/rail-berkeley/softlearning/blob/master/softlearning/algorithms/sac.py
+
+                # Resampled becasue the policy was updated before
+                with torch.no_grad():
+                    _, logp_pis = pg.get_actions(observation_batch)
+                    logp_pis.squeeze_() # eq. to view(-1)
+
+                alpha_loss = - torch.mean( log_alpha * (logp_pis + target_entropy))
+
+                # Alpha gradient steps
+                a_optimizer.zero_grad()
+                alpha_loss.backward()
+                a_optimizer.step()
+
+                # Update the actual alpha
+                alpha = torch.exp( log_alpha + EPS).item()
+
+            # Measures entropy after the update for logging
             with torch.no_grad():
                 entropy_batch = pg.get_entropy( observation_batch)
 
             if global_step > 0 and global_step % args.target_update_interval == 0:
-                update_target_value( vf, vf_target, args.tau)
+                update_target_value( qf1, qf1_target, args.tau)
+                update_target_value( qf2, qf2_target, args.tau)
 
             # Some verbosity and logging
             # Evaulating in deterministic mode after one episode
@@ -377,27 +380,31 @@ while global_step < args.total_timesteps:
                 eval_ep_length_mean = np.mean( eval_ep_lengths)
 
                 # Log to TBoard
-                writer.add_scalar("eval/episode_return", eval_return_mean, global_step)
-                writer.add_scalar("eval/episode_length", eval_ep_length_mean, global_step)
+                if not debug:
+                    writer.add_scalar("eval/episode_return", eval_return_mean, global_step)
+                    writer.add_scalar("eval/episode_length", eval_ep_length_mean, global_step)
 
-            writer.add_scalar("train/q1_loss", qf1_loss.item(), global_step)
-            writer.add_scalar("train/q2_loss", qf2_loss.item(), global_step)
-            writer.add_scalar("train/v_loss", vf_loss.item(), global_step)
-            writer.add_scalar("train/policy_loss", policy_loss.item(), global_step)
-            writer.add_scalar("train/entropy", entropy_batch.mean().item(), global_step)
+            if not debug:
+                writer.add_scalar("train/q1_loss", qf1_loss.item(), global_step)
+                writer.add_scalar("train/q2_loss", qf2_loss.item(), global_step)
+                writer.add_scalar("train/policy_loss", policy_loss.item(), global_step)
+                writer.add_scalar("train/entropy", entropy_batch.mean().item(), global_step)
+                writer.add_scalar("train/alpha_entropy_coef", alpha, global_step)
 
             if global_step > 0 and global_step % 100 == 0:
-                print( "Step %d: Poloss: %.6f -- Q1Loss: %.6f -- Q2Loss: %.6f -- VLoss: %.6f"
-                    % ( global_step, policy_loss.item(), qf1_loss.item(), qf2_loss.item(), vf_loss.item()))
+                print( "Step %d: Poloss: %.6f -- Q1Loss: %.6f -- Q2Loss: %.6f -- AlphaLoss: %.6f -- Alpha: %.6f"
+                    % ( global_step, policy_loss.item(), qf1_loss.item(),qf2_loss.item(), alpha_loss.item(), alpha))
 
         if done:
             # MODIFIED: Logging the trainin episode return and length, then resetting their holders
-            writer.add_scalar("eval/train_episode_return", train_episode_return, global_step)
-            writer.add_scalar("eval/train_episode_length", train_episode_length, global_step)
+            if not debug:
+                writer.add_scalar("eval/train_episode_return", train_episode_return, global_step)
+                writer.add_scalar("eval/train_episode_length", train_episode_length, global_step)
 
             train_episode_return = 0.
             train_episode_length = 0
 
             break;
 
-writer.close()
+if not debug:
+    writer.close()
