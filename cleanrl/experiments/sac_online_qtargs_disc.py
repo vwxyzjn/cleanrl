@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from torch.distributions.categorical import Categorical
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
@@ -23,7 +24,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).strip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
+    parser.add_argument('--gym-id', type=str, default="CartPole-v0",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
@@ -42,23 +43,23 @@ if __name__ == "__main__":
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                        help="the wandb's project name")
     parser.add_argument('--notb', action='store_true',
-        help='No Tensorboard logging')
+       help='No Tensorboard logging')
 
     # Algorithm specific arguments
-    parser.add_argument('--buffer-size', type=int, default=int( 5e4),
+    parser.add_argument('--buffer-size', type=int, default=int( 1e5),
                         help='the replay memory buffer size')
     parser.add_argument('--gamma', type=float, default=0.99,
                        help='the discount factor gamma')
     parser.add_argument('--target-update-interval', type=int, default=1,
                        help="the timesteps it takes to update the target network")
-    parser.add_argument('--max-grad-norm', type=float, default=0.5,
-                       help='the maximum norm for the gradient clipping')
-    parser.add_argument('--batch-size', type=int, default=32,
+    parser.add_argument('--batch-size', type=int, default=64,
                        help="the batch size of sample from the reply memory")
     parser.add_argument('--tau', type=float, default=0.005,
                        help="target smoothing coefficient (default: 0.005)")
     parser.add_argument('--alpha', type=float, default=0.2,
                        help="Entropy regularization coefficient.")
+    parser.add_argument('--autotun-ent', action='store_true',
+        help='Enables autotuning of the alpha entropy coefficient')
 
     # Neural Network Parametrization
     parser.add_argument('--policy-hid-sizes', nargs='+', type=int, default=(120,84,))
@@ -81,79 +82,59 @@ env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
-assert isinstance(env.action_space, Box), "only continuous action space is supported"
+assert isinstance(env.action_space, Discrete), "only discrete action space is supported"
 
 # ALGO LOGIC: initialize agent here:
 EPS = 1e-8
 LOG_STD_MAX = 2
 LOG_STD_MIN = -20
 
-# Custom Gaussian Policy
+# Custom Categorical Policy
 class Policy(nn.Module):
-    def __init__(self, squashing = True):
+    def __init__(self):
         # Custom
         super().__init__()
         self._layers = nn.ModuleList()
-        self._squashing = squashing
 
         current_dim = input_shape
-        for hsize in args.policy_hid_sizes:
+        for hsize in list( args.policy_hid_sizes) + list( [output_shape,]):
             self._layers.append( nn.Linear( current_dim, hsize))
             current_dim = hsize
-
-        self._fc_mean = nn.Linear( args.policy_hid_sizes[-1], output_shape)
-        self._fc_logstd = nn.Linear( args.policy_hid_sizes[-1], output_shape)
 
     def forward(self, x):
         # # Workaround Seg. Fault when passing tensor to Q Function
         if not isinstance( x, torch.Tensor):
             x = preprocess_obs_fn(x)
 
-        for layer in self._layers:
+        for layer in self._layers[:-1]:
             x = F.relu( layer(x))
 
-        action_means = self._fc_mean( x)
-        action_logstds = self._fc_logstd( x)
-        action_logstds.clamp_( LOG_STD_MIN, LOG_STD_MAX)
+        # Return the logits [batch_size, output_shape]
+        return self._layers[-1]( x)
 
-        return action_means, action_logstds
+    def get_action_probs( self, observations, with_logps=True):
+        action_logits = self.forward( observations)
 
-    def get_actions(self, observations, with_logp_pis=True, deterministic=False):
-        # Custom
-        action_means, action_logstds = self.forward( observations)
-        action_stds = action_logstds.exp()
+        action_probs = F.softmax( action_logits)
 
-        if deterministic:
-            action_stds = torch.zeros_like( action_stds).to( device)
+        if with_logps:
+            return action_probs, torch.log( action_probs)
 
-        actions_dist = Normal( action_means, action_stds)
-        actions = actions_dist.rsample()
-        logp_pis = actions_dist.log_prob( actions)
+        return action_probs
 
-        if self.squashing:
-            actions = torch.tanh( actions)
+    def get_actions(self, observations):
+        action_logits = self.forward( observations)
+        dist = Categorical( logits=action_logits)
 
-            logp_pis -= torch.log( 1. - actions.pow(2) + EPS)
-
-        if with_logp_pis:
-            return actions, logp_pis.sum(1, keepdim=True)
-        else:
-            return actions
-
-    def sample(self, observations):
-        actions, logp_pis = self.get_actions( observations, True)
-        return actions, logp_pis , {}
+        return dist.sample()
 
     def get_entropy( self, observations):
-        action_means, action_logstds = self.forward( observations)
-        dist = Normal( action_means, action_logstds.exp())
-        entropy = dist.entropy().sum(1)
+        action_logits = self.forward( observations)
+        dist = Categorical( logits=action_logits)
 
-        return entropy
+        # entropy = dist.entropy().sum(1)
 
-    @property
-    def squashing(self):
-        return self._squashing
+        return dist.entropy()
 
 class QValue( nn.Module):
     # Custom
@@ -161,22 +142,55 @@ class QValue( nn.Module):
         super().__init__()
         self._layers = nn.ModuleList()
 
-        current_dim = input_shape + output_shape
-        for hsize in args.q_hid_sizes:
+        current_dim = input_shape
+        for hsize in list( args.q_hid_sizes) + list( [output_shape,]):
             self._layers.append( nn.Linear( current_dim, hsize))
             current_dim = hsize
 
-        self._layers.append( nn.Linear( args.q_hid_sizes[-1], 1))
-
-    def forward( self, x, a):
+    def forward( self, x):
         # Workaround Seg. Fault when passing tensor to Q Function
+        if not isinstance( x, torch.Tensor):
+            x = preprocess_obs_fn(x)
+
+        for layer in self._layers[:-1]:
+            x = F.relu( layer( x))
+
+        return self._layers[-1](x)
+
+    def get_state_action_values( self, x, a):
         if not isinstance( x, torch.Tensor):
             x = preprocess_obs_fn(x)
 
         if not isinstance( a, torch.Tensor):
             a = preprocess_obs_fn(a)
 
-        x = torch.cat( [x,a], 1)
+        values = self.forward( x)
+
+        # print( "action index", a.long())
+        # print( "values", values)
+
+        action_values = torch.gather( values, 1, a.long())
+        # print( "action values shape", action_values.shape)
+        # print( "action values", action_values)
+
+        return action_values
+
+class Value( nn.Module):
+    def __init__( self):
+        super().__init__()
+        self._layers = nn.ModuleList()
+
+        # TODO: Unelegant, refactor and use that for all the networks
+        current_dim = input_shape
+        for hsize in args.value_hid_sizes:
+            self._layers.append( nn.Linear( current_dim, hsize))
+            current_dim = hsize
+
+        self._layers.append( nn.Linear( args.value_hid_sizes[-1], 1))
+
+    def forward(self, x):
+        if not isinstance( x, torch.Tensor):
+            x = preprocess_obs_fn(x)
 
         for layer in self._layers[:-1]:
             x = F.relu( layer( x))
@@ -192,8 +206,12 @@ pg = Policy().to(device)
 # Defining the agent's policy: Gaussian
 qf1 = QValue().to(device)
 qf2 = QValue().to(device)
+
 qf1_target = QValue().to(device)
 qf2_target = QValue().to(device)
+
+# vf = Value().to( device)
+# vf_target = Value().to( device)
 
 # MODIFIED: Helper function to update target value function network
 def update_target_value( vf, vf_target, tau):
@@ -205,9 +223,20 @@ def update_target_value( vf, vf_target, tau):
 update_target_value( qf1, qf1_target, 1.0)
 update_target_value( qf2, qf2_target, 1.0)
 
-q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()),
+q_optimizer = optim.Adam( list(qf1.parameters()) + list(qf2.parameters()),
     lr=args.learning_rate)
-p_optimizer = optim.Adam(list(pg.parameters()), lr=args.learning_rate)
+p_optimizer = optim.Adam( list(pg.parameters()), lr=args.learning_rate)
+# v_optimizer = optim.Adam( list(vf.parameters()), lr=args.learning_rate)
+
+# MODIFIED: SAC Automatic Entropy Tuning support
+if args.autotun_ent:
+    # This is only an Heuristic of the minimal entropy we should constraint to
+    target_entropy = - np.prod( env.action_space.shape) # TODO: Heuristic target entropy for discrete case
+    log_alpha = torch.Tensor( [ 0.,]).to(device).requires_grad_()
+    alpha = 1.0 # Since log_alpha is 0 ...
+    a_optimizer = optim.Adam( [log_alpha], lr=args.learning_rate) # TODO: Different learning rate for alpha ?
+else:
+    alpha = args.alpha
 
 mse_loss_fn = nn.MSELoss()
 
@@ -225,7 +254,7 @@ def test_agent( env, policy, eval_episodes=1):
 
         while not done:
             with torch.no_grad():
-                action = pg.get_actions([obs], False, True).tolist()[0]
+                action = pg.get_actions([obs]).tolist()[0]
 
             obs, rew, done, _ = env.step( action)
             obs = np.array( obs)
@@ -241,6 +270,7 @@ def test_agent( env, policy, eval_episodes=1):
 # TRY NOT TO MODIFY: start the game
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 
+# MODIFIED: When testing, skip Tensorboard log creation
 if not args.notb:
     writer = SummaryWriter(f"runs/{experiment_name}")
     writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
@@ -269,7 +299,7 @@ while global_step < args.total_timesteps:
 
         # ALGO LOGIC: put action logic here
         with torch.no_grad():
-            action = pg.get_actions([obs], False, False).tolist()[0]
+            action = pg.get_actions([obs]).tolist()[0]
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rew, done, _ = env.step(action)
@@ -284,51 +314,112 @@ while global_step < args.total_timesteps:
 
         # ALGO LOGIC: training.
         if buffer.is_ready_for_sample:
+            # TODO: Cast action batch to longs ?
             observation_batch, action_batch, reward_batch, \
                 terminals_batch, next_observation_batch = buffer.sample(args.batch_size)
 
-            # Q function losses and update
+            # Q functions loss and updates
             with torch.no_grad():
-                next_state_actions, next_state_logp_pis = pg.get_actions(next_observation_batch)
+                next_action_probs, next_logps = pg.get_action_probs(next_observation_batch)
+                # print( "# DEBUG")
+                # print( "next_action_probs shape", next_action_probs.shape)
+                # print( "next_action_probs", next_action_probs)
+                # print("")
+                # print( "log_action_probs shape", next_action_probs.shape)
+                # print( "log_action_probs", next_action_probs)
+                # print("")
+                # input()
+                qf1_target_values = qf1_target.forward( next_observation_batch)
+                qf2_target_values = qf2_target.forward( next_observation_batch)
 
-                qf1_next_target = qf1_target.forward(next_observation_batch, next_state_actions)
-                qf2_next_target = qf2_target.forward(next_observation_batch, next_state_actions)
+                # Shortcut: add the entropy to the min_qfs
+                min_qf_target_values = torch.min( qf1_target_values, qf2_target_values) \
+                    - alpha * next_logps
 
-                min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - args.alpha * next_state_logp_pis
+                # TODO: More elegant way: matrix multiplication instead ?
+                # Eq. 10 in the paperlogp_pis
+                # Sum or Mean ?
+                v_next_approx = (next_action_probs * min_qf_target_values).sum(1) # By omitting keepdim=True, we achieve same effect as .view(-1)
+                # v_next_approx = (next_action_probs * min_qf_target_values).mean(1) # By omitting keepdim=True, we achieve same effect as .view(-1)
 
-                next_q_value = torch.Tensor(reward_batch).to(device) + \
+                q_backup = torch.Tensor(reward_batch).to(device) + \
                     (1 - torch.Tensor(terminals_batch).to(device)) * args.gamma * \
-                        min_qf_next_target.view(-1)
+                        v_next_approx
 
-            q1_values = qf1.forward(observation_batch, action_batch).view(-1)
-            q2_values = qf2.forward(observation_batch, action_batch).view(-1)
+            # Note: Because here Q is from S to R ^ |A|, there would be a gradient for the
+            # Action that was not selected. Hence, we would like to use the index select to
+            # only affect the action that was select during the sampling, in other words,
+            # action_batch
+            # torch.gather comes in play in QValue.get_state_action_values()
 
-            qf1_loss = mse_loss_fn(q1_values, next_q_value)
-            qf2_loss = mse_loss_fn(q2_values, next_q_value)
+            q1_s_a_values = qf1.get_state_action_values(observation_batch, action_batch).view(-1)
+            q2_s_a_values = qf2.get_state_action_values(observation_batch, action_batch).view(-1)
+
+            qf1_loss = mse_loss_fn(q1_s_a_values, q_backup)
+            qf2_loss = mse_loss_fn(q1_s_a_values, q_backup)
             qf_loss = qf1_loss + qf2_loss
-
-            # pi, log_pi, _ = pg.sample(s_obs)
-            resampled_actions, logp_pis = pg.get_actions(observation_batch)
-
-            # with torch.no_grad():
-            # NOtes: With the no_grad, the policy loss stops goind down after ~2000 iters
-            # Hypothesis: the Differentiability of the Q function seems to be leveraged for better policy
-            # updates.
-            qf1_pi = qf1.forward(observation_batch, resampled_actions)
-            qf2_pi = qf2.forward(observation_batch, resampled_actions)
-            min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
-
-            policy_loss = ((args.alpha * logp_pis) - min_qf_pi).mean()
 
             # Q functions gradient steps
             q_optimizer.zero_grad()
             qf_loss.backward()
             q_optimizer.step()
 
+            # Policy loss and updates
+            action_probs, logps = pg.get_action_probs(observation_batch)
+
+            # Apparently, no_grad() breaks the learning here.
+            qf1_values = qf1.forward(observation_batch)
+            qf2_values = qf2.forward(observation_batch)
+
+            min_qf_values = torch.min(qf1_values, qf2_values)
+
+            # TODO: More elgant matrix mul based method ?
+            # print( "action probs shape", action_probs.shape)
+            # print( "action probs", action_probs)
+            #
+            # print( "logps shape", logps.shape)
+            # print( "logps", logps)
+            #
+            # print( "min_qf_values shape", min_qf_values.shape)
+            # print( "min_qf_values", min_qf_values)
+
+            # poloss = (action_probs * (alpha * logps - min_qf_values)).mean(1)
+            # print( "poloss shape", poloss.shape)
+            # print( "poloss", poloss)
+            # input()
+
+            # TODO: Sum or mean ?
+            policy_loss = (action_probs * (alpha * logps - min_qf_values)).sum(1).mean()
+            # policy_loss = (action_probs * (alpha * logps - min_qf_values)).mean(1).mean()
+
             # Policy gradient step
             p_optimizer.zero_grad()
             policy_loss.backward()
             p_optimizer.step()
+
+            # TODO: Get it to work ?
+            if args.autotun_ent:
+                # Following Soft Actor Critic algorithms and Applications
+                # https://arxiv.org/abs/1812.05905 , Page 7,8
+                # Src: https://github.com/rail-berkeley/softlearning/blob/master/softlearning/algorithms/sac.py
+                # And The Discrete SAC Paper
+
+                # Resampled becasue the policy was updated before
+                with torch.no_grad():
+                    resampled_action_probs = pg.get_action_probs(observation_batch)
+                    # resampled_action_probs.squeeze_() # eq. to view(-1)
+
+                # TODO: Sum or mean ?
+                alpha_loss = (log_alpha * (torch.log( resampled_action_probs +EPS) + target_entropy)).sum(1)
+                alpha_loss = alpha_loss.mean()
+
+                # Alpha gradient steps
+                a_optimizer.zero_grad()
+                alpha_loss.backward()
+                a_optimizer.step()
+
+                # Update the actual alpha
+                alpha = torch.exp( log_alpha + EPS).item()
 
             # Measures entropy after the update
             with torch.no_grad():
@@ -355,10 +446,11 @@ while global_step < args.total_timesteps:
                 writer.add_scalar("train/q2_loss", qf2_loss.item(), global_step)
                 writer.add_scalar("train/policy_loss", policy_loss.item(), global_step)
                 writer.add_scalar("train/entropy", entropy_batch.mean().item(), global_step)
+                writer.add_scalar("train/alpha_entropy_coef", alpha, global_step)
 
             if global_step > 0 and global_step % 100 == 0:
                 print( "Step %d: Poloss: %.6f -- Q1Loss: %.6f -- Q2Loss: %.6f"
-                    % ( global_step, policy_loss.item(), qf1_loss.item(),qf2_loss.item()))
+                    % ( global_step, policy_loss.item(), qf1_loss.item(), qf2_loss.item()))
 
         if done:
             # MODIFIED: Logging the trainin episode return and length, then resetting their holders

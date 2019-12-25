@@ -41,6 +41,10 @@ if __name__ == "__main__":
                        help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                        help="the wandb's project name")
+    parser.add_argument('--debug', action='store_true',
+        help='Enables debug mode, to be use for verbosity or Tensorboard logging skip')
+    parser.add_argument('--notb', action='store_true',
+        help='No Tensorboard logging')
 
     # Algorithm specific arguments
     parser.add_argument('--buffer-size', type=int, default=int( 5e4),
@@ -57,7 +61,7 @@ if __name__ == "__main__":
                        help="target smoothing coefficient (default: 0.005)")
     parser.add_argument('--alpha', type=float, default=0.2,
                        help="Entropy regularization coefficient.")
-    parser.add_argument('--autotuning-entropy', type=bool, default=True,
+    parser.add_argument('--autotun-ent', action='store_true',
                        help='Enables autotuning of the alpha entropy coefficient')
 
     # Neural Network Parametrization
@@ -251,12 +255,7 @@ def test_agent( env, policy, eval_episodes=1):
 # TRY NOT TO MODIFY: start the game
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 
-# TODO: Cleanup debug
-# Mote: Doing this to skip writer creatiopn when testing stuff, otherwise, Tensorboard gets pissed
-# and breaks all the logs haha
-debug = False
-
-if not debug:
+if not args.notb:
     writer = SummaryWriter(f"runs/{experiment_name}")
     writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
             '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
@@ -379,12 +378,12 @@ while global_step < args.total_timesteps:
                 eval_return_mean = np.mean( eval_returns)
                 eval_ep_length_mean = np.mean( eval_ep_lengths)
 
-                # Log to TBoard
-                if not debug:
+                if not args.notb:
+                    # Log to TBoard
                     writer.add_scalar("eval/episode_return", eval_return_mean, global_step)
                     writer.add_scalar("eval/episode_length", eval_ep_length_mean, global_step)
 
-            if not debug:
+            if not args.notb:
                 writer.add_scalar("train/q1_loss", qf1_loss.item(), global_step)
                 writer.add_scalar("train/q2_loss", qf2_loss.item(), global_step)
                 writer.add_scalar("train/policy_loss", policy_loss.item(), global_step)
@@ -397,7 +396,7 @@ while global_step < args.total_timesteps:
 
         if done:
             # MODIFIED: Logging the trainin episode return and length, then resetting their holders
-            if not debug:
+            if not args.notb:
                 writer.add_scalar("eval/train_episode_return", train_episode_return, global_step)
                 writer.add_scalar("eval/train_episode_length", train_episode_length, global_step)
 
@@ -406,5 +405,5 @@ while global_step < args.total_timesteps:
 
             break;
 
-if not debug:
+if not args.notb:
     writer.close()
