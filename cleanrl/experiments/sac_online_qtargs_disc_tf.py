@@ -49,6 +49,8 @@ if __name__ == "__main__":
                        help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                        help="the wandb's project name")
+    parser.add_argument('--wandb-entity', type=str, default=None,
+                       help="the entity (team) of wandb's project")
     parser.add_argument('--notb', action='store_true',
        help='No Tensorboard logging')
 
@@ -65,7 +67,7 @@ if __name__ == "__main__":
                        help="target smoothing coefficient (default: 0.005)")
     parser.add_argument('--alpha', type=float, default=0.2,
                        help="Entropy regularization coefficient.")
-    parser.add_argument('--autotun-ent', action='store_true',
+    parser.add_argument('--autotune', action='store_true',
         help='Enables autotuning of the alpha entropy coefficient')
 
     # Neural Network Parametrization
@@ -107,7 +109,6 @@ act_indices_ph = tf.placeholder( tf.int32, [None, 2], name="action_gather_indice
 # TODO: Add graph support
 tf2.random.set_seed(args.seed)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth=True
@@ -212,12 +213,12 @@ update_target_op = tf.group([ tf.assign( target_param, target_param * (1-args.ta
 
 # TODO: Add TF support for autoenttun
 # MODIFIED: SAC Automatic Entropy Tuning support
-if args.autotun_ent:
+if args.autotune:
     # This is only an Heuristic of the minimal entropy we should constraint to
-    target_entropy = - np.prod( env.action_space.shape) # TODO: Heuristic target entropy for discrete case
-    log_alpha = torch.Tensor( [ 0.,]).to(device).requires_grad_()
-    alpha = 1.0 # Since log_alpha is 0 ...
-    a_optimizer = optim.Adam( [log_alpha], lr=args.learning_rate) # TODO: Different learning rate for alpha ?
+    # TODO: Find a better heuristic
+    target_entropy = tf.constant( - np.prod( env.action_space.shape), dtype=tf.float32,name="target_entropy")
+    log_alpha = tf.get_variable( "log_alpha", initializer=[0.,])
+    alpha = tf.exp( log_alpha)
 else:
     alpha = args.alpha
 
@@ -247,6 +248,12 @@ policy_loss_op = tf.reduce_sum( pg.action_probs * policy_loss_op, 1)
 policy_loss_op = tf.reduce_mean( policy_loss_op)
 
 p_update_op = tf.train.AdamOptimizer( args.learning_rate).minimize( policy_loss_op, var_list = get_vars( "main/policy"))
+
+if args.autotune:
+    alpha_loss_op = pg.action_probs * (- alpha * (pg.logps + target_entropy))
+    alpha_loss_op = tf.reduce_mean(tf.reduce_sum( alpha_loss_op, 1))
+
+    a_update_op = tf.train.AdamOptimizer( args.learning_rate).minimize( alpha_loss_op, var_list = [log_alpha])
 
 # Init all vars in the graphs
 sess.run( tf.global_variables_initializer())
@@ -350,29 +357,8 @@ while global_step < args.total_timesteps:
             all_ops = [qf1_loss_op, qf2_loss_op, policy_loss_op, pg.entropy_mean, q_update_op, p_update_op]
             qf1_loss, qf2_loss, policy_loss, entropy_mean, _, _ = sess.run( all_ops, feed_dict=feed_dict)
 
-            # TODO: Get it to work ?
-            if args.autotun_ent:
-                # Following Soft Actor Critic algorithms and Applications
-                # https://arxiv.org/abs/1812.05905 , Page 7,8
-                # Src: https://github.com/rail-berkeley/softlearning/blob/master/softlearning/algorithms/sac.py
-                # And The Discrete SAC Paper
-
-                # Resampled becasue the policy was updated before
-                with torch.no_grad():
-                    resampled_action_probs = pg.get_action_probs(observation_batch)
-                    # resampled_action_probs.squeeze_() # eq. to view(-1)
-
-                # TODO: Sum or mean ?
-                alpha_loss = (log_alpha * (torch.log( resampled_action_probs +EPS) + target_entropy)).mean(1)
-                alpha_loss = - alpha_loss.mean()
-
-                # Alpha gradient steps
-                a_optimizer.zero_grad()
-                alpha_loss.backward()
-                a_optimizer.step()
-
-                # Update the actual alpha
-                alpha = torch.exp( log_alpha + EPS).item()
+            if args.autotune:
+                alpha_loss, _ = sess.run( [alpha_loss_op, a_update_op], feed_dict=feed_dict)
 
             if global_step > 0 and global_step % args.target_update_interval == 0:
                 sess.run( update_target_op)
@@ -394,7 +380,9 @@ while global_step < args.total_timesteps:
                 writer.add_scalar("train/q2_loss", qf2_loss, global_step)
                 writer.add_scalar("train/policy_loss", policy_loss, global_step)
                 writer.add_scalar("train/entropy", entropy_mean, global_step)
-                writer.add_scalar("train/alpha_entropy_coef", alpha, global_step)
+
+                if args.autotune:
+                    writer.add_scalar("train/alpha_entropy_coef", sess.run( alpha), global_step)
 
             if global_step > 0 and global_step % 100 == 0:
                 print( "Step %d: Poloss: %.6f -- Q1Loss: %.6f -- Q2Loss: %.6f"
