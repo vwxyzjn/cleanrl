@@ -39,6 +39,8 @@ if __name__ == "__main__":
                        help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                        help="the wandb's project name")
+    parser.add_argument('--wandb-entity', type=str, default=None,
+                       help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
     parser.add_argument('--gamma', type=float, default=0.99,
@@ -65,6 +67,7 @@ env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
+assert isinstance(env.action_space, Box), "only continuous action space is supported"
 # ALGO LOGIC: initialize agent here:
 class Policy(nn.Module):
     def __init__(self):
@@ -112,7 +115,7 @@ writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
 if args.prod_mode:
     import wandb
-    wandb.init(project=args.wandb_project_name, tensorboard=True, config=vars(args), name=experiment_name)
+    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, tensorboard=True, config=vars(args), name=experiment_name)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
     wandb.save(os.path.abspath(__file__))
 global_step = 0
@@ -133,35 +136,15 @@ while global_step < args.total_timesteps:
         obs[step] = next_obs.copy()
         
         # ALGO LOGIC: put action logic here
-        logits, std = pg.forward([obs[step]])
-        values[step] = vf.forward([obs[step]])
+        logits, std = pg.forward(obs[step:step+1])
+        values[step] = vf.forward(obs[step:step+1])
 
         # ALGO LOGIC: `env.action_space` specific logic
-        if isinstance(env.action_space, Discrete):
-            probs = Categorical(logits=logits)
-            action = probs.sample()
-            actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], -probs.log_prob(action), probs.entropy()
+        probs = Normal(logits, std)
+        action = probs.sample()
+        clipped_action = torch.clamp(action, torch.min(torch.Tensor(env.action_space.low)), torch.min(torch.Tensor(env.action_space.high)))
+        actions[step], neglogprobs[step], entropys[step] = clipped_action.tolist()[0], -probs.log_prob(action).sum(), probs.entropy().sum()
 
-        elif isinstance(env.action_space, Box):
-            probs = Normal(logits, std)
-            action = probs.sample()
-            clipped_action = torch.clamp(action, torch.min(torch.Tensor(env.action_space.low)), torch.min(torch.Tensor(env.action_space.high)))
-            actions[step], neglogprobs[step], entropys[step] = clipped_action.tolist()[0], -probs.log_prob(action).sum(), probs.entropy().sum()
-    
-        elif isinstance(env.action_space, MultiDiscrete):
-            logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
-            action = []
-            probs_categories = []
-            probs_entropies = torch.zeros((logits.shape[0]))
-            neglogprob = torch.zeros((logits.shape[0]))
-            for i in range(len(logits_categories)):
-                probs_categories.append(Categorical(logits=logits_categories[i]))
-                if len(action) != env.action_space.shape:
-                    action.append(probs_categories[i].sample())
-                neglogprob -= probs_categories[i].log_prob(action[i])
-                probs_entropies += probs_categories[i].entropy()
-            action = torch.stack(action).transpose(0, 1).tolist()
-            actions[step], neglogprobs[step], entropys[step] = action[0], neglogprob, probs_entropies
         
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])

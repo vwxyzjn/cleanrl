@@ -38,6 +38,8 @@ if __name__ == "__main__":
                        help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                        help="the wandb's project name")
+    parser.add_argument('--wandb-entity', type=str, default=None,
+                       help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
     parser.add_argument('--gamma', type=float, default=0.99,
@@ -104,7 +106,7 @@ writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
 if args.prod_mode:
     import wandb
-    wandb.init(project=args.wandb_project_name, tensorboard=True, config=vars(args), name=experiment_name)
+    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, tensorboard=True, config=vars(args), name=experiment_name)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
     wandb.save(os.path.abspath(__file__))
 global_step = 0
@@ -125,8 +127,8 @@ while global_step < args.total_timesteps:
         obs[step] = next_obs.copy()
 
         # ALGO LOGIC: put action logic here
-        logits = pg.forward([obs[step]])
-        values[step] = vf.forward([obs[step]])
+        logits = pg.forward(obs[step:step+1])
+        values[step] = vf.forward(obs[step:step+1])
 
         # ALGO LOGIC: `env.action_space` specific logic
         if isinstance(env.action_space, Discrete):

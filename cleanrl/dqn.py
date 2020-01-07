@@ -38,6 +38,8 @@ if __name__ == "__main__":
                        help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                        help="the wandb's project name")
+    parser.add_argument('--wandb-entity', type=str, default=None,
+                       help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
     parser.add_argument('--buffer-size', type=int, default=50000,
@@ -134,7 +136,7 @@ writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
 if args.prod_mode:
     import wandb
-    wandb.init(project=args.wandb_project_name, tensorboard=True, config=vars(args), name=experiment_name)
+    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, tensorboard=True, config=vars(args), name=experiment_name)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
     wandb.save(os.path.abspath(__file__))
 global_step = 0
@@ -146,8 +148,6 @@ while global_step < args.total_timesteps:
     
     # ALGO LOGIC: put other storage logic here
     values = torch.zeros((args.episode_length), device=device)
-    neglogprobs = torch.zeros((args.episode_length,), device=device)
-    entropys = torch.zeros((args.episode_length,), device=device)
     
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
@@ -161,7 +161,7 @@ while global_step < args.total_timesteps:
         if random.random() < epsilon:
             actions[step] = env.action_space.sample()
         else:
-            logits = target_network.forward([obs[step]])
+            logits = target_network.forward(obs[step:step+1])
             if isinstance(env.action_space, Discrete):
                 action = torch.argmax(logits, dim=1)
                 actions[step] = action.tolist()[0]
