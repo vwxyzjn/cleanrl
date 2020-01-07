@@ -59,7 +59,7 @@ if __name__ == "__main__":
     parser.add_argument('--alpha', type=float, default=0.2,
                        help="Entropy regularization coefficient.")
     parser.add_argument('--autotune', action='store_true',
-        help='Enables autotuning of the alpha entropy coefficient')
+                       help='Enables autotuning of the alpha entropy coefficient')
 
     # Neural Network Parametrization
     parser.add_argument('--policy-hid-sizes', nargs='+', type=int, default=(120,84,))

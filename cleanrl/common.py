@@ -10,17 +10,17 @@ from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 
 def preprocess_obs_space(obs_space: Space, device: str):
     """
-    The `preprocess_obs_fn` receives the observation `x` in the shape of 
+    The `preprocess_obs_fn` receives the observation `x` in the shape of
     `(batch_num,) + obs_space.shape`.
-    
-    1) If the `obs_space` is `Discrete`, `preprocess_obs_fn` outputs a 
+
+    1) If the `obs_space` is `Discrete`, `preprocess_obs_fn` outputs a
     preprocessed obs in the shape of
     `(batch_num, obs_space.n)`.
-    
-    2) If the `obs_space` is `Box`, `preprocess_obs_fn` outputs a 
+
+    2) If the `obs_space` is `Box`, `preprocess_obs_fn` outputs a
     preprocessed obs in the shape of
     `(batch_num,) + obs_space.shape`.
-    
+
     In addition, the preprocessed obs will be sent to `device` (either
     `cpu` or `cuda`)
     """
@@ -51,10 +51,3 @@ def preprocess_ac_space(ac_space: Space, stochastic=True):
     else:
         raise NotImplementedError("Error: the model does not support output space of type {}".format(
             type(ac_space).__name__))
-
-def preprocess_obs_ac_concat( obs_space: Space, ac_space: Space, device: str):
-    if isinstance( obs_space, Box) and isinstance( ac_space, Box):
-        return (np.array(obs_space.shape).prod() + np.array(ac_space.shape).prod(),
-                lambda x, obs_space=obs_space, ac_space=ac_space: torch.Tensor(x).float().view(torch.Tensor(x).shape[0], -1).to(device))
-    else:
-        raise NotImplementedError("Error: the model does not support obs_space and act_space differnt of Box (yet).")
