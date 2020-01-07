@@ -15,9 +15,7 @@ from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
 import os
-
-# MODIFIED: Import buffer with random batch sampling support
-from cleanrl.buffers import SimpleReplayBuffer
+import collections
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='SAC with 2 Q functions, Online updates')
@@ -32,7 +30,7 @@ if __name__ == "__main__":
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=1000,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=int( 1e6),
+    parser.add_argument('--total-timesteps', type=int, default=int(1e6),
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
@@ -48,7 +46,7 @@ if __name__ == "__main__":
        help='No Tensorboard logging')
 
     # Algorithm specific arguments
-    parser.add_argument('--buffer-size', type=int, default=int( 1e5),
+    parser.add_argument('--buffer-size', type=int, default=int(1e5),
                         help='the replay memory buffer size')
     parser.add_argument('--gamma', type=float, default=0.99,
                        help='the discount factor gamma')
@@ -91,15 +89,15 @@ EPS = 1e-8
 LOG_STD_MAX = 2
 LOG_STD_MIN = -20
 
-# Custom Categorical Policy
+# Gaussian Policy
 class Policy(nn.Module):
     def __init__(self):
         super().__init__()
         self._layers = nn.ModuleList()
 
         current_dim = input_shape
-        for hsize in list( args.policy_hid_sizes) + list( [output_shape,]):
-            self._layers.append( nn.Linear( current_dim, hsize))
+        for hsize in list(args.policy_hid_sizes) + list([output_shape,]):
+            self._layers.append(nn.Linear(current_dim, hsize))
             current_dim = hsize
 
         self.nn_softmax = torch.nn.Softmax(1)
@@ -107,81 +105,105 @@ class Policy(nn.Module):
 
     def forward(self, x):
         # # Workaround Seg. Fault when passing tensor to Q Function
-        if not isinstance( x, torch.Tensor):
+        if not isinstance(x, torch.Tensor):
             x = preprocess_obs_fn(x)
 
         for layer in self._layers[:-1]:
-            x = F.relu( layer(x))
+            x = F.relu(layer(x))
 
         # Return the logits [batch_size, output_shape]
-        logits = self._layers[-1]( x)
+        logits = self._layers[-1](x)
 
-        return self.nn_softmax( logits), self.nn_log_softmax( logits)
+        return self.nn_softmax(logits), self.nn_log_softmax(logits)
 
     # TODO: Since we use torch.nn.{Softmax, LogSoftmax}, get_action_probs loses
     # most of it s meaning.
-    def get_action_probs( self, observations):
-        # action_logits = self.forward( observations)
-        action_probs, action_logps = self.forward( observations)
+    def get_action_probs(self, observations):
+        # action_logits = self.forward(observations)
+        action_probs, action_logps = self.forward(observations)
 
         return action_probs, action_logps
 
     # TODO: Add support for deterministic action
     def get_actions(self, observations, deterministic = False):
-        action_probs, _ = self.forward( observations)
+        action_probs, _ = self.forward(observations)
 
         if deterministic:
-            return torch.argmax( action_probs, 1, keepdim=True)
+            return torch.argmax(action_probs, 1, keepdim=True)
 
-        dist = Categorical( probs=action_probs)
+        dist = Categorical(probs=action_probs)
 
         return dist.sample()
 
-    def get_entropy( self, observations):
+    def get_entropy(self, observations):
         # TODO: Might as well manually compute entropy then
-        action_probs, _ = self.forward( observations)
-        dist = Categorical( probs=action_probs)
+        action_probs, _ = self.forward(observations)
+        dist = Categorical(probs=action_probs)
 
         # entropy = dist.entropy().sum(1)
 
         return dist.entropy()
 
-class QValue( nn.Module):
+class QValue(nn.Module):
     # Custom
     def __init__(self):
         super().__init__()
         self._layers = nn.ModuleList()
 
         current_dim = input_shape
-        for hsize in list( args.q_hid_sizes) + list( [output_shape,]):
-            self._layers.append( nn.Linear( current_dim, hsize))
+        for hsize in list(args.q_hid_sizes) + list([output_shape,]):
+            self._layers.append(nn.Linear(current_dim, hsize))
             current_dim = hsize
 
-    def forward( self, x):
+    def forward(self, x):
         # Workaround Seg. Fault when passing tensor to Q Function
-        if not isinstance( x, torch.Tensor):
+        if not isinstance(x, torch.Tensor):
             x = preprocess_obs_fn(x)
 
         for layer in self._layers[:-1]:
-            x = F.relu( layer( x))
+            x = F.relu(layer(x))
 
         return self._layers[-1](x)
 
-    def get_state_action_values( self, x, a):
-        if not isinstance( x, torch.Tensor):
+    def get_state_action_values(self, x, a):
+        if not isinstance(x, torch.Tensor):
             x = preprocess_obs_fn(x)
 
-        if not isinstance( a, torch.Tensor):
+        if not isinstance(a, torch.Tensor):
             a = preprocess_obs_fn(a)
 
-        values = self.forward( x)
+        values = self.forward(x)
 
-        action_values = torch.gather( values, 1, a.long())
+        action_values = torch.gather(values, 1, a.long())
 
         return action_values
 
-buffer = SimpleReplayBuffer( env.observation_space, env.action_space, args.buffer_size, args.batch_size)
-buffer.set_seed( args.seed) # Seedable buffer for reproducibility
+# From https://github.com/seungeunrho/minimalRL/blob/master/dqn.py
+class ReplayBuffer():
+    def __init__(self):
+        self.buffer = collections.deque(maxlen=args.buffer_size)
+
+    def put(self, transition):
+        self.buffer.append(transition)
+
+    def sample(self, n):
+        mini_batch = random.sample(self.buffer, n)
+        s_lst, a_lst, r_lst, s_prime_lst, done_mask_lst = [], [], [], [], []
+
+        for transition in mini_batch:
+            s, a, r, s_prime, done_mask = transition
+            s_lst.append(s)
+            a_lst.append([a])
+            r_lst.append([r])
+            s_prime_lst.append(s_prime)
+            done_mask_lst.append([done_mask])
+
+        return s_lst, a_lst, r_lst, s_prime_lst, done_mask_lst
+
+    def size(self):
+        return len(self.buffer)
+
+buffer = ReplayBuffer()
 
 # Defining the agent's policy: Gaussian
 pg = Policy().to(device)
@@ -194,57 +216,56 @@ qf1_target = QValue().to(device)
 qf2_target = QValue().to(device)
 
 # MODIFIED: Helper function to update target value function network
-def update_target_value( vf, vf_target, tau):
-    for target_param, param in zip( vf_target.parameters(), vf.parameters()):
-        target_param.data.copy_( (1. - tau) * target_param.data + tau * param.data)
+def update_target_value(vf, vf_target, tau):
+    for target_param, param in zip(vf_target.parameters(), vf.parameters()):
+        target_param.data.copy_((1. - tau) * target_param.data + tau * param.data)
 
 # Sync weights of the QValues
 # Setting tau to 1.0 is equivalent to Hard Update
-update_target_value( qf1, qf1_target, 1.0)
-update_target_value( qf2, qf2_target, 1.0)
+update_target_value(qf1, qf1_target, 1.0)
+update_target_value(qf2, qf2_target, 1.0)
 
-q_optimizer = optim.Adam( list(qf1.parameters()) + list(qf2.parameters()),
+q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()),
     lr=args.learning_rate)
-p_optimizer = optim.Adam( list(pg.parameters()), lr=args.learning_rate)
-# v_optimizer = optim.Adam( list(vf.parameters()), lr=args.learning_rate)
+p_optimizer = optim.Adam(list(pg.parameters()), lr=args.learning_rate)
 
 # MODIFIED: SAC Automatic Entropy Tuning support
 if args.autotune:
     # This is only an Heuristic of the minimal entropy we should constraint to
-    target_entropy = - np.prod( env.action_space.shape) # TODO: Better Heuristic target entropy for discrete case
-    log_alpha = torch.Tensor( [ 0.,]).to(device).requires_grad_()
+    target_entropy = - np.prod(env.action_space.shape) # TODO: Better Heuristic target entropy for discrete case
+    log_alpha = torch.Tensor([ 0.,]).to(device).requires_grad_()
     # Convoluted, but needed to maintain consistency when not using --autotune
     alpha = log_alpha.exp().cpu().detach().numpy()[0]
-    a_optimizer = optim.Adam( [log_alpha], lr=args.learning_rate) # TODO: Different learning rate for alpha ?
+    a_optimizer = optim.Adam([log_alpha], lr=args.learning_rate) # TODO: Different learning rate for alpha ?
 else:
     alpha = args.alpha
 
 mse_loss_fn = nn.MSELoss()
 
 # Helper function to evaluate agent determinisitically
-def test_agent( env, policy, eval_episodes=1):
+def test_agent(env, policy, eval_episodes=1):
     returns = []
     lengths = []
 
-    for eval_ep in range( eval_episodes):
+    for eval_ep in range(eval_episodes):
         ret = 0.
         done = False
         t = 0
 
-        obs = np.array( env.reset())
+        obs = np.array(env.reset())
 
         while not done:
             with torch.no_grad():
                 action = pg.get_actions([obs], True).tolist()[0][0]
 
-            obs, rew, done, _ = env.step( action)
-            obs = np.array( obs)
+            obs, rew, done, _ = env.step(action)
+            obs = np.array(obs)
             ret += rew
             t += 1
         # TODO: Break if max episode length is breached
 
-        returns.append( ret)
-        lengths.append( t)
+        returns.append(ret)
+        lengths.append(t)
 
     return returns, lengths
 
@@ -286,39 +307,39 @@ while global_step < args.total_timesteps:
         next_obs, rew, done, _ = env.step(action)
         next_obs = np.array(next_obs)
 
-        buffer.add_transition(obs, action, rew, done, next_obs)
+        buffer.put((obs, action, rew, next_obs, done))
 
         # Keeping track of train episode returns
         train_episode_return += rew
         train_episode_length += 1
 
         # ALGO LOGIC: training.
-        if buffer.is_ready_for_sample:
+        if buffer.size() > args.batch_size:
             # TODO: Cast action batch to longs ?
             observation_batch, action_batch, reward_batch, \
-                terminals_batch, next_observation_batch = buffer.sample(args.batch_size)
+                next_observation_batch, terminals_batch = buffer.sample(args.batch_size)
 
             # TODO reimplementing algorithm logic
             # Q function losses
             with torch.no_grad():
-                next_action_probs, next_logprobs = pg.get_action_probs( next_observation_batch)
+                next_action_probs, next_logprobs = pg.get_action_probs(next_observation_batch)
 
-                qf1_target_values = qf1_target.forward( next_observation_batch)
-                qf2_target_values = qf2_target.forward( next_observation_batch)
+                qf1_target_values = qf1_target.forward(next_observation_batch)
+                qf2_target_values = qf2_target.forward(next_observation_batch)
 
-                min_qf_target_values = torch.min( qf1_target_values, qf2_target_values)
+                min_qf_target_values = torch.min(qf1_target_values, qf2_target_values)
                 ent_aug_min_qf_values = min_qf_target_values - alpha * next_logprobs
 
                 v_next_target = (next_action_probs * ent_aug_min_qf_values).sum(1)
-                q_backup = torch.Tensor( reward_batch).to( device) + \
-                    args.gamma * (1. - torch.Tensor( terminals_batch).to( device)) * \
+                q_backup = torch.Tensor(reward_batch).to(device) + \
+                    args.gamma * (1. - torch.Tensor(terminals_batch).to(device)) * \
                     v_next_target
 
-            qf1_a_values = qf1.get_state_action_values( observation_batch, action_batch).view(-1)
-            qf2_a_values = qf2.get_state_action_values( observation_batch, action_batch).view(-1)
+            qf1_a_values = qf1.get_state_action_values(observation_batch, action_batch).view(-1)
+            qf2_a_values = qf2.get_state_action_values(observation_batch, action_batch).view(-1)
 
-            qf1_loss = mse_loss_fn( qf1_a_values, q_backup)
-            qf2_loss = mse_loss_fn( qf2_a_values, q_backup)
+            qf1_loss = mse_loss_fn(qf1_a_values, q_backup)
+            qf2_loss = mse_loss_fn(qf2_a_values, q_backup)
             qf_loss = qf1_loss + qf2_loss
 
             # Q param gradient step
@@ -327,10 +348,10 @@ while global_step < args.total_timesteps:
             q_optimizer.step()
 
             # Policy loss
-            action_probs, logps = pg.get_action_probs( observation_batch)
-            qf1_values = qf1.forward( observation_batch)
-            qf2_values = qf2.forward( observation_batch)
-            min_qf_values = torch.min( qf1_values, qf2_values)
+            action_probs, logps = pg.get_action_probs(observation_batch)
+            qf1_values = qf1.forward(observation_batch)
+            qf2_values = qf2.forward(observation_batch)
+            min_qf_values = torch.min(qf1_values, qf2_values)
 
             policy_loss = alpha * logps - min_qf_values
             policy_loss *= action_probs
@@ -342,14 +363,14 @@ while global_step < args.total_timesteps:
             p_optimizer.step()
 
             with torch.no_grad():
-                entropy_batch = pg.get_entropy( observation_batch)
+                entropy_batch = pg.get_entropy(observation_batch)
 
             # TODO: Alpha auto tune
             if args.autotune:
                 with torch.no_grad():
-                    action_probs, logps = pg.get_action_probs( observation_batch)
+                    action_probs, logps = pg.get_action_probs(observation_batch)
 
-                alpha_loss = action_probs * ( - log_alpha.exp() * (logps + target_entropy))
+                alpha_loss = action_probs * (- log_alpha.exp() * (logps + target_entropy))
                 alpha_loss = alpha_loss.sum(1).mean()
 
                 # Alpha gradient step
@@ -362,15 +383,15 @@ while global_step < args.total_timesteps:
                 alpha = log_alpha.exp().cpu().detach().numpy()[0]
 
             if global_step > 0 and global_step % args.target_update_interval == 0:
-                update_target_value( qf1, qf1_target, args.tau)
-                update_target_value( qf2, qf2_target, args.tau)
+                update_target_value(qf1, qf1_target, args.tau)
+                update_target_value(qf2, qf2_target, args.tau)
 
             # Some verbosity and logging
             # Evaulating in deterministic mode after one episode
             if global_step % args.episode_length == 0:
-                eval_returns, eval_ep_lengths = test_agent( env, pg, 5)
-                eval_return_mean = np.mean( eval_returns)
-                eval_ep_length_mean = np.mean( eval_ep_lengths)
+                eval_returns, eval_ep_lengths = test_agent(env, pg, 5)
+                eval_return_mean = np.mean(eval_returns)
+                eval_ep_length_mean = np.mean(eval_ep_lengths)
 
                 # Log to TBoard
                 if not args.notb:
@@ -385,8 +406,8 @@ while global_step < args.total_timesteps:
                 writer.add_scalar("train/alpha_entropy_coef", log_alpha.exp(), global_step)
 
             if global_step > 0 and global_step % 100 == 0:
-                print( "Step %d: Poloss: %.6f -- Q1Loss: %.6f -- Q2Loss: %.6f"
-                    % ( global_step, policy_loss.item(), qf1_loss.item(), qf2_loss.item()))
+                print("Step %d: Poloss: %.6f -- Q1Loss: %.6f -- Q2Loss: %.6f"
+                    % (global_step, policy_loss.item(), qf1_loss.item(), qf2_loss.item()))
 
         if done:
             # MODIFIED: Logging the trainin episode return and length, then resetting their holders
