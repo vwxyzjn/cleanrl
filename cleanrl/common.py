@@ -10,17 +10,17 @@ from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 
 def preprocess_obs_space(obs_space: Space, device: str):
     """
-    The `preprocess_obs_fn` receives the observation `x` in the shape of 
+    The `preprocess_obs_fn` receives the observation `x` in the shape of
     `(batch_num,) + obs_space.shape`.
-    
-    1) If the `obs_space` is `Discrete`, `preprocess_obs_fn` outputs a 
+
+    1) If the `obs_space` is `Discrete`, `preprocess_obs_fn` outputs a
     preprocessed obs in the shape of
     `(batch_num, obs_space.n)`.
-    
-    2) If the `obs_space` is `Box`, `preprocess_obs_fn` outputs a 
+
+    2) If the `obs_space` is `Box`, `preprocess_obs_fn` outputs a
     preprocessed obs in the shape of
     `(batch_num,) + obs_space.shape`.
-    
+
     In addition, the preprocessed obs will be sent to `device` (either
     `cpu` or `cuda`)
     """

@@ -39,7 +39,7 @@ if __name__ == "__main__":
                        help="the wandb's project name")
     parser.add_argument('--wandb-entity', type=str, default=None,
                        help="the entity (team) of wandb's project")
-    
+
     # Algorithm specific arguments
     parser.add_argument('--gamma', type=float, default=0.99,
                        help='the discount factor gamma')
@@ -118,27 +118,27 @@ while global_step < args.total_timesteps:
     actions = np.empty((args.episode_length,), dtype=object)
     rewards, dones = np.zeros((2, args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
-    
+
     # ALGO LOGIC: put other storage logic here
     values = torch.zeros((args.episode_length), device=device)
     neglogprobs = torch.zeros((args.episode_length,), device=device)
     entropys = torch.zeros((args.episode_length,), device=device)
-    
+
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
         global_step += 1
         obs[step] = next_obs.copy()
-        
+
         # ALGO LOGIC: put action logic here
         logits = pg.forward(obs[step:step+1])
         values[step] = vf.forward(obs[step:step+1])
-        
+
         # ALGO LOGIC: `env.action_space` specific logic
         if isinstance(env.action_space, Discrete):
             probs = Categorical(logits=logits)
             action = probs.sample()
             actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], -probs.log_prob(action), probs.entropy()
-    
+
         elif isinstance(env.action_space, MultiDiscrete):
             logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
             action = []
@@ -153,13 +153,13 @@ while global_step < args.total_timesteps:
                 probs_entropies += probs_categories[i].entropy()
             action = torch.stack(action).transpose(0, 1).tolist()
             actions[step], neglogprobs[step], entropys[step] = action[0], neglogprob, probs_entropies
-        
+
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
         next_obs = np.array(next_obs)
         if dones[step]:
             break
-    
+
     # ALGO LOGIC: training.
     # calculate the discounted rewards, or namely, returns
     returns = np.zeros_like(rewards)
@@ -176,7 +176,7 @@ while global_step < args.total_timesteps:
         if isinstance(env.action_space, Discrete):
             probs = Categorical(logits=logits)
             new_neglogprobs = -probs.log_prob(torch.LongTensor(actions[:non_empty_idx].astype(np.int)).to(device))
-    
+
         elif isinstance(env.action_space, MultiDiscrete):
             logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
             action = []
@@ -194,7 +194,7 @@ while global_step < args.total_timesteps:
         clip = torch.min(surrogate1, surrogate2)
         vf_loss = loss_fn(torch.Tensor(returns).to(device), values) * args.vf_coef
         loss = vf_loss - (clip + entropys[:non_empty_idx] * args.ent_coef).mean()
-        
+
         optimizer.zero_grad()
         loss.backward(retain_graph=True)
         nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
