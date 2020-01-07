@@ -194,9 +194,9 @@ class ReplayBuffer():
             s, a, r, s_prime, done_mask = transition
             s_lst.append(s)
             a_lst.append([a])
-            r_lst.append([r])
+            r_lst.append(r)
             s_prime_lst.append(s_prime)
-            done_mask_lst.append([done_mask])
+            done_mask_lst.append(done_mask)
 
         return s_lst, a_lst, r_lst, s_prime_lst, done_mask_lst
 
@@ -319,8 +319,6 @@ while global_step < args.total_timesteps:
             observation_batch, action_batch, reward_batch, \
                 next_observation_batch, terminals_batch = buffer.sample(args.batch_size)
 
-            # TODO reimplementing algorithm logic
-            # Q function losses
             with torch.no_grad():
                 next_action_probs, next_logprobs = pg.get_action_probs(next_observation_batch)
 
@@ -403,7 +401,10 @@ while global_step < args.total_timesteps:
                 writer.add_scalar("train/q2_loss", qf2_loss.item(), global_step)
                 writer.add_scalar("train/policy_loss", policy_loss.item(), global_step)
                 writer.add_scalar("train/entropy", entropy_batch.mean().item(), global_step)
-                writer.add_scalar("train/alpha_entropy_coef", log_alpha.exp(), global_step)
+                if args.autotune:
+                    writer.add_scalar("train/alpha_entropy_coef", log_alpha.exp(), global_step)
+                else:
+                    writer.add_scalar("train/alpha_entropy_coef", alpha, global_step)
 
             if global_step > 0 and global_step % 100 == 0:
                 print("Step %d: Poloss: %.6f -- Q1Loss: %.6f -- Q2Loss: %.6f"
