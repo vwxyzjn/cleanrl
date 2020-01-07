@@ -319,13 +319,8 @@ while global_step < args.total_timesteps:
             observation_batch, action_batch, reward_batch, \
                 next_observation_batch, terminals_batch = buffer.sample(args.batch_size)
 
-            #
             terminals_batch = np.squeeze( terminals_batch)
             reward_batch = np.squeeze( reward_batch)
-
-            # print( terminals_batch.shape)
-            # print( reward_batch.shape)
-            # input()
 
             with torch.no_grad():
                 next_action_probs, next_logprobs = pg.get_action_probs(next_observation_batch)
