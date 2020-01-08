@@ -25,12 +25,12 @@ def preprocess_obs_space(obs_space: Space, device: str):
     `cpu` or `cuda`)
     """
     if isinstance(obs_space, Discrete):
-        def preprocess_obs_fn(x: torch.Tensor):
+        def preprocess_obs_fn(x):
             return F.one_hot(torch.LongTensor(x), obs_space.n).float().to(device)
         return (obs_space.n, preprocess_obs_fn)
 
     elif isinstance(obs_space, Box):
-        def preprocess_obs_fn(x: torch.Tensor):
+        def preprocess_obs_fn(x):
             return torch.Tensor(x).float().view(torch.Tensor(x).shape[0], -1).to(device)
         return (np.array(obs_space.shape).prod(), preprocess_obs_fn)
 

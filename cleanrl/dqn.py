@@ -8,6 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
+import collections
 import numpy as np
 import gym
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
@@ -36,7 +37,7 @@ if __name__ == "__main__":
                        help='whether to use CUDA whenever possible')
     parser.add_argument('--prod-mode', type=bool, default=False,
                        help='run the script in production mode and use wandb to log outputs')
-    parser.add_argument('--capture-video', type=bool, default=True,
+    parser.add_argument('--capture-video', type=bool, default=False,
                        help='weather to capture videos of the agent performances (check out `videos` folder)')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                        help="the wandb's project name")
@@ -95,36 +96,32 @@ env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space, stochastic=False)
 
-# https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/deepq/replay_buffer.py
-class ReplayBuffer(object):
-    def __init__(self, size):
-        self._storage = []
-        self._maxsize = size
-        self._next_idx = 0
+# modified from https://github.com/seungeunrho/minimalRL/blob/master/dqn.py#
+class ReplayBuffer():
+    def __init__(self, buffer_limit):
+        self.buffer = collections.deque(maxlen=buffer_limit)
+    
+    def put(self, transition):
+        self.buffer.append(transition)
+    
+    def sample(self, n):
+        mini_batch = random.sample(self.buffer, n)
+        s_lst, a_lst, r_lst, s_prime_lst, done_mask_lst = [], [], [], [], []
+        
+        for transition in mini_batch:
+            s, a, r, s_prime, done_mask = transition
+            s_lst.append(s)
+            a_lst.append(a)
+            r_lst.append(r)
+            s_prime_lst.append(s_prime)
+            done_mask_lst.append(done_mask)
 
-    def add(self, obs_t, action, reward, obs_tp1, done):
-        data = (obs_t, action, reward, obs_tp1, done)
-        if self._next_idx >= len(self._storage):
-            self._storage.append(data)
-        else:
-            self._storage[self._next_idx] = data
-        self._next_idx = (self._next_idx + 1) % self._maxsize
-
-    def sample(self, batch_size):
-        idxes = [random.randint(0, len(self._storage) - 1) for _ in range(batch_size)]
-        obses_t, actions, rewards, obses_tp1, dones = [], [], [], [], []
-        for i in idxes:
-            data = self._storage[i]
-            obs_t, action, reward, obs_tp1, done = data
-            obses_t.append(np.array(obs_t, copy=False))
-            actions.append(np.array(action, copy=False))
-            rewards.append(reward)
-            obses_tp1.append(np.array(obs_tp1, copy=False))
-            dones.append(done)
-        return np.array(obses_t), np.array(actions), np.array(rewards), np.array(obses_tp1), np.array(dones)
+        return np.array(s_lst), np.array(a_lst), \
+               np.array(r_lst), np.array(s_prime_lst), \
+               np.array(done_mask_lst)
 
 # ALGO LOGIC: initialize agent here:
-er = ReplayBuffer(args.buffer_size)
+rb = ReplayBuffer(args.buffer_size)
 class QNetwork(nn.Module):
     def __init__(self):
         super(QNetwork, self).__init__()
@@ -179,33 +176,29 @@ while global_step < args.total_timesteps:
         
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
+        rb.put((obs[step], actions[step], rewards[step], next_obs, dones[step]))
         next_obs = np.array(next_obs)
-        done_int = 1 if dones[step] else 0
-        er.add(obs[step], actions[step], rewards[step], next_obs, done_int)
         
         # ALGO LOGIC: training.
-        if global_step < 1000:
-            if done_int:
-                break
-            continue
-        s_obs, s_actions, s_rewards, s_next_obses, s_dones = er.sample(args.batch_size)
-        target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
-        td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
-        old_val = q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
-        loss = loss_fn(td_target, old_val)
+        if len(rb.buffer) > 2000:
+            s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
+            target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
+            td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
+            old_val = q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
+            loss = loss_fn(td_target, old_val)
 
-        # optimize the midel
-        optimizer.zero_grad()
-        loss.backward()
-        writer.add_scalar("losses/td_loss", loss, global_step)
-        nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
-        optimizer.step()
+            # optimize the midel
+            optimizer.zero_grad()
+            loss.backward()
+            writer.add_scalar("losses/td_loss", loss, global_step)
+            nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
+            optimizer.step()
+            
+            # update the target network
+            if global_step % args.target_network_frequency == 0:
+                target_network.load_state_dict(q_network.state_dict())
         
-        # update the target network
-        if global_step % args.target_network_frequency == 0:
-            target_network.load_state_dict(q_network.state_dict())
-        
-        if done_int:
+        if dones[step]:
             break
     
     # TRY NOT TO MODIFY: record rewards for plotting purposes
