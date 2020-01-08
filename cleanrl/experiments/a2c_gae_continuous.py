@@ -37,7 +37,7 @@ if __name__ == "__main__":
                        help='whether to use CUDA whenever possible')
     parser.add_argument('--prod-mode', type=bool, default=False,
                        help='run the script in production mode and use wandb to log outputs')
-    parser.add_argument('--capture-video', type=bool, default=True,
+    parser.add_argument('--capture-video', type=bool, default=False,
                        help='weather to capture videos of the agent performances (check out `videos` folder)')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                        help="the wandb's project name")
