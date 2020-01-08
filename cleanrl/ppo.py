@@ -63,7 +63,7 @@ if __name__ == "__main__":
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 env = gym.make(args.gym_id)
 if args.capture_video:
-    from gym.wrappers import TimeLimit
+    from gym.wrappers import TimeLimit, Monitor
     if not isinstance(env, TimeLimit):
         env = TimeLimit(env, int(args.episode_length))
     else:
