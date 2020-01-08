@@ -64,6 +64,17 @@ if __name__ == "__main__":
         args.seed = int(time.time())
 
 # TRY NOT TO MODIFY: setup the environment
+experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+writer = SummaryWriter(f"runs/{experiment_name}")
+writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
+        '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
+if args.prod_mode:
+    import wandb
+    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True)
+    writer = SummaryWriter(f"/tmp/{experiment_name}")
+    wandb.save(os.path.abspath(__file__))
+
+# TRY NOT TO MODIFY: seeding
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 env = gym.make(args.gym_id)
 random.seed(args.seed)
@@ -75,6 +86,13 @@ env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
+if args.capture_video:
+    from gym.wrappers import TimeLimit
+    if not isinstance(env, TimeLimit):
+        env = TimeLimit(env, int(args.episode_length))
+    else:
+        env._max_episode_steps = int(args.episode_length)
+    env = Monitor(env, f'videos/{experiment_name}')
 assert isinstance(env.action_space, Box), "only continuous action space is supported"
 
 # ALGO LOGIC: initialize agent here:
@@ -178,15 +196,6 @@ loss_fn = nn.MSELoss()
 min_Val = torch.tensor(1e-7).float()
 
 # TRY NOT TO MODIFY: start the game
-experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-writer = SummaryWriter(f"runs/{experiment_name}")
-writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
-        '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
-if args.prod_mode:
-    import wandb
-    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, tensorboard=True, config=vars(args), name=experiment_name)
-    writer = SummaryWriter(f"/tmp/{experiment_name}")
-    wandb.save(os.path.abspath(__file__))
 global_step = 0
 while global_step < args.total_timesteps:
     next_obs = np.array(env.reset())

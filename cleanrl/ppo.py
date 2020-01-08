@@ -35,6 +35,8 @@ if __name__ == "__main__":
                        help='whether to use CUDA whenever possible')
     parser.add_argument('--prod-mode', type=bool, default=False,
                        help='run the script in production mode and use wandb to log outputs')
+    parser.add_argument('--capture-video', type=bool, default=True,
+                       help='weather to capture videos of the agent performances (check out `videos` folder)')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                        help="the wandb's project name")
     parser.add_argument('--wandb-entity', type=str, default=None,
@@ -60,6 +62,13 @@ if __name__ == "__main__":
 # TRY NOT TO MODIFY: setup the environment
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 env = gym.make(args.gym_id)
+if args.capture_video:
+    from gym.wrappers import TimeLimit
+    if not isinstance(env, TimeLimit):
+        env = TimeLimit(env, int(args.episode_length))
+    else:
+        env._max_episode_steps = int(args.episode_length)
+    env = Monitor(env, f'videos/{experiment_name}')
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
@@ -103,15 +112,6 @@ optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.le
 loss_fn = nn.MSELoss()
 
 # TRY NOT TO MODIFY: start the game
-experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-writer = SummaryWriter(f"runs/{experiment_name}")
-writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
-        '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
-if args.prod_mode:
-    import wandb
-    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, tensorboard=True, config=vars(args), name=experiment_name)
-    writer = SummaryWriter(f"/tmp/{experiment_name}")
-    wandb.save(os.path.abspath(__file__))
 global_step = 0
 while global_step < args.total_timesteps:
     next_obs = np.array(env.reset())
