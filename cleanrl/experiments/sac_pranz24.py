@@ -10,6 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
+import collections
 import numpy as np
 import gym
 import pybullet_envs
@@ -37,9 +38,9 @@ if __name__ == "__main__":
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
     parser.add_argument('--cuda', type=bool, default=True,
                        help='whether to use CUDA whenever possible')
-    parser.add_argument('--prod-mode', type=bool, default=True,
+    parser.add_argument('--prod-mode', type=bool, default=False,
                        help='run the script in production mode and use wandb to log outputs')
-    parser.add_argument('--capture-video', type=bool, default=True,
+    parser.add_argument('--capture-video', type=bool, default=False,
                        help='weather to capture videos of the agent performances (check out `videos` folder)')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                        help="the wandb's project name")
@@ -157,32 +158,28 @@ class SoftQNetwork(nn.Module):
         x = self.fc3(x)
         return x
 
-class ReplayBuffer(object):
-    def __init__(self, size):
-        self._storage = []
-        self._maxsize = size
-        self._next_idx = 0
+class ReplayBuffer():
+    def __init__(self, buffer_limit):
+        self.buffer = collections.deque(maxlen=buffer_limit)
+    
+    def put(self, transition):
+        self.buffer.append(transition)
+    
+    def sample(self, n):
+        mini_batch = random.sample(self.buffer, n)
+        s_lst, a_lst, r_lst, s_prime_lst, done_mask_lst = [], [], [], [], []
+        
+        for transition in mini_batch:
+            s, a, r, s_prime, done_mask = transition
+            s_lst.append(s)
+            a_lst.append(a)
+            r_lst.append(r)
+            s_prime_lst.append(s_prime)
+            done_mask_lst.append(done_mask)
 
-    def add(self, obs_t, action, reward, obs_tp1, done):
-        data = (obs_t, action, reward, obs_tp1, done)
-        if self._next_idx >= len(self._storage):
-            self._storage.append(data)
-        else:
-            self._storage[self._next_idx] = data
-        self._next_idx = (self._next_idx + 1) % self._maxsize
-
-    def sample(self, batch_size):
-        idxes = [random.randint(0, len(self._storage) - 1) for _ in range(batch_size)]
-        obses_t, actions, rewards, obses_tp1, dones = [], [], [], [], []
-        for i in idxes:
-            data = self._storage[i]
-            obs_t, action, reward, obs_tp1, done = data
-            obses_t.append(np.array(obs_t, copy=False))
-            actions.append(np.array(action, copy=False))
-            rewards.append(reward)
-            obses_tp1.append(np.array(obs_tp1, copy=False))
-            dones.append(done)
-        return np.array(obses_t), np.array(actions), np.array(rewards), np.array(obses_tp1), np.array(dones)
+        return np.array(s_lst), np.array(a_lst), \
+               np.array(r_lst), np.array(s_prime_lst), \
+               np.array(done_mask_lst)
 
 er = ReplayBuffer(args.buffer_size)
 pg = Policy().to(device)
@@ -223,13 +220,11 @@ while global_step < args.total_timesteps:
     
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(action.tolist()[0])
+        er.put((obs[step], actions[step], rewards[step], next_obs, dones[step]))
         next_obs = np.array(next_obs)
-        er.add(obs[step], actions[step], rewards[step], next_obs, dones[step])
-        if dones[step]:
-            break
         
         # ALGO LOGIC: training.
-        if len(er._storage) > 2000:
+        if len(er.buffer) > 2000:
             s_obs, s_actions, s_rewards, s_next_obses, s_dones = er.sample(args.batch_size)
             with torch.no_grad():
                 next_state_action, next_state_log_pi, _ = pg.sample(s_next_obses)
@@ -275,6 +270,9 @@ while global_step < args.total_timesteps:
                 target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
             for param, target_param in zip(soft_q_network2.parameters(), soft_q_network2_target.parameters()):
                 target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
+
+        if dones[step]:
+            break
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
