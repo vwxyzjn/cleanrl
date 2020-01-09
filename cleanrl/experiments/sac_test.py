@@ -22,7 +22,7 @@ import os
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='A2C agent')
     # Common arguments
-    parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).strip(".py"),
+    parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
                        help='the id of the gym environment')

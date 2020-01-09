@@ -25,7 +25,7 @@ import collections
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='SAC with 2 Q functions, Online updates')
     # Common arguments
-    parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).strip(".py"),
+    parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="Taxi-v3",
                        help='the id of the gym environment')
