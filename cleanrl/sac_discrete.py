@@ -197,7 +197,6 @@ else:
 # TRY NOT TO MODIFY: start the game
 global_step = 0
 while global_step < args.total_timesteps:
-    print(2)
     next_obs = np.array(env.reset())
     actions = np.empty((args.episode_length,), dtype=object)
     rewards, dones = np.zeros((2, args.episode_length))
@@ -207,7 +206,6 @@ while global_step < args.total_timesteps:
 
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
-        print(step)
         global_step += 1
         obs[step] = next_obs.copy()
 
