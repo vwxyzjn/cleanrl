@@ -11,7 +11,7 @@ export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 # Considered solved when reward > 195.0
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python a2c.py \
+    (sleep 0.3 && nohup xvfb-run -a python a2c.py \
     --gym-id CartPole-v0 \
     --total-timesteps 30000 \
     --wandb-project-name cleanrl.benchmark \
@@ -23,7 +23,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python ppo.py \
+    (sleep 0.3 && nohup xvfb-run -a python ppo.py \
     --gym-id CartPole-v0 \
     --total-timesteps 30000 \
     --wandb-project-name cleanrl.benchmark \
@@ -35,7 +35,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac_discrete.py \
+    (sleep 0.3 && nohup xvfb-run -a python sac_discrete.py \
     --gym-id CartPole-v0 \
     --total-timesteps 30000 \
     --wandb-project-name cleanrl.benchmark \
@@ -47,7 +47,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python dqn.py \
+    (sleep 0.3 && nohup xvfb-run -a python dqn.py \
     --gym-id CartPole-v0 \
     --total-timesteps 30000 \
     --wandb-project-name cleanrl.benchmark \
@@ -63,7 +63,7 @@ wait
 # TODO: add docs on the goal rewards
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python a2c.py \
+    (sleep 0.3 && nohup xvfb-run -a python a2c.py \
     --gym-id LunarLander-v2 \
     --total-timesteps 1000000 \
     --wandb-project-name cleanrl.benchmark \
@@ -75,7 +75,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python ppo.py \
+    (sleep 0.3 && nohup xvfb-run -a python ppo.py \
     --gym-id LunarLander-v2 \
     --total-timesteps 1000000 \
     --wandb-project-name cleanrl.benchmark \
@@ -87,7 +87,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python dqn.py \
+    (sleep 0.3 && nohup xvfb-run -a python dqn.py \
     --gym-id LunarLander-v2 \
     --total-timesteps 1000000 \
     --wandb-project-name cleanrl.benchmark \
@@ -99,7 +99,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac_discrete.py \
+    (sleep 0.3 && nohup xvfb-run -a python sac_discrete.py \
     --gym-id LunarLander-v2 \
     --total-timesteps 1000000 \
     --wandb-project-name cleanrl.benchmark \
@@ -118,7 +118,7 @@ wait
 # TODO: add docs on the goal rewards
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python a2c_continuous_action.py \
+    (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id BipedalWalker-v2 \
     --total-timesteps 2000000 \
     --episode-length 1600 \
@@ -131,7 +131,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac.py \
+    (sleep 0.3 && nohup xvfb-run -a python sac.py \
     --gym-id BipedalWalker-v2 \
     --total-timesteps 2000000 \
     --episode-length 1600 \
@@ -147,7 +147,7 @@ done
 # TODO: add docs on the goal rewards
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python a2c_continuous_action.py \
+    (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id Pendulum-v0 \
     --total-timesteps 2000000 \
     --episode-length 200 \
@@ -160,7 +160,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac.py \
+    (sleep 0.3 && nohup xvfb-run -a python sac.py \
     --gym-id Pendulum-v0 \
     --total-timesteps 2000000 \
     --episode-length 200 \
@@ -177,7 +177,7 @@ wait
 # TODO: add docs on the goal rewards
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python a2c_continuous_action.py \
+    (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id HopperBulletEnv-v0 \
     --total-timesteps 2000000 \
     --episode-length 1000 \
@@ -190,7 +190,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac.py \
+    (sleep 0.3 && nohup xvfb-run -a python sac.py \
     --gym-id HopperBulletEnv-v0 \
     --total-timesteps 2000000 \
     --episode-length 1000 \
@@ -206,7 +206,7 @@ done
 # TODO: add docs on the goal rewards
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python a2c_continuous_action.py \
+    (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id InvertedPendulumBulletEnv-v0 \
     --total-timesteps 2000000 \
     --episode-length 1000 \
@@ -219,7 +219,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac.py \
+    (sleep 0.3 && nohup xvfb-run -a python sac.py \
     --gym-id InvertedPendulumBulletEnv-v0 \
     --total-timesteps 2000000 \
     --episode-length 1000 \
@@ -236,7 +236,7 @@ wait
 # TODO: add docs on the goal rewards
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python a2c_continuous_action.py \
+    (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id Walker2DBulletEnv-v0 \
     --total-timesteps 2000000 \
     --episode-length 1000 \
@@ -249,7 +249,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac.py \
+    (sleep 0.3 && nohup xvfb-run -a python sac.py \
     --gym-id Walker2DBulletEnv-v0 \
     --total-timesteps 2000000 \
     --episode-length 1000 \
@@ -265,7 +265,7 @@ done
 # TODO: add docs on the goal rewards
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python a2c_continuous_action.py \
+    (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id HumanoidBulletEnv-v0 \
     --total-timesteps 2000000 \
     --episode-length 1000 \
@@ -278,7 +278,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac.py \
+    (sleep 0.3 && nohup xvfb-run -a python sac.py \
     --gym-id HumanoidBulletEnv-v0 \
     --total-timesteps 2000000 \
     --episode-length 1000 \
@@ -295,7 +295,7 @@ wait
 # TODO: add docs on the goal rewards
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python a2c_continuous_action.py \
+    (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id HalfCheetahBulletEnv-v0 \
     --total-timesteps 2000000 \
     --episode-length 1000 \
@@ -308,7 +308,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac.py \
+    (sleep 0.3 && nohup xvfb-run -a python sac.py \
     --gym-id HalfCheetahBulletEnv-v0 \
     --total-timesteps 2000000 \
     --episode-length 1000 \
@@ -324,7 +324,7 @@ done
 # TODO: add docs on the goal rewards
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python a2c_continuous_action.py \
+    (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id ReacherBulletEnv-v0 \
     --total-timesteps 2000000 \
     --episode-length 150 \
@@ -337,7 +337,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac.py \
+    (sleep 0.3 && nohup xvfb-run -a python sac.py \
     --gym-id ReacherBulletEnv-v0 \
     --total-timesteps 2000000 \
     --episode-length 150 \
@@ -358,7 +358,7 @@ wait
 # Note: heavy exploratory problem
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python a2c.py \
+    (sleep 0.3 && nohup xvfb-run -a python a2c.py \
     --gym-id Taxi-v3 \
     --total-timesteps 60000 \
     --wandb-project-name cleanrl.benchmark \
@@ -370,7 +370,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python ppo.py \
+    (sleep 0.3 && nohup xvfb-run -a python ppo.py \
     --gym-id Taxi-v3 \
     --total-timesteps 60000 \
     --wandb-project-name cleanrl.benchmark \
@@ -382,7 +382,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python dqn.py \
+    (sleep 0.3 && nohup xvfb-run -a python dqn.py \
     --gym-id Taxi-v3 \
     --total-timesteps 60000 \
     --wandb-project-name cleanrl.benchmark \
@@ -394,7 +394,7 @@ do
 done
 for seed in {1..2}
 do
-    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac.py \
+    (sleep 0.3 && nohup xvfb-run -a python sac.py \
     --gym-id Taxi-v3 \
     --total-timesteps 60000 \
     --wandb-project-name cleanrl.benchmark \
