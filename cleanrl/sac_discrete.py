@@ -1,3 +1,7 @@
+# primary references:
+# https://arxiv.org/pdf/1910.07207.pdf
+# https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
