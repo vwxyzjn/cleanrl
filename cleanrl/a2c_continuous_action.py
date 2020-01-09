@@ -94,10 +94,7 @@ class Policy(nn.Module):
         super(Policy, self).__init__()
         self.fc1 = nn.Linear(input_shape, 120)
         self.fc2 = nn.Linear(120, 84)
-        # init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
-        #                        constant_(x, 0))
-        
-        self.fc_mean = nn.Linear(84, output_shape)
+        self.mean = nn.Linear(84, output_shape)
         self.logstd = nn.Linear(output_shape, output_shape)
 
     def forward(self, x):
@@ -105,10 +102,9 @@ class Policy(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         
-        action_mean = self.fc_mean(x)
+        action_mean = self.mean(x)
         zeros = torch.zeros(action_mean.size(), device=device)
         action_logstd = self.logstd(zeros)
-        
         return action_mean, action_logstd.exp()
 
 class Value(nn.Module):

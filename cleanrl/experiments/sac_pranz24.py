@@ -102,13 +102,10 @@ assert isinstance(env.action_space, Box), "only continuous action space is suppo
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        
-        self.linear1 = nn.Linear(input_shape, 120)
-        self.linear2 = nn.Linear(120, 84)
-
-        self.mean_linear = nn.Linear(84, output_shape)
-        self.log_std_linear = nn.Linear(84, output_shape)
-
+        self.fc1 = nn.Linear(input_shape, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.mean = nn.Linear(84, output_shape)
+        self.logstd = nn.Linear(84, output_shape)
         # action rescaling
         self.action_scale = torch.FloatTensor(
             (env.action_space.high - env.action_space.low) / 2.)
@@ -117,15 +114,15 @@ class Policy(nn.Module):
     
     def forward(self, x):
         x = preprocess_obs_fn(x)
-        x = F.relu(self.linear1(x))
-        x = F.relu(self.linear2(x))
-        mean = self.mean_linear(x)
-        log_std = self.log_std_linear(x)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        mean = self.mean(x)
+        log_std = self.logstd(x)
         log_std = torch.clamp(log_std, min=-20., max=2)
         return mean, log_std
 
-    def sample(self, state):
-        mean, log_std = self.forward(state)
+    def get_action(self, x):
+        mean, log_std = self.forward(x)
         std = log_std.exp()
         normal = Normal(mean, std)
         x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
@@ -158,6 +155,7 @@ class SoftQNetwork(nn.Module):
         x = self.fc3(x)
         return x
 
+# modified from https://github.com/seungeunrho/minimalRL/blob/master/dqn.py#
 class ReplayBuffer():
     def __init__(self, buffer_limit):
         self.buffer = collections.deque(maxlen=buffer_limit)
@@ -181,18 +179,17 @@ class ReplayBuffer():
                np.array(r_lst), np.array(s_prime_lst), \
                np.array(done_mask_lst)
 
-er = ReplayBuffer(args.buffer_size)
+rb = ReplayBuffer(args.buffer_size)
 pg = Policy().to(device)
-soft_q_network1 = SoftQNetwork().to(device)
-soft_q_network2 = SoftQNetwork().to(device)
-soft_q_network1_target = SoftQNetwork().to(device)
-soft_q_network2_target = SoftQNetwork().to(device)
-soft_q_network1_target.load_state_dict(soft_q_network1.state_dict())
-soft_q_network2_target.load_state_dict(soft_q_network2.state_dict())
-values_optimizer = optim.Adam(list(soft_q_network1.parameters()) + list(soft_q_network2.parameters()), lr=args.learning_rate)
+qf1 = SoftQNetwork().to(device)
+qf2 = SoftQNetwork().to(device)
+qf1_target = SoftQNetwork().to(device)
+qf2_target = SoftQNetwork().to(device)
+qf1_target.load_state_dict(qf1.state_dict())
+qf2_target.load_state_dict(qf2.state_dict())
+values_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.learning_rate)
 policy_optimizer = optim.Adam(list(pg.parameters()), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
-min_Val = torch.tensor(1e-7).float()
 
 # TRY NOT TO MODIFY: start the game
 global_step = 0
@@ -203,7 +200,6 @@ while global_step < args.total_timesteps:
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
     
     # ALGO LOGIC: put other storage logic here
-    values = torch.zeros((args.episode_length), device=device)
     entropys = torch.zeros((args.episode_length,), device=device)
     
     # TRY NOT TO MODIFY: prepare the execution of the game.
@@ -212,37 +208,34 @@ while global_step < args.total_timesteps:
         obs[step] = next_obs.copy()
         
         # ALGO LOGIC: put action logic here
-        action, _, _ = pg.sample(obs[step:step+1])
-        #values[step] = vf.forward(obs[step:step+1])
-
-        # ALGO LOGIC: `env.action_space` specific logic
+        action, _, _ = pg.get_action(obs[step:step+1])
         actions[step] = action.tolist()[0]
     
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(action.tolist()[0])
-        er.put((obs[step], actions[step], rewards[step], next_obs, dones[step]))
+        rb.put((obs[step], actions[step], rewards[step], next_obs, dones[step]))
         next_obs = np.array(next_obs)
         
         # ALGO LOGIC: training.
-        if len(er.buffer) > 2000:
-            s_obs, s_actions, s_rewards, s_next_obses, s_dones = er.sample(args.batch_size)
+        if len(rb.buffer) > 2000:
+            s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
             with torch.no_grad():
-                next_state_action, next_state_log_pi, _ = pg.sample(s_next_obses)
-                qf1_next_target = soft_q_network1_target.forward(s_next_obses, next_state_action)
-                qf2_next_target = soft_q_network2_target.forward(s_next_obses, next_state_action)
+                next_state_action, next_state_log_pi, _ = pg.get_action(s_next_obses)
+                qf1_next_target = qf1_target.forward(s_next_obses, next_state_action)
+                qf2_next_target = qf2_target.forward(s_next_obses, next_state_action)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - args.alpha * next_state_log_pi
                 next_q_value = torch.Tensor(s_rewards).to(device) + (1 - torch.Tensor(s_dones).to(device)) * args.gamma * (min_qf_next_target).view(-1)
 
-            qf1 = soft_q_network1.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
-            qf2 = soft_q_network2.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
+            qf1 = qf1.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
+            qf2 = qf2.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
             # qf1, qf2 = critic(state_batch, action_batch)  # Two Q-functions to mitigate positive bias in the policy improvement step
             qf1_loss = loss_fn(qf1, next_q_value)
             qf2_loss = loss_fn(qf2, next_q_value)
 
-            pi, log_pi, _ = pg.sample(s_obs)
+            pi, log_pi, _ = pg.get_action(s_obs)
 
-            qf1_pi = soft_q_network1.forward(s_obs, pi)
-            qf2_pi = soft_q_network2.forward(s_obs, pi)
+            qf1_pi = qf1.forward(s_obs, pi)
+            qf2_pi = qf2.forward(s_obs, pi)
             min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
 
             policy_loss = ((args.alpha * log_pi) - min_qf_pi).mean()
@@ -259,17 +252,15 @@ while global_step < args.total_timesteps:
             policy_loss.backward()
             policy_optimizer.step()
 
-            # writer.add_scalar("losses/soft_value_loss", v_loss.item(), global_step)
+            # update the target network
+            for param, target_param in zip(qf1.parameters(), qf1_target.parameters()):
+                target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
+            for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
+                target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
+
             writer.add_scalar("losses/soft_q_value_1_loss", qf1_loss.item(), global_step)
             writer.add_scalar("losses/soft_q_value_2_loss", qf2_loss.item(), global_step)
             writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
-            #writer.add_scalar("losses/loss", loss.item(), global_step)
-
-            # update the target network
-            for param, target_param in zip(soft_q_network1.parameters(), soft_q_network1_target.parameters()):
-                target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
-            for param, target_param in zip(soft_q_network2.parameters(), soft_q_network2_target.parameters()):
-                target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
         if dones[step]:
             break
@@ -278,4 +269,4 @@ while global_step < args.total_timesteps:
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
     writer.add_scalar("losses/entropy", entropys[:step+1].mean().item(), global_step)
 writer.close()
-
+env.close()

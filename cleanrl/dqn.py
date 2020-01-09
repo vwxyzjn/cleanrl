@@ -45,7 +45,7 @@ if __name__ == "__main__":
                        help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
-    parser.add_argument('--buffer-size', type=int, default=50000,
+    parser.add_argument('--buffer-size', type=int, default=int(1e5),
                         help='the replay memory buffer size')
     parser.add_argument('--gamma', type=float, default=0.99,
                        help='the discount factor gamma')
