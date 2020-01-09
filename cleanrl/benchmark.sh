@@ -4,14 +4,6 @@
 NUM_CORES=2
 export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 
-xvfb-run -s "-screen 0 1400x900x24" python a2c.py \
-    --prod-mode True \
-    --seed 1\
-    --total-timesteps 2000 \
-    --episode-length 100 \
-    --wandb-project-name gym-microrts \
-    --wandb-entity cleanrl \
-    --gym-id Taxi-v3
 ##################################
 # obs: Box, ac: Discrete 
 ##################################
@@ -25,6 +17,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -36,6 +29,19 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
+    --seed $seed
+    ) >& /dev/null &
+done
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac_discrete.py \
+    --gym-id CartPole-v0 \
+    --total-timesteps 30000 \
+    --wandb-project-name gym-microrts \
+    --wandb-entity cleanrl \
+    --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -47,6 +53,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -62,6 +69,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -73,6 +81,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -84,6 +93,19 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
+    --seed $seed
+    ) >& /dev/null &
+done
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac_discrete.py \
+    --gym-id LunarLander-v2 \
+    --total-timesteps 1000000 \
+    --wandb-project-name gym-microrts \
+    --wandb-entity cleanrl \
+    --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -103,6 +125,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -119,6 +142,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -135,6 +159,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -151,6 +176,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -167,6 +193,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -183,6 +210,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -199,6 +227,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -215,6 +244,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -234,6 +264,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -245,6 +276,7 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done
@@ -256,6 +288,22 @@ do
     --wandb-project-name gym-microrts \
     --wandb-entity cleanrl \
     --prod-mode True \
+    --capture-video True \
+    --seed $seed
+    ) >& /dev/null &
+done
+wait
+
+
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -s "-screen 0 1400x900x24" python sac_discrete.py \
+    --gym-id CartPole-v0 \
+    --total-timesteps 60000 \
+    --wandb-project-name gym-microrts \
+    --wandb-entity cleanrl \
+    --prod-mode True \
+    --capture-video True \
     --seed $seed
     ) >& /dev/null &
 done

@@ -13,6 +13,7 @@ import argparse
 import collections
 import numpy as np
 import gym
+from gym.wrappers import TimeLimit, Monitor
 import pybullet_envs
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
@@ -30,7 +31,7 @@ if __name__ == "__main__":
                        help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=2,
                        help='seed of the experiment')
-    parser.add_argument('--episode-length', type=int, default=2000,
+    parser.add_argument('--episode-length', type=int, default=0,
                        help='the maximum length of each episode')
     parser.add_argument('--total-timesteps', type=int, default=4000000,
                        help='total timesteps of the experiments')
@@ -89,12 +90,12 @@ env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
-if args.capture_video:
-    from gym.wrappers import TimeLimit, Monitor
+if int(args.episode_length):
     if not isinstance(env, TimeLimit):
         env = TimeLimit(env, int(args.episode_length))
     else:
         env._max_episode_steps = int(args.episode_length)
+if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 assert isinstance(env.action_space, Box), "only continuous action space is supported"
 

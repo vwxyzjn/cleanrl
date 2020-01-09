@@ -38,7 +38,7 @@ def preprocess_obs_space(obs_space: Space, device: str):
         raise NotImplementedError("Error: the model does not support input space of type {}".format(
             type(obs_space).__name__))
 
-def preprocess_ac_space(ac_space: Space, stochastic=True):
+def preprocess_ac_space(ac_space: Space):
     if isinstance(ac_space, Discrete):
         return ac_space.n
 

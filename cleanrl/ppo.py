@@ -9,6 +9,7 @@ from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
 import numpy as np
 import gym
+from gym.wrappers import TimeLimit, Monitor
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
@@ -25,7 +26,7 @@ if __name__ == "__main__":
                        help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
-    parser.add_argument('--episode-length', type=int, default=200,
+    parser.add_argument('--episode-length', type=int, default=0,
                        help='the maximum length of each episode')
     parser.add_argument('--total-timesteps', type=int, default=100000,
                        help='total timesteps of the experiments')
@@ -62,13 +63,6 @@ if __name__ == "__main__":
 # TRY NOT TO MODIFY: setup the environment
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 env = gym.make(args.gym_id)
-if args.capture_video:
-    from gym.wrappers import TimeLimit, Monitor
-    if not isinstance(env, TimeLimit):
-        env = TimeLimit(env, int(args.episode_length))
-    else:
-        env._max_episode_steps = int(args.episode_length)
-    env = Monitor(env, f'videos/{experiment_name}')
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
@@ -78,6 +72,13 @@ env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
+if int(args.episode_length):
+    if not isinstance(env, TimeLimit):
+        env = TimeLimit(env, int(args.episode_length))
+    else:
+        env._max_episode_steps = int(args.episode_length)
+if args.capture_video:
+    env = Monitor(env, f'videos/{experiment_name}')
 
 # ALGO LOGIC: initialize agent here:
 class Policy(nn.Module):
