@@ -109,6 +109,27 @@ class Policy(nn.Module):
         x = self.fc3(x)
         return x
 
+    def get_action(self, x):
+        logits = pg.forward(obs[step:step+1])
+        if isinstance(env.action_space, Discrete):
+            probs = Categorical(logits=logits)
+            action = probs.sample()
+            return action, -probs.log_prob(action), probs.entropy()
+        elif isinstance(env.action_space, MultiDiscrete):
+            logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
+            action = []
+            probs_categories = []
+            entropy = torch.zeros((logits.shape[0]))
+            neglogprob = torch.zeros((logits.shape[0]))
+            for i in range(len(logits_categories)):
+                probs_categories.append(Categorical(logits=logits_categories[i]))
+                if len(action) != env.action_space.shape:
+                    action.append(probs_categories[i].sample())
+                neglogprob -= probs_categories[i].log_prob(action[i])
+                entropy += probs_categories[i].entropy()
+            action = torch.stack(action).transpose(0, 1)
+            return action, neglogprob, entropy
+
 class Value(nn.Module):
     def __init__(self):
         super(Value, self).__init__()
@@ -145,29 +166,11 @@ while global_step < args.total_timesteps:
         obs[step] = next_obs.copy()
 
         # ALGO LOGIC: put action logic here
-        logits = pg.forward(obs[step:step+1])
         values[step] = vf.forward(obs[step:step+1])
 
         # ALGO LOGIC: `env.action_space` specific logic
-        if isinstance(env.action_space, Discrete):
-            probs = Categorical(logits=logits)
-            action = probs.sample()
-            actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], -probs.log_prob(action), probs.entropy()
-
-        elif isinstance(env.action_space, MultiDiscrete):
-            logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
-            action = []
-            probs_categories = []
-            probs_entropies = torch.zeros((logits.shape[0]))
-            neglogprob = torch.zeros((logits.shape[0]))
-            for i in range(len(logits_categories)):
-                probs_categories.append(Categorical(logits=logits_categories[i]))
-                if len(action) != env.action_space.shape:
-                    action.append(probs_categories[i].sample())
-                neglogprob -= probs_categories[i].log_prob(action[i])
-                probs_entropies += probs_categories[i].entropy()
-            action = torch.stack(action).transpose(0, 1).tolist()
-            actions[step], neglogprobs[step], entropys[step] = action[0], neglogprob, probs_entropies
+        action, neglogprob, entropy = pg.get_action(obs[step:step+1])
+        actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], neglogprob, entropy
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
@@ -187,22 +190,7 @@ while global_step < args.total_timesteps:
     non_empty_idx = np.argmax(dones) + 1
     for _ in range(args.update_epochs):
         # ALGO LOGIC: `env.action_space` specific logic
-        logits = pg.forward(obs[:non_empty_idx])
-        if isinstance(env.action_space, Discrete):
-            probs = Categorical(logits=logits)
-            new_neglogprobs = -probs.log_prob(torch.LongTensor(actions[:non_empty_idx].astype(np.int)).to(device))
-
-        elif isinstance(env.action_space, MultiDiscrete):
-            logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
-            action = []
-            probs_categories = []
-            neglogprob = torch.zeros((logits.shape[0]))
-            for i in range(len(logits_categories)):
-                probs_categories.append(Categorical(logits=logits_categories[i]))
-                neglogprob -= probs_categories[i].log_prob(actions[:non_empty_idx][i])
-            action = torch.stack(action).transpose(0, 1).tolist()
-            new_neglogprobs = neglogprob
-
+        _, new_neglogprobs, _ = pg.get_action(obs[:non_empty_idx])
         ratio = torch.exp(neglogprobs[:non_empty_idx] - new_neglogprobs)
         surrogate1 = ratio * torch.Tensor(advantages)[:non_empty_idx].to(device)
         surrogate2 = torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef) * torch.Tensor(advantages)[:non_empty_idx].to(device)
