@@ -61,6 +61,17 @@ if __name__ == "__main__":
         args.seed = int(time.time())
 
 # TRY NOT TO MODIFY: setup the environment
+experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+writer = SummaryWriter(f"runs/{experiment_name}")
+writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
+        '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
+if args.prod_mode:
+    import wandb
+    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True)
+    writer = SummaryWriter(f"/tmp/{experiment_name}")
+    wandb.save(os.path.abspath(__file__))
+
+# TRY NOT TO MODIFY: seeding
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 env = gym.make(args.gym_id)
 random.seed(args.seed)
