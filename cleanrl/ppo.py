@@ -72,11 +72,14 @@ env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
+# respect the default timelimit
 if int(args.episode_length):
     if not isinstance(env, TimeLimit):
         env = TimeLimit(env, int(args.episode_length))
     else:
         env._max_episode_steps = int(args.episode_length)
+else:
+    args.episode_length = env._max_episode_steps if isinstance(env, TimeLimit) else 200
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 

@@ -27,7 +27,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).strip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="CartPole-v0",
+    parser.add_argument('--gym-id', type=str, default="Taxi-v3",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
@@ -92,11 +92,14 @@ env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
+# respect the default timelimit
 if int(args.episode_length):
     if not isinstance(env, TimeLimit):
         env = TimeLimit(env, int(args.episode_length))
     else:
         env._max_episode_steps = int(args.episode_length)
+else:
+    args.episode_length = env._max_episode_steps if isinstance(env, TimeLimit) else 200
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 assert isinstance(env.action_space, Discrete), "only discrete action space is supported"
@@ -194,6 +197,7 @@ else:
 # TRY NOT TO MODIFY: start the game
 global_step = 0
 while global_step < args.total_timesteps:
+    print(2)
     next_obs = np.array(env.reset())
     actions = np.empty((args.episode_length,), dtype=object)
     rewards, dones = np.zeros((2, args.episode_length))
@@ -203,6 +207,7 @@ while global_step < args.total_timesteps:
 
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
+        print(step)
         global_step += 1
         obs[step] = next_obs.copy()
 
