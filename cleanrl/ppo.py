@@ -110,7 +110,7 @@ class Policy(nn.Module):
         return x
 
     def get_action(self, x):
-        logits = pg.forward(obs[step:step+1])
+        logits = pg.forward(x)
         if isinstance(env.action_space, Discrete):
             probs = Categorical(logits=logits)
             action = probs.sample()
