@@ -119,7 +119,7 @@ class Policy(nn.Module):
         x = preprocess_obs_fn(x)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
+        x = self.fc3(x)
         return self.nn_softmax(x), self.nn_log_softmax(x)
 
     def get_action(self, x):
@@ -139,7 +139,7 @@ class SoftQNetwork(nn.Module):
         x = preprocess_obs_fn(x)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
+        x = self.fc3(x)
         return x
 
     def state_action_value(self, x, a):
