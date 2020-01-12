@@ -72,7 +72,7 @@ if args.prod_mode:
     wandb.save(os.path.abspath(__file__))
 
 # TRY NOT TO MODIFY: seeding
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 env = gym.make(args.gym_id)
 random.seed(args.seed)
 np.random.seed(args.seed)
@@ -111,6 +111,7 @@ class Policy(nn.Module):
 
     def get_action(self, x):
         logits = pg.forward(x)
+        # ALGO LOGIC: `env.action_space` specific logic
         if isinstance(env.action_space, Discrete):
             probs = Categorical(logits=logits)
             action = probs.sample()
@@ -167,8 +168,6 @@ while global_step < args.total_timesteps:
 
         # ALGO LOGIC: put action logic here
         values[step] = vf.forward(obs[step:step+1])
-
-        # ALGO LOGIC: `env.action_space` specific logic
         action, neglogprob, entropy = pg.get_action(obs[step:step+1])
         actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], neglogprob, entropy
 
