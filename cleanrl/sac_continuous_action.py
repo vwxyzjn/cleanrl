@@ -219,7 +219,6 @@ while global_step < args.total_timesteps:
         next_obs, rewards[step], dones[step], _ = env.step(action.tolist()[0])
         rb.put((obs[step], actions[step], rewards[step], next_obs, dones[step]))
         next_obs = np.array(next_obs)
-        
         # ALGO LOGIC: training.
         if len(rb.buffer) > 2000:
             s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
@@ -230,14 +229,13 @@ while global_step < args.total_timesteps:
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - args.alpha * next_state_log_pi
                 next_q_value = torch.Tensor(s_rewards).to(device) + (1 - torch.Tensor(s_dones).to(device)) * args.gamma * (min_qf_next_target).view(-1)
 
-            qf1 = qf1.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
-            qf2 = qf2.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
+            qf1_a_values = qf1.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
+            qf2_a_values = qf2.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
             # qf1, qf2 = critic(state_batch, action_batch)  # Two Q-functions to mitigate positive bias in the policy improvement step
-            qf1_loss = loss_fn(qf1, next_q_value)
-            qf2_loss = loss_fn(qf2, next_q_value)
+            qf1_loss = loss_fn(qf1_a_values, next_q_value)
+            qf2_loss = loss_fn(qf2_a_values, next_q_value)
 
             pi, log_pi, _ = pg.get_action(s_obs)
-
             qf1_pi = qf1.forward(s_obs, pi)
             qf2_pi = qf2.forward(s_obs, pi)
             min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
