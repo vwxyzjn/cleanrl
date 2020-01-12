@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from torch.distributions.categorical import Categorical
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
@@ -156,7 +155,6 @@ while global_step < args.total_timesteps:
         clipped_action = torch.clamp(action, torch.min(torch.Tensor(env.action_space.low)), torch.min(torch.Tensor(env.action_space.high)))
         actions[step], neglogprobs[step], entropys[step] = clipped_action.tolist()[0], -probs.log_prob(action).sum(), probs.entropy().sum()
 
-        
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
         next_obs = np.array(next_obs)
