@@ -1,3 +1,5 @@
+# Primary reference: https://github.com/zhangchuheng123/Reinforcement-Implementation/blob/master/code/ppo.py
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
