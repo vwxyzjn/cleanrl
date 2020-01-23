@@ -98,36 +98,6 @@ if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
 # ALGO LOGIC: initialize agent here:
-class Policy2(nn.Module):
-    def __init__(self):
-        super(Policy, self).__init__()
-        self.fc1 = nn.Linear(input_shape, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.mean = nn.Linear(84, output_shape)
-        self.logstd = nn.Linear(output_shape, output_shape)
-
-    def forward(self, x):
-        x = preprocess_obs_fn(x)
-        x = F.tanh(self.fc1(x))
-        x = F.tanh(self.fc2(x))
-        
-        action_mean = self.mean(x)
-        zeros = torch.zeros(action_mean.size(), device=device)
-        action_logstd = self.logstd(zeros)
-        return action_mean, action_logstd.exp()
-
-    def get_action(self, x):
-        mean, std = self.forward(x)
-        probs = Normal(mean, std)
-        action = probs.sample()
-        clipped_action = torch.clamp(action, torch.min(torch.Tensor(env.action_space.low)), torch.min(torch.Tensor(env.action_space.high)))
-        return clipped_action, -probs.log_prob(action).sum(1), probs.entropy().sum(1)
-    
-    def get_logprob(self, x, a):
-        mean, std = self.forward(x)
-        probs = Normal(mean, std)
-        return probs.log_prob(a).sum(1)
-
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
@@ -156,12 +126,6 @@ class Policy(nn.Module):
         action_std = torch.exp(action_logstd)
         dist = Normal(action_mean, action_std)
         return dist.log_prob(actions).sum(1)
-    
-    # def get_entropy(self, x):
-    #     action_mean, action_logstd = self.forward(x)
-    #     action_std = torch.exp(action_logstd)
-    #     dist = Normal(action_mean, action_std)
-    #     return dist.entropy()
 
 class Value(nn.Module):
     def __init__(self):
@@ -171,7 +135,7 @@ class Value(nn.Module):
 
     def forward(self, x):
         x = preprocess_obs_fn(x)
-        x = F.tanh(self.fc1(x))
+        x = torch.tanh(self.fc1(x))
         x = self.fc2(x)
         return x
 
@@ -214,22 +178,6 @@ while global_step < args.total_timesteps:
         next_obs = np.array(next_obs)
         if dones[step]:
             break
-
-    # ALGO LOGIC: training.
-    # calculate the discounted rewards, or namely, returns
-    # returns = np.zeros_like(rewards)
-    # for t in reversed(range(rewards.shape[0]-1)):
-    #     returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-    # # advantages are returns - baseline, value estimates in our case
-    # advantages = returns - values.detach().cpu().numpy()
-
-    # returns = np.zeros(step)
-    # for t in reversed(range(step-1)):
-    #     returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-    # # advantages are returns - baseline, value estimates in our case
-    # advantages = returns - values[:step].detach().cpu().numpy()
-    # advantages = torch.Tensor(advantages)
-    # returns = torch.Tensor(returns)
 
     returns = torch.Tensor(step)
     deltas = torch.Tensor(step)
