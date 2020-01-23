@@ -98,6 +98,96 @@ if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
 # ALGO LOGIC: initialize agent here:
+
+class RunningStat(object):
+    '''
+    Keeps track of first and second moments (mean and variance)
+    of a streaming time series.
+     Taken from https://github.com/joschu/modular_rl
+     Math in http://www.johndcook.com/blog/standard_deviation/
+    '''
+    def __init__(self, shape):
+        self._n = 0
+        self._M = np.zeros(shape)
+        self._S = np.zeros(shape)
+    def push(self, x):
+        x = np.asarray(x)
+        assert x.shape == self._M.shape
+        self._n += 1
+        if self._n == 1:
+            self._M[...] = x
+        else:
+            oldM = self._M.copy()
+            self._M[...] = oldM + (x - oldM) / self._n
+            self._S[...] = self._S + (x - oldM) * (x - self._M)
+    @property
+    def n(self):
+        return self._n
+    @property
+    def mean(self):
+        return self._M
+    @property
+    def var(self):
+        return self._S / (self._n - 1) if self._n > 1 else np.square(self._M)
+    @property
+    def std(self):
+        return np.sqrt(self.var)
+    @property
+    def shape(self):
+        return self._M.shape
+
+class RewardFilter:
+    """
+    Incorrect reward normalization [copied from OAI code]
+    update return
+    divide reward by std(return) without subtracting and adding back mean
+    """
+    def __init__(self, shape, gamma, clip=None):
+        assert shape is not None
+        self.gamma = gamma
+        self.rs = RunningStat(shape)
+        self.ret = np.zeros(shape)
+        self.clip = clip
+
+    def __call__(self, x, **kwargs):
+        self.ret = self.ret * self.gamma + x
+        self.rs.push(self.ret)
+        x = x / (self.rs.std + 1e-8)
+        if self.clip:
+            x = np.clip(x, -self.clip, self.clip)
+        return x
+    
+    def reset(self):
+        self.ret = np.zeros_like(self.ret)
+
+class ZFilter:
+    """
+    y = (x-mean)/std
+    using running estimates of mean,std
+    """
+    def __init__(self, shape, center=True, scale=True, clip=None):
+        assert shape is not None
+        self.center = center
+        self.scale = scale
+        self.clip = clip
+        self.rs = RunningStat(shape)
+
+    def __call__(self, x, **kwargs):
+        self.rs.push(x)
+        if self.center:
+            x = x - self.rs.mean
+        if self.scale:
+            if self.center:
+                x = x / (self.rs.std + 1e-8)
+            else:
+                diff = x - self.rs.mean
+                diff = diff/(self.rs.std + 1e-8)
+                x = diff + self.rs.mean
+        if self.clip:
+            x = np.clip(x, -self.clip, self.clip)
+        return x
+
+
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
@@ -194,6 +284,8 @@ while global_step < args.total_timesteps:
         prev_return = returns[i]
         prev_value = values[i]
         prev_advantage = advantages[i]
+
+    advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
 
     for i_epoch in range(args.update_epochs):
         newlogproba = pg.get_logproba(obs[:step], torch.Tensor(actions[:step]))
