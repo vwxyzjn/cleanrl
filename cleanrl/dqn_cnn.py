@@ -206,13 +206,18 @@ if args.prod_mode:
 # TRY NOT TO MODIFY: seeding
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 env = make_env(args.gym_id)
-args.episode_length = 400000
+args.episode_length = 40000
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
+# respect the default timelimit	
+env = TimeLimit(env, args.episode_length)	
+if args.capture_video:	
+    env = Monitor(env, f'videos/{experiment_name}')	
+
 
 # ALGO LOGIC: initialize agent here:
 class ReplayBuffer():

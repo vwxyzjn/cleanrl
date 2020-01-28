@@ -639,3 +639,16 @@ do
     ) >& /dev/null &
 done
 wait
+
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -a python dqn_cnn.py \
+    --gym-id PongNoFrameskip-v4 \
+    --total-timesteps 1000000 \
+    --wandb-project-name cleanrl \
+    --wandb-entity cleanrl \
+    --prod-mode True \
+    --capture-video True \
+    --seed $seed
+    ) >& /dev/null &
+done
