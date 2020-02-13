@@ -184,8 +184,6 @@ while global_step < args.total_timesteps:
             returns[step] = rewards[step]
             for t in reversed(range(episode_lengths[-1], step)):
                 returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-            print(step-(episode_lengths[-1]+1), returns[(episode_lengths[-1]+1):step])
-            print(returns[-1])
             # advantages are returns - baseline, value estimates in our case
             episode_lengths += [step]
             next_obs = np.array(env.reset())
@@ -198,19 +196,18 @@ while global_step < args.total_timesteps:
         returns = returns[:-1]
             
     advantages = returns - values.detach().cpu().numpy()
-    for i in range(len(episode_lengths)-1):
-        print(advantages[episode_lengths[i]+1:episode_lengths[i+1]])
 
     # ALGO LOGIC: training.
+    mini_batch_size = 32
     for _ in range(args.update_epochs):
-        random_idx = np.random.choice(args.episode_length, 32, False)
-        newlogproba = pg.get_logproba(obs[:step], torch.Tensor(actions[:step]))
-        # newvalues = vf.forward(obs[:step]).flatten() DO we generate a new values from the current policy?
-        ratio =  torch.exp(newlogproba - torch.Tensor(logprobs[:step]))
-        surrogate1 = ratio * torch.Tensor(advantages[:step])
-        surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages[:step])
+        random_idx = np.random.choice(args.episode_length, mini_batch_size, False)
+        newlogproba = pg.get_logproba(obs[random_idx], torch.Tensor(actions[random_idx]))
+        # newvalues = vf.forward(obs[random_idx]).flatten() DO we generate a new values from the current policy?
+        ratio =  torch.exp(newlogproba - torch.Tensor(logprobs[random_idx]))
+        surrogate1 = ratio * torch.Tensor(advantages[random_idx])
+        surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages[random_idx])
         policy_loss = - torch.mean(torch.min(surrogate1, surrogate2))
-        vf_loss = torch.mean((values[:step] - torch.Tensor(returns[:step])).pow(2))
+        vf_loss = torch.mean((values[random_idx] - torch.Tensor(returns[random_idx])).pow(2))
         entropy_loss = torch.mean(torch.exp(newlogproba) * newlogproba)
         total_loss = policy_loss + args.vf_coef * vf_loss + args.ent_coef * entropy_loss
         optimizer.zero_grad()
