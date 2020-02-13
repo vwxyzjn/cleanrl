@@ -145,7 +145,7 @@ vf = Value().to(device)
 optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
 #print(pg.logstd.bias)
-episode_lengths = [-1]
+
 # TRY NOT TO MODIFY: start the game
 global_step = 0
 while global_step < args.total_timesteps:
@@ -153,6 +153,7 @@ while global_step < args.total_timesteps:
     actions = np.empty((args.episode_length,) + env.action_space.shape)
     rewards, dones = np.zeros((2, args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
+    episode_lengths = [0]
 
     # ALGO LOGIC: put other storage logic here
     values = torch.zeros((args.episode_length), device=device)
@@ -179,26 +180,30 @@ while global_step < args.total_timesteps:
         next_obs, rewards[step], dones[step], _ = env.step(clipped_action)
         next_obs = np.array(next_obs)
         if dones[step]:
+            # calculate the discounted rewards, or namely, returns
             returns[step] = rewards[step]
             for t in reversed(range(episode_lengths[-1], step)):
                 returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
             print(step-(episode_lengths[-1]+1), returns[(episode_lengths[-1]+1):step])
+            print(returns[-1])
             # advantages are returns - baseline, value estimates in our case
             episode_lengths += [step]
             next_obs = np.array(env.reset())
+    
+    # bootstrap reward if not done. reached the batch limit
+    if not dones[step]:
+        returns = np.append(returns, vf.forward(next_obs.reshape(1, -1))[0].detach().numpy(), axis=-1)
+        for t in reversed(range(episode_lengths[-1], step+1)):
+            returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
+        returns = returns[:-1]
             
     advantages = returns - values.detach().cpu().numpy()
-            
+    for i in range(len(episode_lengths)-1):
+        print(advantages[episode_lengths[i]+1:episode_lengths[i+1]])
 
     # ALGO LOGIC: training.
-    # calculate the discounted rewards, or namely, returns
-    returns = np.zeros_like(rewards)
-    for t in reversed(range(rewards.shape[0]-1)):
-        returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-    # advantages are returns - baseline, value estimates in our case
-    advantages = returns - values.detach().cpu().numpy()
-
     for _ in range(args.update_epochs):
+        random_idx = np.random.choice(args.episode_length, 32, False)
         newlogproba = pg.get_logproba(obs[:step], torch.Tensor(actions[:step]))
         # newvalues = vf.forward(obs[:step]).flatten() DO we generate a new values from the current policy?
         ratio =  torch.exp(newlogproba - torch.Tensor(logprobs[:step]))
