@@ -145,7 +145,7 @@ vf = Value().to(device)
 optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
 #print(pg.logstd.bias)
-
+episode_lengths = [-1]
 # TRY NOT TO MODIFY: start the game
 global_step = 0
 while global_step < args.total_timesteps:
@@ -158,6 +158,7 @@ while global_step < args.total_timesteps:
     values = torch.zeros((args.episode_length), device=device)
     logprobs = np.zeros((args.episode_length,),)
     entropys = torch.zeros((args.episode_length,), device=device)
+    returns = np.zeros_like(rewards)
 
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
@@ -178,12 +179,20 @@ while global_step < args.total_timesteps:
         next_obs, rewards[step], dones[step], _ = env.step(clipped_action)
         next_obs = np.array(next_obs)
         if dones[step]:
-            break
+            returns[step] = rewards[step]
+            for t in reversed(range(episode_lengths[-1], step)):
+                returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
+            print(step-(episode_lengths[-1]+1), returns[(episode_lengths[-1]+1):step])
+            # advantages are returns - baseline, value estimates in our case
+            episode_lengths += [step]
+            next_obs = np.array(env.reset())
+            
+    advantages = returns - values.detach().cpu().numpy()
+            
 
     # ALGO LOGIC: training.
     # calculate the discounted rewards, or namely, returns
     returns = np.zeros_like(rewards)
-    returns[step] = rewards[step]
     for t in reversed(range(rewards.shape[0]-1)):
         returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
     # advantages are returns - baseline, value estimates in our case
