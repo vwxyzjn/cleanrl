@@ -31,7 +31,7 @@ if __name__ == "__main__":
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=0,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=100000,
+    parser.add_argument('--total-timesteps', type=int, default=2000000,
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
@@ -57,7 +57,7 @@ if __name__ == "__main__":
                        help="policy entropy's coefficient the loss function")
     parser.add_argument('--clip-coef', type=float, default=0.2,
                        help="the surrogate clipping coefficient")
-    parser.add_argument('--update-epochs', type=int, default=3,
+    parser.add_argument('--update-epochs', type=int, default=50,
                         help="the K epochs to update the policy")
     args = parser.parse_args()
     if not args.seed:
@@ -153,7 +153,7 @@ while global_step < args.total_timesteps:
     actions = np.empty((args.episode_length,) + env.action_space.shape)
     rewards, dones = np.zeros((2, args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
-    episode_lengths = [0]
+    episode_lengths = [-1]
 
     # ALGO LOGIC: put other storage logic here
     values = torch.zeros((args.episode_length), device=device)
@@ -184,9 +184,10 @@ while global_step < args.total_timesteps:
             returns[step] = rewards[step]
             for t in reversed(range(episode_lengths[-1], step)):
                 returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-            # advantages are returns - baseline, value estimates in our case
+            writer.add_scalar("charts/episode_reward", rewards[(episode_lengths[-1]+1):step].sum(), global_step)
             episode_lengths += [step]
             next_obs = np.array(env.reset())
+            
     
     # bootstrap reward if not done. reached the batch limit
     if not dones[step]:
@@ -194,7 +195,8 @@ while global_step < args.total_timesteps:
         for t in reversed(range(episode_lengths[-1], step+1)):
             returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
         returns = returns[:-1]
-            
+
+    # advantages are returns - baseline, value estimates in our case
     advantages = returns - values.detach().cpu().numpy()
 
     # ALGO LOGIC: training.
@@ -216,7 +218,6 @@ while global_step < args.total_timesteps:
         optimizer.step()
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
-    writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
     writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
     writer.add_scalar("losses/entropy", entropys[:step].mean().item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
