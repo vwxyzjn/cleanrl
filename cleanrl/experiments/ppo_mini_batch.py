@@ -202,13 +202,14 @@ while global_step < args.total_timesteps:
     # ALGO LOGIC: training.
     mini_batch_size = 32
     for _ in range(args.update_epochs):
-        newlogproba = pg.get_logproba(obs, torch.Tensor(actions))
-        # newvalues = vf.forward(obs).flatten() DO we generate a new values from the current policy?
-        ratio =  torch.exp(newlogproba - torch.Tensor(logprobs))
-        surrogate1 = ratio * torch.Tensor(advantages)
-        surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages)
+        random_idx = np.random.choice(args.episode_length, mini_batch_size, False)
+        newlogproba = pg.get_logproba(obs[random_idx], torch.Tensor(actions[random_idx]))
+        # newvalues = vf.forward(obs[random_idx]).flatten() DO we generate a new values from the current policy?
+        ratio =  torch.exp(newlogproba - torch.Tensor(logprobs[random_idx]))
+        surrogate1 = ratio * torch.Tensor(advantages[random_idx])
+        surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages[random_idx])
         policy_loss = - torch.mean(torch.min(surrogate1, surrogate2))
-        vf_loss = torch.mean((values - torch.Tensor(returns)).pow(2))
+        vf_loss = torch.mean((values[random_idx] - torch.Tensor(returns[random_idx])).pow(2))
         entropy_loss = torch.mean(torch.exp(newlogproba) * newlogproba)
         total_loss = policy_loss + args.vf_coef * vf_loss + args.ent_coef * entropy_loss
         optimizer.zero_grad()
