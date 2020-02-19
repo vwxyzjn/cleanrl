@@ -180,14 +180,14 @@ if __name__ == "__main__":
                        help="the batch size of sample from the reply memory")
     parser.add_argument('--start-e', type=float, default=0.1,
                        help="the starting epsilon for exploration")
-    parser.add_argument('--end-e', type=float, default=0.01,
+    parser.add_argument('--end-e', type=float, default=0.02,
                        help="the ending epsilon for exploration")
+    parser.add_argument('--exploration-fraction', type=float, default=0.10,
+                       help="the fraction of `total-timesteps` it takes from start-e to go end-e")
     parser.add_argument('--learning-starts', type=int, default=10000,
                        help="timestep to start learning")
     parser.add_argument('--train-frequency', type=int, default=1,
                        help="the frequency of training")
-    parser.add_argument('--exploration-fraction', type=float, default=0.10,
-                       help="the fraction of `total-timesteps` it takes from start-e to go end-e")
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -217,9 +217,9 @@ output_shape = preprocess_ac_space(env.action_space)
 env = TimeLimit(env, args.episode_length)	
 if args.capture_video:	
     env = Monitor(env, f'videos/{experiment_name}')	
+assert isinstance(env.action_space, Discrete), "only discrete action space is supported"
 
-
-# ALGO LOGIC: initialize agent here:
+# modified from https://github.com/seungeunrho/minimalRL/blob/master/dqn.py#
 class ReplayBuffer():
     def __init__(self, buffer_limit):
         self.buffer = collections.deque(maxlen=buffer_limit)
@@ -243,7 +243,7 @@ class ReplayBuffer():
                np.array(r_lst), np.array(s_prime_lst), \
                np.array(done_mask_lst)
 
-
+# ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
     def __init__(self):
         super(QNetwork, self).__init__()
@@ -271,20 +271,19 @@ class QNetwork(nn.Module):
         conv_out = self.conv(x).view(x.size()[0], -1)
         return self.fc(conv_out)
 
+def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
+    slope =  (end_e - start_e) / duration
+    return max(slope * t + start_e, end_e)
+
+rb = ReplayBuffer(args.buffer_size)
 q_network = QNetwork().to(device)
 target_network = QNetwork().to(device)
 target_network.load_state_dict(q_network.state_dict())
 optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
-rb = ReplayBuffer(args.buffer_size)
-print(q_network)
-EPSILON_DECAY_LAST_FRAME = 10**5
-EPSILON_START = 1.0
-EPSILON_FINAL = 0.02
-epsilon = EPSILON_START
 loss_fn = nn.MSELoss()
+
 # TRY NOT TO MODIFY: start the game
 global_step = 0
-state = env.reset()
 while global_step < args.total_timesteps:
     next_obs = np.array(env.reset())
     actions = np.empty((args.episode_length,), dtype=object)
@@ -295,28 +294,23 @@ while global_step < args.total_timesteps:
     for step in range(args.episode_length):
         global_step += 1
         obs[step] = next_obs.copy()
-        
+
         # ALGO LOGIC: put action logic here
-        epsilon = max(EPSILON_FINAL, EPSILON_START - global_step / EPSILON_DECAY_LAST_FRAME)
-        # ALGO LOGIC: `env.action_space` specific logic
+        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
         if random.random() < epsilon:
             actions[step] = env.action_space.sample()
         else:
             logits = target_network.forward(obs[step:step+1])
             action = torch.argmax(logits, dim=1)
             actions[step] = action.tolist()[0]
-        
+
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
         rb.put((obs[step], actions[step], rewards[step], next_obs, dones[step]))
         next_obs = np.array(next_obs)
-        
+
         # ALGO LOGIC: training.
         if global_step > args.learning_starts and global_step % args.train_frequency == 0:
-            # update the target network
-            if global_step % args.target_network_frequency == 0:
-                target_network.load_state_dict(q_network.state_dict())
-
             s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
             target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
             td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
@@ -330,9 +324,13 @@ while global_step < args.total_timesteps:
             nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
             optimizer.step()
 
+            # update the target network
+            if global_step % args.target_network_frequency == 0:
+                target_network.load_state_dict(q_network.state_dict())
+
         if dones[step]:
             break
-    
+
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
     writer.add_scalar("charts/epsilon", epsilon, global_step)

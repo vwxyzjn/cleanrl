@@ -62,6 +62,10 @@ if __name__ == "__main__":
                        help="the ending epsilon for exploration")
     parser.add_argument('--exploration-fraction', type=float, default=0.8,
                        help="the fraction of `total-timesteps` it takes from start-e to go end-e")
+    parser.add_argument('--learning-starts', type=int, default=10000,
+                       help="timestep to start learning")
+    parser.add_argument('--train-frequency', type=int, default=1,
+                       help="the frequency of training")
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -99,6 +103,7 @@ else:
     args.episode_length = env._max_episode_steps if isinstance(env, TimeLimit) else 200
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
+assert isinstance(env.action_space, Discrete), "only discrete action space is supported"
 
 # modified from https://github.com/seungeunrho/minimalRL/blob/master/dqn.py#
 class ReplayBuffer():
@@ -125,7 +130,6 @@ class ReplayBuffer():
                np.array(done_mask_lst)
 
 # ALGO LOGIC: initialize agent here:
-rb = ReplayBuffer(args.buffer_size)
 class QNetwork(nn.Module):
     def __init__(self):
         super(QNetwork, self).__init__()
@@ -139,11 +143,12 @@ class QNetwork(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
-    
+
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope =  (end_e - start_e) / duration
     return max(slope * t + start_e, end_e)
 
+rb = ReplayBuffer(args.buffer_size)
 q_network = QNetwork().to(device)
 target_network = QNetwork().to(device)
 target_network.load_state_dict(q_network.state_dict())
@@ -158,33 +163,27 @@ while global_step < args.total_timesteps:
     rewards, dones = np.zeros((2, args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
     
-    # ALGO LOGIC: put other storage logic here
-    values = torch.zeros((args.episode_length), device=device)
-    
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
         global_step += 1
         obs[step] = next_obs.copy()
-        
+
         # ALGO LOGIC: put action logic here
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
-
-        # ALGO LOGIC: `env.action_space` specific logic
         if random.random() < epsilon:
             actions[step] = env.action_space.sample()
         else:
             logits = target_network.forward(obs[step:step+1])
-            if isinstance(env.action_space, Discrete):
-                action = torch.argmax(logits, dim=1)
-                actions[step] = action.tolist()[0]
-        
+            action = torch.argmax(logits, dim=1)
+            actions[step] = action.tolist()[0]
+
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
         rb.put((obs[step], actions[step], rewards[step], next_obs, dones[step]))
         next_obs = np.array(next_obs)
-        
+
         # ALGO LOGIC: training.
-        if len(rb.buffer) > 2000:
+        if global_step > args.learning_starts and global_step % args.train_frequency == 0:
             s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
             target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
             td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
@@ -197,15 +196,16 @@ while global_step < args.total_timesteps:
             writer.add_scalar("losses/td_loss", loss, global_step)
             nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
             optimizer.step()
-            
+ 
             # update the target network
             if global_step % args.target_network_frequency == 0:
                 target_network.load_state_dict(q_network.state_dict())
-        
+
         if dones[step]:
             break
-    
+
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
+    writer.add_scalar("charts/epsilon", epsilon, global_step)
 env.close()
 writer.close()
