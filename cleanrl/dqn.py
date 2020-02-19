@@ -62,6 +62,10 @@ if __name__ == "__main__":
                        help="the ending epsilon for exploration")
     parser.add_argument('--exploration-fraction', type=float, default=0.8,
                        help="the fraction of `total-timesteps` it takes from start-e to go end-e")
+    parser.add_argument('--learning-starts', type=int, default=10000,
+                       help="timestep to start learning")
+    parser.add_argument('--train-frequency', type=int, default=1,
+                       help="the frequency of training")
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
