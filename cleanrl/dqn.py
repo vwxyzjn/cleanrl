@@ -153,6 +153,8 @@ target_network = QNetwork().to(device)
 target_network.load_state_dict(q_network.state_dict())
 optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
+print(device.__repr__())
+print(q_network)
 
 # TRY NOT TO MODIFY: start the game
 global_step = 0
