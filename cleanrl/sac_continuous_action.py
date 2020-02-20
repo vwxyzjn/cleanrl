@@ -91,6 +91,7 @@ env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
 # respect the default timelimit
+assert isinstance(env.action_space, Box), "only continuous action space is supported"
 assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
 if isinstance(env, TimeLimit):
     if int(args.episode_length):
@@ -99,7 +100,6 @@ else:
     env = TimeLimit(env, int(args.episode_length))
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
-assert isinstance(env.action_space, Box), "only continuous action space is supported"
 
 # ALGO LOGIC: initialize agent here:
 class Policy(nn.Module):

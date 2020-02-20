@@ -328,6 +328,7 @@ env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
 # respect the default timelimit
+assert isinstance(env.action_space, Box), "only continuous action space is supported"
 if not isinstance(env, TimeLimit) and not int(args.episode_length):
     raise Exception("the gym env does not have a built in TimeLimit, please specify by using --episode-length")
 if isinstance(env, TimeLimit):
