@@ -150,7 +150,7 @@ if __name__ == "__main__":
                        help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=2,
                        help='seed of the experiment')
-    parser.add_argument('--episode-length', type=int, default=0,
+    parser.add_argument('--episode-length', type=int, default=40000,
                        help='the maximum length of each episode')
     parser.add_argument('--total-timesteps', type=int, default=10000000,
                        help='total timesteps of the experiments')
@@ -178,7 +178,7 @@ if __name__ == "__main__":
                        help='the maximum norm for the gradient clipping')
     parser.add_argument('--batch-size', type=int, default=32,
                        help="the batch size of sample from the reply memory")
-    parser.add_argument('--start-e', type=float, default=0.1,
+    parser.add_argument('--start-e', type=float, default=1,
                        help="the starting epsilon for exploration")
     parser.add_argument('--end-e', type=float, default=0.02,
                        help="the ending epsilon for exploration")
@@ -206,18 +206,25 @@ if args.prod_mode:
 # TRY NOT TO MODIFY: seeding
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 env = make_env(args.gym_id)
-args.episode_length = 40000
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
+env.seed(args.seed)
+env.action_space.seed(args.seed)
+env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
-# respect the default timelimit	
-env = TimeLimit(env, args.episode_length)	
-if args.capture_video:	
-    env = Monitor(env, f'videos/{experiment_name}')	
+# respect the default timelimit
 assert isinstance(env.action_space, Discrete), "only discrete action space is supported"
+assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
+if isinstance(env, TimeLimit):
+    if int(args.episode_length):
+        env._max_episode_steps = int(args.episode_length)
+else:
+    env = TimeLimit(env, int(args.episode_length))
+if args.capture_video:
+    env = Monitor(env, f'videos/{experiment_name}')
 
 # modified from https://github.com/seungeunrho/minimalRL/blob/master/dqn.py#
 class ReplayBuffer():
