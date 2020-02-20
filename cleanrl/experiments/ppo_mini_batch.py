@@ -184,7 +184,7 @@ while global_step < args.total_timesteps:
             returns[step] = rewards[step]
             for t in reversed(range(episode_lengths[-1], step)):
                 returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-            writer.add_scalar("charts/episode_reward", rewards[(episode_lengths[-1]+1):step].sum(), global_step)
+            writer.add_scalar("charts/episode_reward", rewards[(episode_lengths[-1]+1):step+1].sum(), global_step)
             episode_lengths += [step]
             next_obs = np.array(env.reset())
             
@@ -219,7 +219,7 @@ while global_step < args.total_timesteps:
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
-    writer.add_scalar("losses/entropy", entropys[:step].mean().item(), global_step)
+    writer.add_scalar("losses/entropy", entropys[:step+1].mean().item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
 env.close()
 writer.close()

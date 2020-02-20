@@ -497,7 +497,7 @@ while global_step < args.total_timesteps:
                 for t in reversed(range(episode_lengths[-1], step)):
                     returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
 
-            writer.add_scalar("charts/episode_reward", rewards[(episode_lengths[-1]+1):step].sum(), global_step)
+            writer.add_scalar("charts/episode_reward", rewards[(episode_lengths[-1]+1):step+1].sum(), global_step)
             episode_lengths += [step]
             next_obs = np.array(env.reset())
 

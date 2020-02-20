@@ -289,12 +289,12 @@ while global_step < args.total_timesteps:
         prev_advantage = advantages[i]
 
     for i_epoch in range(args.update_epochs):
-        newlogproba = pg.get_logproba(obs[:step], torch.Tensor(actions[:step]))
-        ratio =  torch.exp(newlogproba - torch.Tensor(logprobs[:step]))
-        surrogate1 = ratio * torch.Tensor(advantages[:step])
-        surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages[:step])
+        newlogproba = pg.get_logproba(obs[:step+1], torch.Tensor(actions[:step+1]))
+        ratio =  torch.exp(newlogproba - torch.Tensor(logprobs[:step+1]))
+        surrogate1 = ratio * torch.Tensor(advantages[:step+1])
+        surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages[:step+1])
         policy_loss = - torch.mean(torch.min(surrogate1, surrogate2))
-        vf_loss = torch.mean((values[:step] - torch.Tensor(returns[:step])).pow(2))
+        vf_loss = torch.mean((values[:step+1] - torch.Tensor(returns[:step+1])).pow(2))
         entropy_loss = torch.mean(torch.exp(newlogproba) * newlogproba)
         total_loss = policy_loss + args.vf_coef * vf_loss + args.ent_coef * entropy_loss
         optimizer.zero_grad()
@@ -305,7 +305,7 @@ while global_step < args.total_timesteps:
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", real_rewards.sum(), global_step)
     writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
-    writer.add_scalar("losses/entropy", entropys[:step].mean().item(), global_step)
+    writer.add_scalar("losses/entropy", entropys[:step+1].mean().item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
 env.close()
 writer.close()
