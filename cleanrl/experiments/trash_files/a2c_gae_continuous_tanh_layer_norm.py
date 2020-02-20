@@ -82,13 +82,12 @@ env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
 # respect the default timelimit
-if int(args.episode_length):
-    if not isinstance(env, TimeLimit):
-        env = TimeLimit(env, int(args.episode_length))
-    else:
+assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
+if isinstance(env, TimeLimit):
+    if int(args.episode_length):
         env._max_episode_steps = int(args.episode_length)
 else:
-    args.episode_length = env._max_episode_steps if isinstance(env, TimeLimit) else 200
+    env = TimeLimit(env, int(args.episode_length))
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 # ALGO LOGIC: initialize agent here:
