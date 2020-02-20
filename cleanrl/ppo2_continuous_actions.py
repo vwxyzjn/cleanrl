@@ -127,7 +127,7 @@ class ZFilter:
 # End of Helper classes for normalizations
 
 # A custom environment wrapper with for observation and action normalization
-class CustomEnv(object):
+class CustomEnv(gym.core.Wrapper):
     '''
     A wrapper around the OpenAI gym environment that adds support for the following:
     - Rewards normalization
@@ -139,27 +139,8 @@ class CustomEnv(object):
     - Size of action space
     Provides the same API (init, step, reset) as the OpenAI gym
     '''
-    def __init__(self, game):
-        self.env = gym.make(game)
-        self.env.seed(args.seed)
-        self.env.action_space.seed(args.seed)
-        self.env.observation_space.seed(args.seed)
-
-        # Adding references for obs and action space too (?)
-        self.action_space = self.env.action_space
-        self.observation_space = self.env.observation_space
-
-        # respect the default timelimit
-        if int(args.episode_length):
-            if not isinstance(self.env, TimeLimit):
-                self.env = TimeLimit(self.env, int(args.episode_length))
-            else:
-                self.env._max_episode_steps = int(args.episode_length)
-        else:
-            args.episode_length = self.env._max_episode_steps if isinstance(self.env, TimeLimit) else 200
-
-        if args.capture_video:
-            self.env = Monitor(self.env, f'videos/{experiment_name}')
+    def __init__(self, env):
+        super(CustomEnv, self).__init__(env)
 
         # Environment type
         self.is_discrete = type(self.env.action_space) == Discrete
@@ -211,6 +192,9 @@ class CustomEnv(object):
         if is_done:
             info['done'] = (self.counter, self.total_true_reward)
         return state, _reward, is_done, info
+    
+    def seed(self, seed):
+        self.env.seed(seed)
 
     def close(self):
         self.env.close()
@@ -226,7 +210,7 @@ if __name__ == "__main__":
                        help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
-    parser.add_argument('--episode-length', type=int, default=1000,
+    parser.add_argument('--episode-length', type=int, default=0,
                        help='the maximum length of each episode')
     parser.add_argument('--total-timesteps', type=int, default=100000,
                        help='total timesteps of the experiments')
@@ -234,8 +218,6 @@ if __name__ == "__main__":
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
     parser.add_argument('--cuda', type=bool, default=True,
                        help='whether to use CUDA whenever possible')
-    parser.add_argument('--cuda', action="store_true",
-                       help='Toggles the use of CUDA whenever possible')
     parser.add_argument('--prod-mode', type=bool, default=False,
                        help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--capture-video', type=bool, default=False,
@@ -292,10 +274,6 @@ if __name__ == "__main__":
                         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument('--weights-init', default="xavier", choices=["xavier", 'orthogonal'],
                         help='Selects the scheme to be used for weights initialization')
-
-    # TODO: Remove this once everything is confirmed to be working correctly
-    parser.add_argument('--notb', action='store_true')
-
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -316,8 +294,9 @@ if args.prod_mode:
 # TRY NOT TO MODIFY: seeding
 device = torch.device('cpu')
 env = gym.make(args.gym_id)
-default_episode_length = env._max_episode_steps if isinstance(env, TimeLimit) else 200
-env = CustomEnv(args.gym_id)
+assert isinstance(env, TimeLimit), f"please set TimeLimit for the env associated with {args.gym_id}"
+args.episode_length = env._max_episode_steps
+env = CustomEnv(env.env)
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
@@ -329,30 +308,9 @@ input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, dev
 output_shape = preprocess_ac_space(env.action_space)
 # respect the default timelimit
 assert isinstance(env.action_space, Box), "only continuous action space is supported"
-if not isinstance(env, TimeLimit) and not int(args.episode_length):
-    raise Exception("the gym env does not have a built in TimeLimit, please specify by using --episode-length")
-if isinstance(env, TimeLimit):
-    if int(args.episode_length):
-        env._max_episode_steps = int(args.episode_length)
-else:
-    env = TimeLimit(env, int(args.episode_length))
+env = TimeLimit(env, args.episode_length)
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
-
-
-
-
-# TRY NOT TO MODIFY: seeding
-# TODO: Does it still work on gpu ?
-device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
-random.seed(args.seed)
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
-torch.backends.cudnn.deterministic = args.torch_deterministic
-env = CustomEnv(args.gym_id)
-# MODIFIED: Moved input_shape and output_shape after the env is created
-input_shape, preprocess_obs_fn = preprocess_obs_space(env.env.observation_space, device)
-output_shape = preprocess_ac_space(env.env.action_space)
 
 # ALGO LOGIC: initialize agent here:
 class Policy(nn.Module):
@@ -462,7 +420,7 @@ while global_step < args.total_timesteps:
         observations[step] = next_obs.copy()
 
         # ALGO LOGIC: put action logic here
-        values[step] = vf.forward(observations[step:step+1]) # Question: Why :step+1 again ?
+        values[step] = vf.forward(observations[step:step+1])
 
         with torch.no_grad():
             action, logproba = pg.get_action(observations[step:step+1])

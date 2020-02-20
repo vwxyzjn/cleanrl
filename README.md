@@ -1,6 +1,6 @@
 # CleanRL (Clean Implementation of RL Algorithms)
 
-### This project is WIP currently at 0.1 release, expect breaking changes.
+### This project is WIP currently at 0.2.1 release, expect breaking changes.
 
 This repository focuses on a clean and minimal implementation of reinforcement learning algorithms that focuses on easy experimental research. The highlight features of this repo are:
 
@@ -53,6 +53,36 @@ $ python a2c.py \
 Checkout the demo sites at [https://app.wandb.ai/costa-huang/cleanrltest](https://app.wandb.ai/costa-huang/cleanrltest)
 
 ![demo2.gif](demo2.gif)
+
+## Algorithms Implemented
+- [x] Advantage Actor Critic (A2C)
+    * [a2c.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/a2c.py)
+        * Discrete action space
+    * [a2c_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/a2c_continuous_action.py)
+        * Continuous action space
+- [x] Deep Q-Learning (DQN)
+    * [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py)
+        * Discrete action space
+    * [dqn_cnn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_cnn.py)
+        * Specifically for playing Atari games. It uses convolutional layers and other multiprocessing techniques.
+- [x] Soft Actor Critic (SAC)
+    * [sac.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac.py)
+        * Discrete action space
+    * [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py)
+        * Continuous action space
+- [x] Proximal Policy Gradient (PPO) 
+    * [ppo.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py)
+        * Discrete action space
+    * [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py)
+        * Continuous action space
+    * [ppo2_continuous_actions.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo2_continuous_actions.py)
+        * Also for continuous action space, but this script allows you to toggle following techniques
+            * GAE (general advantage estimation)
+            * Reward normalization and clipping
+            * Observation normalization and clipping
+            * KL divergence bounding
+            * Learning rate annealing
+            * Orthogonal layer initialization
 
 ## User's Guide for Researcher (Please read this if consider using CleanRL)
 
