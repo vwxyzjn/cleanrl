@@ -64,7 +64,7 @@ Checkout the demo sites at [https://app.wandb.ai/costa-huang/cleanrltest](https:
     * [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py)
         * Discrete action space
     * [dqn_cnn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_cnn.py)
-        * Specifically for playing Atari games. It uses convolutional layers and other multiprocessing techniques.
+        * Specifically for playing Atari games. It uses convolutional layers and other pre-processing techniques.
 - [x] Soft Actor Critic (SAC)
     * [sac.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac.py)
         * Discrete action space
