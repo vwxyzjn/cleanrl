@@ -199,7 +199,6 @@ while global_step < args.total_timesteps:
     advantages = returns - values.detach().cpu().numpy()
 
     # ALGO LOGIC: training.
-    mini_batch_size = 32
     for _ in range(args.update_epochs):
         newlogproba = pg.get_logproba(obs, torch.Tensor(actions))
         # newvalues = vf.forward(obs).flatten() DO we generate a new values from the current policy?
