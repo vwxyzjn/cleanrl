@@ -94,16 +94,15 @@ env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
 # respect the default timelimit
-if int(args.episode_length):
-    if not isinstance(env, TimeLimit):
-        env = TimeLimit(env, int(args.episode_length))
-    else:
+assert isinstance(env.action_space, Discrete), "only discrete action space is supported"
+assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
+if isinstance(env, TimeLimit):
+    if int(args.episode_length):
         env._max_episode_steps = int(args.episode_length)
 else:
-    args.episode_length = env._max_episode_steps if isinstance(env, TimeLimit) else 200
+    env = TimeLimit(env, int(args.episode_length))
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
-assert isinstance(env.action_space, Discrete), "only discrete action space is supported"
 
 # modified from https://github.com/seungeunrho/minimalRL/blob/master/dqn.py#
 class ReplayBuffer():
@@ -154,6 +153,8 @@ target_network = QNetwork().to(device)
 target_network.load_state_dict(q_network.state_dict())
 optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
+print(device.__repr__())
+print(q_network)
 
 # TRY NOT TO MODIFY: start the game
 global_step = 0

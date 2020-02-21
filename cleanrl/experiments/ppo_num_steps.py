@@ -31,7 +31,7 @@ if __name__ == "__main__":
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=0,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=2000000,
+    parser.add_argument('--total-timesteps', type=int, default=100000,
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
@@ -57,7 +57,7 @@ if __name__ == "__main__":
                        help="policy entropy's coefficient the loss function")
     parser.add_argument('--clip-coef', type=float, default=0.2,
                        help="the surrogate clipping coefficient")
-    parser.add_argument('--update-epochs', type=int, default=50,
+    parser.add_argument('--update-epochs', type=int, default=4,
                         help="the K epochs to update the policy")
     args = parser.parse_args()
     if not args.seed:
@@ -152,71 +152,67 @@ while global_step < args.total_timesteps:
     actions = np.empty((args.episode_length,) + env.action_space.shape)
     rewards, dones = np.zeros((2, args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
-    episode_lengths = [-1]
 
     # ALGO LOGIC: put other storage logic here
     values = torch.zeros((args.episode_length), device=device)
     logprobs = np.zeros((args.episode_length,),)
     entropys = torch.zeros((args.episode_length,), device=device)
-    returns = np.zeros_like(rewards)
 
     # TRY NOT TO MODIFY: prepare the execution of the game.
-    for step in range(args.episode_length):
-        global_step += 1
-        obs[step] = next_obs.copy()
-        
-        # ALGO LOGIC: put action logic here
-        values[step] = vf.forward(obs[step:step+1])
-        action, logproba = pg.get_action(obs[step:step+1])
-        actions[step] = action.data.numpy()[0]
-        logprobs[step] = logproba.data.numpy()[0]
-        
-        # sometimes causes the performance to stay the same for a really long time.. hmmm
-        # could be a degenarate seed
-        clipped_action = np.clip(action.tolist(), env.action_space.low, env.action_space.high)[0]
-
-        # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards[step], dones[step], _ = env.step(clipped_action)
-        next_obs = np.array(next_obs)
-        if dones[step]:
-            # calculate the discounted rewards, or namely, returns
-            returns[step] = rewards[step]
-            for t in reversed(range(episode_lengths[-1], step)):
-                returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-            writer.add_scalar("charts/episode_reward", rewards[(episode_lengths[-1]+1):step+1].sum(), global_step)
-            episode_lengths += [step]
-            next_obs = np.array(env.reset())
+    total_step = 0
+    num_steps = 5
+    while True:
+        for step in range(num_steps):
+            obs[step+total_step] = next_obs.copy()
             
-    
-    # bootstrap reward if not done. reached the batch limit
-    if not dones[step]:
-        returns = np.append(returns, vf.forward(next_obs.reshape(1, -1))[0].detach().numpy(), axis=-1)
-        for t in reversed(range(episode_lengths[-1], step+1)):
+            # ALGO LOGIC: put action logic here
+            values[step+total_step] = vf.forward(obs[step+total_step:step+total_step+1])
+            action, logproba = pg.get_action(obs[step+total_step:step+total_step+1])
+            actions[step+total_step] = action.data.numpy()[0]
+            logprobs[step+total_step] = logproba.data.numpy()[0]
+            
+            # sometimes causes the performance to stay the same for a really long time.. hmmm
+            # could be a degenarate seed
+            clipped_action = np.clip(action.tolist(), env.action_space.low, env.action_space.high)[0]
+
+            # TRY NOT TO MODIFY: execute the game and log data.
+            next_obs, rewards[step+total_step], dones[step+total_step], _ = env.step(clipped_action)
+            next_obs = np.array(next_obs)
+            global_step += 1
+            if dones[step+total_step]:
+                break
+
+        next_total_step = total_step+step+1
+        # ALGO LOGIC: training.
+        # calculate the discounted rewards, or namely, returns
+        returns = np.zeros_like(rewards)
+        returns[step] = rewards[step]
+        for t in reversed(range(rewards.shape[0]-1)):
             returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-        returns = returns[:-1]
+        # advantages are returns - baseline, value estimates in our case
+        advantages = returns - values.detach().cpu().numpy()
 
-    # advantages are returns - baseline, value estimates in our case
-    advantages = returns - values.detach().cpu().numpy()
+        for _ in range(args.update_epochs):
+            newlogproba = pg.get_logproba(obs[total_step:next_total_step], torch.Tensor(actions[total_step:next_total_step]))
+            # newvalues = vf.forward(obs[total_step:next_total_step]).flatten() DO we generate a new values from the current policy?
+            ratio =  torch.exp(newlogproba - torch.Tensor(logprobs[total_step:next_total_step]))
+            surrogate1 = ratio * torch.Tensor(advantages[total_step:next_total_step])
+            surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages[total_step:next_total_step])
+            policy_loss = - torch.mean(torch.min(surrogate1, surrogate2))
+            vf_loss = torch.mean((values[total_step:next_total_step] - torch.Tensor(returns[total_step:next_total_step])).pow(2))
+            entropy_loss = torch.mean(torch.exp(newlogproba) * newlogproba)
+            total_loss = policy_loss + args.vf_coef * vf_loss + args.ent_coef * entropy_loss
+            optimizer.zero_grad()
+            total_loss.backward(retain_graph=True)
+            nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
+            optimizer.step()
 
-    # ALGO LOGIC: training.
-    mini_batch_size = 32
-    for _ in range(args.update_epochs):
-        random_idx = np.random.choice(args.episode_length, mini_batch_size, False)
-        newlogproba = pg.get_logproba(obs[random_idx], torch.Tensor(actions[random_idx]))
-        # newvalues = vf.forward(obs[random_idx]).flatten() DO we generate a new values from the current policy?
-        ratio =  torch.exp(newlogproba - torch.Tensor(logprobs[random_idx]))
-        surrogate1 = ratio * torch.Tensor(advantages[random_idx])
-        surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages[random_idx])
-        policy_loss = - torch.mean(torch.min(surrogate1, surrogate2))
-        vf_loss = torch.mean((values[random_idx] - torch.Tensor(returns[random_idx])).pow(2))
-        entropy_loss = torch.mean(torch.exp(newlogproba) * newlogproba)
-        total_loss = policy_loss + args.vf_coef * vf_loss + args.ent_coef * entropy_loss
-        optimizer.zero_grad()
-        total_loss.backward(retain_graph=True)
-        nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
-        optimizer.step()
+        total_step += step+1
+        if dones[total_step-1]:
+            break
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
+    writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
     writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
     writer.add_scalar("losses/entropy", entropys[:step+1].mean().item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)

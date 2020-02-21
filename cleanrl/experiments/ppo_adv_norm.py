@@ -87,13 +87,12 @@ env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
 # respect the default timelimit
-if int(args.episode_length):
-    if not isinstance(env, TimeLimit):
-        env = TimeLimit(env, int(args.episode_length))
-    else:
+assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
+if isinstance(env, TimeLimit):
+    if int(args.episode_length):
         env._max_episode_steps = int(args.episode_length)
 else:
-    args.episode_length = env._max_episode_steps if isinstance(env, TimeLimit) else 200
+    env = TimeLimit(env, int(args.episode_length))
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
@@ -288,12 +287,12 @@ while global_step < args.total_timesteps:
     advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
 
     for i_epoch in range(args.update_epochs):
-        newlogproba = pg.get_logproba(obs[:step], torch.Tensor(actions[:step]))
-        ratio =  torch.exp(newlogproba - torch.Tensor(logprobs[:step]))
-        surrogate1 = ratio * torch.Tensor(advantages[:step])
-        surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages[:step])
+        newlogproba = pg.get_logproba(obs[:step+1], torch.Tensor(actions[:step+1]))
+        ratio =  torch.exp(newlogproba - torch.Tensor(logprobs[:step+1]))
+        surrogate1 = ratio * torch.Tensor(advantages[:step+1])
+        surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages[:step+1])
         policy_loss = - torch.mean(torch.min(surrogate1, surrogate2))
-        vf_loss = torch.mean((values[:step] - torch.Tensor(returns[:step])).pow(2))
+        vf_loss = torch.mean((values[:step+1] - torch.Tensor(returns[:step+1])).pow(2))
         entropy_loss = torch.mean(torch.exp(newlogproba) * newlogproba)
         total_loss = policy_loss + args.vf_coef * vf_loss + args.ent_coef * entropy_loss
         optimizer.zero_grad()
@@ -304,7 +303,7 @@ while global_step < args.total_timesteps:
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
     writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
-    writer.add_scalar("losses/entropy", entropys[:step].mean().item(), global_step)
+    writer.add_scalar("losses/entropy", entropys[:step+1].mean().item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
 env.close()
 writer.close()

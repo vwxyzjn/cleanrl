@@ -120,17 +120,16 @@ def make_env(env_name):
     env = BufferWrapper(env, 4)
     return ScaledFloatFrame(env)
 
-# Reference: https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from torch.distributions.categorical import Categorical
+from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
 from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
-import collections
 import numpy as np
 import gym
 from gym.wrappers import TimeLimit, Monitor, AtariPreprocessing
@@ -146,13 +145,13 @@ if __name__ == "__main__":
                        help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="PongNoFrameskip-v4",
                        help='the id of the gym environment')
-    parser.add_argument('--learning-rate', type=float, default=1e-4,
+    parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
-    parser.add_argument('--seed', type=int, default=2,
+    parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
-    parser.add_argument('--episode-length', type=int, default=40000,
+    parser.add_argument('--episode-length', type=int, default=400000,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=10000000,
+    parser.add_argument('--total-timesteps', type=int, default=4000000,
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
@@ -166,28 +165,16 @@ if __name__ == "__main__":
                        help="the wandb's project name")
     parser.add_argument('--wandb-entity', type=str, default=None,
                        help="the entity (team) of wandb's project")
-    
+
     # Algorithm specific arguments
-    parser.add_argument('--buffer-size', type=int, default=10000,
-                        help='the replay memory buffer size')
     parser.add_argument('--gamma', type=float, default=0.99,
                        help='the discount factor gamma')
-    parser.add_argument('--target-network-frequency', type=int, default=1000,
-                       help="the timesteps it takes to update the target network")
+    parser.add_argument('--vf-coef', type=float, default=0.25,
+                       help="value function's coefficient the loss function")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                        help='the maximum norm for the gradient clipping')
-    parser.add_argument('--batch-size', type=int, default=32,
-                       help="the batch size of sample from the reply memory")
-    parser.add_argument('--start-e', type=float, default=1,
-                       help="the starting epsilon for exploration")
-    parser.add_argument('--end-e', type=float, default=0.02,
-                       help="the ending epsilon for exploration")
-    parser.add_argument('--exploration-fraction', type=float, default=0.10,
-                       help="the fraction of `total-timesteps` it takes from start-e to go end-e")
-    parser.add_argument('--learning-starts', type=int, default=10000,
-                       help="timestep to start learning")
-    parser.add_argument('--train-frequency', type=int, default=1,
-                       help="the frequency of training")
+    parser.add_argument('--ent-coef', type=float, default=0.01,
+                       help="policy entropy's coefficient the loss function")
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -206,6 +193,7 @@ if args.prod_mode:
 # TRY NOT TO MODIFY: seeding
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 env = make_env(args.gym_id)
+args.episode_length = 40000
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
@@ -216,44 +204,15 @@ env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
 # respect the default timelimit
+env = TimeLimit(env, args.episode_length)	
+if args.capture_video:	
+    env = Monitor(env, f'videos/{experiment_name}')	
 assert isinstance(env.action_space, Discrete), "only discrete action space is supported"
-assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
-if isinstance(env, TimeLimit):
-    if int(args.episode_length):
-        env._max_episode_steps = int(args.episode_length)
-else:
-    env = TimeLimit(env, int(args.episode_length))
-if args.capture_video:
-    env = Monitor(env, f'videos/{experiment_name}')
-
-# modified from https://github.com/seungeunrho/minimalRL/blob/master/dqn.py#
-class ReplayBuffer():
-    def __init__(self, buffer_limit):
-        self.buffer = collections.deque(maxlen=buffer_limit)
-    
-    def put(self, transition):
-        self.buffer.append(transition)
-    
-    def sample(self, n):
-        mini_batch = random.sample(self.buffer, n)
-        s_lst, a_lst, r_lst, s_prime_lst, done_mask_lst = [], [], [], [], []
-        
-        for transition in mini_batch:
-            s, a, r, s_prime, done_mask = transition
-            s_lst.append(s)
-            a_lst.append(a)
-            r_lst.append(r)
-            s_prime_lst.append(s_prime)
-            done_mask_lst.append(done_mask)
-
-        return np.array(s_lst), np.array(a_lst), \
-               np.array(r_lst), np.array(s_prime_lst), \
-               np.array(done_mask_lst)
 
 # ALGO LOGIC: initialize agent here:
-class QNetwork(nn.Module):
+class Policy(nn.Module):
     def __init__(self):
-        super(QNetwork, self).__init__()
+        super(Policy, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(env.observation_space.shape[0], 32, kernel_size=8, stride=4),
             nn.ReLU(),
@@ -278,18 +237,37 @@ class QNetwork(nn.Module):
         conv_out = self.conv(x).view(x.size()[0], -1)
         return self.fc(conv_out)
 
-def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
-    slope =  (end_e - start_e) / duration
-    return max(slope * t + start_e, end_e)
+class Value(nn.Module):
+    def __init__(self):
+        super(Value, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(env.observation_space.shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU()
+        )
+        conv_out_size = self._get_conv_out(env.observation_space.shape)
+        self.fc = nn.Sequential(
+            nn.Linear(conv_out_size, 512),
+            nn.ReLU(),
+            nn.Linear(512, 1)
+        )
 
-rb = ReplayBuffer(args.buffer_size)
-q_network = QNetwork().to(device)
-target_network = QNetwork().to(device)
-target_network.load_state_dict(q_network.state_dict())
-optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
+    def _get_conv_out(self, shape):
+        o = self.conv(torch.zeros(1, *shape))
+        return int(np.prod(o.size()))
+
+    def forward(self, x):
+        x = torch.Tensor(x).to(device)
+        conv_out = self.conv(x).view(x.size()[0], -1)
+        return self.fc(conv_out)
+
+pg = Policy().to(device)
+vf = Value().to(device)
+optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
-print(device.__repr__())
-print(q_network)
 
 # TRY NOT TO MODIFY: start the game
 global_step = 0
@@ -298,50 +276,53 @@ while global_step < args.total_timesteps:
     actions = np.empty((args.episode_length,), dtype=object)
     rewards, dones = np.zeros((2, args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
-    
+
+    # ALGO LOGIC: put other storage logic here
+    values = torch.zeros((args.episode_length), device=device)
+    neglogprobs = torch.zeros((args.episode_length,), device=device)
+    entropys = torch.zeros((args.episode_length,), device=device)
+
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
         global_step += 1
         obs[step] = next_obs.copy()
 
         # ALGO LOGIC: put action logic here
-        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
-        if random.random() < epsilon:
-            actions[step] = env.action_space.sample()
-        else:
-            logits = target_network.forward(obs[step:step+1])
-            action = torch.argmax(logits, dim=1)
-            actions[step] = action.tolist()[0]
+        logits = pg.forward(obs[step:step+1])
+        values[step] = vf.forward(obs[step:step+1])
+
+        # ALGO LOGIC: `env.action_space` specific logic
+        probs = Categorical(logits=logits)
+        action = probs.sample()
+        actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], -probs.log_prob(action), probs.entropy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
-        rb.put((obs[step], actions[step], rewards[step], next_obs, dones[step]))
         next_obs = np.array(next_obs)
-
-        # ALGO LOGIC: training.
-        if global_step > args.learning_starts and global_step % args.train_frequency == 0:
-            s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
-            target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
-            td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
-            old_val = q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
-            loss = loss_fn(td_target, old_val)
-
-            # optimize the midel
-            optimizer.zero_grad()
-            loss.backward()
-            writer.add_scalar("losses/td_loss", loss, global_step)
-            nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
-            optimizer.step()
-
-            # update the target network
-            if global_step % args.target_network_frequency == 0:
-                target_network.load_state_dict(q_network.state_dict())
-
         if dones[step]:
             break
 
+    # ALGO LOGIC: training.
+    # calculate the discounted rewards, or namely, returns
+    returns = np.zeros_like(rewards)
+    for t in reversed(range(rewards.shape[0]-1)):
+        returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
+    # advantages are returns - baseline, value estimates in our case
+    advantages = returns - values.detach().cpu().numpy()
+
+    vf_loss = loss_fn(torch.Tensor(returns).to(device), values) * args.vf_coef
+    pg_loss = torch.Tensor(advantages).to(device) * neglogprobs
+    loss = (pg_loss - (torch.exp(-neglogprobs) * -neglogprobs) * args.ent_coef).mean() + vf_loss
+
+    optimizer.zero_grad()
+    loss.backward()
+    nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
+    optimizer.step()
+
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
-    writer.add_scalar("charts/epsilon", epsilon, global_step)
+    writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
+    writer.add_scalar("losses/entropy", entropys[:step+1].mean().item(), global_step)
+    writer.add_scalar("losses/policy_loss", pg_loss.mean().item(), global_step)
 env.close()
 writer.close()

@@ -83,13 +83,12 @@ output_shape = preprocess_ac_space(env.action_space)
 # ATARI specifics:
 env = AtariPreprocessing(env)
 # respect the default timelimit
-if int(args.episode_length):
-    if not isinstance(env, TimeLimit):
-        env = TimeLimit(env, int(args.episode_length))
-    else:
+assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
+if isinstance(env, TimeLimit):
+    if int(args.episode_length):
         env._max_episode_steps = int(args.episode_length)
 else:
-    args.episode_length = env._max_episode_steps if isinstance(env, TimeLimit) else 200
+    env = TimeLimit(env, int(args.episode_length))
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
@@ -218,7 +217,7 @@ while global_step < args.total_timesteps:
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
     writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
-    writer.add_scalar("losses/entropy", entropys[:step].mean().item(), global_step)
+    writer.add_scalar("losses/entropy", entropys[:step+1].mean().item(), global_step)
     writer.add_scalar("losses/policy_loss", pg_loss.mean().item(), global_step)
 env.close()
 writer.close()
