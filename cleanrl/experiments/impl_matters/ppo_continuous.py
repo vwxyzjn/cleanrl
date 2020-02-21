@@ -23,8 +23,9 @@ if __name__ == "__main__":
                        help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
                        help='the id of the gym environment')
-    parser.add_argument('--learning-rate', type=float, default=7e-4,
-                       help='the learning rate of the optimizer')
+    # TODO: Remove this if consensus reached on using separate learning reate for each component
+    # parser.add_argument('--learning-rate', type=float, default=7e-4,
+    #                    help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=1000,
@@ -33,9 +34,6 @@ if __name__ == "__main__":
                        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=bool, default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
-    # NOTE: Does not work when passing --cuda False
-    # parser.add_argument('--cuda', type=bool, default=True,
-    #                    help='whether to use CUDA whenever possible')
     parser.add_argument('--cuda', action="store_true",
                        help='Toggles the use of CUDA whenever possible')
     parser.add_argument('--prod-mode', type=bool, default=False,
@@ -52,8 +50,9 @@ if __name__ == "__main__":
                        help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.97,
                        help='the lambda for the general advantage estimation')
-    parser.add_argument('--vf-coef', type=float, default=0.25,
-                       help="value function's coefficient the loss function")
+    # TODO: Discuss and eventually remove, since we do not use this in the current version
+    # parser.add_argument('--vf-coef', type=float, default=0.25,
+    #                    help="value function's coefficient the loss function")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                        help='the maximum norm for the gradient clipping')
     parser.add_argument('--ent-coef', type=float, default=0.01,
@@ -62,20 +61,18 @@ if __name__ == "__main__":
                        help="the surrogate clipping coefficient")
     parser.add_argument('--update-epochs', type=int, default=100,
                         help="the K epochs to update the policy")
-    # MODFIED: Added support for KL Bounding during the updates
+    # Imposing KL Bound during the policy updates
     parser.add_argument('--kl', action='store_true',
                         help='If toggled, the policy updates will be early stopped w.r.t target-kl')
     parser.add_argument('--target-kl', type=float, default=0.015)
-    # TODO: Actually implement the computation for this
-    # MODIFIED: Added toggle for GAE advantage support
+    # GAE based Advantage Estimation toggle
     parser.add_argument('--gae', action='store_true',
                         help='Use GAE for advantage computation')
-
-    # MODIFIED: Separate learning rate for policy and values, according to OpenAI SpinUp
+    # Component wise learning rate, as per OpenAI SpinUp
     parser.add_argument('--policy-lr', type=float, default=3e-4)
     parser.add_argument('--value-lr', type=float, default=1e-3)
 
-    # MODIFIED: Parameterization for the tricks in the Implementation Matters paper.
+    # Parameterization for the tricks in the Implementation Matters paper.
     parser.add_argument('--norm-obs', action='store_true',
                         help="Toggles observation normalization")
     parser.add_argument('--norm-rewards', action='store_true',
@@ -95,20 +92,15 @@ if __name__ == "__main__":
     parser.add_argument('--weights-init', default="xavier", choices=["xavier", 'orthogonal'],
                         help='Selects the scheme to be used for weights initialization')
 
-    # TODO: Remove this once everything is confirmed to be working correctly
-    parser.add_argument('--notb', action='store_true')
-
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
 
 # TRY NOT TO MODIFY: setup the environment
-# TODO: Remove this notb trash later
-if not args.notb:
-    experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    writer = SummaryWriter(f"runs/{experiment_name}")
-    writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
-            '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
+experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+writer = SummaryWriter(f"runs/{experiment_name}")
+writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
+        '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
 
 if args.prod_mode:
     import wandb
@@ -117,7 +109,6 @@ if args.prod_mode:
     wandb.save(os.path.abspath(__file__))
 
 # TRY NOT TO MODIFY: seeding
-# TODO: Does it still work on gpu ?
 device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 random.seed(args.seed)
 np.random.seed(args.seed)
@@ -398,8 +389,8 @@ pg = Policy().to(device)
 vf = Value().to(device)
 
 # MODIFIED: Separate optimizer and learning rates
-pg_optimizer = optim.Adam(list(pg.parameters()), lr=args.policy_lr)
-v_optimizer = optim.Adam(list(vf.parameters()), lr=args.value_lr)
+pg_optimizer = optim.Adam(pg.parameters(), lr=args.policy_lr)
+v_optimizer = optim.Adam(vf.parameters(), lr=args.value_lr)
 
 # MODIFIED: Initializing learning rate anneal scheduler when need
 if args.anneal_lr:
@@ -435,7 +426,7 @@ while global_step < args.total_timesteps:
         observations[step] = next_obs.copy()
 
         # ALGO LOGIC: put action logic here
-        values[step] = vf.forward(observations[step:step+1]) # Question: Why :step+1 again ?
+        values[step] = vf.forward(observations[step:step+1])
 
         with torch.no_grad():
             action, logproba = pg.get_action(observations[step:step+1])
@@ -449,6 +440,8 @@ while global_step < args.total_timesteps:
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(clipped_action)
         next_obs = np.array(next_obs)
+
+        # print( "# DEBUG: Sampling step %d -- Done: %d" % (step,dones[step]))
 
         if dones[step]:
             # Computing the discounted returns:
@@ -474,22 +467,17 @@ while global_step < args.total_timesteps:
                     prev_value = values[i]
                     prev_advantage = advantages[i]
 
-            # TODO: Remove this notb
-            if not args.notb:
-                writer.add_scalar("charts/episode_reward", rewards[(episode_lengths[-1]+1):step].sum(), global_step)
+            writer.add_scalar("charts/episode_reward", rewards[(episode_lengths[-1]+1):step].sum(), global_step)
 
             episode_lengths += [step]
             next_obs = np.array(env.reset())
 
-    # TODO: Bootstraping doesn't seem to work
-    # bootstrap reward if not done. reached the batch limit
     if not dones[step]:
         returns = np.append(returns, vf.forward(next_obs.reshape(1, -1))[0].detach().cpu().numpy(), axis=-1)
         if not args.gae:
             for t in reversed(range(episode_lengths[-1], step+1)):
                 returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
             returns = returns[:-1]
-
         else:
             # GAE-based discounted return computation
             deltas = np.zeros((args.episode_length,))
@@ -506,15 +494,14 @@ while global_step < args.total_timesteps:
                 prev_return = returns[i]
                 prev_value = values[i]
                 prev_advantage = advantages[i]
+            returns = returns[:-1]
 
-    # TODO: More elegant way
+    # Tensorizing necessary variables
     if not args.gae:
         advantages = torch.Tensor(returns - values.detach().cpu().numpy()).to(device)
     else:
-        advantages = th.Tensor(advantages).to(device)
+        advantages = torch.Tensor(advantages).to(device)
 
-    # Optimizaing policy network
-    # First Tensorize all that is need to be so, clears up the loss computation part
     logprobs = torch.Tensor(logprobs).to(device) # Called 2 times: during policy update and KL bound checked
     returns = torch.Tensor(returns).to(device) # Called 1 time when updating the values
 
@@ -557,14 +544,13 @@ while global_step < args.total_timesteps:
         pg_lr_scheduler.step()
         vf_lr_scheduler.step()
 
-    if not args.notb:
-        # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
-        writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
-        # MODIFIED: Logs after how many iters did the policy udate stop ?
-        if args.kl:
-            writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
-            writer.add_scalar("debug/approx_kl", approx_kl.item(), global_step)
+    # TRY NOT TO MODIFY: record rewards for plotting purposes
+    writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
+    writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
+    # Additionally, logs after how many iters did the policy udate stop ?
+    if args.kl:
+        writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
+        writer.add_scalar("debug/approx_kl", approx_kl.item(), global_step)
 
 env.close()
 writer.close()
