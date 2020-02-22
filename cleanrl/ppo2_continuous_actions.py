@@ -16,107 +16,6 @@ import time
 import random
 import os
 
-<<<<<<< HEAD:cleanrl/experiments/impl_matters/ppo_continuous.py
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='PPO agent')
-    # Common arguments
-    parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
-                       help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
-                       help='the id of the gym environment')
-    # TODO: Remove this if consensus reached on using separate learning reate for each component
-    # parser.add_argument('--learning-rate', type=float, default=7e-4,
-    #                    help='the learning rate of the optimizer')
-    parser.add_argument('--seed', type=int, default=1,
-                       help='seed of the experiment')
-    parser.add_argument('--episode-length', type=int, default=1000,
-                       help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=100000,
-                       help='total timesteps of the experiments')
-    parser.add_argument('--torch-deterministic', type=bool, default=True,
-                       help='whether to set `torch.backends.cudnn.deterministic=True`')
-    parser.add_argument('--cuda', action="store_true",
-                       help='Toggles the use of CUDA whenever possible')
-    parser.add_argument('--prod-mode', type=bool, default=False,
-                       help='run the script in production mode and use wandb to log outputs')
-    parser.add_argument('--capture-video', type=bool, default=False,
-                       help='weather to capture videos of the agent performances (check out `videos` folder)')
-    parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
-                       help="the wandb's project name")
-    parser.add_argument('--wandb-entity', type=str, default=None,
-                       help="the entity (team) of wandb's project")
-
-    # Algorithm specific arguments
-    parser.add_argument('--gamma', type=float, default=0.99,
-                       help='the discount factor gamma')
-    parser.add_argument('--gae-lambda', type=float, default=0.97,
-                       help='the lambda for the general advantage estimation')
-    # TODO: Discuss and eventually remove, since we do not use this in the current version
-    # parser.add_argument('--vf-coef', type=float, default=0.25,
-    #                    help="value function's coefficient the loss function")
-    parser.add_argument('--max-grad-norm', type=float, default=0.5,
-                       help='the maximum norm for the gradient clipping')
-    parser.add_argument('--ent-coef', type=float, default=0.01,
-                       help="policy entropy's coefficient the loss function")
-    parser.add_argument('--clip-coef', type=float, default=0.2,
-                       help="the surrogate clipping coefficient")
-    parser.add_argument('--update-epochs', type=int, default=100,
-                        help="the K epochs to update the policy")
-    # Imposing KL Bound during the policy updates
-    parser.add_argument('--kl', action='store_true',
-                        help='If toggled, the policy updates will be early stopped w.r.t target-kl')
-    parser.add_argument('--target-kl', type=float, default=0.015)
-    # GAE based Advantage Estimation toggle
-    parser.add_argument('--gae', action='store_true',
-                        help='Use GAE for advantage computation')
-    # Component wise learning rate, as per OpenAI SpinUp
-    parser.add_argument('--policy-lr', type=float, default=3e-4)
-    parser.add_argument('--value-lr', type=float, default=1e-3)
-
-    # Parameterization for the tricks in the Implementation Matters paper.
-    parser.add_argument('--norm-obs', action='store_true',
-                        help="Toggles observation normalization")
-    parser.add_argument('--norm-rewards', action='store_true',
-                        help="Toggles rewards normalization")
-    parser.add_argument('--norm-returns', action='store_true',
-                        help="Toggles returns normalization")
-    parser.add_argument('--no-obs-reset', action='store_true',
-                        help="When passed, the observation filter shall not be reset after the episode")
-    parser.add_argument('--no-reward-reset', action='store_true',
-                        help="When passed, the reward / return filter shall not be reset after the episode")
-    parser.add_argument('--obs-clip', type=float, default=10.0,
-                        help="Value for reward clipping, as per the paper")
-    parser.add_argument('--rew-clip', type=float, default=5.0,
-                        help="Value for observation clipping, as per the paper")
-    parser.add_argument('--anneal-lr', action='store_true',
-                        help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument('--weights-init', default="xavier", choices=["xavier", 'orthogonal'],
-                        help='Selects the scheme to be used for weights initialization')
-
-    args = parser.parse_args()
-    if not args.seed:
-        args.seed = int(time.time())
-
-# TRY NOT TO MODIFY: setup the environment
-experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-writer = SummaryWriter(f"runs/{experiment_name}")
-writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
-        '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
-
-if args.prod_mode:
-    import wandb
-    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True)
-    writer = SummaryWriter(f"/tmp/{experiment_name}")
-    wandb.save(os.path.abspath(__file__))
-
-# TRY NOT TO MODIFY: seeding
-device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
-random.seed(args.seed)
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
-torch.backends.cudnn.deterministic = args.torch_deterministic
-=======
->>>>>>> d95ceb3b2149d5e297e6c65709f48008805565ec:cleanrl/ppo2_continuous_actions.py
 
 # Helper classes for normalizations
 class RunningStat(object):
@@ -293,7 +192,7 @@ class CustomEnv(gym.core.Wrapper):
         if is_done:
             info['done'] = (self.counter, self.total_true_reward)
         return state, _reward, is_done, info
-    
+
     def seed(self, seed):
         self.env.seed(seed)
 
@@ -484,8 +383,8 @@ pg = Policy().to(device)
 vf = Value().to(device)
 
 # MODIFIED: Separate optimizer and learning rates
-pg_optimizer = optim.Adam(pg.parameters(), lr=args.policy_lr)
-v_optimizer = optim.Adam(vf.parameters(), lr=args.value_lr)
+pg_optimizer = optim.Adam(list(pg.parameters()), lr=args.policy_lr)
+v_optimizer = optim.Adam(list(vf.parameters()), lr=args.value_lr)
 
 # MODIFIED: Initializing learning rate anneal scheduler when need
 if args.anneal_lr:
@@ -536,8 +435,6 @@ while global_step < args.total_timesteps:
         next_obs, rewards[step], dones[step], _ = env.step(clipped_action)
         next_obs = np.array(next_obs)
 
-        # print( "# DEBUG: Sampling step %d -- Done: %d" % (step,dones[step]))
-
         if dones[step]:
             # Computing the discounted returns:
             if args.gae:
@@ -559,27 +456,15 @@ while global_step < args.total_timesteps:
                 for t in reversed(range(episode_lengths[-1], step)):
                     returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
 
-<<<<<<< HEAD:cleanrl/experiments/impl_matters/ppo_continuous.py
-            writer.add_scalar("charts/episode_reward", rewards[(episode_lengths[-1]+1):step].sum(), global_step)
-
-=======
             writer.add_scalar("charts/episode_reward", rewards[(episode_lengths[-1]+1):step+1].sum(), global_step)
->>>>>>> d95ceb3b2149d5e297e6c65709f48008805565ec:cleanrl/ppo2_continuous_actions.py
             episode_lengths += [step]
             next_obs = np.array(env.reset())
 
+    # TODO: Bootstraping doesn't seem to work
+    # bootstrap reward if not done. reached the batch limit
     if not dones[step]:
         returns = np.append(returns, vf.forward(next_obs.reshape(1, -1))[0].detach().cpu().numpy(), axis=-1)
-<<<<<<< HEAD:cleanrl/experiments/impl_matters/ppo_continuous.py
-        if not args.gae:
-            for t in reversed(range(episode_lengths[-1], step+1)):
-                returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-            returns = returns[:-1]
-        else:
-            # GAE-based discounted return computation
-=======
         if args.gae:
->>>>>>> d95ceb3b2149d5e297e6c65709f48008805565ec:cleanrl/ppo2_continuous_actions.py
             deltas = np.zeros((args.episode_length,))
             advantages = np.zeros((args.episode_length,))
             prev_return = vf.forward(next_obs.reshape(1, -1))[0].detach().cpu().numpy()
@@ -593,23 +478,15 @@ while global_step < args.total_timesteps:
                 prev_return = returns[i]
                 prev_value = values[i]
                 prev_advantage = advantages[i]
-<<<<<<< HEAD:cleanrl/experiments/impl_matters/ppo_continuous.py
-            returns = returns[:-1]
-
-    # Tensorizing necessary variables
-    if not args.gae:
-        advantages = torch.Tensor(returns - values.detach().cpu().numpy()).to(device)
-    else:
-        advantages = torch.Tensor(advantages).to(device)
-=======
             advantages = torch.Tensor(advantages).to(device)
         else:
             for t in reversed(range(episode_lengths[-1], step+1)):
                 returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
             returns = returns[:-1]
             advantages = torch.Tensor(returns - values.detach().cpu().numpy()).to(device)
->>>>>>> d95ceb3b2149d5e297e6c65709f48008805565ec:cleanrl/ppo2_continuous_actions.py
 
+    # Optimizaing policy network
+    # First Tensorize all that is need to be so, clears up the loss computation part
     logprobs = torch.Tensor(logprobs).to(device) # Called 2 times: during policy update and KL bound checked
     returns = torch.Tensor(returns).to(device) # Called 1 time when updating the values
 
@@ -654,11 +531,7 @@ while global_step < args.total_timesteps:
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
-<<<<<<< HEAD:cleanrl/experiments/impl_matters/ppo_continuous.py
-    # Additionally, logs after how many iters did the policy udate stop ?
-=======
     # MODIFIED: Logs after how many iters did the policy udate stop ?
->>>>>>> d95ceb3b2149d5e297e6c65709f48008805565ec:cleanrl/ppo2_continuous_actions.py
     if args.kl:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
         writer.add_scalar("debug/approx_kl", approx_kl.item(), global_step)
