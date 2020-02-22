@@ -536,7 +536,5 @@ while global_step < args.total_timesteps:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
         writer.add_scalar("debug/approx_kl", approx_kl.item(), global_step)
 
-    print("# DEBUG: Ploss: %.6f -- VLoss: %.6f" % ( policy_loss.item(), v_loss.item()))
-    
 env.close()
 writer.close()
