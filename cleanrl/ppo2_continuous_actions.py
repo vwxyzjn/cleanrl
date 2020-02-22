@@ -400,8 +400,7 @@ while global_step < args.total_timesteps:
     next_obs = np.array(env.reset())
 
     # ALGO Logic: Storage for epoch data
-    # NOTE: Changed to observations to avoid confusing with single obs
-    observations = np.empty((args.episode_length,) + env.observation_space.shape)
+    obs = np.empty((args.episode_length,) + env.observation_space.shape)
 
     actions = np.empty((args.episode_length,) + env.action_space.shape)
     logprobs = np.zeros((args.episode_length,))
@@ -417,18 +416,18 @@ while global_step < args.total_timesteps:
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
         global_step += 1
-        observations[step] = next_obs.copy()
+        obs[step] = next_obs.copy()
 
         # ALGO LOGIC: put action logic here
-        values[step] = vf.forward(observations[step:step+1])
+        values[step] = vf.forward(obs[step:step+1])
 
         with torch.no_grad():
-            action, logproba = pg.get_action(observations[step:step+1])
+            action, logproba = pg.get_action(obs[step:step+1])
 
         actions[step] = action.data.cpu().numpy()[0]
         logprobs[step] = logproba.data.cpu().numpy()[0]
 
-        # COMMENT: Wouldn't it be better to use tanh based squashing ?
+        # SUGGESTION: Find a better way to constrain policy actions to action low and higher bounds
         clipped_action = np.clip(action.tolist(), env.action_space.low, env.action_space.high)[0]
 
         # TRY NOT TO MODIFY: execute the game and log data.
@@ -478,6 +477,7 @@ while global_step < args.total_timesteps:
                 prev_return = returns[i]
                 prev_value = values[i]
                 prev_advantage = advantages[i]
+            returns = returns[:-1]
             advantages = torch.Tensor(advantages).to(device)
         else:
             for t in reversed(range(episode_lengths[-1], step+1)):
@@ -491,7 +491,7 @@ while global_step < args.total_timesteps:
     returns = torch.Tensor(returns).to(device) # Called 1 time when updating the values
 
     for i_epoch_pi in range(args.update_epochs):
-        newlogproba = pg.get_logproba(observations, actions)
+        newlogproba = pg.get_logproba(obs, actions)
         ratio = (newlogproba - logprobs).exp()
 
         # Policy loss as in OpenAI SpinUp
@@ -502,12 +502,12 @@ while global_step < args.total_timesteps:
         policy_loss = - torch.min(ratio * advantages, clip_adv).mean()
 
         pg_optimizer.zero_grad()
-        policy_loss.backward() # NOTE: If retain_graph is needed for it to work, there is probably a variable that has to be detached() but is not.
+        policy_loss.backward()
         nn.utils.clip_grad_norm_(pg.parameters(), args.max_grad_norm)
         pg_optimizer.step()
 
-        # Note: This will stop updating the policy once the KL has been breached
-        # TODO: Roll back to the policy state when it was inside trust region
+        # KEY TECHNIQUE: This will stop updating the policy once the KL has been breached
+        # TODO: Roll back the policy to before at breaches the KL trust region
         if args.kl:
             approx_kl = (logprobs - newlogproba).mean()
             if approx_kl > args.target_kl:
@@ -516,7 +516,7 @@ while global_step < args.total_timesteps:
     # Optimizing value network
     for i_epoch in range(args.update_epochs):
         # Resample values
-        values = vf.forward(observations).view(-1)
+        values = vf.forward(obs).view(-1)
         v_loss = loss_fn(returns, values)
         v_optimizer.zero_grad()
         v_loss.backward()
@@ -536,5 +536,7 @@ while global_step < args.total_timesteps:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
         writer.add_scalar("debug/approx_kl", approx_kl.item(), global_step)
 
+    print("# DEBUG: Ploss: %.6f -- VLoss: %.6f" % ( policy_loss.item(), v_loss.item()))
+    
 env.close()
 writer.close()
