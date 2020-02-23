@@ -89,6 +89,7 @@ assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does
 if isinstance(env, TimeLimit):
     if int(args.episode_length):
         env._max_episode_steps = int(args.episode_length)
+    args.episode_length = env._max_episode_steps
 else:
     env = TimeLimit(env, int(args.episode_length))
 if args.capture_video:
