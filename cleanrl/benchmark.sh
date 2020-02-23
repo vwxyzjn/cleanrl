@@ -23,8 +23,8 @@ do
     --total-timesteps 30000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -37,8 +37,8 @@ do
     --total-timesteps 1000000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -49,8 +49,8 @@ do
     --total-timesteps 200000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -66,8 +66,8 @@ do
     --total-timesteps 200000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -81,8 +81,8 @@ do
     --episode-length 1600 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -96,8 +96,8 @@ do
     --episode-length 200 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -112,8 +112,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -127,8 +127,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -142,8 +142,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -157,8 +157,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -173,8 +173,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -188,8 +188,8 @@ do
     --episode-length 150 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -206,8 +206,8 @@ do
     --total-timesteps 60000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -229,8 +229,8 @@ do
     --total-timesteps 30000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -241,8 +241,8 @@ do
     --total-timesteps 1000000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -253,8 +253,8 @@ do
     --total-timesteps 200000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -265,8 +265,8 @@ do
     --total-timesteps 200000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -278,8 +278,8 @@ do
     --episode-length 1600 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -291,8 +291,8 @@ do
     --episode-length 200 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -305,8 +305,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -318,8 +318,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -331,8 +331,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -344,8 +344,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -358,8 +358,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -371,8 +371,8 @@ do
     --episode-length 150 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -383,8 +383,8 @@ do
     --total-timesteps 60000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -395,8 +395,8 @@ do
     --total-timesteps 60000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -418,8 +418,8 @@ do
     --total-timesteps 30000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -430,8 +430,8 @@ do
     --total-timesteps 1000000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -442,8 +442,8 @@ do
     --total-timesteps 200000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -454,8 +454,8 @@ do
     --total-timesteps 200000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -467,8 +467,8 @@ do
     --episode-length 1600 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -480,8 +480,8 @@ do
     --episode-length 200 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -494,8 +494,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -507,8 +507,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -521,8 +521,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -534,8 +534,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -548,8 +548,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -561,8 +561,8 @@ do
     --episode-length 150 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -574,8 +574,8 @@ do
     --total-timesteps 60000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -597,8 +597,8 @@ do
     --total-timesteps 30000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -609,8 +609,8 @@ do
     --total-timesteps 1000000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -621,8 +621,8 @@ do
     --total-timesteps 200000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -633,8 +633,8 @@ do
     --total-timesteps 60000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -647,8 +647,8 @@ do
     --total-timesteps 1000000 \
     --wandb-project-name cleanrl \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done

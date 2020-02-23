@@ -6,8 +6,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -19,8 +19,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -32,8 +32,8 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -47,8 +47,8 @@ do
     --running-state-reset False \
     --wandb-project-name cleanrl \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -62,8 +62,8 @@ do
     --running-state-reset False \
     --wandb-project-name cleanrl \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -77,8 +77,8 @@ do
     --running-state-reset True \
     --wandb-project-name cleanrl \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done
@@ -92,8 +92,8 @@ do
     --running-state-reset True \
     --wandb-project-name cleanrl \
     --wandb-entity cleanrl \
-    --prod-mode True \
-    --capture-video True \
+    --prod-mode \
+    --capture-video \
     --seed $seed
     ) >& /dev/null &
 done

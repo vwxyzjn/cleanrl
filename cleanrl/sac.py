@@ -37,13 +37,13 @@ if __name__ == "__main__":
                        help='the maximum length of each episode')
     parser.add_argument('--total-timesteps', type=int, default=int(1e6),
                        help='total timesteps of the experiments')
-    parser.add_argument('--torch-deterministic', type=bool, default=True,
-                       help='whether to set `torch.backends.cudnn.deterministic=True`')
-    parser.add_argument('--cuda', type=bool, default=True,
-                       help='whether to use CUDA whenever possible')
-    parser.add_argument('--prod-mode', type=bool, default=False,
+    parser.add_argument('--no-torch-deterministic', action='store_false', dest="torch_deterministic", default=True,
+                       help='if toggled, `torch.backends.cudnn.deterministic=False`')
+    parser.add_argument('--no-cuda', action='store_false', dest="cuda", default=True,
+                       help='if toggled, cuda will not be enabled by default')
+    parser.add_argument('--prod-mode', action='store_true', default=False,
                        help='run the script in production mode and use wandb to log outputs')
-    parser.add_argument('--capture-video', type=bool, default=False,
+    parser.add_argument('--capture-video', action='store_true', default=False,
                        help='weather to capture videos of the agent performances (check out `videos` folder)')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                        help="the wandb's project name")

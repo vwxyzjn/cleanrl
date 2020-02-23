@@ -10,7 +10,7 @@ do
     --episode-length 1600 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True
+    --prod-mode
     ) >& /dev/null &
 done
 for seed in {1..2}
@@ -22,7 +22,7 @@ do
     --episode-length 200 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True
+    --prod-mode
     ) >& /dev/null &
 done
 for seed in {1..2}
@@ -34,7 +34,7 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True
+    --prod-mode
     ) >& /dev/null &
 done
 for seed in {1..2}
@@ -46,7 +46,7 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True
+    --prod-mode
     ) >& /dev/null &
 done
 for seed in {1..2}
@@ -58,7 +58,7 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True
+    --prod-mode
     ) >& /dev/null &
 done
 for seed in {1..2}
@@ -70,7 +70,7 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True
+    --prod-mode
     ) >& /dev/null &
 done
 for seed in {1..2}
@@ -82,7 +82,7 @@ do
     --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True
+    --prod-mode
     ) >& /dev/null &
 done
 for seed in {1..2}
@@ -94,6 +94,6 @@ do
     --episode-length 150 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
-    --prod-mode True
+    --prod-mode
     ) >& /dev/null &
 done

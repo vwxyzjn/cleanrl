@@ -45,7 +45,7 @@ $ python a2c.py \
     --seed 1 \
     --gym-id CartPole-v0 \
     --total-timesteps 50000 \
-    --prod-mode True \
+    --prod-mode \
     --wandb-project-name cleanrltest 
 # Then go to https://app.wandb.ai/${WANDB_USERNAME}/cleanrltest/
 ```
@@ -104,7 +104,7 @@ CleanRL, however, is built to provide a simplified and streamlined approach to c
             --gym-id CartPole-v0 \
             --total-timesteps 30000 \
             --wandb-project-name myRLproject \
-            --prod-mode True
+            --prod-mode
             ) >& /dev/null &
         done
     $ for seed in {1..2}
@@ -115,7 +115,7 @@ CleanRL, however, is built to provide a simplified and streamlined approach to c
             --total-timesteps 30000 \
             --gamma 0.8 \ # a lower discount factor
             --wandb-project-name myRLproject \
-            --prod-mode True
+            --prod-mode
             ) >& /dev/null &
         done
     ```
