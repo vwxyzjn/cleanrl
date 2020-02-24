@@ -450,10 +450,12 @@ while global_step < args.total_timesteps:
                     prev_return = returns[i]
                     prev_value = values[i]
                     prev_advantage = advantages[i]
+                advantages = torch.Tensor(advantages).to(device)
             else:
                 returns[step] = rewards[step]
                 for t in reversed(range(episode_lengths[-1], step)):
                     returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
+                advantages = torch.Tensor(returns - values.detach().cpu().numpy()).to(device)
 
             writer.add_scalar("charts/episode_reward", rewards[(episode_lengths[-1]+1):step+1].sum(), global_step)
             episode_lengths += [step]
@@ -478,12 +480,12 @@ while global_step < args.total_timesteps:
                 prev_value = values[i]
                 prev_advantage = advantages[i]
             returns = returns[:-1]
-            advantages = torch.Tensor(advantages).to(device)
+            advantages = torch.Tensor(advantages).to(device) # Repetition: refactor ?
         else:
             for t in reversed(range(episode_lengths[-1], step+1)):
                 returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
             returns = returns[:-1]
-            advantages = torch.Tensor(returns - values.detach().cpu().numpy()).to(device)
+            advantages = torch.Tensor(returns - values.detach().cpu().numpy()).to(device) # Repetition: refactor ?
 
     # Optimizaing policy network
     # First Tensorize all that is need to be so, clears up the loss computation part
