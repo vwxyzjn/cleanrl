@@ -249,7 +249,7 @@ if __name__ == "__main__":
     parser.add_argument('--target-kl', type=float, default=0.015)
     # TODO: Actually implement the computation for this
     # MODIFIED: Added toggle for GAE advantage support
-    parser.add_argument('--gae', action='store_true', default=True,
+    parser.add_argument('--gae', action='store_true', default=False,
                         help='Use GAE for advantage computation')
 
     # MODIFIED: Separate learning rate for policy and values, according to OpenAI SpinUp
@@ -257,21 +257,21 @@ if __name__ == "__main__":
     parser.add_argument('--value-lr', type=float, default=1e-3)
 
     # MODIFIED: Parameterization for the tricks in the Implementation Matters paper.
-    parser.add_argument('--norm-obs', action='store_true',
+    parser.add_argument('--norm-obs', action='store_true', default=False,
                         help="Toggles observation normalization")
-    parser.add_argument('--norm-rewards', action='store_true',
+    parser.add_argument('--norm-rewards', action='store_true', default=False,
                         help="Toggles rewards normalization")
-    parser.add_argument('--norm-returns', action='store_true',
+    parser.add_argument('--norm-returns', action='store_true', default=False,
                         help="Toggles returns normalization")
-    parser.add_argument('--no-obs-reset', action='store_true',
+    parser.add_argument('--no-obs-reset', action='store_true', default=False,
                         help="When passed, the observation filter shall not be reset after the episode")
-    parser.add_argument('--no-reward-reset', action='store_true',
+    parser.add_argument('--no-reward-reset', action='store_true', default=False,
                         help="When passed, the reward / return filter shall not be reset after the episode")
     parser.add_argument('--obs-clip', type=float, default=10.0,
                         help="Value for reward clipping, as per the paper")
     parser.add_argument('--rew-clip', type=float, default=5.0,
                         help="Value for observation clipping, as per the paper")
-    parser.add_argument('--anneal-lr', action='store_true',
+    parser.add_argument('--anneal-lr', action='store_true', default=False,
                         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument('--weights-init', default="xavier", choices=["xavier", 'orthogonal'],
                         help='Selects the scheme to be used for weights initialization')
