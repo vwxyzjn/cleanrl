@@ -398,6 +398,8 @@ loss_fn = nn.MSELoss()
 # TRY NOT TO MODIFY: start the game
 global_step = 0
 while global_step < args.total_timesteps:
+    if args.capture_video:
+        env.stats_recorder.done=True
     next_obs = np.array(env.reset())
 
     # ALGO Logic: Storage for epoch data
