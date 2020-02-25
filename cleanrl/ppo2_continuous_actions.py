@@ -249,7 +249,7 @@ if __name__ == "__main__":
     parser.add_argument('--target-kl', type=float, default=0.015)
     # TODO: Actually implement the computation for this
     # MODIFIED: Added toggle for GAE advantage support
-    parser.add_argument('--gae', action='store_true',
+    parser.add_argument('--gae', action='store_true', default=True,
                         help='Use GAE for advantage computation')
 
     # MODIFIED: Separate learning rate for policy and values, according to OpenAI SpinUp
@@ -413,7 +413,8 @@ while global_step < args.total_timesteps:
     values = torch.zeros((args.episode_length,)).to(device)
 
     episode_lengths = [-1]
-
+    advantages = np.zeros((args.episode_length,))
+    deltas = np.zeros((args.episode_length,))
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
         global_step += 1
@@ -438,12 +439,10 @@ while global_step < args.total_timesteps:
         if dones[step]:
             # Computing the discounted returns:
             if args.gae:
-                deltas = np.zeros((args.episode_length,))
-                advantages = np.zeros((args.episode_length,))
                 prev_return = 0
                 prev_value = 0
                 prev_advantage = 0
-                for i in reversed(range(step)):
+                for i in reversed(range(episode_lengths[-1], step)):
                     returns[i] = rewards[i] + args.gamma * prev_return * (1 - dones[i])
                     deltas[i] = rewards[i] + args.gamma * prev_value * (1 - dones[i]) - values[i]
                     # ref: https://arxiv.org/pdf/1506.02438.pdf (generalization advantage estimate)
@@ -451,28 +450,24 @@ while global_step < args.total_timesteps:
                     prev_return = returns[i]
                     prev_value = values[i]
                     prev_advantage = advantages[i]
-                advantages = torch.Tensor(advantages).to(device)
             else:
                 returns[step] = rewards[step]
                 for t in reversed(range(episode_lengths[-1], step)):
                     returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-                advantages = torch.Tensor(returns - values.detach().cpu().numpy()).to(device)
 
             writer.add_scalar("charts/episode_reward", rewards[(episode_lengths[-1]+1):step+1].sum(), global_step)
+            print(f"global_step={global_step}, episode_reward={rewards[(episode_lengths[-1]+1):step+1].sum()}")
             episode_lengths += [step]
             next_obs = np.array(env.reset())
 
-    # TODO: Bootstraping doesn't seem to work
     # bootstrap reward if not done. reached the batch limit
     if not dones[step]:
         returns = np.append(returns, vf.forward(next_obs.reshape(1, -1))[0].detach().cpu().numpy(), axis=-1)
         if args.gae:
-            deltas = np.zeros((args.episode_length,))
-            advantages = np.zeros((args.episode_length,))
-            prev_return = vf.forward(next_obs.reshape(1, -1))[0].detach().cpu().numpy()
+            prev_return = 0
             prev_value = 0
             prev_advantage = 0
-            for i in reversed(range(step)):
+            for i in reversed(range(episode_lengths[-1], step)):
                 returns[i] = rewards[i] + args.gamma * prev_return * (1 - dones[i])
                 deltas[i] = rewards[i] + args.gamma * prev_value * (1 - dones[i]) - values[i]
                 # ref: https://arxiv.org/pdf/1506.02438.pdf (generalization advantage estimate)
@@ -481,12 +476,12 @@ while global_step < args.total_timesteps:
                 prev_value = values[i]
                 prev_advantage = advantages[i]
             returns = returns[:-1]
-            advantages = torch.Tensor(advantages).to(device) # Repetition: refactor ?
         else:
             for t in reversed(range(episode_lengths[-1], step+1)):
                 returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
             returns = returns[:-1]
-            advantages = torch.Tensor(returns - values.detach().cpu().numpy()).to(device) # Repetition: refactor ?
+            
+    advantages = torch.Tensor(advantages).to(device) if args.gae else torch.Tensor(returns - values.detach().cpu().numpy()).to(device)
 
     # Optimizaing policy network
     # First Tensorize all that is need to be so, clears up the loss computation part
