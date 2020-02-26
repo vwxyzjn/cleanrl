@@ -170,12 +170,10 @@ class CustomEnv(gym.core.Wrapper):
             self.reward_filter = RewardFilter(self.reward_filter, shape=(), gamma=args.gamma, clip=args.rew_clip)
 
         # Running total reward (set to 0.0 at resets)
-        self.total_true_reward = 0.0
 
     def reset(self):
         # Reset the state, and the running total reward
         start_state = self.env.reset()
-        self.total_true_reward = 0.0
         self.counter = 0.0
         if not args.no_obs_reset:
             self.state_filter.reset()
@@ -186,11 +184,11 @@ class CustomEnv(gym.core.Wrapper):
     def step(self, action):
         state, reward, is_done, info = self.env.step(action)
         state = self.state_filter(state)
-        self.total_true_reward += reward
         self.counter += 1
         _reward = self.reward_filter(reward)
+        info['real_reward'] = reward
         if is_done:
-            info['done'] = (self.counter, self.total_true_reward)
+            info['done'] = (self.counter)
         return state, _reward, is_done, info
 
     def seed(self, seed):
@@ -409,6 +407,7 @@ while global_step < args.total_timesteps:
     logprobs = np.zeros((args.episode_length,))
 
     rewards = np.zeros((args.episode_length,))
+    real_rewards = np.zeros((args.episode_length))
     returns = np.zeros((args.episode_length,))
 
     dones = np.zeros((args.episode_length,))
@@ -435,7 +434,8 @@ while global_step < args.total_timesteps:
         clipped_action = np.clip(action.tolist(), env.action_space.low, env.action_space.high)[0]
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards[step], dones[step], _ = env.step(clipped_action)
+        next_obs, rewards[step], dones[step], info = env.step(clipped_action)
+        real_rewards[step] = info['real_reward']
         next_obs = np.array(next_obs)
 
         if dones[step]:
@@ -457,8 +457,8 @@ while global_step < args.total_timesteps:
                 for t in reversed(range(episode_lengths[-1], step)):
                     returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
 
-            writer.add_scalar("charts/episode_reward", rewards[(episode_lengths[-1]+1):step+1].sum(), global_step)
-            print(f"global_step={global_step}, episode_reward={rewards[(episode_lengths[-1]+1):step+1].sum()}")
+            writer.add_scalar("charts/episode_reward", real_rewards[(episode_lengths[-1]+1):step+1].sum(), global_step)
+            print(f"global_step={global_step}, episode_reward={real_rewards[(episode_lengths[-1]+1):step+1].sum()}")
             episode_lengths += [step]
             next_obs = np.array(env.reset())
 
