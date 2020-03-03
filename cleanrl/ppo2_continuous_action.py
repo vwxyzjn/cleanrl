@@ -204,8 +204,6 @@ if __name__ == "__main__":
                        help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
                        help='the id of the gym environment')
-    parser.add_argument('--learning-rate', type=float, default=7e-4,
-                       help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=0,
@@ -241,20 +239,15 @@ if __name__ == "__main__":
                        help="the surrogate clipping coefficient")
     parser.add_argument('--update-epochs', type=int, default=100,
                         help="the K epochs to update the policy")
-    # MODFIED: Added support for KL Bounding during the updates
     parser.add_argument('--kl', action='store_true',
                         help='If toggled, the policy updates will be early stopped w.r.t target-kl')
     parser.add_argument('--target-kl', type=float, default=0.015)
-    # TODO: Actually implement the computation for this
-    # MODIFIED: Added toggle for GAE advantage support
     parser.add_argument('--gae', action='store_true', default=False,
                         help='Use GAE for advantage computation')
-
-    # MODIFIED: Separate learning rate for policy and values, according to OpenAI SpinUp
-    parser.add_argument('--policy-lr', type=float, default=3e-4)
-    parser.add_argument('--value-lr', type=float, default=1e-3)
-
-    # MODIFIED: Parameterization for the tricks in the Implementation Matters paper.
+    parser.add_argument('--policy-lr', type=float, default=3e-4,
+                        help="the learning rate of the policy optimizer")
+    parser.add_argument('--value-lr', type=float, default=1e-3,
+                        help="the learning rate of the critic optimizer")
     parser.add_argument('--norm-obs', action='store_true', default=False,
                         help="Toggles observation normalization")
     parser.add_argument('--norm-rewards', action='store_true', default=False,
