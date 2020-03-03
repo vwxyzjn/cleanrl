@@ -212,7 +212,7 @@ if __name__ == "__main__":
                        help='the maximum length of each episode')
     parser.add_argument('--total-timesteps', type=int, default=100000,
                        help='total timesteps of the experiments')
-    parser.add_argument('--no-torch-deterministic', action='store_false', 
+    parser.add_argument('--no-torch-deterministic', action='store_false',
                         dest="torch_deterministic", default=True,
                        help='whether to set `torch.backends.cudnn.deterministic=True`')
     parser.add_argument('--no-cuda', action='store_false', default=True,
@@ -265,6 +265,8 @@ if __name__ == "__main__":
                         help="When passed, the observation filter shall not be reset after the episode")
     parser.add_argument('--no-reward-reset', action='store_true', default=False,
                         help="When passed, the reward / return filter shall not be reset after the episode")
+    parser.add_argument('--norm-adv', action='store_true', default=False,
+                        help="Toggles advantages normalization")
     parser.add_argument('--obs-clip', type=float, default=10.0,
                         help="Value for reward clipping, as per the paper")
     parser.add_argument('--rew-clip', type=float, default=5.0,
@@ -272,11 +274,12 @@ if __name__ == "__main__":
     parser.add_argument('--anneal-lr', action='store_true', default=False,
                         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument('--weights-init', default="xavier", choices=["xavier", 'orthogonal'],
-                        help='Selects the scheme to be used for weights initialization')
+                        help='Selects the scheme to be used for weights initialization'),
+    parser.add_argument('--clip-vloss', action="store_true", default=False,
+                        help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
-
 
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -482,8 +485,12 @@ while global_step < args.total_timesteps:
             for t in reversed(range(episode_lengths[-1], step+1)):
                 returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
             returns = returns[:-1]
-            
+
     advantages = torch.Tensor(advantages).to(device) if args.gae else torch.Tensor(returns - values.detach().cpu().numpy()).to(device)
+
+    # Advantage normalization
+    if args.norm_adv:
+        advantages = (advantages - advantages.mean()) / advantages.std() # TODO: Correct formula btw ?
 
     # Optimizaing policy network
     # First Tensorize all that is need to be so, clears up the loss computation part
@@ -517,7 +524,16 @@ while global_step < args.total_timesteps:
     for i_epoch in range(args.update_epochs):
         # Resample values
         values = vf.forward(obs).view(-1)
-        v_loss = loss_fn(returns, values)
+
+        # Value loss clipping
+        if args.clip_vloss:
+            v_loss_unclipped = ((values - returns) ** 2)
+            v_loss_clipped = (torch.clamp(values, -args.clip_coef, args.clip_coef) - returns)**2
+            v_loss_min = torch.min( v_loss_unclipped, v_loss_clipped)
+            v_loss = .5 * v_loss_min.mean() # The .5 is not in the paper, but theoretically correct, right ?
+        else:
+            v_loss = loss_fn(returns, values)
+
         v_optimizer.zero_grad()
         v_loss.backward()
         nn.utils.clip_grad_norm_(vf.parameters(), args.max_grad_norm)
