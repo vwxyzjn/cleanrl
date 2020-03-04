@@ -93,10 +93,9 @@ if __name__ == "__main__":
                        help='the maximum length of each episode')
     parser.add_argument('--total-timesteps', type=int, default=100000,
                        help='total timesteps of the experiments')
-    parser.add_argument('--no-torch-deterministic', action='store_false',
-                        dest="torch_deterministic", default=True,
-                       help='whether to set `torch.backends.cudnn.deterministic=True`')
-    parser.add_argument('--no-cuda', action='store_false', default=True,
+    parser.add_argument('--no-torch-deterministic', action='store_false', dest="torch_deterministic", default=True,
+                       help='if toggled, `torch.backends.cudnn.deterministic=False`')
+    parser.add_argument('--no-cuda', action='store_false', dest="cuda", default=True,
                        help='if toggled, cuda will not be enabled by default')
     parser.add_argument('--prod-mode', action='store_true', default=False,
                        help='run the script in production mode and use wandb to log outputs')
@@ -165,7 +164,7 @@ if args.prod_mode:
     wandb.save(os.path.abspath(__file__))
 
 # TRY NOT TO MODIFY: seeding
-device = torch.device('cpu')
+device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 env = gym.make(args.gym_id)
 assert isinstance(env, TimeLimit), f"please set TimeLimit for the env associated with {args.gym_id}"
 args.episode_length = env._max_episode_steps
