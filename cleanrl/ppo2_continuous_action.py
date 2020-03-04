@@ -16,186 +16,69 @@ import time
 import random
 import os
 
+# taken from https://github.com/openai/baselines/blob/master/baselines/common/vec_env/vec_normalize.py
+class RunningMeanStd(object):
+    def __init__(self, epsilon=1e-4, shape=()):
+        self.mean = np.zeros(shape, 'float64')
+        self.var = np.ones(shape, 'float64')
+        self.count = epsilon
 
-# Helper classes for normalizations
-class RunningStat(object):
-    '''
-    Keeps track of first and second moments (mean and variance)
-    of a streaming time series.
-     Taken from https://github.com/joschu/modular_rl
-     Math in http://www.johndcook.com/blog/standard_deviation/
-    '''
-    def __init__(self, shape):
-        self._n = 0
-        self._M = np.zeros(shape)
-        self._S = np.zeros(shape)
-    def push(self, x):
-        x = np.asarray(x)
-        assert x.shape == self._M.shape
-        self._n += 1
-        if self._n == 1:
-            self._M[...] = x
-        else:
-            oldM = self._M.copy()
-            self._M[...] = oldM + (x - oldM) / self._n
-            self._S[...] = self._S + (x - oldM) * (x - self._M)
-    @property
-    def n(self):
-        return self._n
-    @property
-    def mean(self):
-        return self._M
-    @property
-    def var(self):
-        return self._S / (self._n - 1) if self._n > 1 else np.square(self._M)
-    @property
-    def std(self):
-        return np.sqrt(self.var)
-    @property
-    def shape(self):
-        return self._M.shape1
+    def update(self, x):
+        batch_mean = np.mean(x, axis=0)
+        batch_var = np.var(x, axis=0)
+        batch_count = x.shape[0]
+        self.update_from_moments(batch_mean, batch_var, batch_count)
 
-class Identity:
-    '''
-    A convenience class which simply implements __call__
-    as the identity function
-    '''
-    def __call__(self, x, *args, **kwargs):
-        return x
+    def update_from_moments(self, batch_mean, batch_var, batch_count):
+        self.mean, self.var, self.count = update_mean_var_count_from_moments(
+            self.mean, self.var, self.count, batch_mean, batch_var, batch_count)
 
-    def reset(self):
-        pass
+def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, batch_count):
+    delta = batch_mean - mean
+    tot_count = count + batch_count
 
-class RewardFilter:
-    """
-    Incorrect reward normalization [copied from OAI code]
-    update return
-    divide reward by std(return) without subtracting and adding back mean
-    """
-    def __init__(self, prev_filter, shape, gamma, clip=None):
-        assert shape is not None
+    new_mean = mean + delta * batch_count / tot_count
+    m_a = var * count
+    m_b = batch_var * batch_count
+    M2 = m_a + m_b + np.square(delta) * count * batch_count / tot_count
+    new_var = M2 / tot_count
+    new_count = tot_count
+
+    return new_mean, new_var, new_count
+class NormalizedEnv(gym.core.Wrapper):
+    def __init__(self, env, ob=True, ret=True, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8):
+        super(NormalizedEnv, self).__init__(env)
+        self.ob_rms = RunningMeanStd(shape=self.observation_space.shape) if ob else None
+        self.ret_rms = RunningMeanStd(shape=(1,)) if ret else None
+        self.clipob = clipob
+        self.cliprew = cliprew
+        self.ret = np.zeros(())
         self.gamma = gamma
-        self.prev_filter = prev_filter
-        self.rs = RunningStat(shape)
-        self.ret = np.zeros(shape)
-        self.clip = clip
-
-    def __call__(self, x, **kwargs):
-        x = self.prev_filter(x, **kwargs)
-        self.ret = self.ret * self.gamma + x
-        self.rs.push(self.ret)
-        x = x / (self.rs.std + 1e-8)
-        if self.clip:
-            x = np.clip(x, -self.clip, self.clip)
-        return x
-
-    def reset(self):
-        self.ret = np.zeros_like(self.ret)
-        self.prev_filter.reset()
-
-class ZFilter:
-    """
-    y = (x-mean)/std
-    using running estimates of mean,std
-    """
-    def __init__(self, prev_filter, shape, center=True, scale=True, clip=None):
-        assert shape is not None
-        self.center = center
-        self.scale = scale
-        self.clip = clip
-        self.rs = RunningStat(shape)
-        self.prev_filter = prev_filter
-
-    def __call__(self, x, **kwargs):
-        x = self.prev_filter(x, **kwargs)
-        self.rs.push(x)
-        if self.center:
-            x = x - self.rs.mean
-        if self.scale:
-            if self.center:
-                x = x / (self.rs.std + 1e-8)
-            else:
-                diff = x - self.rs.mean
-                diff = diff/(self.rs.std + 1e-8)
-                x = diff + self.rs.mean
-        if self.clip:
-            x = np.clip(x, -self.clip, self.clip)
-        return x
-
-    def reset(self):
-        self.prev_filter.reset()
-# End of Helper classes for normalizations
-
-# A custom environment wrapper with for observation and action normalization
-class CustomEnv(gym.core.Wrapper):
-    '''
-    A wrapper around the OpenAI gym environment that adds support for the following:
-    - Rewards normalization
-    - State normalization
-    - Adding timestep as a feature with a particular horizon T
-    Also provides utility functions/properties for:
-    - Whether the env is discrete or continuous
-    - Size of feature space
-    - Size of action space
-    Provides the same API (init, step, reset) as the OpenAI gym
-    '''
-    def __init__(self, env):
-        super(CustomEnv, self).__init__(env)
-
-        # Environment type
-        self.is_discrete = type(self.env.action_space) == Discrete
-        assert self.is_discrete or type(self.env.action_space) == Box
-
-        # Number of actions
-        action_shape = self.env.action_space.shape
-        assert len(action_shape) <= 1 # scalar or vector actions
-        self.num_actions = self.env.action_space.n if self.is_discrete else 0 \
-                            if len(action_shape) == 0 else action_shape[0]
-
-        # Number of features
-        assert len(self.env.observation_space.shape) == 1
-        self.num_features = self.env.reset().shape[0]
-
-        # Support for state normalization or using time as a feature
-        self.state_filter = Identity()
-        if args.norm_obs:
-            self.state_filter = ZFilter(self.state_filter, shape=[self.num_features], \
-                                            clip=args.obs_clip)
-
-        # Support for rewards normalization
-        self.reward_filter = Identity()
-        if args.norm_rewards:
-            self.reward_filter = ZFilter(self.reward_filter, shape=(), center=False, clip=args.rew_clip)
-        if args.norm_returns:
-            self.reward_filter = RewardFilter(self.reward_filter, shape=(), gamma=args.gamma, clip=args.rew_clip)
-
-        # Running total reward (set to 0.0 at resets)
-
-    def reset(self):
-        # Reset the state, and the running total reward
-        start_state = self.env.reset()
-        self.counter = 0.0
-        if not args.no_obs_reset:
-            self.state_filter.reset()
-        if not args.no_reward_reset:
-            self.reward_filter.reset()
-        return self.state_filter(start_state, reset=True)
+        self.epsilon = epsilon
 
     def step(self, action):
-        state, reward, is_done, info = self.env.step(action)
-        state = self.state_filter(state)
-        self.counter += 1
-        _reward = self.reward_filter(reward)
-        info['real_reward'] = reward
-        if is_done:
-            info['done'] = (self.counter)
-        return state, _reward, is_done, info
+        obs, rews, news, infos = self.env.step(action)
+        infos['real_reward'] = rews
+        self.ret = self.ret * self.gamma + rews
+        obs = self._obfilt(obs)
+        if self.ret_rms:
+            self.ret_rms.update(np.array([self.ret]))
+            rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
+        self.ret = float(news)
+        return obs, rews, news, infos
 
-    def seed(self, seed):
-        self.env.seed(seed)
+    def _obfilt(self, obs):
+        if self.ob_rms:
+            self.ob_rms.update(obs)
+            obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
+            return obs
+        else:
+            return obs
 
-    def close(self):
-        self.env.close()
+    def reset(self):
+        self.ret = np.zeros(())
+        obs = self.env.reset()
+        return self._obfilt(obs)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
@@ -250,14 +133,8 @@ if __name__ == "__main__":
                         help="the learning rate of the critic optimizer")
     parser.add_argument('--norm-obs', action='store_true', default=False,
                         help="Toggles observation normalization")
-    parser.add_argument('--norm-rewards', action='store_true', default=False,
-                        help="Toggles rewards normalization")
     parser.add_argument('--norm-returns', action='store_true', default=False,
                         help="Toggles returns normalization")
-    parser.add_argument('--no-obs-reset', action='store_true', default=False,
-                        help="When passed, the observation filter shall not be reset after the episode")
-    parser.add_argument('--no-reward-reset', action='store_true', default=False,
-                        help="When passed, the reward / return filter shall not be reset after the episode")
     parser.add_argument('--norm-adv', action='store_true', default=False,
                         help="Toggles advantages normalization")
     parser.add_argument('--obs-clip', type=float, default=10.0,
@@ -291,7 +168,7 @@ device = torch.device('cpu')
 env = gym.make(args.gym_id)
 assert isinstance(env, TimeLimit), f"please set TimeLimit for the env associated with {args.gym_id}"
 args.episode_length = env._max_episode_steps
-env = CustomEnv(env.env)
+env = NormalizedEnv(env.env,ob=args.norm_obs, ret=args.norm_returns, clipob=args.obs_clip, cliprew=args.rew_clip, gamma=args.gamma)
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
