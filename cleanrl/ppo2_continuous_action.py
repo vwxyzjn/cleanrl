@@ -139,7 +139,7 @@ if __name__ == "__main__":
                         help="Toggles advantages normalization")
     parser.add_argument('--obs-clip', type=float, default=10.0,
                         help="Value for reward clipping, as per the paper")
-    parser.add_argument('--rew-clip', type=float, default=5.0,
+    parser.add_argument('--rew-clip', type=float, default=10.0,
                         help="Value for observation clipping, as per the paper")
     parser.add_argument('--anneal-lr', action='store_true', default=False,
                         help="Toggle learning rate annealing for policy and value networks")
