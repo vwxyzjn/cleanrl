@@ -151,6 +151,8 @@ if __name__ == "__main__":
     if not args.seed:
         args.seed = int(time.time())
 
+args.features_turned_on = sum([args.kl, args.gae, args.norm_obs, args.norm_returns, args.norm_adv, args.anneal_lr, args.clip_vloss])
+
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
