@@ -124,7 +124,8 @@ if __name__ == "__main__":
                         help="the K epochs to update the policy")
     parser.add_argument('--kl', action='store_true',
                         help='If toggled, the policy updates will be early stopped w.r.t target-kl')
-    parser.add_argument('--target-kl', type=float, default=0.015)
+    parser.add_argument('--target-kl', type=float, default=0.015,
+                        help='the target-kl variable that is referred by --kl')
     parser.add_argument('--gae', action='store_true', default=False,
                         help='Use GAE for advantage computation')
     parser.add_argument('--policy-lr', type=float, default=3e-4,
