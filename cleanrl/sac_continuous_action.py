@@ -223,9 +223,9 @@ while global_step < args.total_timesteps:
         if len(rb.buffer) > 2000:
             s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
             with torch.no_grad():
-                next_state_action, next_state_log_pi, _ = pg.get_action(s_next_obses)
-                qf1_next_target = qf1_target.forward(s_next_obses, next_state_action)
-                qf2_next_target = qf2_target.forward(s_next_obses, next_state_action)
+                next_state_actions, next_state_log_pi, _ = pg.get_action(s_next_obses)
+                qf1_next_target = qf1_target.forward(s_next_obses, next_state_actions)
+                qf2_next_target = qf2_target.forward(s_next_obses, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - args.alpha * next_state_log_pi
                 next_q_value = torch.Tensor(s_rewards).to(device) + (1 - torch.Tensor(s_dones).to(device)) * args.gamma * (min_qf_next_target).view(-1)
 
