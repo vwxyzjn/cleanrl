@@ -149,7 +149,10 @@ if __name__ == "__main__":
     # MODIFIED: Experimenting with BatchNorm for policy network
     parser.add_argument('--pol-nn-ln', action='store_true', default=False,
                        help='Enables layer norm layers for the policy')
-
+    # MODIFIED: Experimenting with pytorch distr.entropy() function
+    # TODO: Remove this once the experiment is over.
+    parser.add_argument('--use-dist-entropy', action='store_true', default=False,
+                       help='Toggle the computation technique of the policy\'s entropy')
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -268,18 +271,10 @@ class Policy(nn.Module):
         logprobs = dist.log_prob(sampled_actions).sum(1)
         sampled_actions_probs = logprobs.exp()
 
-        # print( "# DEBUG: Actions logprobs shape")
-        # print( logprobs.shape)
-
-        entropies = - logprobs.exp() * logprobs
-
-        # print( "# DEBUG Entropy shape")
-        # print( entropy.shape)
-
-        # print( "# DEBUG: Manual entropy computation")
-        # print( - logprobs)
-        # print( "# DEBUG: Pytorch entropy computation")
-        # print( dist.entropy().sum(1))
+        if not args.use_dist_entropy:
+            entropies = - logprobs.exp() * logprobs
+        else:
+            entropies = dist.entropy().mean(1).view(-1)
 
         return entropies
 
