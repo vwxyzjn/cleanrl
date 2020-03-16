@@ -1,8 +1,25 @@
 # CleanRL (Clean Implementation of RL Algorithms)
 
+[<img src="https://img.shields.io/badge/slack-@cleanrl-yellow.svg?logo=slack">](https://join.slack.com/t/cleanrl/shared_invite/zt-cj64t5eq-xKZ6sD0KPGFKu1QicHEvVg)
+[![Mailing List : cleanrl](https://img.shields.io/badge/mailing%20list-cleanrl-orange.svg)](https://groups.google.com/forum/#!forum/rlimplementation/join)
+[![Meeting Recordings : cleanrl](https://img.shields.io/badge/meeting%20recordings-cleanrl-orange.svg)](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
+
+CleanRL dedicates to provide a clean/simple implementation of the popular RL algorithms. *Yes, it is clean and simple*; you don't have to look through dozens of files to understand what the heck is going on. Just read, print out a few things and you can easily customize. *Yes, it is designed to be hackable*. 
+
+At the same time, CleanRL tries to supply many research-friendly features such as cloud experiment management, support four continuous and discrete observation and action spaces, video recording of the game play, etc. *Yes, you will need them if you want to do good experiments (at least to my taste)*.
+
+## Support and get involved
+
+We have a [Slack Community](https://join.slack.com/t/cleanrl/shared_invite/zt-cj64t5eq-xKZ6sD0KPGFKu1QicHEvVg) for support. Feel free to ask questions. Posting in [Github Issues](https://github.com/vwxyzjn/cleanrl/issues) and PRs are also welcome. 
+
+In addition, we also have a monthly development cycle to implement new RL algorithms. Feel free to participate or ask questions there, too. You can sign up for our mailing list at our [Google Groups](https://groups.google.com/forum/#!forum/rlimplementation/join) to receive event RVSP which contains the Hangout video call address every week. Our past video recordings are available at [YouTube](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
+
+
+Good luck have fun :rocket:
+
 ### This project is WIP currently at 0.2.1 release, expect breaking changes.
 
-This repository focuses on a clean and minimal implementation of reinforcement learning algorithms that focuses on easy experimental research. The highlight features of this repo are:
+The highlight features of this repo are:
 
 * Most algorithms are self-contained in single files with a common dependency file [common.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/common.py) that handles different gym spaces.
 
