@@ -111,7 +111,7 @@ if __name__ == "__main__":
                        help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.97,
                        help='the lambda for the general advantage estimation')
-    parser.add_argument('--ent-coef', type=float, default=0.0, # Set to 0.0 by default to measure the actual gain. Will convene on a proper value later.
+    parser.add_argument('--ent-coef', type=float, default=0.2,
                        help="coefficient of the entropy")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                        help='the maximum norm for the gradient clipping')
@@ -145,14 +145,10 @@ if __name__ == "__main__":
                         help='Selects the scheme to be used for weights initialization'),
     parser.add_argument('--clip-vloss', action="store_true", default=False,
                         help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
+    parser.add_argument('--pol-layer-norm', action='store_true', default=False,
+                       help='Enables layer normalization in the policy network')
+    # TODO ? Experiment with value function layer norm too, as it gave quite good results in SAC
 
-    # MODIFIED: Experimenting with BatchNorm for policy network
-    parser.add_argument('--pol-nn-ln', action='store_true', default=False,
-                       help='Enables layer norm layers for the policy')
-    # MODIFIED: Experimenting with pytorch distr.entropy() function
-    # TODO: Remove this once the experiment is over.
-    parser.add_argument('--use-dist-entropy', action='store_true', default=False,
-                       help='Toggle the computation technique of the policy\'s entropy')
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -201,7 +197,7 @@ class Policy(nn.Module):
         self.mean = nn.Linear(84, output_shape)
         self.logstd = nn.Parameter(torch.zeros(1, output_shape))
 
-        if args.pol_nn_ln:
+        if args.pol_layer_norm:
             # Layer Normalization
             self.ln1 = torch.nn.LayerNorm(120)
             self.ln2 = torch.nn.LayerNorm(84)
@@ -220,21 +216,15 @@ class Policy(nn.Module):
 
     def forward(self, x):
         x = preprocess_obs_fn(x)
-        # MODIFIED: Adding batch norm before applying the actvation function
-        # NOTE: Since tanh already takes care of that, do we even need to BathcNorm ?
 
-        ## LAYER 1 ##
         x = self.fc1(x)
-
-        if args.pol_nn_ln:
+        if args.pol_layer_norm:
             x = self.ln1(x)
-
         x = torch.tanh(x)
 
-        ## LAYER 2 ##
         x = self.fc2(x)
 
-        if args.pol_nn_ln:
+        if args.pol_layer_norm:
             x = self.ln2(x)
 
         x = torch.tanh(x)
@@ -260,23 +250,6 @@ class Policy(nn.Module):
         action_std = torch.exp(action_logstd)
         dist = Normal(action_mean, action_std)
         return dist.log_prob(actions).sum(1)
-
-    def get_entropies(self, x):
-        action_mean, action_logstd = self.forward(x)
-        action_std = torch.exp(action_logstd)
-        dist = Normal(action_mean, action_std)
-
-        # TODO: Discuss either using the logprobs instead of the entropy or the "pure" erntropy itself ?
-        sampled_actions = dist.rsample()
-        logprobs = dist.log_prob(sampled_actions).sum(1)
-        sampled_actions_probs = logprobs.exp()
-
-        if not args.use_dist_entropy:
-            entropies = - logprobs.exp() * logprobs
-        else:
-            entropies = dist.entropy().mean(1).view(-1)
-
-        return entropies
 
 class Value(nn.Module):
     def __init__(self):
@@ -349,12 +322,6 @@ while global_step < args.total_timesteps:
             # DEBUG: Tracking the logits
             logits = pg(obs[step:step+1])
             logits = logits[0][0].cpu().numpy()
-            # print( "# DEBUG: Logits")
-            # print( logits)
-            if global_step % 200 == 0:
-                print( "\t### DEBUG: Logits @ step %d: " % global_step, logits)
-                writer.add_histogram( "debug/logits", logits, global_step)
-            # input()
 
             action, logproba = pg.get_action(obs[step:step+1])
 
@@ -434,12 +401,11 @@ while global_step < args.total_timesteps:
                                 (1.+args.clip_coef) * advantages,
                                 (1.-args.clip_coef) * advantages).to(device)
 
-        # Adding entropy bonus: This is computed using the logprobs and the rsampled actions
-        # so the gradients can also be back propagated through it (?)
-        # Does the entropy function of a distribution backpropagate ? Probably not.
-        # Also, this method does not used the old action sampled from and old policy to get the log probs
-        # Any discussion on what would be the difference ?
-        policy_loss = - torch.min(ratio * advantages, clip_adv) + args.ent_coef * pg.get_entropies(obs)
+        # Entropy computation with resampled actions
+        _, resampled_logprobs = pg.get_action( obs)
+        entropy = - (resampled_logprobs.exp() * resampled_logprobs).mean()
+
+        policy_loss = - torch.min(ratio * advantages, clip_adv) + args.ent_coef * entropy
         policy_loss = policy_loss.mean()
 
         pg_optimizer.zero_grad()
@@ -481,7 +447,8 @@ while global_step < args.total_timesteps:
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
-    # MODIFIED: Logs after how many iters did the policy udate stop ?
+    writer.add_scalar("debug/entropy", entropy.item(), global_step)
+
     if args.kl:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
         writer.add_scalar("debug/approx_kl", approx_kl.item(), global_step)
