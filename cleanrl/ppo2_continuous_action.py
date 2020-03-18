@@ -147,7 +147,6 @@ if __name__ == "__main__":
                         help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
     parser.add_argument('--pol-layer-norm', action='store_true', default=False,
                        help='Enables layer normalization in the policy network')
-    # TODO ? Experiment with value function layer norm too, as it gave quite good results in SAC
 
     args = parser.parse_args()
     if not args.seed:
@@ -198,10 +197,8 @@ class Policy(nn.Module):
         self.logstd = nn.Parameter(torch.zeros(1, output_shape))
 
         if args.pol_layer_norm:
-            # Layer Normalization
             self.ln1 = torch.nn.LayerNorm(120)
             self.ln2 = torch.nn.LayerNorm(84)
-            # TODO: Condisder adding a self.bn_mean for the last layer too ?
 
         if args.weights_init == "orthogonal":
             torch.nn.init.orthogonal_(self.fc1.weight)
@@ -379,7 +376,7 @@ while global_step < args.total_timesteps:
 
     # Advantage normalization
     if args.norm_adv:
-        advantages = (advantages - advantages.mean()) / advantages.std() # TODO: Correct formula btw ?
+        advantages = (advantages - advantages.mean()) / advantages.std()
 
     # Optimizaing policy network
     # First Tensorize all that is need to be so, clears up the loss computation part
