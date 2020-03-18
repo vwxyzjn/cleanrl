@@ -111,12 +111,10 @@ if __name__ == "__main__":
                        help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.97,
                        help='the lambda for the general advantage estimation')
-    parser.add_argument('--vf-coef', type=float, default=0.25,
-                       help="value function's coefficient the loss function")
+    parser.add_argument('--ent-coef', type=float, default=0.2,
+                       help="coefficient of the entropy")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                        help='the maximum norm for the gradient clipping')
-    parser.add_argument('--ent-coef', type=float, default=0.01,
-                       help="policy entropy's coefficient the loss function")
     parser.add_argument('--clip-coef', type=float, default=0.2,
                        help="the surrogate clipping coefficient")
     parser.add_argument('--update-epochs', type=int, default=100,
@@ -147,6 +145,9 @@ if __name__ == "__main__":
                         help='Selects the scheme to be used for weights initialization'),
     parser.add_argument('--clip-vloss', action="store_true", default=False,
                         help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
+    parser.add_argument('--pol-layer-norm', action='store_true', default=False,
+                       help='Enables layer normalization in the policy network')
+
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -195,6 +196,10 @@ class Policy(nn.Module):
         self.mean = nn.Linear(84, output_shape)
         self.logstd = nn.Parameter(torch.zeros(1, output_shape))
 
+        if args.pol_layer_norm:
+            self.ln1 = torch.nn.LayerNorm(120)
+            self.ln2 = torch.nn.LayerNorm(84)
+
         if args.weights_init == "orthogonal":
             torch.nn.init.orthogonal_(self.fc1.weight)
             torch.nn.init.orthogonal_(self.fc2.weight)
@@ -208,8 +213,17 @@ class Policy(nn.Module):
 
     def forward(self, x):
         x = preprocess_obs_fn(x)
-        x = torch.tanh(self.fc1(x))
-        x = torch.tanh(self.fc2(x))
+
+        x = self.fc1(x)
+        if args.pol_layer_norm:
+            x = self.ln1(x)
+        x = torch.tanh(x)
+
+        x = self.fc2(x)
+        if args.pol_layer_norm:
+            x = self.ln2(x)
+        x = torch.tanh(x)
+
         action_mean = self.mean(x)
         action_logstd = self.logstd.expand_as(action_mean)
 
@@ -362,7 +376,7 @@ while global_step < args.total_timesteps:
 
     # Advantage normalization
     if args.norm_adv:
-        advantages = (advantages - advantages.mean()) / advantages.std() # TODO: Correct formula btw ?
+        advantages = (advantages - advantages.mean()) / advantages.std()
 
     # Optimizaing policy network
     # First Tensorize all that is need to be so, clears up the loss computation part
@@ -378,7 +392,12 @@ while global_step < args.total_timesteps:
                                 (1.+args.clip_coef) * advantages,
                                 (1.-args.clip_coef) * advantages).to(device)
 
-        policy_loss = - torch.min(ratio * advantages, clip_adv).mean()
+        # Entropy computation with resampled actions
+        _, resampled_logprobs = pg.get_action( obs)
+        entropy = - (resampled_logprobs.exp() * resampled_logprobs).mean()
+
+        policy_loss = - torch.min(ratio * advantages, clip_adv) + args.ent_coef * entropy
+        policy_loss = policy_loss.mean()
 
         pg_optimizer.zero_grad()
         policy_loss.backward()
@@ -419,7 +438,8 @@ while global_step < args.total_timesteps:
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
-    # MODIFIED: Logs after how many iters did the policy udate stop ?
+    writer.add_scalar("debug/entropy", entropy.item(), global_step)
+
     if args.kl:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
         writer.add_scalar("debug/approx_kl", approx_kl.item(), global_step)
