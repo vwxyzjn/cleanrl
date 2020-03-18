@@ -223,10 +223,8 @@ class Policy(nn.Module):
         x = torch.tanh(x)
 
         x = self.fc2(x)
-
         if args.pol_layer_norm:
             x = self.ln2(x)
-
         x = torch.tanh(x)
 
         action_mean = self.mean(x)
@@ -319,10 +317,6 @@ while global_step < args.total_timesteps:
         values[step] = vf.forward(obs[step:step+1])
 
         with torch.no_grad():
-            # DEBUG: Tracking the logits
-            logits = pg(obs[step:step+1])
-            logits = logits[0][0].cpu().numpy()
-
             action, logproba = pg.get_action(obs[step:step+1])
 
         actions[step] = action.data.cpu().numpy()[0]
