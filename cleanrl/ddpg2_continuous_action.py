@@ -294,6 +294,7 @@ while global_step < args.total_timesteps:
     next_obs = np.array(env.reset())
     actions = np.empty((args.episode_length,), dtype=object)
     rewards, dones = np.zeros((2, args.episode_length))
+    td_losses = np.zeros(args.episode_length)
     real_rewards = np.zeros((args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
     
@@ -326,6 +327,7 @@ while global_step < args.total_timesteps:
             td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_q * (1 - torch.Tensor(s_dones).to(device))
             old_val = q_network.forward(s_obs, torch.Tensor(s_actions).to(device)).squeeze()
             q_loss = loss_fn(td_target, old_val)
+            td_losses[step] = q_loss
             actor_loss = -q_network.forward(s_obs, actor.forward(s_obs)).mean()
 
             # optimize the midel
@@ -354,5 +356,6 @@ while global_step < args.total_timesteps:
     print(f"global_step={global_step}, episode_reward={real_rewards.sum()}")
     writer.add_scalar("charts/episode_reward", real_rewards.sum(), global_step)
     writer.add_scalar("charts/sigma", action_noise.sigma, global_step)
+    writer.add_scalar("losses/td_loss", td_losses.mean(), global_step)
 env.close()
 writer.close()
