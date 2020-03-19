@@ -36,6 +36,14 @@ for final_run_cmd in final_run_cmds:
                     'name': 'WANDB',
                     'value': wandb_key
                 },
+                {
+                    'name': 'MKL_NUM_THREADS',
+                    'value': 1
+                },
+                {
+                    'name': 'OMP_NUM_THREADS',
+                    'value': 1
+                },
             ]
         },
         retryStrategy={

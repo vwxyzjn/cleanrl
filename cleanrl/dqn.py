@@ -198,7 +198,7 @@ while global_step < args.total_timesteps:
             writer.add_scalar("losses/td_loss", loss, global_step)
             nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
             optimizer.step()
- 
+
             # update the target network
             if global_step % args.target_network_frequency == 0:
                 target_network.load_state_dict(q_network.state_dict())
