@@ -162,7 +162,7 @@ global_step = 0
 while global_step < args.total_timesteps:
     next_obs = np.array(env.reset())
     actions = np.empty((args.episode_length,), dtype=object)
-    rewards, dones = np.zeros((2, args.episode_length))
+    rewards, dones, td_losses = np.zeros((3, args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
     
     # TRY NOT TO MODIFY: prepare the execution of the game.
@@ -191,11 +191,11 @@ while global_step < args.total_timesteps:
             td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
             old_val = q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
             loss = loss_fn(td_target, old_val)
+            td_losses[step] = loss
 
             # optimize the midel
             optimizer.zero_grad()
             loss.backward()
-            writer.add_scalar("losses/td_loss", loss, global_step)
             nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
             optimizer.step()
 
@@ -207,7 +207,9 @@ while global_step < args.total_timesteps:
             break
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
+    print(f"global_step={global_step}, episode_reward={rewards.sum()}")
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
     writer.add_scalar("charts/epsilon", epsilon, global_step)
+    writer.add_scalar("losses/td_loss", td_losses[:step+1].mean(), global_step)
 env.close()
 writer.close()

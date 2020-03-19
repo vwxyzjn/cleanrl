@@ -201,6 +201,7 @@ while global_step < args.total_timesteps:
     next_obs = np.array(env.reset())
     actions = np.empty((args.episode_length,), dtype=object)
     rewards, dones = np.zeros((2, args.episode_length))
+    qf1_losses, qf2_losses, policy_losses = np.zeros((3, args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
     
     # ALGO LOGIC: put other storage logic here
@@ -259,16 +260,19 @@ while global_step < args.total_timesteps:
                 target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
             for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
                 target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
-
-            writer.add_scalar("losses/soft_q_value_1_loss", qf1_loss.item(), global_step)
-            writer.add_scalar("losses/soft_q_value_2_loss", qf2_loss.item(), global_step)
-            writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
+            qf1_losses[step] = qf1_loss.item()
+            qf2_losses[step] = qf2_loss.item()
+            policy_losses[step] = policy_loss.item()
 
         if dones[step]:
             break
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
+    print(f"global_step={global_step}, episode_reward={rewards.sum()}")
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
     writer.add_scalar("losses/entropy", entropys[:step+1].mean().item(), global_step)
+    writer.add_scalar("losses/soft_q_value_1_loss", qf1_losses[:step+1].mean(), global_step)
+    writer.add_scalar("losses/soft_q_value_2_loss", qf2_losses[:step+1].mean(), global_step)
+    writer.add_scalar("losses/policy_loss", policy_losses[:step+1].mean(), global_step)
 writer.close()
 env.close()
