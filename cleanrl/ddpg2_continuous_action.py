@@ -113,6 +113,14 @@ if __name__ == "__main__":
                        help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
+    parser.add_argument('--norm-obs', action='store_true', default=False,
+                        help="Toggles observation normalization")
+    parser.add_argument('--norm-returns', action='store_true', default=False,
+                        help="Toggles returns normalization")
+    parser.add_argument('--obs-clip', type=float, default=10.0,
+                        help="Value for reward clipping, as per the paper")
+    parser.add_argument('--rew-clip', type=float, default=10.0,
+                        help="Value for observation clipping, as per the paper")
     parser.add_argument('--buffer-size', type=int, default=10000,
                         help='the replay memory buffer size')
     parser.add_argument('--gamma', type=float, default=0.99,
@@ -155,7 +163,7 @@ device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cp
 env = gym.make(args.gym_id)
 assert isinstance(env, TimeLimit), f"please set TimeLimit for the env associated with {args.gym_id}"
 args.episode_length = env._max_episode_steps
-env = NormalizedEnv(env.env, gamma=args.gamma)
+env = NormalizedEnv(env.env, ob=args.norm_obs, ret=args.norm_returns, clipob=args.obs_clip, cliprew=args.rew_clip, gamma=args.gamma)
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
