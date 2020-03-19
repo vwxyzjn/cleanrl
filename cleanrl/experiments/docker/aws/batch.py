@@ -23,13 +23,14 @@ for run_match in runs_match:
 # submit jobs
 for final_run_cmd in final_run_cmds:
     job_name = re.findall('(python)(.+)(.py)'," ".join(final_run_cmd))[0][1].strip() + str(int(time.time()))
+    job_name = job_name.replace("/", "_")
     response = client.submit_job(
         jobName=job_name,
         jobQueue='cleanrl',
         jobDefinition='cleanrl',
         containerOverrides={
             'vcpus': 1,
-            'memory': 400,
+            'memory': 2000,
             'command': final_run_cmd,
             'environment': [
                 {
@@ -38,11 +39,11 @@ for final_run_cmd in final_run_cmds:
                 },
                 {
                     'name': 'MKL_NUM_THREADS',
-                    'value': 1
+                    'value': "1"
                 },
                 {
                     'name': 'OMP_NUM_THREADS',
-                    'value': 1
+                    'value': "1"
                 },
             ]
         },
@@ -50,7 +51,7 @@ for final_run_cmd in final_run_cmds:
             'attempts': 1
         },
         timeout={
-            'attemptDurationSeconds': 28800
+            'attemptDurationSeconds': 16*60*60 # 16 hours
         }
     )
     if response['ResponseMetadata']['HTTPStatusCode'] != 200:

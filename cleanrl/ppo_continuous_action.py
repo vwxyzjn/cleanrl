@@ -205,6 +205,7 @@ while global_step < args.total_timesteps:
         optimizer.step()
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
+    print(f"global_step={global_step}, episode_reward={rewards.sum()}")
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
     writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
     writer.add_scalar("losses/entropy", entropys[:step+1].mean().item(), global_step)
