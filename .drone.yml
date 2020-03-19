@@ -10,7 +10,6 @@ steps:
       from_secret: docker_password
     repo: vwxyzjn/cleanrl
     dockerfile: cleanrl/experiments/docker/Dockerfile
-    target: production
     auto_tag: true
 - name: docker_cleanrl_nomad 
   image: plugins/docker:17.12
@@ -21,5 +20,4 @@ steps:
       from_secret: docker_password
     repo: vwxyzjn/cleanrl_nomad
     dockerfile: cleanrl/experiments/docker/nomad.Dockerfile
-    target: production
     auto_tag: true
