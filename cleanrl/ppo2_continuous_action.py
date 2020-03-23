@@ -119,8 +119,10 @@ if __name__ == "__main__":
                        help="the surrogate clipping coefficient")
     parser.add_argument('--update-epochs', type=int, default=100,
                         help="the K epochs to update the policy")
-    parser.add_argument('--kl', action='store_true',
+    parser.add_argument('--kle-stop', action='store_true', default=False,
                         help='If toggled, the policy updates will be early stopped w.r.t target-kl')
+    parser.add_argument('--kle-rollback', action='store_true', default=True,
+                        help='If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl')
     parser.add_argument('--target-kl', type=float, default=0.015,
                         help='the target-kl variable that is referred by --kl')
     parser.add_argument('--gae', action='store_true', default=False,
@@ -152,7 +154,7 @@ if __name__ == "__main__":
     if not args.seed:
         args.seed = int(time.time())
 
-args.features_turned_on = sum([args.kl, args.gae, args.norm_obs, args.norm_returns, args.norm_adv, args.anneal_lr, args.clip_vloss])
+args.features_turned_on = sum([args.kle_stop, args.gae, args.norm_obs, args.norm_returns, args.norm_adv, args.anneal_lr, args.clip_vloss])
 
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -199,7 +201,6 @@ class Policy(nn.Module):
         if args.pol_layer_norm:
             self.ln1 = torch.nn.LayerNorm(120)
             self.ln2 = torch.nn.LayerNorm(84)
-
         if args.weights_init == "orthogonal":
             torch.nn.init.orthogonal_(self.fc1.weight)
             torch.nn.init.orthogonal_(self.fc2.weight)
@@ -213,20 +214,14 @@ class Policy(nn.Module):
 
     def forward(self, x):
         x = preprocess_obs_fn(x)
-
         x = self.fc1(x)
-        if args.pol_layer_norm:
-            x = self.ln1(x)
+        if args.pol_layer_norm: x = self.ln1(x)
         x = torch.tanh(x)
-
         x = self.fc2(x)
-        if args.pol_layer_norm:
-            x = self.ln2(x)
+        if args.pol_layer_norm: x = self.ln2(x)
         x = torch.tanh(x)
-
         action_mean = self.mean(x)
         action_logstd = self.logstd.expand_as(action_mean)
-
         return action_mean, action_logstd
 
     def get_action(self, x):
@@ -240,7 +235,6 @@ class Policy(nn.Module):
         # Note: Converts actions to tensor
         if not isinstance(actions, torch.Tensor):
             actions = preprocess_obs_fn(actions)
-
         action_mean, action_logstd = self.forward(x)
         action_std = torch.exp(action_logstd)
         dist = Normal(action_mean, action_std)
@@ -382,7 +376,12 @@ while global_step < args.total_timesteps:
     # First Tensorize all that is need to be so, clears up the loss computation part
     logprobs = torch.Tensor(logprobs).to(device) # Called 2 times: during policy update and KL bound checked
     returns = torch.Tensor(returns).to(device) # Called 1 time when updating the values
-
+    approx_kls = []
+    entropys = []
+    target_pg = Policy().to(device)
+    target_vf = Value().to(device)
+    target_pg.load_state_dict(pg.state_dict())
+    target_vf.load_state_dict(vf.state_dict())
     for i_epoch_pi in range(args.update_epochs):
         newlogproba = pg.get_logproba(obs, actions)
         ratio = (newlogproba - logprobs).exp()
@@ -395,6 +394,7 @@ while global_step < args.total_timesteps:
         # Entropy computation with resampled actions
         _, resampled_logprobs = pg.get_action( obs)
         entropy = - (resampled_logprobs.exp() * resampled_logprobs).mean()
+        entropys.append(entropy.item())
 
         policy_loss = - torch.min(ratio * advantages, clip_adv) + args.ent_coef * entropy
         policy_loss = policy_loss.mean()
@@ -406,9 +406,15 @@ while global_step < args.total_timesteps:
 
         # KEY TECHNIQUE: This will stop updating the policy once the KL has been breached
         # TODO: Roll back the policy to before at breaches the KL trust region
-        if args.kl:
-            approx_kl = (logprobs - newlogproba).mean()
+        approx_kl = (logprobs - newlogproba).mean()
+        approx_kls.append(approx_kl.item())
+        if args.kle_stop:
             if approx_kl > args.target_kl:
+                break
+        if args.kle_rollback:
+            if approx_kl > args.target_kl:
+                pg.load_state_dict(target_pg.state_dict())
+                vf.load_state_dict(target_vf.state_dict())
                 break
 
     # Optimizing value network
@@ -438,11 +444,10 @@ while global_step < args.total_timesteps:
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
-    writer.add_scalar("debug/entropy", entropy.item(), global_step)
-
-    if args.kl:
+    writer.add_scalar("losses/entropy", np.mean(entropys), global_step)
+    writer.add_scalar("losses/approx_kl", np.mean(approx_kls), global_step)
+    if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
-        writer.add_scalar("debug/approx_kl", approx_kl.item(), global_step)
 
 env.close()
 writer.close()
