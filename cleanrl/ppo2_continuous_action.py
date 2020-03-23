@@ -412,7 +412,7 @@ while global_step < args.total_timesteps:
             if approx_kl > args.target_kl:
                 break
         if args.kle_rollback:
-            if approx_kl > args.target_kl:
+            if (logprobs - pg.get_logproba(obs, actions)).mean() > args.target_kl:
                 pg.load_state_dict(target_pg.state_dict())
                 vf.load_state_dict(target_vf.state_dict())
                 break
