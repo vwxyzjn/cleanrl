@@ -121,7 +121,7 @@ if __name__ == "__main__":
                         help="the K epochs to update the policy")
     parser.add_argument('--kle-stop', action='store_true', default=False,
                         help='If toggled, the policy updates will be early stopped w.r.t target-kl')
-    parser.add_argument('--kle-rollback', action='store_true', default=True,
+    parser.add_argument('--kle-rollback', action='store_true', default=False,
                         help='If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl')
     parser.add_argument('--target-kl', type=float, default=0.015,
                         help='the target-kl variable that is referred by --kl')
@@ -380,9 +380,9 @@ while global_step < args.total_timesteps:
     entropys = []
     target_pg = Policy().to(device)
     target_vf = Value().to(device)
-    target_pg.load_state_dict(pg.state_dict())
-    target_vf.load_state_dict(vf.state_dict())
     for i_epoch_pi in range(args.update_epochs):
+        target_pg.load_state_dict(pg.state_dict())
+        target_vf.load_state_dict(vf.state_dict())
         newlogproba = pg.get_logproba(obs, actions)
         ratio = (newlogproba - logprobs).exp()
 
