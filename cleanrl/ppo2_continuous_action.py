@@ -379,10 +379,8 @@ while global_step < args.total_timesteps:
     approx_kls = []
     entropys = []
     target_pg = Policy().to(device)
-    target_vf = Value().to(device)
     for i_epoch_pi in range(args.update_epochs):
         target_pg.load_state_dict(pg.state_dict())
-        target_vf.load_state_dict(vf.state_dict())
         newlogproba = pg.get_logproba(obs, actions)
         ratio = (newlogproba - logprobs).exp()
 
@@ -414,7 +412,6 @@ while global_step < args.total_timesteps:
         if args.kle_rollback:
             if (logprobs - pg.get_logproba(obs, actions)).mean() > args.target_kl:
                 pg.load_state_dict(target_pg.state_dict())
-                vf.load_state_dict(target_vf.state_dict())
                 break
 
     # Optimizing value network
