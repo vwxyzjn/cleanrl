@@ -85,7 +85,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
+    parser.add_argument('--gym-id', type=str, default="AntBulletEnv-v0",
                        help='the id of the gym environment')
     parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
@@ -171,9 +171,17 @@ if args.prod_mode:
 # TRY NOT TO MODIFY: seeding
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 env = gym.make(args.gym_id)
-assert isinstance(env, TimeLimit), f"please set TimeLimit for the env associated with {args.gym_id}"
-args.episode_length = env._max_episode_steps
+# respect the default timelimit
+assert isinstance(env.action_space, Box), "only continuous action space is supported"
+assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
+if isinstance(env, TimeLimit):
+    if int(args.episode_length):
+        env._max_episode_steps = int(args.episode_length)
+    args.episode_length = env._max_episode_steps
+else:
+    env = TimeLimit(env, int(args.episode_length))
 env = NormalizedEnv(env.env,ob=args.norm_obs, ret=args.norm_returns, clipob=args.obs_clip, cliprew=args.rew_clip, gamma=args.gamma)
+env = TimeLimit(env, int(args.episode_length))
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
@@ -183,9 +191,6 @@ env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
 output_shape = preprocess_ac_space(env.action_space)
-# respect the default timelimit
-assert isinstance(env.action_space, Box), "only continuous action space is supported"
-env = TimeLimit(env, args.episode_length)
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
@@ -439,6 +444,7 @@ while global_step < args.total_timesteps:
         vf_lr_scheduler.step()
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
+    writer.add_scalar('charts/reward_threshold', env.spec.reward_threshold, global_step)
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
     writer.add_scalar("losses/entropy", np.mean(entropys), global_step)
