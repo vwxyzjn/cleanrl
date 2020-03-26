@@ -180,7 +180,7 @@ if isinstance(env, TimeLimit):
     args.episode_length = env._max_episode_steps
 else:
     env = TimeLimit(env, int(args.episode_length))
-env = NormalizedEnv(env.env,ob=args.norm_obs, ret=args.norm_returns, clipob=args.obs_clip, cliprew=args.rew_clip, gamma=args.gamma)
+env = NormalizedEnv(env.env, ob=args.norm_obs, ret=args.norm_returns, clipob=args.obs_clip, cliprew=args.rew_clip, gamma=args.gamma)
 env = TimeLimit(env, int(args.episode_length))
 random.seed(args.seed)
 np.random.seed(args.seed)
@@ -444,7 +444,6 @@ while global_step < args.total_timesteps:
         vf_lr_scheduler.step()
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
-    writer.add_scalar('charts/reward_threshold', env.spec.reward_threshold, global_step)
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
     writer.add_scalar("losses/entropy", np.mean(entropys), global_step)
