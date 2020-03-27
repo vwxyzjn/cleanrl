@@ -109,27 +109,12 @@ class Policy(nn.Module):
         x = self.fc3(x)
         return x
 
-    def get_action(self, x):
+    def get_action(self, x, action=None):
         logits = pg.forward(x)
-        # ALGO LOGIC: `env.action_space` specific logic
-        if isinstance(env.action_space, Discrete):
-            probs = Categorical(logits=logits)
+        probs = Categorical(logits=logits)
+        if action is None:
             action = probs.sample()
-            return action, -probs.log_prob(action), probs.entropy()
-        elif isinstance(env.action_space, MultiDiscrete):
-            logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
-            action = []
-            probs_categories = []
-            entropy = torch.zeros((logits.shape[0]))
-            neglogprob = torch.zeros((logits.shape[0]))
-            for i in range(len(logits_categories)):
-                probs_categories.append(Categorical(logits=logits_categories[i]))
-                if len(action) != env.action_space.shape:
-                    action.append(probs_categories[i].sample())
-                neglogprob -= probs_categories[i].log_prob(action[i])
-                entropy += probs_categories[i].entropy()
-            action = torch.stack(action).transpose(0, 1)
-            return action, neglogprob, entropy
+        return action, probs.log_prob(action), probs.entropy()
 
 class Value(nn.Module):
     def __init__(self):
@@ -158,7 +143,7 @@ while global_step < args.total_timesteps:
 
     # ALGO LOGIC: put other storage logic here
     values = torch.zeros((args.episode_length), device=device)
-    neglogprobs = torch.zeros((args.episode_length,), device=device)
+    logprobs = np.zeros((args.episode_length,),)
     entropys = torch.zeros((args.episode_length,), device=device)
 
     # TRY NOT TO MODIFY: prepare the execution of the game.
@@ -168,8 +153,8 @@ while global_step < args.total_timesteps:
 
         # ALGO LOGIC: put action logic here
         values[step] = vf.forward(obs[step:step+1])
-        action, neglogprob, entropy = pg.get_action(obs[step:step+1])
-        actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], neglogprob, entropy
+        action, logprob, entropy = pg.get_action(obs[step:step+1])
+        actions[step], logprobs[step], entropys[step] = action.tolist()[0], logprob, entropy
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
@@ -185,20 +170,21 @@ while global_step < args.total_timesteps:
     # advantages are returns - baseline, value estimates in our case
     advantages = returns - values.detach().cpu().numpy()
 
-    neglogprobs = neglogprobs.detach()
-    non_empty_idx = np.argmax(dones) + 1
     for _ in range(args.update_epochs):
         # ALGO LOGIC: `env.action_space` specific logic
-        _, new_neglogprobs, _ = pg.get_action(obs[:non_empty_idx])
-        ratio = torch.exp(neglogprobs[:non_empty_idx] - new_neglogprobs)
-        surrogate1 = ratio * torch.Tensor(advantages)[:non_empty_idx].to(device)
-        surrogate2 = torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef) * torch.Tensor(advantages)[:non_empty_idx].to(device)
-        clip = torch.min(surrogate1, surrogate2)
-        vf_loss = loss_fn(torch.Tensor(returns).to(device), values) * args.vf_coef
-        loss = vf_loss - (clip + entropys[:non_empty_idx] * args.ent_coef).mean()
+        _, newlogproba, _ = pg.get_action(obs[:step+1], torch.LongTensor(actions[:step+1].astype(np.int)).to(device))
+
+        ratio = torch.exp(newlogproba - torch.Tensor(logprobs[:step+1]))
+        surrogate1 = ratio * torch.Tensor(advantages)[:step+1].to(device)
+        surrogate2 = torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef) * torch.Tensor(advantages)[:step+1].to(device)
+        policy_loss = -torch.mean(torch.min(surrogate1, surrogate2))
+        newvalues = vf.forward(obs[:step+1]).flatten()
+        vf_loss = torch.mean((newvalues - torch.Tensor(returns[:step+1])).pow(2))
+        entropy_loss = torch.mean(torch.exp(newlogproba) * newlogproba)
+        loss = policy_loss + args.vf_coef * vf_loss + args.ent_coef * entropy_loss
 
         optimizer.zero_grad()
-        loss.backward(retain_graph=True)
+        loss.backward()
         nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
         optimizer.step()
 
