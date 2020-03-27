@@ -165,8 +165,9 @@ while global_step < args.total_timesteps:
         obs[step] = next_obs.copy()
         
         # ALGO LOGIC: put action logic here
-        values[step] = vf.forward(obs[step:step+1])
-        action, logproba = pg.get_action(obs[step:step+1])
+        with torch.no_grad():
+            values[step] = vf.forward(obs[step:step+1])
+            action, logproba = pg.get_action(obs[step:step+1])
         actions[step] = action.data.numpy()[0]
         logprobs[step] = logproba.data.numpy()[0]
         
@@ -191,16 +192,16 @@ while global_step < args.total_timesteps:
 
     for _ in range(args.update_epochs):
         newlogproba = pg.get_logproba(obs[:step+1], torch.Tensor(actions[:step+1]))
-        # newvalues = vf.forward(obs[:step+1]).flatten() DO we generate a new values from the current policy?
+        newvalues = vf.forward(obs[:step+1]).flatten()
         ratio =  torch.exp(newlogproba - torch.Tensor(logprobs[:step+1]))
         surrogate1 = ratio * torch.Tensor(advantages[:step+1])
         surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages[:step+1])
         policy_loss = - torch.mean(torch.min(surrogate1, surrogate2))
-        vf_loss = torch.mean((values[:step+1] - torch.Tensor(returns[:step+1])).pow(2))
+        vf_loss = torch.mean((newvalues - torch.Tensor(returns[:step+1])).pow(2))
         entropy_loss = torch.mean(torch.exp(newlogproba) * newlogproba)
         total_loss = policy_loss + args.vf_coef * vf_loss + args.ent_coef * entropy_loss
         optimizer.zero_grad()
-        total_loss.backward(retain_graph=True)
+        total_loss.backward()
         nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
         optimizer.step()
 
