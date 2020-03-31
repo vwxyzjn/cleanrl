@@ -524,7 +524,6 @@ output_shape = preprocess_ac_space(envs.action_space)
 # if args.capture_video:
 #     env = Monitor(env, f'videos/{experiment_name}')
 
-
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
@@ -581,7 +580,6 @@ vf = Value().to(device)
 optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
 #print(pg.logstd.bias)
-torch.autograd.set_detect_anomaly(True)
 # TRY NOT TO MODIFY: start the game
 num_steps = 5
 global_step = 0
@@ -654,7 +652,6 @@ while global_step < args.total_timesteps:
             total_loss.backward() # total_loss.backward()
             nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
             optimizer.step()
-            
         
     rollouts.after_update()
 
@@ -664,5 +661,5 @@ while global_step < args.total_timesteps:
     # writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
     # writer.add_scalar("losses/entropy", entropys[:step+1].mean().item(), global_step)
     # writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
-env.close()
+envs.close()
 writer.close()
