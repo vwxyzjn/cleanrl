@@ -111,7 +111,7 @@ if __name__ == "__main__":
                        help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.97,
                        help='the lambda for the general advantage estimation')
-    parser.add_argument('--ent-coef', type=float, default=0.2,
+    parser.add_argument('--ent-coef', type=float, default=0.0,
                        help="coefficient of the entropy")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                        help='the maximum norm for the gradient clipping')
@@ -248,22 +248,26 @@ class Policy(nn.Module):
 class Value(nn.Module):
     def __init__(self):
         super(Value, self).__init__()
-        self.fc1 = nn.Linear(input_shape, 64)
-        self.fc2 = nn.Linear(64, 1)
+        self.fc1 = nn.Linear(input_shape, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 1)
 
         if args.weights_init == "orthogonal":
             torch.nn.init.orthogonal_(self.fc1.weight)
             torch.nn.init.orthogonal_(self.fc2.weight)
+            torch.nn.init.orthogonal_(self.fc3.weight)
         elif args.weights_init == "xavier":
             torch.nn.init.xavier_uniform_(self.fc1.weight)
             torch.nn.init.xavier_uniform_(self.fc2.weight)
+            torch.nn.init.orthogonal_(self.fc3.weight)
         else:
             raise NotImplementedError
 
     def forward(self, x):
         x = preprocess_obs_fn(x)
         x = torch.tanh(self.fc1(x))
-        x = self.fc2(x)
+        x = torch.tanh(self.fc2(x))
+        x = self.fc3(x)
         return x
 
 pg = Policy().to(device)
