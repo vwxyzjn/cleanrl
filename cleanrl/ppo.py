@@ -20,7 +20,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="CartPole-v0",
+    parser.add_argument('--gym-id', type=str, default="Taxi-v3",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
@@ -110,7 +110,7 @@ class Policy(nn.Module):
         return x
 
     def get_action(self, x, action=None):
-        logits = pg.forward(x)
+        logits = self.forward(x)
         probs = Categorical(logits=logits)
         if action is None:
             action = probs.sample()
