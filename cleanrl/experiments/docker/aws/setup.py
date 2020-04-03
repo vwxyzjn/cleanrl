@@ -18,12 +18,28 @@ response = client.create_job_queue(
 print(response)
 print("job queue created \n=============================")
 
+# print("creating on demand job queue")
+# response = client.create_job_queue(
+#     jobQueueName='cleanrl_ondemand',
+#     state='ENABLED',
+#     priority=101,
+#     computeEnvironmentOrder=[
+#         {
+#             'order': 100,
+#             'computeEnvironment': 'cleanrl_ondemand'
+#         }
+#     ]
+# )
+# print(response)
+# print("on demand job queue created \n=============================")
+
+
 print("creating job definition")
 response = client.register_job_definition(
     jobDefinitionName='cleanrl',
     type='container',
     containerProperties={
-        'image': 'vwxyzjn/cleanrl:1.4-cuda10.1-cudnn7-runtime',
+        'image': 'vwxyzjn/cleanrl_shared_memory:latest',
         'vcpus': 1,
         'memory': 1000,
     },

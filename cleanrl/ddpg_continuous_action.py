@@ -250,7 +250,7 @@ while global_step < args.total_timesteps:
         if global_step > args.learning_starts and global_step % args.train_frequency == 0:
             s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
             # TODO : implement the batch normalization
-            next_state_actions = actor.forward(s_next_obses)
+            next_state_actions = actor.forward(s_next_obses) ## TODO: use action noise in training as well for DDPG. Might be cirtical
             target_q = target_network.forward(s_next_obses, next_state_actions).squeeze()
             td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_q * (1 - torch.Tensor(s_dones).to(device))
             old_val = q_network.forward(s_obs, torch.Tensor(s_actions).to(device)).squeeze()

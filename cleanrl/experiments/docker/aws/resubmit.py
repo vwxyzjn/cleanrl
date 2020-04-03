@@ -1,3 +1,18 @@
+# This script look for early-terminated runs in a wanbd project and resubmit through aws
+
+import wandb
+import requests
+api = wandb.Api()
+
+# Project is specified by <entity/project-name>
+runs = api.runs("cleanrl/ppo.kle.noent")
+final_run_cmds = []
+for run in runs:
+    if run.state == "failed":
+        metadata = requests.get(url=run.file(name="wandb-metadata.json").url).json()
+        final_run_cmds += [["python", metadata["program"]] + metadata["args"]]
+
+
 # pip install boto3
 import boto3
 import re
@@ -9,23 +24,13 @@ client = boto3.client('batch')
 wandb_key = os.environ['WANDB_KEY']
 assert len(wandb_key) > 0, "set the environment variable `WANDB_KEY` to your WANDB API key, something like `export WANDB_KEY=fdsfdsfdsfads` "
 
-# extract runs from bash scripts
-final_run_cmds = []
-with open("all.sh") as f:
-    strings = f.read()
-runs_match = re.findall('(python)(.+)((?:\n.+)+)(seed)',strings)
-for run_match in runs_match:
-    run_match_str = "".join(run_match).replace("\\\n", "")
-    # print(run_match_str)
-    for seed in range(2):
-        final_run_cmds += [run_match_str.replace("$seed", str(seed)).split()]
-
 # use docker directly
 cores = 40
 repo = "vwxyzjn/cleanrl_shared_memory:latest"
-current_core = 0
+current_core = 1
 for final_run_cmd in final_run_cmds:
-    print(f'docker run -d --cpuset-cpus="{current_core}" -e WANDB={wandb_key} {repo} ' + " ".join(final_run_cmds[0]))
+    print(f'docker run -d --cpuset-cpus="{current_core}" -e WANDB={wandb_key} {repo} ' + " ".join(final_run_cmd))
+    print("\n")
     current_core = current_core + 1 % cores
 
 # submit jobs

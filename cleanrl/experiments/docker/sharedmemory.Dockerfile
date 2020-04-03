@@ -9,7 +9,7 @@ RUN apt-get -y install python-opengl
 
 WORKDIR /workspace/cleanrl/cleanrl
 
-COPY entrypoint.sh /usr/local/bin/
-RUN chmod 777 /usr/local/bin/entrypoint.sh
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD python ppo2_continuous_action.py --capture-video --total-timesteps 200
+COPY sharedmemory_entrypoint.sh /usr/local/bin/
+RUN chmod 777 /usr/local/bin/sharedmemory_entrypoint.sh
+ENTRYPOINT ["/usr/local/bin/sharedmemory_entrypoint.sh"]
+CMD python ppo2_continuous_action.py --total-timesteps 2000
