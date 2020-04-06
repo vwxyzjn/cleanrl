@@ -85,7 +85,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="AntBulletEnv-v0",
+    parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
                        help='the id of the gym environment')
     parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
@@ -314,9 +314,8 @@ while global_step < args.total_timesteps:
         obs[step] = next_obs.copy()
 
         # ALGO LOGIC: put action logic here
-        values[step] = vf.forward(obs[step:step+1])
-
         with torch.no_grad():
+            values[step] = vf.forward(obs[step:step+1])
             action, logproba = pg.get_action(obs[step:step+1])
 
         actions[step] = action.data.cpu().numpy()[0]
@@ -426,16 +425,17 @@ while global_step < args.total_timesteps:
     # Optimizing value network
     for i_epoch in range(args.update_epochs):
         # Resample values
-        values = vf.forward(obs).view(-1)
+        new_values = vf.forward(obs).view(-1)
 
         # Value loss clipping
         if args.clip_vloss:
-            v_loss_unclipped = ((values - returns) ** 2)
-            v_loss_clipped = (torch.clamp(values, -args.clip_coef, args.clip_coef) - returns)**2
-            v_loss_min = torch.min( v_loss_unclipped, v_loss_clipped)
-            v_loss = .5 * v_loss_min.mean() # The .5 is not in the paper, but theoretically correct, right ?
+            v_loss_unclipped = ((new_values - returns) ** 2)
+            v_clipped = values + torch.clamp(new_values - values, -args.clip_coef, args.clip_coef)
+            v_loss_clipped = (v_clipped - returns)**2
+            v_loss_min = torch.min(v_loss_unclipped, v_loss_clipped)
+            v_loss = v_loss_min.mean()
         else:
-            v_loss = loss_fn(returns, values)
+            v_loss = loss_fn(returns, new_values)
 
         v_optimizer.zero_grad()
         v_loss.backward()
