@@ -217,9 +217,8 @@ while global_step < args.total_timesteps:
         if global_step < args.learning_starts:
             actions[step] = env.action_space.sample()
         else:
-            temp = np.random.normal(0, max_action * args.exploration_noise, size=output_shape)
             actions[step] = (actor.forward(obs[step:step+1]).tolist()[0] + 
-                temp
+                np.random.normal(0, max_action * args.exploration_noise, size=output_shape)
             ).clip(-max_action, max_action)
 
         global_step += 1
