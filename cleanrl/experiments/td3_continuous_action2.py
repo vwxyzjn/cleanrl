@@ -59,14 +59,10 @@ if __name__ == "__main__":
                        help='the maximum norm for the gradient clipping')
     parser.add_argument('--batch-size', type=int, default=256,
                        help="the batch size of sample from the reply memory")
-    parser.add_argument('--action-noise', default="normal", choices=["ou", 'normal'],
-                        help='Selects the scheme to be used for weights initialization'),
-    parser.add_argument('--start-sigma', type=float, default=0.2,
-                       help="the start standard deviation of the action noise for exploration")
-    parser.add_argument('--end-sigma', type=float, default=0.05,
-                       help="the ending standard deviation of the action noise for exploration")
-    parser.add_argument('--exploration-fraction', type=float, default=0.8,
-                       help="the fraction of `total-timesteps` it takes from start-sigma to go end-sigma")
+    parser.add_argument('--policy-noise', type=float, default=0.2,
+                        help='the sigma parameter of the policy noise used for target action smoothing')
+    parser.add_argument('--exploration-noise', type=float, default=0.1,
+                        help='the sigma parameter for the exploration noise')
     parser.add_argument('--learning-starts', type=int, default=25e3,
                        help="timestep to start learning")
     parser.add_argument('--policy-frequency', type=int, default=2,
@@ -204,9 +200,6 @@ q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=arg
 actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
 max_action = float(env.action_space.high[0])
-exploration_noise = 0.1
-policy_noise = 0.2
-torch.manual_seed(100)
 # TRY NOT TO MODIFY: start the game
 global_step = 0
 while global_step < args.total_timesteps:
@@ -224,14 +217,10 @@ while global_step < args.total_timesteps:
         if global_step < args.learning_starts:
             actions[step] = env.action_space.sample()
         else:
-            # raise
-            temp = np.random.normal(0, max_action * exploration_noise, size=output_shape)
+            temp = np.random.normal(0, max_action * args.exploration_noise, size=output_shape)
             actions[step] = (actor.forward(obs[step:step+1]).tolist()[0] + 
                 temp
             ).clip(-max_action, max_action)
-            # print(actor.forward(obs[step:step+1]).tolist()[0])
-            # # raise
-            # print("xixi")
 
         global_step += 1
         # TRY NOT TO MODIFY: execute the game and log data.
@@ -243,15 +232,9 @@ while global_step < args.total_timesteps:
         if global_step > args.learning_starts:
             s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
             with torch.no_grad():
-                # clipped_noise = np.clip(policy_noise(), -args.noise_clip, args.noise_clip)
-
-                # exploration_noise = 0.1
-                # policy_noise = 0.2
-                # torch.manual_seed(args.seed)
                 clipped_noise = (
-                    torch.randn_like(torch.Tensor(s_actions)) * policy_noise
+                    torch.randn_like(torch.Tensor(s_actions)) * args.policy_noise
                 ).clamp(-args.noise_clip, args.noise_clip)
-                # clipped_noise.sum()
 
                 next_state_actions = (
                     actor.forward(s_next_obses) + torch.Tensor(clipped_noise)
@@ -259,9 +242,6 @@ while global_step < args.total_timesteps:
                 qf1_next_target = qf1_target.forward(s_next_obses, next_state_actions)
                 qf2_next_target = qf2_target.forward(s_next_obses, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target)
-                
-                # next_q_value = (torch.Tensor(s_rewards).to(device) + (torch.Tensor(s_dones).to(device)) * args.gamma * (min_qf_next_target)).view(-1)
-                
                 next_q_value = torch.Tensor(s_rewards).to(device) + (1 - torch.Tensor(s_dones).to(device)) * args.gamma * (min_qf_next_target).view(-1)
 
             qf1_a_values = qf1.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
@@ -292,12 +272,10 @@ while global_step < args.total_timesteps:
                     target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
         if dones[step]:
-            # exploration_noise.reset()
             break
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     print(f"global_step={global_step}, episode_reward={rewards.sum()}")
-    # print(np.array([item for item in actions[:step+1]]).sum())
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
     writer.add_scalar("losses/td_loss", td_losses[:step+1].mean(), global_step)
 env.close()
