@@ -27,13 +27,13 @@ if __name__ == "__main__":
                        help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
                        help='the id of the gym environment')
-    parser.add_argument('--learning-rate', type=float, default=7e-4,
+    parser.add_argument('--learning-rate', type=float, default=3e-4,
                        help='the learning rate of the optimizer')
-    parser.add_argument('--seed', type=int, default=2,
+    parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=0,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=500000,
+    parser.add_argument('--total-timesteps', type=int, default=1000000,
                        help='total timesteps of the experiments')
     parser.add_argument('--no-torch-deterministic', action='store_false', dest="torch_deterministic", default=True,
                        help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -49,7 +49,7 @@ if __name__ == "__main__":
                        help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
-    parser.add_argument('--buffer-size', type=int, default=10000,
+    parser.add_argument('--buffer-size', type=int, default=int(1e6),
                         help='the replay memory buffer size')
     parser.add_argument('--gamma', type=float, default=0.99,
                        help='the discount factor gamma')
@@ -57,7 +57,7 @@ if __name__ == "__main__":
                        help="target smoothing coefficient (default: 0.005)")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                        help='the maximum norm for the gradient clipping')
-    parser.add_argument('--batch-size', type=int, default=32,
+    parser.add_argument('--batch-size', type=int, default=256,
                        help="the batch size of sample from the reply memory")
     parser.add_argument('--action-noise', default="normal", choices=["ou", 'normal'],
                         help='Selects the scheme to be used for weights initialization'),
@@ -67,7 +67,7 @@ if __name__ == "__main__":
                        help="the ending standard deviation of the action noise for exploration")
     parser.add_argument('--exploration-fraction', type=float, default=0.8,
                        help="the fraction of `total-timesteps` it takes from start-sigma to go end-sigma")
-    parser.add_argument('--learning-starts', type=int, default=5000,
+    parser.add_argument('--learning-starts', type=int, default=25e3,
                        help="timestep to start learning")
     parser.add_argument('--policy-frequency', type=int, default=2,
                        help="the frequency of training policy (delayed)")
@@ -177,9 +177,9 @@ class ReplayBuffer():
 class QNetwork(nn.Module):
     def __init__(self):
         super(QNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_shape+output_shape, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 1)
+        self.fc1 = nn.Linear(input_shape+output_shape, 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 1)
 
     def forward(self, x, a):
         x = preprocess_obs_fn(x)
@@ -192,9 +192,9 @@ class QNetwork(nn.Module):
 class Actor(nn.Module):
     def __init__(self):
         super(Actor, self).__init__()
-        self.fc1 = nn.Linear(input_shape, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc_mu = nn.Linear(84, output_shape)
+        self.fc1 = nn.Linear(input_shape, 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc_mu = nn.Linear(256, output_shape)
 
     def forward(self, x):
         x = preprocess_obs_fn(x)
@@ -239,7 +239,6 @@ while global_step < args.total_timesteps:
     
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
-        global_step += 1
         obs[step] = next_obs.copy()
 
         # ALGO LOGIC: put action logic here
@@ -247,8 +246,9 @@ while global_step < args.total_timesteps:
             actions[step] = env.action_space.sample()
         else:
             action = actor.forward(obs[step:step+1])
-            actions[step] = action.tolist()[0] + exploration_noise()
+            actions[step] = (action.tolist()[0] + exploration_noise()).clip(env.action_space.low, env.action_space.high)
 
+        global_step += 1
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
         rb.put((obs[step], actions[step], rewards[step], next_obs, dones[step]))
@@ -259,7 +259,9 @@ while global_step < args.total_timesteps:
             s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
             with torch.no_grad():
                 clipped_noise = np.clip(policy_noise(), -args.noise_clip, args.noise_clip)
-                next_state_actions = actor.forward(s_next_obses) + torch.Tensor(clipped_noise)
+                next_state_actions = (
+                    actor.forward(s_next_obses) + torch.Tensor(clipped_noise)
+                ).clamp(env.action_space.low[0], env.action_space.high[0])
                 qf1_next_target = qf1_target.forward(s_next_obses, next_state_actions)
                 qf2_next_target = qf2_target.forward(s_next_obses, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target)
