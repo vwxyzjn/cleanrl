@@ -154,7 +154,8 @@ if __name__ == "__main__":
     if not args.seed:
         args.seed = int(time.time())
 
-args.features_turned_on = sum([args.kle_stop, args.gae, args.norm_obs, args.norm_returns, args.norm_adv, args.anneal_lr, args.clip_vloss])
+assert not (args.kle_stop and args.kle_rollback), "Error: trying to enable both KLE variants at the same time."
+args.features_turned_on = sum([args.kle_stop, args.kle_rollback, args.gae, args.norm_obs, args.norm_returns, args.norm_adv, args.anneal_lr, args.clip_vloss])
 
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -433,7 +434,7 @@ while global_step < args.total_timesteps:
             v_clipped = values + torch.clamp(new_values - values, -args.clip_coef, args.clip_coef)
             v_loss_clipped = (v_clipped - returns)**2
             v_loss_min = torch.min(v_loss_unclipped, v_loss_clipped)
-            v_loss = v_loss_min.mean()
+            v_loss = .5 * v_loss_min.mean() # Added point 5 so the plots of with and without clip-vloss would be in the same range
         else:
             v_loss = loss_fn(returns, new_values)
 
