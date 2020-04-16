@@ -270,6 +270,29 @@ class Value(nn.Module):
         x = self.fc3(x)
         return x
 
+def discount_cumsum(x, dones, gamma):
+    """
+    computing discounted cumulative sums of vectors that resets with dones
+    input:
+        vector x,  vector dones,
+        [x0,       [0,
+         x1,        0,
+         x2         1,
+         x3         0, 
+         x4]        0]
+    output:
+        [x0 + discount * x1 + discount^2 * x2,
+         x1 + discount * x2,
+         x2,
+         x3 + discount * x4,
+         x4]
+    """
+    discount_cumsum = np.zeros_like(x)
+    discount_cumsum[-1] = x[-1]
+    for t in reversed(range(x.shape[0]-1)):
+        discount_cumsum[t] = x[t] + gamma * discount_cumsum[t+1] * (1-dones[t])
+    return discount_cumsum
+
 pg = Policy().to(device)
 vf = Value().to(device)
 
@@ -299,13 +322,12 @@ while global_step < args.total_timesteps:
     logprobs = np.zeros((args.episode_length,))
 
     rewards = np.zeros((args.episode_length,))
-    real_rewards = np.zeros((args.episode_length))
+    real_rewards = []
     returns = np.zeros((args.episode_length,))
 
     dones = np.zeros((args.episode_length,))
     values = torch.zeros((args.episode_length,)).to(device)
 
-    episode_lengths = [-1]
     advantages = np.zeros((args.episode_length,))
     deltas = np.zeros((args.episode_length,))
     # TRY NOT TO MODIFY: prepare the execution of the game.
@@ -326,56 +348,31 @@ while global_step < args.total_timesteps:
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], info = env.step(clipped_action)
-        real_rewards[step] = info['real_reward']
+        real_rewards += [info['real_reward']]
         next_obs = np.array(next_obs)
 
         if dones[step]:
             # Computing the discounted returns:
-            if args.gae:
-                prev_return = 0
-                prev_value = 0
-                prev_advantage = 0
-                for i in reversed(range(episode_lengths[-1], step)):
-                    returns[i] = rewards[i] + args.gamma * prev_return * (1 - dones[i])
-                    deltas[i] = rewards[i] + args.gamma * prev_value * (1 - dones[i]) - values[i]
-                    # ref: https://arxiv.org/pdf/1506.02438.pdf (generalization advantage estimate)
-                    advantages[i] = deltas[i] + args.gamma * args.gae_lambda * prev_advantage * (1 - dones[i])
-                    prev_return = returns[i]
-                    prev_value = values[i]
-                    prev_advantage = advantages[i]
-            else:
-                returns[step] = rewards[step]
-                for t in reversed(range(episode_lengths[-1], step)):
-                    returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-
-            writer.add_scalar("charts/episode_reward", real_rewards[(episode_lengths[-1]+1):step+1].sum(), global_step)
-            print(f"global_step={global_step}, episode_reward={real_rewards[(episode_lengths[-1]+1):step+1].sum()}")
-            episode_lengths += [step]
+            writer.add_scalar("charts/episode_reward", np.sum(real_rewards), global_step)
+            print(f"global_step={global_step}, episode_reward={np.sum(real_rewards)}")
+            real_rewards = []
             next_obs = np.array(env.reset())
 
     # bootstrap reward if not done. reached the batch limit
+    last_value = 0
     if not dones[step]:
-        returns = np.append(returns, vf.forward(next_obs.reshape(1, -1))[0].detach().cpu().numpy(), axis=-1)
-        if args.gae:
-            prev_return = 0
-            prev_value = 0
-            prev_advantage = 0
-            for i in reversed(range(episode_lengths[-1], step)):
-                returns[i] = rewards[i] + args.gamma * prev_return * (1 - dones[i])
-                deltas[i] = rewards[i] + args.gamma * prev_value * (1 - dones[i]) - values[i]
-                # ref: https://arxiv.org/pdf/1506.02438.pdf (generalization advantage estimate)
-                advantages[i] = deltas[i] + args.gamma * args.gae_lambda * prev_advantage * (1 - dones[i])
-                prev_return = returns[i]
-                prev_value = values[i]
-                prev_advantage = advantages[i]
-            returns = returns[:-1]
-        else:
-            for t in reversed(range(episode_lengths[-1], step+1)):
-                returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
-            returns = returns[:-1]
+        last_value = vf.forward(next_obs.reshape(1, -1))[0].detach().cpu().numpy()[0]
+    bootstrapped_rewards = np.append(rewards, last_value)
 
-    advantages = torch.Tensor(advantages).to(device) if args.gae else torch.Tensor(returns - values.detach().cpu().numpy()).to(device)
-
+    # calculate the returns and advantages
+    returns = discount_cumsum(bootstrapped_rewards, dones, args.gamma)[:-1]
+    if args.gae:
+        bootstrapped_values = np.append(values.detach().cpu().numpy(), last_value)
+        deltas = bootstrapped_rewards[:-1] + args.gamma * bootstrapped_values[1:] * (1-dones) - bootstrapped_values[:-1]
+        advantages = discount_cumsum(deltas, dones, args.gamma * args.gae_lambda)
+    else:
+        advantages = returns - values.detach().cpu().numpy()
+    advantages = torch.Tensor(advantages).to(device)
     # Advantage normalization
     if args.norm_adv:
         advantages = (advantages - advantages.mean()) / advantages.std()
