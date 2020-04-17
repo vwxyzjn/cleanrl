@@ -425,8 +425,8 @@ while global_step < args.total_timesteps:
             v_loss_unclipped = ((new_values - returns) ** 2)
             v_clipped = values + torch.clamp(new_values - values, -args.clip_coef, args.clip_coef)
             v_loss_clipped = (v_clipped - returns)**2
-            v_loss_min = torch.min(v_loss_unclipped, v_loss_clipped)
-            v_loss = v_loss_min.mean()
+            v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
+            v_loss = 0.5 * v_loss_max.mean()
         else:
             v_loss = loss_fn(returns, new_values)
 
