@@ -24,9 +24,9 @@ class RunningMeanStd(object):
         self.count = epsilon
 
     def update(self, x):
-        batch_mean = np.mean(x, axis=0)
-        batch_var = np.var(x, axis=0)
-        batch_count = x.shape[0]
+        batch_mean = np.mean([x], axis=0)
+        batch_var = np.var([x], axis=0)
+        batch_count = 1
         self.update_from_moments(batch_mean, batch_var, batch_count)
 
     def update_from_moments(self, batch_mean, batch_var, batch_count):
@@ -323,13 +323,9 @@ while global_step < args.total_timesteps:
 
     rewards = np.zeros((args.episode_length,))
     real_rewards = []
-    returns = np.zeros((args.episode_length,))
 
     dones = np.zeros((args.episode_length,))
     values = torch.zeros((args.episode_length,)).to(device)
-
-    advantages = np.zeros((args.episode_length,))
-    deltas = np.zeros((args.episode_length,))
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
         global_step += 1
