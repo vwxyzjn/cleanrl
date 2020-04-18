@@ -62,9 +62,9 @@ class NormalizedEnv(gym.core.Wrapper):
         self.ret = self.ret * self.gamma + rews
         obs = self._obfilt(obs)
         if self.ret_rms:
-            self.ret_rms.update(np.array([self.ret]))
+            self.ret_rms.update(np.array([self.ret].copy()))
             rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
-        self.ret = float(news)
+        self.ret = self.ret * (1-float(news))
         return obs, rews, news, infos
 
     def _obfilt(self, obs):
@@ -107,6 +107,8 @@ if __name__ == "__main__":
                        help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
+    parser.add_argument('--batch-size', type=int, default=2048,
+                       help='the batch size of ppo')
     parser.add_argument('--gamma', type=float, default=0.99,
                        help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.97,
@@ -117,7 +119,7 @@ if __name__ == "__main__":
                        help='the maximum norm for the gradient clipping')
     parser.add_argument('--clip-coef', type=float, default=0.2,
                        help="the surrogate clipping coefficient")
-    parser.add_argument('--update-epochs', type=int, default=100,
+    parser.add_argument('--update-epochs', type=int, default=10,
                         help="the K epochs to update the policy")
     parser.add_argument('--kle-stop', action='store_true', default=False,
                         help='If toggled, the policy updates will be early stopped w.r.t target-kl')
@@ -229,21 +231,16 @@ class Policy(nn.Module):
         action_logstd = self.logstd.expand_as(action_mean)
         return action_mean, action_logstd
 
-    def get_action(self, x):
+    def get_action(self, x, action=None):
         mean, logstd = self.forward(x)
         std = torch.exp(logstd)
         probs = Normal(mean, std)
-        action = probs.sample()
-        return action, probs.log_prob(action).sum(1)
-
-    def get_logproba(self, x, actions):
-        # Note: Converts actions to tensor
-        if not isinstance(actions, torch.Tensor):
-            actions = preprocess_obs_fn(actions)
-        action_mean, action_logstd = self.forward(x)
-        action_std = torch.exp(action_logstd)
-        dist = Normal(action_mean, action_std)
-        return dist.log_prob(actions).sum(1)
+        if action is None:
+            action = probs.sample()
+        else:
+            if not isinstance(action, torch.Tensor):
+                action = preprocess_obs_fn(action)
+        return action, probs.log_prob(action).sum(1), probs.entropy()
 
 class Value(nn.Module):
     def __init__(self):
@@ -316,25 +313,23 @@ while global_step < args.total_timesteps:
     next_obs = np.array(env.reset())
 
     # ALGO Logic: Storage for epoch data
-    obs = np.empty((args.episode_length,) + env.observation_space.shape)
-
-    actions = np.empty((args.episode_length,) + env.action_space.shape)
-    logprobs = np.zeros((args.episode_length,))
-
-    rewards = np.zeros((args.episode_length,))
+    obs = np.empty((args.batch_size,) + env.observation_space.shape)
+    actions = np.empty((args.batch_size,) + env.action_space.shape)
+    logprobs = np.zeros((args.batch_size,))
+    rewards = np.zeros((args.batch_size,))
     real_rewards = []
+    dones = np.zeros((args.batch_size,))
+    values = torch.zeros((args.batch_size,)).to(device)
 
-    dones = np.zeros((args.episode_length,))
-    values = torch.zeros((args.episode_length,)).to(device)
     # TRY NOT TO MODIFY: prepare the execution of the game.
-    for step in range(args.episode_length):
+    for step in range(args.batch_size):
         global_step += 1
         obs[step] = next_obs.copy()
 
         # ALGO LOGIC: put action logic here
         with torch.no_grad():
             values[step] = vf.forward(obs[step:step+1])
-            action, logproba = pg.get_action(obs[step:step+1])
+            action, logproba, _ = pg.get_action(obs[step:step+1])
 
         actions[step] = action.data.cpu().numpy()[0]
         logprobs[step] = logproba.data.cpu().numpy()[0]
@@ -361,28 +356,31 @@ while global_step < args.total_timesteps:
     bootstrapped_rewards = np.append(rewards, last_value)
 
     # calculate the returns and advantages
-    returns = discount_cumsum(bootstrapped_rewards, dones, args.gamma)[:-1]
     if args.gae:
         bootstrapped_values = np.append(values.detach().cpu().numpy(), last_value)
         deltas = bootstrapped_rewards[:-1] + args.gamma * bootstrapped_values[1:] * (1-dones) - bootstrapped_values[:-1]
         advantages = discount_cumsum(deltas, dones, args.gamma * args.gae_lambda)
+        advantages = torch.Tensor(advantages).to(device)
+        returns = advantages + values
     else:
+        returns = discount_cumsum(bootstrapped_rewards, dones, args.gamma)[:-1]
         advantages = returns - values.detach().cpu().numpy()
-    advantages = torch.Tensor(advantages).to(device)
+        advantages = torch.Tensor(advantages).to(device)
+        returns = torch.Tensor(returns).to(device)
+
     # Advantage normalization
     if args.norm_adv:
-        advantages = (advantages - advantages.mean()) / advantages.std()
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
 
     # Optimizaing policy network
     # First Tensorize all that is need to be so, clears up the loss computation part
     logprobs = torch.Tensor(logprobs).to(device) # Called 2 times: during policy update and KL bound checked
-    returns = torch.Tensor(returns).to(device) # Called 1 time when updating the values
     approx_kls = []
     entropys = []
     target_pg = Policy().to(device)
     for i_epoch_pi in range(args.update_epochs):
         target_pg.load_state_dict(pg.state_dict())
-        newlogproba = pg.get_logproba(obs, actions)
+        _, newlogproba, entropy = pg.get_action(obs, actions)
         ratio = (newlogproba - logprobs).exp()
 
         # Policy loss as in OpenAI SpinUp
@@ -391,11 +389,8 @@ while global_step < args.total_timesteps:
                                 (1.-args.clip_coef) * advantages).to(device)
 
         # Entropy computation with resampled actions
-        _, resampled_logprobs = pg.get_action( obs)
-        entropy = - (resampled_logprobs.exp() * resampled_logprobs).mean()
-        entropys.append(entropy.item())
-
-        policy_loss = - torch.min(ratio * advantages, clip_adv) + args.ent_coef * entropy
+        entropys.append(entropy.mean().item())
+        policy_loss = - torch.min(ratio * advantages, clip_adv) + args.ent_coef * entropy.mean()
         policy_loss = policy_loss.mean()
 
         pg_optimizer.zero_grad()
@@ -404,14 +399,13 @@ while global_step < args.total_timesteps:
         pg_optimizer.step()
 
         # KEY TECHNIQUE: This will stop updating the policy once the KL has been breached
-        # TODO: Roll back the policy to before at breaches the KL trust region
         approx_kl = (logprobs - newlogproba).mean()
         approx_kls.append(approx_kl.item())
         if args.kle_stop:
             if approx_kl > args.target_kl:
                 break
         if args.kle_rollback:
-            if (logprobs - pg.get_logproba(obs, actions)).mean() > args.target_kl:
+            if (logprobs - pg.get_action(obs, actions)[1]).mean() > args.target_kl:
                 pg.load_state_dict(target_pg.state_dict())
                 break
 
