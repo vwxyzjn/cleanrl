@@ -57,15 +57,15 @@ class NormalizedEnv(gym.core.Wrapper):
         self.epsilon = epsilon
 
     def step(self, action):
-        obs, rews, news, infos = self.env.step(action)
+        obs, rews, dones, infos = self.env.step(action)
         infos['real_reward'] = rews
         self.ret = self.ret * self.gamma + rews
         obs = self._obfilt(obs)
         if self.ret_rms:
             self.ret_rms.update(np.array([self.ret].copy()))
             rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
-        self.ret = self.ret * (1-float(news))
-        return obs, rews, news, infos
+        self.ret = self.ret * (1-float(dones))
+        return obs, rews, dones, infos
 
     def _obfilt(self, obs):
         if self.ob_rms:
