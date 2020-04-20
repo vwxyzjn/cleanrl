@@ -87,17 +87,17 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="Ant-v3",
+    parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
                        help='the id of the gym environment')
-    parser.add_argument('--seed', type=int, default=2,
+    parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=0,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=5000000,
+    parser.add_argument('--total-timesteps', type=int, default=100000,
                        help='total timesteps of the experiments')
     parser.add_argument('--no-torch-deterministic', action='store_false', dest="torch_deterministic", default=True,
                        help='if toggled, `torch.backends.cudnn.deterministic=False`')
-    parser.add_argument('--no-cuda', action='store_false', dest="cuda", default=False,
+    parser.add_argument('--no-cuda', action='store_false', dest="cuda", default=True,
                        help='if toggled, cuda will not be enabled by default')
     parser.add_argument('--prod-mode', action='store_true', default=False,
                        help='run the script in production mode and use wandb to log outputs')
@@ -109,15 +109,13 @@ if __name__ == "__main__":
                        help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--batch-size', type=int, default=2055,
+    parser.add_argument('--batch-size', type=int, default=2048,
                        help='the batch size of ppo')
-    parser.add_argument('--minibatch-size', type=int, default=256,
-                       help='the mini batch size of ppo')
-    parser.add_argument('--gamma', type=float, default=0.995,
+    parser.add_argument('--gamma', type=float, default=0.99,
                        help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.97,
                        help='the lambda for the general advantage estimation')
-    parser.add_argument('--ent-coef', type=float, default=0.01,
+    parser.add_argument('--ent-coef', type=float, default=0.0,
                        help="coefficient of the entropy")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                        help='the maximum norm for the gradient clipping')
@@ -129,27 +127,27 @@ if __name__ == "__main__":
                         help='If toggled, the policy updates will be early stopped w.r.t target-kl')
     parser.add_argument('--kle-rollback', action='store_true', default=False,
                         help='If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl')
-    parser.add_argument('--target-kl', type=float, default=0.019,
+    parser.add_argument('--target-kl', type=float, default=0.015,
                         help='the target-kl variable that is referred by --kl')
-    parser.add_argument('--gae', action='store_true', default=True,
+    parser.add_argument('--gae', action='store_true', default=False,
                         help='Use GAE for advantage computation')
     parser.add_argument('--policy-lr', type=float, default=3e-4,
                         help="the learning rate of the policy optimizer")
-    parser.add_argument('--value-lr', type=float, default=3e-4,
+    parser.add_argument('--value-lr', type=float, default=1e-3,
                         help="the learning rate of the critic optimizer")
-    parser.add_argument('--norm-obs', action='store_true', default=True,
+    parser.add_argument('--norm-obs', action='store_true', default=False,
                         help="Toggles observation normalization")
-    parser.add_argument('--norm-returns', action='store_true', default=True,
+    parser.add_argument('--norm-returns', action='store_true', default=False,
                         help="Toggles returns normalization")
-    parser.add_argument('--norm-adv', action='store_true', default=True,
+    parser.add_argument('--norm-adv', action='store_true', default=False,
                         help="Toggles advantages normalization")
     parser.add_argument('--obs-clip', type=float, default=10.0,
                         help="Value for reward clipping, as per the paper")
     parser.add_argument('--rew-clip', type=float, default=10.0,
                         help="Value for observation clipping, as per the paper")
-    parser.add_argument('--anneal-lr', action='store_true', default=True,
+    parser.add_argument('--anneal-lr', action='store_true', default=False,
                         help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument('--weights-init', default="orthogonal", choices=["xavier", 'orthogonal'],
+    parser.add_argument('--weights-init', default="xavier", choices=["xavier", 'orthogonal'],
                         help='Selects the scheme to be used for weights initialization'),
     parser.add_argument('--clip-vloss', action="store_true", default=False,
                         help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
