@@ -87,13 +87,13 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
+    parser.add_argument('--gym-id', type=str, default="Ant-v3",
                        help='the id of the gym environment')
     parser.add_argument('--seed', type=int, default=1,
                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=0,
                        help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=100000,
+    parser.add_argument('--total-timesteps', type=int, default=5000000,
                        help='total timesteps of the experiments')
     parser.add_argument('--no-torch-deterministic', action='store_false', dest="torch_deterministic", default=True,
                        help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -111,11 +111,13 @@ if __name__ == "__main__":
     # Algorithm specific arguments
     parser.add_argument('--batch-size', type=int, default=2048,
                        help='the batch size of ppo')
+    parser.add_argument('--minibatch-size', type=int, default=256,
+                       help='the mini batch size of ppo')
     parser.add_argument('--gamma', type=float, default=0.99,
                        help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.97,
                        help='the lambda for the general advantage estimation')
-    parser.add_argument('--ent-coef', type=float, default=0.0,
+    parser.add_argument('--ent-coef', type=float, default=0.01,
                        help="coefficient of the entropy")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                        help='the maximum norm for the gradient clipping')
@@ -133,7 +135,7 @@ if __name__ == "__main__":
                         help='Use GAE for advantage computation')
     parser.add_argument('--policy-lr', type=float, default=3e-4,
                         help="the learning rate of the policy optimizer")
-    parser.add_argument('--value-lr', type=float, default=1e-3,
+    parser.add_argument('--value-lr', type=float, default=3e-4,
                         help="the learning rate of the critic optimizer")
     parser.add_argument('--norm-obs', action='store_true', default=False,
                         help="Toggles observation normalization")
@@ -472,10 +474,7 @@ while global_step < args.total_timesteps:
         pg_lr_scheduler.step()
         vf_lr_scheduler.step()
 
-    # print(pg.mean.weight.sum().item())
-    # print(vf.fc3.weight.sum().item())
     # TRY NOT TO MODIFY: record rewards for plotting purposes
-    print("v_loss.item()", v_loss.item())
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
     writer.add_scalar("losses/entropy", np.mean(entropys), global_step)
