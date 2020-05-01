@@ -136,7 +136,7 @@ class Value(nn.Module):
 
     def forward(self, x):
         x = preprocess_obs_fn(x)
-        x = F.tanh(self.fc1(x))
+        x = torch.tanh(self.fc1(x))
         x = self.fc2(x)
         return x
 

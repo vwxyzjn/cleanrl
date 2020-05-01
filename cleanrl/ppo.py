@@ -20,7 +20,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="Taxi-v3",
+    parser.add_argument('--gym-id', type=str, default="CartPole-v0",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
@@ -174,17 +174,18 @@ while global_step < args.total_timesteps:
         # ALGO LOGIC: `env.action_space` specific logic
         _, newlogproba, _ = pg.get_action(obs[:step+1], torch.LongTensor(actions[:step+1].astype(np.int)).to(device))
 
-        ratio = torch.exp(newlogproba - torch.Tensor(logprobs[:step+1]))
+        ratio = torch.exp(newlogproba - torch.Tensor(logprobs[:step+1]).to(device))
         surrogate1 = ratio * torch.Tensor(advantages)[:step+1].to(device)
         surrogate2 = torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef) * torch.Tensor(advantages)[:step+1].to(device)
         policy_loss = -torch.mean(torch.min(surrogate1, surrogate2))
         newvalues = vf.forward(obs[:step+1]).flatten()
-        vf_loss = torch.mean((newvalues - torch.Tensor(returns[:step+1])).pow(2))
+        vf_loss = torch.mean((newvalues - torch.Tensor(returns[:step+1]).to(device)).pow(2))
         entropy_loss = torch.mean(torch.exp(newlogproba) * newlogproba)
         loss = policy_loss + args.vf_coef * vf_loss + args.ent_coef * entropy_loss
 
         optimizer.zero_grad()
         loss.backward()
+        # print(pg.fc1.weight.grad.sum())
         nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
         optimizer.step()
 

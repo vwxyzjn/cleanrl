@@ -21,7 +21,7 @@ if __name__ == "__main__":
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="Taxi-v3",
+    parser.add_argument('--gym-id', type=str, default="CartPole-v0",
                        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                        help='the learning rate of the optimizer')
