@@ -131,7 +131,7 @@ if __name__ == "__main__":
                         help='Use GAE for advantage computation')
     parser.add_argument('--policy-lr', type=float, default=3e-4,
                         help="the learning rate of the policy optimizer")
-    parser.add_argument('--value-lr', type=float, default=1e-3,
+    parser.add_argument('--value-lr', type=float, default=3e-4,
                         help="the learning rate of the critic optimizer")
     parser.add_argument('--norm-obs', action='store_true', default=False,
                         help="Toggles observation normalization")
