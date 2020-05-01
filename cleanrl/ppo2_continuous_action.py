@@ -240,7 +240,7 @@ class Policy(nn.Module):
         else:
             if not isinstance(action, torch.Tensor):
                 action = preprocess_obs_fn(action)
-        return action, probs.log_prob(action).sum(1), probs.entropy()
+        return action, probs.log_prob(action).sum(1), probs.entropy().sum(1)
 
 class Value(nn.Module):
     def __init__(self):
@@ -299,7 +299,7 @@ v_optimizer = optim.Adam(list(vf.parameters()), lr=args.value_lr)
 
 # MODIFIED: Initializing learning rate anneal scheduler when need
 if args.anneal_lr:
-    anneal_fn = lambda f: 1-f / args.total_timesteps
+    anneal_fn = lambda f: max(0, 1-f / args.total_timesteps)
     pg_lr_scheduler = optim.lr_scheduler.LambdaLR(pg_optimizer, lr_lambda=anneal_fn)
     vf_lr_scheduler = optim.lr_scheduler.LambdaLR(v_optimizer, lr_lambda=anneal_fn)
 
@@ -341,6 +341,11 @@ while global_step < args.total_timesteps:
         next_obs, rewards[step], dones[step], info = env.step(clipped_action)
         real_rewards += [info['real_reward']]
         next_obs = np.array(next_obs)
+
+        # Annealing the rate if instructed to do so.
+        if args.anneal_lr:
+            pg_lr_scheduler.step()
+            vf_lr_scheduler.step()
 
         if dones[step]:
             # Computing the discounted returns:
@@ -390,8 +395,7 @@ while global_step < args.total_timesteps:
 
         # Entropy computation with resampled actions
         entropys.append(entropy.mean().item())
-        policy_loss = - torch.min(ratio * advantages, clip_adv) + args.ent_coef * entropy.mean()
-        policy_loss = policy_loss.mean()
+        policy_loss = (-torch.min(ratio * advantages, clip_adv)).mean() + args.ent_coef * entropy.mean()
 
         pg_optimizer.zero_grad()
         policy_loss.backward()
@@ -428,11 +432,6 @@ while global_step < args.total_timesteps:
         v_loss.backward()
         nn.utils.clip_grad_norm_(vf.parameters(), args.max_grad_norm)
         v_optimizer.step()
-
-    # Annealing the rate if instructed to do so.
-    if args.anneal_lr:
-        pg_lr_scheduler.step()
-        vf_lr_scheduler.step()
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
