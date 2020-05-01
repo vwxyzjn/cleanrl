@@ -1,7 +1,7 @@
 # https://unix.stackexchange.com/questions/103920/parallelize-a-bash-for-loop
 # evaluate the algorithm in parallel
 # apt-get install python-opengl
-NUM_CORES=2
+NUM_CORES=1
 export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 
 ################################################
@@ -78,7 +78,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id BipedalWalker-v2 \
     --total-timesteps 2000000 \
-    --episode-length 1600 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -93,7 +92,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id Pendulum-v0 \
     --total-timesteps 2000000 \
-    --episode-length 200 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -109,7 +107,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id HopperBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -124,7 +121,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id InvertedPendulumBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -139,7 +135,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id Walker2DBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -154,7 +149,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id HumanoidBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -170,7 +164,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id HalfCheetahBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -185,7 +178,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python a2c_continuous_action.py \
     --gym-id ReacherBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 150 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -275,7 +267,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
     --gym-id BipedalWalker-v2 \
     --total-timesteps 2000000 \
-    --episode-length 1600 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -288,7 +279,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
     --gym-id Pendulum-v0 \
     --total-timesteps 2000000 \
-    --episode-length 200 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -302,7 +292,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
     --gym-id HopperBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -315,7 +304,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
     --gym-id InvertedPendulumBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -328,7 +316,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
     --gym-id Walker2DBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -341,7 +328,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
     --gym-id HumanoidBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -355,7 +341,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
     --gym-id HalfCheetahBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -368,7 +353,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
     --gym-id ReacherBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 150 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -464,7 +448,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python sac_continuous_action.py \
     --gym-id BipedalWalker-v2 \
     --total-timesteps 2000000 \
-    --episode-length 1600 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -477,7 +460,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python sac_continuous_action.py \
     --gym-id Pendulum-v0 \
     --total-timesteps 2000000 \
-    --episode-length 200 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -491,7 +473,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python sac_continuous_action.py \
     --gym-id HopperBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -504,7 +485,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python sac_continuous_action.py \
     --gym-id InvertedPendulumBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -518,7 +498,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python sac_continuous_action.py \
     --gym-id Walker2DBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -531,7 +510,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python sac_continuous_action.py \
     --gym-id HumanoidBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -545,7 +523,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python sac_continuous_action.py \
     --gym-id HalfCheetahBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 1000 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -558,7 +535,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python sac_continuous_action.py \
     --gym-id ReacherBulletEnv-v0 \
     --total-timesteps 2000000 \
-    --episode-length 150 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
@@ -646,6 +622,132 @@ do
     --gym-id PongNoFrameskip-v4 \
     --total-timesteps 1000000 \
     --wandb-project-name cleanrl \
+    --wandb-entity cleanrl \
+    --prod-mode \
+    --capture-video \
+    --seed $seed
+    ) >& /dev/null &
+done
+
+################################################
+#
+#
+#    Deep Deterministic Policy Gradient (DDPG)
+#
+#
+################################################
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
+    --gym-id MountainCarContinuous-v0 \
+    --total-timesteps 200000 \
+    --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
+    --prod-mode \
+    --capture-video \
+    --seed $seed
+    ) >& /dev/null &
+done
+
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
+    --gym-id BipedalWalker-v3 \
+    --total-timesteps 2000000 \
+    --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
+    --prod-mode \
+    --capture-video \
+    --seed $seed
+    ) >& /dev/null &
+done
+
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
+    --gym-id Pendulum-v0 \
+    --total-timesteps 2000000 \
+    --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
+    --prod-mode \
+    --capture-video \
+    --seed $seed
+    ) >& /dev/null &
+done
+
+wait
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
+    --gym-id HopperBulletEnv-v0 \
+    --total-timesteps 2000000 \
+    --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
+    --prod-mode \
+    --capture-video \
+    --seed $seed
+    ) >& /dev/null &
+done
+
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
+    --gym-id InvertedPendulumBulletEnv-v0 \
+    --total-timesteps 2000000 \
+    --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
+    --prod-mode \
+    --capture-video \
+    --seed $seed
+    ) >& /dev/null &
+done
+
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
+    --gym-id Walker2DBulletEnv-v0 \
+    --total-timesteps 2000000 \
+    --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
+    --prod-mode \
+    --capture-video \
+    --seed $seed
+    ) >& /dev/null &
+done
+
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
+    --gym-id HumanoidBulletEnv-v0 \
+    --total-timesteps 2000000 \
+    --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
+    --prod-mode \
+    --capture-video \
+    --seed $seed
+    ) >& /dev/null &
+done
+
+wait
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
+    --gym-id HalfCheetahBulletEnv-v0 \
+    --total-timesteps 2000000 \
+    --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
+    --prod-mode \
+    --capture-video \
+    --seed $seed
+    ) >& /dev/null &
+done
+
+for seed in {1..2}
+do
+    (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
+    --gym-id ReacherBulletEnv-v0 \
+    --total-timesteps 2000000 \
+    --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
     --prod-mode \
     --capture-video \
