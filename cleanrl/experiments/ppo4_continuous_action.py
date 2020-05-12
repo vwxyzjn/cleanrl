@@ -382,7 +382,6 @@ while global_step < args.total_timesteps:
     # Optimizaing policy network
     # First Tensorize all that is need to be so, clears up the loss computation part
     logprobs = torch.Tensor(logprobs).to(device) # Called 2 times: during policy update and KL bound checked
-    approx_kls = []
     entropys = []
     target_pg = Policy().to(device)
     inds = np.arange(args.batch_size,)
@@ -411,14 +410,6 @@ while global_step < args.total_timesteps:
     
             # KEY TECHNIQUE: This will stop updating the policy once the KL has been breached
             approx_kl = (logprobs[minibatch_ind] - newlogproba).mean()
-            approx_kls.append(approx_kl.item())
-            if args.kle_stop:
-                if approx_kl > args.target_kl:
-                    break
-            if args.kle_rollback:
-                if (logprobs[minibatch_ind] - pg.get_action(obs[minibatch_ind], actions[minibatch_ind])[1]).mean() > args.target_kl:
-                    pg.load_state_dict(target_pg.state_dict())
-                    break
     
             # Resample values
             new_values = vf.forward(obs[minibatch_ind]).view(-1)
@@ -438,11 +429,19 @@ while global_step < args.total_timesteps:
             nn.utils.clip_grad_norm_(vf.parameters(), args.max_grad_norm)
             v_optimizer.step()
 
+        if args.kle_stop:
+            if approx_kl > args.target_kl:
+                break
+        if args.kle_rollback:
+            if (logprobs[minibatch_ind] - pg.get_action(obs[minibatch_ind], actions[minibatch_ind])[1]).mean() > args.target_kl:
+                pg.load_state_dict(target_pg.state_dict())
+                break
+
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
     writer.add_scalar("losses/entropy", np.mean(entropys), global_step)
-    writer.add_scalar("losses/approx_kl", np.mean(approx_kls), global_step)
+    writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
 
