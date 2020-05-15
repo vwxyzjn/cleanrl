@@ -17,21 +17,38 @@ In addition, we also have a monthly development cycle to implement new RL algori
 
 Good luck have fun :rocket:
 
+
 ### This project is WIP currently at 0.2.1 release, expect breaking changes.
 
 The highlight features of this repo are:
 
 * Most algorithms are self-contained in single files with a common dependency file [common.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/common.py) that handles different gym spaces.
-
 * Easy logging of training processes using Tensorboard and Integration with wandb.com to log experiments on the cloud. Check out https://cleanrl.costa.sh.
-
 * **Hackable** and being able to debug *directly* in Python’s interactive shell (Especially if you use the Spyder editor from Anaconda :) ).
-
 * Convenient use of commandline arguments for hyper-parameters tuning.
 
-* Benchmarked in many types of games. https://cleanrl.costa.sh
+## Benchmarked Implementation
 
-![wandb.png](wandb.png)
+Our implementation is benchmarked to ensure quality. We log all of our benchmarked experiments using wandb so that you can check the hyper-parameters, videos of the agents playing the game, and the exact commands to reproduce it. See https://cleanrl.costa.sh.
+
+<img src="wandb.png">
+
+
+In addition, we post the benchmarked performance for each game here for convenience.
+
+<img src="benchmark/BipedalWalker-v3.svg" width="280"><img src="benchmark/CartPole-v0.svg" width="280">
+<img src="benchmark/HalfCheetahBulletEnv-v0.svg" width="280">
+<img src="benchmark/HopperBulletEnv-v0.svg" width="280">
+<img src="benchmark/HumanoidBulletEnv-v0.svg" width="280">
+<img src="benchmark/InvertedPendulumBulletEnv-v0.svg" width="280">
+<img src="benchmark/LunarLander-v2.svg" width="280">
+<img src="benchmark/MountainCar-v0.svg" width="280">
+<img src="benchmark/MountainCarContinuous-v0.svg" width="280">
+<img src="benchmark/Pendulum-v0.svg" width="280">
+<img src="benchmark/PongNoFrameskip-v4.svg" width="280">
+<img src="benchmark/ReacherBulletEnv-v0.svg" width="280">
+<img src="benchmark/Taxi-v3.svg" width="280">
+<img src="benchmark/Walker2DBulletEnv-v0.svg" width="280">
 
 ## Get started
 
