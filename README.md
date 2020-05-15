@@ -4,9 +4,9 @@
 [![Mailing List : cleanrl](https://img.shields.io/badge/mailing%20list-cleanrl-orange.svg)](https://groups.google.com/forum/#!forum/rlimplementation/join)
 [![Meeting Recordings : cleanrl](https://img.shields.io/badge/meeting%20recordings-cleanrl-orange.svg)](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
 
-CleanRL dedicates to provide a clean/simple implementation of the popular RL algorithms. *Yes, it is clean and simple*; you don't have to look through dozens of files to understand what the heck is going on. Just read, print out a few things and you can easily customize. *Yes, it is designed to be hackable*. 
+CleanRL dedicates to provide a clean/simple implementation of the popular RL algorithms. The implementation is *self-contained*; you don't have to look through dozens of files to understand what the heck is going on. Just read, print out a few things and you can easily customize.
 
-At the same time, CleanRL tries to supply many research-friendly features such as cloud experiment management, support four continuous and discrete observation and action spaces, video recording of the game play, etc. *Yes, you will need them if you want to do good experiments (at least to my taste)*.
+At the same time, CleanRL tries to supply many research-friendly features such as cloud experiment management, support for continuous and discrete observation and action spaces, video recording of the game play, etc. These features will be very helpful for doing research, especially the video recording feature that *allows you to visually inspect the agents' behavior at various stages of the training*.
 
 ## Support and get involved
 
