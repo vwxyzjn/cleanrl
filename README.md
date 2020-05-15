@@ -34,7 +34,7 @@ Our implementation is benchmarked to ensure quality. We log all of our benchmark
 <img src="wandb.png">
 
 
-In addition, we post the benchmarked performance for each game here for convenience.
+The current dashboard of wandb does not allow us to show the agents performance in all the games at the same panel, so you have to click each panel in https://cleanrl.costa.sh to check the benchmarked performance, which can be inconvenient sometimes. So we additionally post the benchmarked performance for each game using seaborn as follows (the result is created by using [`benchmark/plot_benchmark.py`](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/plot_benchmark.py)
 
 <img src="benchmark/BipedalWalker-v3.svg" width="280"><img src="benchmark/CartPole-v0.svg" width="280">
 <img src="benchmark/HalfCheetahBulletEnv-v0.svg" width="280">
