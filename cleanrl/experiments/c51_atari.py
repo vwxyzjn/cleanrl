@@ -521,7 +521,6 @@ while global_step < args.total_timesteps:
             with torch.no_grad():
                 _, next_pmfs = q_network.get_action(s_next_obses)
                 next_atoms = torch.Tensor(s_rewards).to(device).unsqueeze(-1) + args.gamma * q_network.atoms  * (1 - torch.Tensor(s_dones).to(device).unsqueeze(-1))
-    
                 # projection
                 delta_z = q_network.atoms[1]-q_network.atoms[0]
                 tz = next_atoms.clamp(args.v_min, args.v_max)
@@ -529,7 +528,9 @@ while global_step < args.total_timesteps:
                 b = (tz - args.v_min)/ delta_z
                 l = b.floor().clamp(0, args.n_atoms-1)
                 u = b.ceil().clamp(0, args.n_atoms-1)
-                d_m_l = (u + (l == u).float() - b) * next_pmfs # why (l == u).float() ?
+                # (l == u).float() handles the case where bj is exactly an integer
+                # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
+                d_m_l = (u + (l == u).float() - b) * next_pmfs
                 d_m_u = (b - l) * next_pmfs
                 target_pmfs = torch.zeros_like(next_pmfs)
                 for i in range(target_pmfs.size(0)):
