@@ -4,34 +4,44 @@
 [![Mailing List : cleanrl](https://img.shields.io/badge/mailing%20list-cleanrl-orange.svg)](https://groups.google.com/forum/#!forum/rlimplementation/join)
 [![Meeting Recordings : cleanrl](https://img.shields.io/badge/meeting%20recordings-cleanrl-orange.svg)](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
 
-CleanRL dedicates to provide a clean/simple implementation of the popular RL algorithms. *Yes, it is clean and simple*; you don't have to look through dozens of files to understand what the heck is going on. Just read, print out a few things and you can easily customize. *Yes, it is designed to be hackable*. 
+CleanRL dedicates to be the most user-friendly Reinforcement Learning library. The implementation is clean, simple, and *self-contained*; you don't have to look through dozens of files to understand what is going on. Just read, print out a few things and you can easily customize.
 
-At the same time, CleanRL tries to supply many research-friendly features such as cloud experiment management, support four continuous and discrete observation and action spaces, video recording of the game play, etc. *Yes, you will need them if you want to do good experiments (at least to my taste)*.
-
-## Support and get involved
-
-We have a [Slack Community](https://join.slack.com/t/cleanrl/shared_invite/zt-cj64t5eq-xKZ6sD0KPGFKu1QicHEvVg) for support. Feel free to ask questions. Posting in [Github Issues](https://github.com/vwxyzjn/cleanrl/issues) and PRs are also welcome. 
-
-In addition, we also have a monthly development cycle to implement new RL algorithms. Feel free to participate or ask questions there, too. You can sign up for our mailing list at our [Google Groups](https://groups.google.com/forum/#!forum/rlimplementation/join) to receive event RVSP which contains the Hangout video call address every week. Our past video recordings are available at [YouTube](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
-
+At the same time, CleanRL tries to supply many research-friendly features such as cloud experiment management, support for continuous and discrete observation and action spaces, video recording of the game play, etc. These features will be very helpful for doing research, especially the video recording feature that *allows you to visually inspect the agents' behavior at various stages of the training*.
 
 Good luck have fun :rocket:
+
 
 ### This project is WIP currently at 0.2.1 release, expect breaking changes.
 
 The highlight features of this repo are:
 
 * Most algorithms are self-contained in single files with a common dependency file [common.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/common.py) that handles different gym spaces.
-
 * Easy logging of training processes using Tensorboard and Integration with wandb.com to log experiments on the cloud. Check out https://cleanrl.costa.sh.
-
 * **Hackable** and being able to debug *directly* in Python’s interactive shell (Especially if you use the Spyder editor from Anaconda :) ).
+* Simple use of command line arguments for hyper-parameters tuning; no need for arcane configuration files.
 
-* Convenient use of commandline arguments for hyper-parameters tuning.
+## Benchmarked Implementation
 
-* Benchmarked in many types of games. https://cleanrl.costa.sh
+Our implementation is benchmarked to ensure quality. We log all of our benchmarked experiments using wandb so that you can check the hyper-parameters, videos of the agents playing the game, and the exact commands to reproduce it. See https://cleanrl.costa.sh.
 
-![wandb.png](wandb.png)
+<img src="wandb.png">
+
+
+The current dashboard of wandb does not allow us to show the agents performance in all the games at the same panel, so you have to click each panel in https://cleanrl.costa.sh to check the benchmarked performance, which can be inconvenient sometimes. So we additionally post the benchmarked performance for each game using seaborn as follows (the result is created by using [`benchmark/plot_benchmark.py`](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/plot_benchmark.py)
+
+<img src="benchmark/BipedalWalker-v3.svg" width="280"><img src="benchmark/CartPole-v0.svg" width="280">
+<img src="benchmark/HalfCheetahBulletEnv-v0.svg" width="280">
+<img src="benchmark/HopperBulletEnv-v0.svg" width="280">
+<img src="benchmark/HumanoidBulletEnv-v0.svg" width="280">
+<img src="benchmark/InvertedPendulumBulletEnv-v0.svg" width="280">
+<img src="benchmark/LunarLander-v2.svg" width="280">
+<img src="benchmark/MountainCar-v0.svg" width="280">
+<img src="benchmark/MountainCarContinuous-v0.svg" width="280">
+<img src="benchmark/Pendulum-v0.svg" width="280">
+<img src="benchmark/PongNoFrameskip-v4.svg" width="280">
+<img src="benchmark/ReacherBulletEnv-v0.svg" width="280">
+<img src="benchmark/Taxi-v3.svg" width="280">
+<img src="benchmark/Walker2DBulletEnv-v0.svg" width="280">
 
 ## Get started
 
@@ -100,6 +110,15 @@ Checkout the demo sites at [https://app.wandb.ai/costa-huang/cleanrltest](https:
             * KL divergence bounding
             * Learning rate annealing
             * Orthogonal layer initialization
+
+## Support and get involved
+
+We have a [Slack Community](https://join.slack.com/t/cleanrl/shared_invite/zt-cj64t5eq-xKZ6sD0KPGFKu1QicHEvVg) for support. Feel free to ask questions. Posting in [Github Issues](https://github.com/vwxyzjn/cleanrl/issues) and PRs are also welcome. 
+
+In addition, we also have a monthly development cycle to implement new RL algorithms. Feel free to participate or ask questions there, too. You can sign up for our mailing list at our [Google Groups](https://groups.google.com/forum/#!forum/rlimplementation/join) to receive event RVSP which contains the Hangout video call address every week. Our past video recordings are available at [YouTube](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
+
+
+
 
 ## User's Guide for Researcher (Please read this if consider using CleanRL)
 
