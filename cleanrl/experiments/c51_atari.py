@@ -304,7 +304,7 @@ class ImageToPyTorch(gym.ObservationWrapper):
 def wrap_pytorch(env):
     return ImageToPyTorch(env)
 
-# Reference: https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf
+# Reference: https://arxiv.org/pdf/1707.06887.pdf
 
 import torch
 import torch.nn as nn
@@ -317,7 +317,7 @@ import argparse
 import collections
 import numpy as np
 import gym
-from gym.wrappers import TimeLimit, Monitor, AtariPreprocessing
+from gym.wrappers import TimeLimit, Monitor
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
@@ -376,7 +376,6 @@ if __name__ == "__main__":
                        help="timestep to start learning")
     parser.add_argument('--train-frequency', type=int, default=4,
                        help="the frequency of training")
-
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -410,8 +409,6 @@ torch.backends.cudnn.deterministic = args.torch_deterministic
 env.seed(args.seed)
 env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
-input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
-output_shape = preprocess_ac_space(env.action_space)
 # respect the default timelimit
 assert isinstance(env.action_space, Discrete), "only discrete action space is supported"
 if args.capture_video:
@@ -501,9 +498,9 @@ for global_step in range(args.total_timesteps):
     # TRY NOT TO MODIFY: execute the game and log data.
     next_obs, reward, done, _ = env.step(action)
     episode_reward += reward
-    rb.put((obs, action, reward, next_obs, done))
 
     # ALGO LOGIC: training.
+    rb.put((obs, action, reward, next_obs, done))
     if global_step > args.learning_starts and global_step % args.train_frequency == 0:
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         with torch.no_grad():
@@ -547,7 +544,7 @@ for global_step in range(args.total_timesteps):
             writer.add_scalar("losses/td_loss", loss, global_step)
         obs, episode_reward = env.reset(), 0
 
-    # CRUCIAL step easy to overlook 
+    # TRY NOT TO MODIFY: CRUCIAL step easy to overlook 
     obs = next_obs
 
 env.close()
