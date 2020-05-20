@@ -86,6 +86,7 @@ for env in set(all_df["gym_id"]):
     plt.legend(fontsize=6)
     plt.title(env)
     plt.savefig(f"{env}.svg")
+    plt.clf()
 
 # l = ax.legend()
 # [(text.get_text(), line.get_color()) for (text, line) in zip(l.get_texts(), l.get_lines())]
