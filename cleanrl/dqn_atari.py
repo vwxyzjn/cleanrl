@@ -313,6 +313,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
 import argparse
+from distutils.util import strtobool
 import collections
 import numpy as np
 import gym
@@ -323,7 +324,7 @@ import random
 import os
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='A2C agent')
+    parser = argparse.ArgumentParser(description='DQN agent')
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                        help='the name of this experiment')
@@ -349,7 +350,7 @@ if __name__ == "__main__":
                        help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
-    parser.add_argument('--buffer-size', type=int, default=100000,
+    parser.add_argument('--buffer-size', type=int, default=1000000,
                         help='the replay memory buffer size')
     parser.add_argument('--gamma', type=float, default=0.99,
                        help='the discount factor gamma')
@@ -382,7 +383,6 @@ if args.prod_mode:
     import wandb
     wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, sync_tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True, save_code=True)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
-    wandb.save(os.path.abspath(__file__))
 
 # TRY NOT TO MODIFY: seeding
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
@@ -468,6 +468,9 @@ print(q_network)
 # TRY NOT TO MODIFY: start the game
 obs = env.reset()
 episode_reward = 0
+# important to note that because `EpisodicLifeEnv` wrapper is applied,
+# the real episode reward is actually the sum of episode reward of 5 lives
+real_episode_reward = 0
 for global_step in range(args.total_timesteps):
     # ALGO LOGIC: put action logic here
     epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
@@ -484,8 +487,8 @@ for global_step in range(args.total_timesteps):
     # ALGO LOGIC: training.
     rb.put((obs, action, reward, next_obs, done))
     if global_step > args.learning_starts and global_step % args.train_frequency == 0:
+        s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         with torch.no_grad():
-            s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
             target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
             td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
         old_val = q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
@@ -507,9 +510,13 @@ for global_step in range(args.total_timesteps):
 
     if done:
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        print(f"global_step={global_step}, episode_reward={episode_reward}")
-        writer.add_scalar("charts/episode_reward", episode_reward, global_step)
-        writer.add_scalar("charts/epsilon", epsilon, global_step)
+        if env.was_real_done:
+            print(f"global_step={global_step}, episode_reward={real_episode_reward}")
+            writer.add_scalar("charts/episode_reward", real_episode_reward, global_step)
+            writer.add_scalar("charts/epsilon", epsilon, global_step)
+            real_episode_reward = 0
+        else:
+            real_episode_reward += episode_reward
         obs, episode_reward = env.reset(), 0
 
 env.close()

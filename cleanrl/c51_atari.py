@@ -305,6 +305,7 @@ def wrap_pytorch(env):
     return ImageToPyTorch(env)
 
 # Reference: https://arxiv.org/pdf/1707.06887.pdf
+# https://github.com/ShangtongZhang/DeepRL/blob/master/deep_rl/agent/CategoricalDQN_agent.py
 
 import torch
 import torch.nn as nn
@@ -312,7 +313,6 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
-from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
 import collections
 import numpy as np
@@ -334,7 +334,7 @@ if __name__ == "__main__":
                        help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=2,
                        help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=2000000,
+    parser.add_argument('--total-timesteps', type=int, default=10000000,
                        help='total timesteps of the experiments')
     parser.add_argument('--no-torch-deterministic', action='store_false', dest="torch_deterministic", default=True,
                        help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -356,7 +356,7 @@ if __name__ == "__main__":
                        help="the number of atoms")
     parser.add_argument('--v-max', type=float, default=10,
                        help="the number of atoms")
-    parser.add_argument('--buffer-size', type=int, default=100000,
+    parser.add_argument('--buffer-size', type=int, default=1000000,
                         help='the replay memory buffer size')
     parser.add_argument('--gamma', type=float, default=0.99,
                        help='the discount factor gamma')
@@ -366,9 +366,9 @@ if __name__ == "__main__":
                        help='the maximum norm for the gradient clipping')
     parser.add_argument('--batch-size', type=int, default=32,
                        help="the batch size of sample from the reply memory")
-    parser.add_argument('--start-e', type=float, default=0.5,
+    parser.add_argument('--start-e', type=float, default=1.,
                        help="the starting epsilon for exploration")
-    parser.add_argument('--end-e', type=float, default=0.02,
+    parser.add_argument('--end-e', type=float, default=0.01,
                        help="the ending epsilon for exploration")
     parser.add_argument('--exploration-fraction', type=float, default=0.10,
                        help="the fraction of `total-timesteps` it takes from start-e to go end-e")
@@ -387,9 +387,8 @@ writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
 if args.prod_mode:
     import wandb
-    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True)
+    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, sync_tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True, save_code=True)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
-    wandb.save(os.path.abspath(__file__))
 
 # TRY NOT TO MODIFY: seeding
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
@@ -486,6 +485,9 @@ print(q_network)
 # TRY NOT TO MODIFY: start the game
 obs = env.reset()
 episode_reward = 0
+# important to note that because `EpisodicLifeEnv` wrapper is applied,
+# the real episode reward is actually the sum of episode reward of 5 lives
+real_episode_reward = 0
 for global_step in range(args.total_timesteps):
     # ALGO LOGIC: put action logic here
     epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
@@ -524,6 +526,7 @@ for global_step in range(args.total_timesteps):
         
         _, old_pmfs = q_network.get_action(s_obs, s_actions)
         loss = (-(target_pmfs.detach() * old_pmfs.log()).sum(-1)).mean()
+        writer.add_scalar("losses/td_loss", loss, global_step)
 
         # optimize the midel
         optimizer.zero_grad()
@@ -535,17 +538,19 @@ for global_step in range(args.total_timesteps):
         if global_step % args.target_network_frequency == 0:
             target_network.load_state_dict(q_network.state_dict())
 
-    if done:
-        # TRY NOT TO MODIFY: record rewards for plotting purposes
-        print(f"global_step={global_step}, episode_reward={episode_reward}")
-        writer.add_scalar("charts/episode_reward", episode_reward, global_step)
-        writer.add_scalar("charts/epsilon", epsilon, global_step)
-        if global_step > args.learning_starts:
-            writer.add_scalar("losses/td_loss", loss, global_step)
-        obs, episode_reward = env.reset(), 0
-
     # TRY NOT TO MODIFY: CRUCIAL step easy to overlook 
     obs = next_obs
+
+    if done:
+        # TRY NOT TO MODIFY: record rewards for plotting purposes
+        if env.was_real_done:
+            print(f"global_step={global_step}, episode_reward={real_episode_reward}")
+            writer.add_scalar("charts/episode_reward", real_episode_reward, global_step)
+            writer.add_scalar("charts/epsilon", epsilon, global_step)
+            real_episode_reward = 0
+        else:
+            real_episode_reward += episode_reward
+        obs, episode_reward = env.reset(), 0
 
 env.close()
 writer.close()

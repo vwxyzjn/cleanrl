@@ -188,10 +188,12 @@ for global_step in range(args.total_timesteps):
     rb.put((obs, action, reward, next_obs, done))
     if global_step > args.learning_starts and global_step % args.train_frequency == 0:
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
-        target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
-        td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
+        with torch.no_grad():
+            target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
+            td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
         old_val = q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
         loss = loss_fn(td_target, old_val)
+        writer.add_scalar("losses/td_loss", loss, global_step)
 
         # optimize the midel
         optimizer.zero_grad()
@@ -203,17 +205,15 @@ for global_step in range(args.total_timesteps):
         if global_step % args.target_network_frequency == 0:
             target_network.load_state_dict(q_network.state_dict())
 
+    # TRY NOT TO MODIFY: CRUCIAL step easy to overlook 
+    obs = next_obs
+
     if done:
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         print(f"global_step={global_step}, episode_reward={episode_reward}")
         writer.add_scalar("charts/episode_reward", episode_reward, global_step)
         writer.add_scalar("charts/epsilon", epsilon, global_step)
-        if global_step > args.learning_starts:
-            writer.add_scalar("losses/td_loss", loss, global_step)
         obs, episode_reward = env.reset(), 0
-
-    # TRY NOT TO MODIFY: CRUCIAL step easy to overlook 
-    obs = next_obs
 
 env.close()
 writer.close()
