@@ -1,4 +1,5 @@
-# Reference: https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf
+# Reference: https://arxiv.org/pdf/1707.06887.pdf
+# https://github.com/ShangtongZhang/DeepRL/blob/master/deep_rl/agent/CategoricalDQN_agent.py
 
 import torch
 import torch.nn as nn
@@ -6,12 +7,11 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
-from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
 import collections
 import numpy as np
 import gym
-from gym.wrappers import TimeLimit, Monitor, AtariPreprocessing
+from gym.wrappers import TimeLimit, Monitor
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
@@ -28,9 +28,7 @@ if __name__ == "__main__":
                        help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=2,
                        help='seed of the experiment')
-    parser.add_argument('--episode-length', type=int, default=200,
-                       help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=40000,
+    parser.add_argument('--total-timesteps', type=int, default=30000,
                        help='total timesteps of the experiments')
     parser.add_argument('--no-torch-deterministic', action='store_false', dest="torch_deterministic", default=True,
                        help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -46,6 +44,12 @@ if __name__ == "__main__":
                        help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
+    parser.add_argument('--n-atoms', type=int, default=51,
+                       help="the number of atoms")
+    parser.add_argument('--v-min', type=float, default=-10,
+                       help="the number of atoms")
+    parser.add_argument('--v-max', type=float, default=10,
+                       help="the number of atoms")
     parser.add_argument('--buffer-size', type=int, default=10000,
                         help='the replay memory buffer size')
     parser.add_argument('--gamma', type=float, default=0.99,
@@ -70,6 +74,29 @@ if __name__ == "__main__":
     if not args.seed:
         args.seed = int(time.time())
 
+def one_hot(a, size):
+    b = np.zeros((size))
+    b[a] = 1
+    return b
+
+class ProcessObsInputEnv(gym.ObservationWrapper):
+    """
+    This wrapper handles inputs from `Discrete` and `Box` observation space.
+    If the `env.observation_space` is of `Discrete` type, 
+    it returns the one-hot encoding of the state
+    """
+    def __init__(self, env):
+        super().__init__(env)
+        self.n = None
+        if isinstance(self.env.observation_space, Discrete):
+            self.n = self.env.observation_space.n
+            self.observation_space = Box(0, 1, (self.n,))
+
+    def observation(self, obs):
+        if self.n:
+            return one_hot(np.array(obs), self.n)
+        return obs
+
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
@@ -83,7 +110,7 @@ if args.prod_mode:
 
 # TRY NOT TO MODIFY: seeding
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
-env = gym.make(args.gym_id)
+env = ProcessObsInputEnv(gym.make(args.gym_id))
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
@@ -91,11 +118,8 @@ torch.backends.cudnn.deterministic = args.torch_deterministic
 env.seed(args.seed)
 env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
-input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
-output_shape = preprocess_ac_space(env.action_space)
 # respect the default timelimit
 assert isinstance(env.action_space, Discrete), "only discrete action space is supported"
-assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
@@ -130,7 +154,7 @@ class QNetwork(nn.Module):
         self.n_atoms = n_atoms
         self.atoms = torch.linspace(v_min, v_max, steps=n_atoms).to(device)
         self.network = nn.Sequential(
-            nn.Linear(input_shape, 120),
+            nn.Linear(np.array(env.observation_space.shape).prod(), 120),
             nn.ReLU(),
             nn.Linear(120, 84),
             nn.ReLU(),
@@ -155,8 +179,8 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     return max(slope * t + start_e, end_e)
 
 rb = ReplayBuffer(args.buffer_size)
-q_network = QNetwork().to(device)
-target_network = QNetwork().to(device)
+q_network = QNetwork(n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
+target_network = QNetwork(n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
 target_network.load_state_dict(q_network.state_dict())
 optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
@@ -164,102 +188,67 @@ print(device.__repr__())
 print(q_network)
 
 # TRY NOT TO MODIFY: start the game
-global_step = 0
-while global_step < args.total_timesteps:
-    next_obs = np.array(env.reset())
-    actions = np.empty((args.episode_length,), dtype=object)
-    rewards, dones, td_losses = np.zeros((3, args.episode_length))
-    obs = np.empty((args.episode_length,) + env.observation_space.shape)
-    
-    # TRY NOT TO MODIFY: prepare the execution of the game.
-    for step in range(args.episode_length):
-        global_step += 1
-        obs[step] = next_obs.copy()
+obs = env.reset()
+episode_reward = 0
+for global_step in range(args.total_timesteps):
+    # ALGO LOGIC: put action logic here
+    epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
+    if random.random() < epsilon:
+        action = env.action_space.sample()
+    else:
+        action, pmf = target_network.get_action(obs.reshape((1,)+obs.shape))
+        action = action.tolist()[0]
 
-        # ALGO LOGIC: put action logic here
-        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
-        if random.random() < epsilon:
-            actions[step] = env.action_space.sample()
-        else:
-            action, pmf = target_network.get_action(obs[step:step+1])
-            actions[step] = action.tolist()[0]
+    # TRY NOT TO MODIFY: execute the game and log data.
+    next_obs, reward, done, _ = env.step(action)
+    episode_reward += reward
 
-        # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards[step], dones[step], _ = env.step(actions[step])
-        rb.put((obs[step], actions[step], rewards[step], next_obs, dones[step]))
-        next_obs = np.array(next_obs)
-
-        # ALGO LOGIC: training.
-        if global_step > args.learning_starts and global_step % args.train_frequency == 0:
-            s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
-            with torch.no_grad():
-                _, next_pmfs = q_network.get_action(s_next_obses)
-                next_atoms = torch.Tensor(s_rewards).to(device).unsqueeze(-1) + args.gamma * q_network.atoms  * (1 - torch.Tensor(s_dones).to(device).unsqueeze(-1))
-    
-                # projection
-                v_min = -100
-                v_max = 100
-                delta_z = q_network.atoms[1]-q_network.atoms[0]
-                tz = next_atoms.clamp(v_min, v_max)
-                
-                b = (tz - v_min)/ delta_z
-                l = b.floor()
-                u = b.ceil()
-                d_m_l = (u + (l == u).float() - b) * next_pmfs # why (l == u).float() ?
-                d_m_u = (b - l) * next_pmfs
-                target_pmfs = torch.zeros_like(next_pmfs)
-                for i in range(target_pmfs.size(0)):
-                    target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
-                    target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
-                print(u[i].long())                
-
-    
-                # target_pmfs = next_pmfs * 0
-                # b = (tz - v_min) / delta_z
-                # l = b.floor().clamp(0, len(next_atoms) - 1)
-                # u = b.ceil().clamp(0, len(next_atoms) - 1)
-                # offset = (
-                #     torch.linspace(0, (args.batch_size - 1) * 101, args.batch_size)
-                #     .long()
-                #     .unsqueeze(1)
-                #     .expand(args.batch_size, 101)
-                # )
-                # target_pmfs.view(-1).index_add_(
-                #     0, (l.long() + offset).view(-1), (next_pmfs * (u - b)).view(-1)
-                # )
-                # target_pmfs.view(-1).index_add_(
-                #     0, (u.long() + offset).view(-1), (next_pmfs * (b - l)).view(-1)
-                # )
-                
-                # log_dist = torch.log(torch.clamp(old_pmfs, min=1.5e-4))
-                # log_target_dist = torch.log(torch.clamp(target_pmfs, min=1.5e-4))
-                # loss = (target_pmfs * (log_target_dist - log_dist)).sum(dim=-1).mean()
+    # ALGO LOGIC: training.
+    rb.put((obs, action, reward, next_obs, done))
+    if global_step > args.learning_starts and global_step % args.train_frequency == 0:
+        s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
+        with torch.no_grad():
+            _, next_pmfs = q_network.get_action(s_next_obses)
+            next_atoms = torch.Tensor(s_rewards).to(device).unsqueeze(-1) + args.gamma * q_network.atoms  * (1 - torch.Tensor(s_dones).to(device).unsqueeze(-1))
+            # projection
+            delta_z = q_network.atoms[1]-q_network.atoms[0]
+            tz = next_atoms.clamp(args.v_min, args.v_max)
             
-            _, old_pmfs = q_network.get_action(s_obs, s_actions)
-            # log_dist = torch.log(torch.clamp(old_pmfs, min=1.5e-4))
-            # log_target_dist = torch.log(torch.clamp(target_pmfs, min=1.5e-4))
-            # loss = (target_pmfs * (log_target_dist - log_dist)).sum(dim=-1).mean()
-            loss = (-(target_pmfs.detach() * old_pmfs.log()).sum(-1)).mean()
-            td_losses[step] = loss
-            # print(loss.item())
+            b = (tz - args.v_min)/ delta_z
+            l = b.floor().clamp(0, args.n_atoms-1)
+            u = b.ceil().clamp(0, args.n_atoms-1)
+            # (l == u).float() handles the case where bj is exactly an integer
+            # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
+            d_m_l = (u + (l == u).float() - b) * next_pmfs
+            d_m_u = (b - l) * next_pmfs
+            target_pmfs = torch.zeros_like(next_pmfs)
+            for i in range(target_pmfs.size(0)):
+                target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
+                target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
+        
+        _, old_pmfs = q_network.get_action(s_obs, s_actions)
+        loss = (-(target_pmfs.detach() * old_pmfs.log()).sum(-1)).mean()
+        writer.add_scalar("losses/td_loss", loss, global_step)
 
-            # optimize the midel
-            optimizer.zero_grad()
-            loss.backward()
-            nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
-            optimizer.step()
+        # optimize the midel
+        optimizer.zero_grad()
+        loss.backward()
+        nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
+        optimizer.step()
 
-            # update the target network
-            if global_step % args.target_network_frequency == 0:
-                target_network.load_state_dict(q_network.state_dict())
+        # update the target network
+        if global_step % args.target_network_frequency == 0:
+            target_network.load_state_dict(q_network.state_dict())
 
-        if dones[step]:
-            break
+    # TRY NOT TO MODIFY: CRUCIAL step easy to overlook 
+    obs = next_obs
 
-    # TRY NOT TO MODIFY: record rewards for plotting purposes
-    print(f"global_step={global_step}, episode_reward={rewards.sum()}")
-    writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
-    writer.add_scalar("charts/epsilon", epsilon, global_step)
-    writer.add_scalar("losses/td_loss", td_losses[:step+1].mean(), global_step)
+    if done:
+        # TRY NOT TO MODIFY: record rewards for plotting purposes
+        print(f"global_step={global_step}, episode_reward={episode_reward}")
+        writer.add_scalar("charts/episode_reward", episode_reward, global_step)
+        writer.add_scalar("charts/epsilon", epsilon, global_step)
+        obs, episode_reward = env.reset(), 0
+
 env.close()
 writer.close()
