@@ -312,7 +312,6 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 
-from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
 import collections
 import numpy as np
@@ -334,7 +333,7 @@ if __name__ == "__main__":
                        help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=2,
                        help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=1000000,
+    parser.add_argument('--total-timesteps', type=int, default=10000000,
                        help='total timesteps of the experiments')
     parser.add_argument('--no-torch-deterministic', action='store_false', dest="torch_deterministic", default=True,
                        help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -360,13 +359,13 @@ if __name__ == "__main__":
                        help='the maximum norm for the gradient clipping')
     parser.add_argument('--batch-size', type=int, default=32,
                        help="the batch size of sample from the reply memory")
-    parser.add_argument('--start-e', type=float, default=0.5,
+    parser.add_argument('--start-e', type=float, default=1.,
                        help="the starting epsilon for exploration")
     parser.add_argument('--end-e', type=float, default=0.02,
                        help="the ending epsilon for exploration")
     parser.add_argument('--exploration-fraction', type=float, default=0.10,
                        help="the fraction of `total-timesteps` it takes from start-e to go end-e")
-    parser.add_argument('--learning-starts', type=int, default=10000,
+    parser.add_argument('--learning-starts', type=int, default=80000,
                        help="timestep to start learning")
     parser.add_argument('--train-frequency', type=int, default=4,
                        help="the frequency of training")
@@ -381,7 +380,7 @@ writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
         '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
 if args.prod_mode:
     import wandb
-    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True)
+    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, sync_tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True, save_code=True)
     writer = SummaryWriter(f"/tmp/{experiment_name}")
     wandb.save(os.path.abspath(__file__))
 
@@ -485,11 +484,13 @@ for global_step in range(args.total_timesteps):
     # ALGO LOGIC: training.
     rb.put((obs, action, reward, next_obs, done))
     if global_step > args.learning_starts and global_step % args.train_frequency == 0:
-        s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
-        target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
-        td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
+        with torch.no_grad():
+            s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
+            target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
+            td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
         old_val = q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
         loss = loss_fn(td_target, old_val)
+        writer.add_scalar("losses/td_loss", loss, global_step)
 
         # optimize the midel
         optimizer.zero_grad()
@@ -501,17 +502,15 @@ for global_step in range(args.total_timesteps):
         if global_step % args.target_network_frequency == 0:
             target_network.load_state_dict(q_network.state_dict())
 
+    # TRY NOT TO MODIFY: CRUCIAL step easy to overlook 
+    obs = next_obs
+
     if done:
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         print(f"global_step={global_step}, episode_reward={episode_reward}")
         writer.add_scalar("charts/episode_reward", episode_reward, global_step)
         writer.add_scalar("charts/epsilon", epsilon, global_step)
-        if global_step > args.learning_starts:
-            writer.add_scalar("losses/td_loss", loss, global_step)
         obs, episode_reward = env.reset(), 0
-
-    # TRY NOT TO MODIFY: CRUCIAL step easy to overlook 
-    obs = next_obs
 
 env.close()
 writer.close()
