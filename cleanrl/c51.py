@@ -29,7 +29,7 @@ if __name__ == "__main__":
                         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=2,
                         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=30000,
+    parser.add_argument('--total-timesteps', type=int, default=50000,
                         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
