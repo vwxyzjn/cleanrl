@@ -466,10 +466,25 @@ class ReplayBuffer():
                np.array(done_mask_lst)
 
 # ALGO LOGIC: initialize agent here:
+class Linear0(nn.Linear):
+    def reset_parameters(self):
+        nn.init.constant_(self.weight, 0.0)
+        if self.bias is not None:
+            nn.init.constant_(self.bias, 0.0)
+
+
+class Scale(nn.Module):
+    def __init__(self, scale):
+        super().__init__()
+        self.scale = scale
+
+    def forward(self, x):
+        return x * self.scale
 class QNetwork(nn.Module):
     def __init__(self, frames=4):
         super(QNetwork, self).__init__()
         self.network = nn.Sequential(
+            Scale(1/255),
             nn.Conv2d(frames, 32, 8, stride=4),
             nn.ReLU(),
             nn.Conv2d(32, 64, 4, stride=2),
@@ -479,7 +494,7 @@ class QNetwork(nn.Module):
             nn.Flatten(),
             nn.Linear(3136, 512),
             nn.ReLU(),
-            nn.Linear(512, env.action_space.n)
+            Linear0(512, env.action_space.n)
         )
 
     def forward(self, x):
