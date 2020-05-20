@@ -1,4 +1,4 @@
-VERSION=1.4-cuda10.1-cudnn7-runtime-cleanrl-0.0.1
+VERSION=1.4-cuda10.1-cudnn7-runtime-cleanrl-0.2.1
 
 docker build -t vwxyzjn/cleanrl_nomad:$VERSION -t vwxyzjn/cleanrl_nomad:latest -f nomad.Dockerfile .
 docker build -t vwxyzjn/cleanrl:$VERSION  -t vwxyzjn/cleanrl:latest -f Dockerfile .

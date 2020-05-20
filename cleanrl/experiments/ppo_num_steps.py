@@ -147,70 +147,76 @@ loss_fn = nn.MSELoss()
 #print(pg.logstd.bias)
 
 # TRY NOT TO MODIFY: start the game
+num_steps = 5
 global_step = 0
+storage_step = -1
+episode_rewards = []
 while global_step < args.total_timesteps:
     next_obs = np.array(env.reset())
-    actions = np.empty((args.episode_length,) + env.action_space.shape)
-    rewards, dones = np.zeros((2, args.episode_length))
-    obs = np.empty((args.episode_length,) + env.observation_space.shape)
+    actions = np.empty((num_steps,) + env.action_space.shape)
+    rewards = np.zeros((num_steps,))
+    dones = np.zeros((num_steps+1,))
+    obs = np.empty((num_steps+1,) + env.observation_space.shape)
 
     # ALGO LOGIC: put other storage logic here
-    values = torch.zeros((args.episode_length), device=device)
-    logprobs = np.zeros((args.episode_length,),)
-    entropys = torch.zeros((args.episode_length,), device=device)
-
+    returns = np.zeros((num_steps+1,))
+    values = torch.zeros((num_steps+1), device=device)
+    logprobs = np.zeros((num_steps,),)
+    entropys = torch.zeros((num_steps,), device=device)
+    
     # TRY NOT TO MODIFY: prepare the execution of the game.
-    total_step = 0
-    num_steps = 5
     while True:
         for step in range(num_steps):
-            obs[step+total_step] = next_obs.copy()
+            obs[storage_step+1] = next_obs.copy()
             
             # ALGO LOGIC: put action logic here
-            values[step+total_step] = vf.forward(obs[step+total_step:step+total_step+1])
-            action, logproba = pg.get_action(obs[step+total_step:step+total_step+1])
-            actions[step+total_step] = action.data.numpy()[0]
-            logprobs[step+total_step] = logproba.data.numpy()[0]
+            values[storage_step] = vf.forward(obs[storage_step+1:storage_step+2])
+            action, logproba = pg.get_action(obs[storage_step+1:storage_step+2])
+            actions[storage_step] = action.data.numpy()[0]
+            logprobs[storage_step] = logproba.data.numpy()[0]
             
             # sometimes causes the performance to stay the same for a really long time.. hmmm
             # could be a degenarate seed
             clipped_action = np.clip(action.tolist(), env.action_space.low, env.action_space.high)[0]
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, rewards[step+total_step], dones[step+total_step], _ = env.step(clipped_action)
+            next_obs, rewards[storage_step], dones[storage_step+1], _ = env.step(clipped_action)
+            episode_rewards += [rewards[storage_step]]
             next_obs = np.array(next_obs)
             global_step += 1
-            if dones[step+total_step]:
-                break
+            if dones[storage_step+1]:
+                print(f"global_step={global_step}, episode_reward={sum(episode_rewards)}")
+                episode_rewards = []
+                next_obs = np.array(env.reset())
+            storage_step = (storage_step + 1) % num_steps
 
-        next_total_step = total_step+step+1
+        next_value = vf.forward(next_obs.reshape(1, -1))
         # ALGO LOGIC: training.
         # calculate the discounted rewards, or namely, returns
-        returns = np.zeros_like(rewards)
-        returns[step] = rewards[step]
-        for t in reversed(range(rewards.shape[0]-1)):
+        returns[-1] = next_value
+        for t in reversed(range(rewards.shape[0])):
             returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
         # advantages are returns - baseline, value estimates in our case
-        advantages = returns - values.detach().cpu().numpy()
+        advantages = returns[:-1] - values[:-1].detach().cpu().numpy()
 
         for _ in range(args.update_epochs):
-            newlogproba = pg.get_logproba(obs[total_step:next_total_step], torch.Tensor(actions[total_step:next_total_step]))
-            # newvalues = vf.forward(obs[total_step:next_total_step]).flatten() DO we generate a new values from the current policy?
-            ratio =  torch.exp(newlogproba - torch.Tensor(logprobs[total_step:next_total_step]))
-            surrogate1 = ratio * torch.Tensor(advantages[total_step:next_total_step])
-            surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages[total_step:next_total_step])
+            newlogproba = pg.get_logproba(obs[:-1], torch.Tensor(actions))
+            # newvalues = vf.forward(obs).flatten() DO we generate a new values from the current policy?
+            ratio =  torch.exp(newlogproba - torch.Tensor(logprobs))
+            surrogate1 = ratio * torch.Tensor(advantages)
+            surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages)
             policy_loss = - torch.mean(torch.min(surrogate1, surrogate2))
-            vf_loss = torch.mean((values[total_step:next_total_step] - torch.Tensor(returns[total_step:next_total_step])).pow(2))
+            vf_loss = torch.mean((values[:-1] - torch.Tensor(returns[:-1])).pow(2))
             entropy_loss = torch.mean(torch.exp(newlogproba) * newlogproba)
             total_loss = policy_loss + args.vf_coef * vf_loss + args.ent_coef * entropy_loss
             optimizer.zero_grad()
             total_loss.backward(retain_graph=True)
             nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
             optimizer.step()
+            
+        obs[0]=(obs[-1]).copy()
+        dones[0]=(dones[-1]).copy()
 
-        total_step += step+1
-        if dones[total_step-1]:
-            break
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
