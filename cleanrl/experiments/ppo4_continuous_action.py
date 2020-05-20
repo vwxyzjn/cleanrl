@@ -7,6 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
+from distutils.util import strtobool
 import numpy as np
 import gym
 from gym.wrappers import TimeLimit, Monitor
@@ -84,75 +85,75 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
-                       help='the name of this experiment')
+                        help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
-                       help='the id of the gym environment')
+                        help='the id of the gym environment')
     parser.add_argument('--seed', type=int, default=1,
-                       help='seed of the experiment')
+                        help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=0,
-                       help='the maximum length of each episode')
+                        help='the maximum length of each episode')
     parser.add_argument('--total-timesteps', type=int, default=100000,
-                       help='total timesteps of the experiments')
+                        help='total timesteps of the experiments')
     parser.add_argument('--no-torch-deterministic', action='store_false', dest="torch_deterministic", default=True,
-                       help='if toggled, `torch.backends.cudnn.deterministic=False`')
+                        help='if toggled, `torch.backends.cudnn.deterministic=False`')
     parser.add_argument('--no-cuda', action='store_false', dest="cuda", default=True,
-                       help='if toggled, cuda will not be enabled by default')
+                        help='if toggled, cuda will not be enabled by default')
     parser.add_argument('--prod-mode', action='store_true', default=False,
-                       help='run the script in production mode and use wandb to log outputs')
+                        help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--capture-video', action='store_true', default=False,
-                       help='weather to capture videos of the agent performances (check out `videos` folder)')
+                        help='weather to capture videos of the agent performances (check out `videos` folder)')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
-                       help="the wandb's project name")
+                        help="the wandb's project name")
     parser.add_argument('--wandb-entity', type=str, default=None,
-                       help="the entity (team) of wandb's project")
+                        help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
     parser.add_argument('--batch-size', type=int, default=2048,
-                       help='the batch size of ppo')
+                        help='the batch size of ppo')
     parser.add_argument('--minibatch-size', type=int, default=256,
-                       help='the mini batch size of ppo')
+                        help='the mini batch size of ppo')
     parser.add_argument('--gamma', type=float, default=0.99,
-                       help='the discount factor gamma')
+                        help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.97,
-                       help='the lambda for the general advantage estimation')
+                        help='the lambda for the general advantage estimation')
     parser.add_argument('--ent-coef', type=float, default=0.0,
-                       help="coefficient of the entropy")
+                        help="coefficient of the entropy")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
-                       help='the maximum norm for the gradient clipping')
+                        help='the maximum norm for the gradient clipping')
     parser.add_argument('--clip-coef', type=float, default=0.2,
-                       help="the surrogate clipping coefficient")
+                        help="the surrogate clipping coefficient")
     parser.add_argument('--update-epochs', type=int, default=10,
-                        help="the K epochs to update the policy")
+                         help="the K epochs to update the policy")
     parser.add_argument('--kle-stop', action='store_true', default=False,
-                        help='If toggled, the policy updates will be early stopped w.r.t target-kl')
+                         help='If toggled, the policy updates will be early stopped w.r.t target-kl')
     parser.add_argument('--kle-rollback', action='store_true', default=False,
-                        help='If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl')
+                         help='If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl')
     parser.add_argument('--target-kl', type=float, default=0.015,
-                        help='the target-kl variable that is referred by --kl')
+                         help='the target-kl variable that is referred by --kl')
     parser.add_argument('--gae', action='store_true', default=False,
-                        help='Use GAE for advantage computation')
+                         help='Use GAE for advantage computation')
     parser.add_argument('--policy-lr', type=float, default=3e-4,
-                        help="the learning rate of the policy optimizer")
+                         help="the learning rate of the policy optimizer")
     parser.add_argument('--value-lr', type=float, default=3e-4,
-                        help="the learning rate of the critic optimizer")
+                         help="the learning rate of the critic optimizer")
     parser.add_argument('--norm-obs', action='store_true', default=False,
-                        help="Toggles observation normalization")
+                         help="Toggles observation normalization")
     parser.add_argument('--norm-returns', action='store_true', default=False,
-                        help="Toggles returns normalization")
+                         help="Toggles returns normalization")
     parser.add_argument('--norm-adv', action='store_true', default=False,
-                        help="Toggles advantages normalization")
+                         help="Toggles advantages normalization")
     parser.add_argument('--obs-clip', type=float, default=10.0,
-                        help="Value for reward clipping, as per the paper")
+                         help="Value for reward clipping, as per the paper")
     parser.add_argument('--rew-clip', type=float, default=10.0,
-                        help="Value for observation clipping, as per the paper")
+                         help="Value for observation clipping, as per the paper")
     parser.add_argument('--anneal-lr', action='store_true', default=False,
-                        help="Toggle learning rate annealing for policy and value networks")
+                         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument('--weights-init', default="xavier", choices=["xavier", 'orthogonal'],
-                        help='Selects the scheme to be used for weights initialization'),
+                         help='Selects the scheme to be used for weights initialization'),
     parser.add_argument('--clip-vloss', action="store_true", default=False,
-                        help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
+                         help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
     parser.add_argument('--pol-layer-norm', action='store_true', default=False,
-                       help='Enables layer normalization in the policy network')
+                        help='Enables layer normalization in the policy network')
 
     args = parser.parse_args()
     if not args.seed:
