@@ -35,9 +35,9 @@ if __name__ == "__main__":
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
     parser.add_argument('--cuda', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, cuda will not be enabled by default')
-    parser.add_argument('--prod-mode', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+    parser.add_argument('--prod-mode', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='run the script in production mode and use wandb to log outputs')
-    parser.add_argument('--capture-video', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+    parser.add_argument('--capture-video', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='weather to capture videos of the agent performances (check out `videos` folder)')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                         help="the wandb's project name")
@@ -45,11 +45,11 @@ if __name__ == "__main__":
                         help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
-    parser.add_argument('--n-atoms', type=int, default=51,
+    parser.add_argument('--n-atoms', type=int, default=101,
                         help="the number of atoms")
-    parser.add_argument('--v-min', type=float, default=-10,
+    parser.add_argument('--v-min', type=float, default=-100,
                         help="the number of atoms")
-    parser.add_argument('--v-max', type=float, default=10,
+    parser.add_argument('--v-max', type=float, default=100,
                         help="the number of atoms")
     parser.add_argument('--buffer-size', type=int, default=10000,
                          help='the replay memory buffer size')
