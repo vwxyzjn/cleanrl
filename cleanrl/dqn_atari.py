@@ -407,29 +407,32 @@ assert isinstance(env.action_space, Discrete), "only discrete action space is su
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
-# modified from https://github.com/seungeunrho/minimalRL/blob/master/dqn.py#
-class ReplayBuffer():
-    def __init__(self, buffer_limit):
-        self.buffer = collections.deque(maxlen=buffer_limit)
-    
-    def put(self, transition):
-        self.buffer.append(transition)
-    
-    def sample(self, n):
-        mini_batch = random.sample(self.buffer, n)
-        s_lst, a_lst, r_lst, s_prime_lst, done_mask_lst = [], [], [], [], []
-        
-        for transition in mini_batch:
-            s, a, r, s_prime, done_mask = transition
-            s_lst.append(s)
-            a_lst.append(a)
-            r_lst.append(r)
-            s_prime_lst.append(s_prime)
-            done_mask_lst.append(done_mask)
+# modified from https://github.com/openai/baselines/blob/master/baselines/deepq/replay_buffer.py
+class ReplayBuffer(object):
+    def __init__(self, size):
+        self._storage = []
+        self._maxsize = size
+        self._next_idx = 0
 
-        return np.array(s_lst), np.array(a_lst), \
-               np.array(r_lst), np.array(s_prime_lst), \
-               np.array(done_mask_lst)
+    def put(self, data):
+        if self._next_idx >= len(self._storage):
+            self._storage.append(data)
+        else:
+            self._storage[self._next_idx] = data
+        self._next_idx = (self._next_idx + 1) % self._maxsize
+
+    def sample(self, batch_size):
+        idxes = np.random.choice(len(self._storage), batch_size, replace=True)
+        obses_t, actions, rewards, obses_tp1, dones = [], [], [], [], []
+        for i in idxes:
+            data = self._storage[i]
+            obs_t, action, reward, obs_tp1, done = data
+            obses_t.append(np.array(obs_t, copy=False))
+            actions.append(np.array(action, copy=False))
+            rewards.append(reward)
+            obses_tp1.append(np.array(obs_tp1, copy=False))
+            dones.append(done)
+        return np.array(obses_t), np.array(actions), np.array(rewards), np.array(obses_tp1), np.array(dones)
 
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
@@ -510,13 +513,12 @@ for global_step in range(args.total_timesteps):
 
     if done:
         # TRY NOT TO MODIFY: record rewards for plotting purposes
+        real_episode_reward += episode_reward
         if env.was_real_done:
             print(f"global_step={global_step}, episode_reward={real_episode_reward}")
             writer.add_scalar("charts/episode_reward", real_episode_reward, global_step)
             writer.add_scalar("charts/epsilon", epsilon, global_step)
             real_episode_reward = 0
-        else:
-            real_episode_reward += episode_reward
         obs, episode_reward = env.reset(), 0
 
 env.close()
