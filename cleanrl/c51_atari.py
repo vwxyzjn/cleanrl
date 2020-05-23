@@ -526,7 +526,8 @@ for global_step in range(args.total_timesteps):
                 target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
         
         _, old_pmfs = q_network.get_action(s_obs, s_actions)
-        loss = (-(target_pmfs.detach() * old_pmfs.log()).sum(-1)).mean()
+        loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5).log()).sum(-1)).mean()
+        # loss = (target_pmfs * (target_pmfs.clamp(min=1e-5).log() - old_pmfs.clamp(min=1e-5).log())).sum(-1).mean()
         writer.add_scalar("losses/td_loss", loss, global_step)
 
         # optimize the midel
