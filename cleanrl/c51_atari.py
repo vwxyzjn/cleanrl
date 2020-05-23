@@ -394,6 +394,8 @@ if args.prod_mode:
 # TRY NOT TO MODIFY: seeding
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 original_env = gym.make(args.gym_id)
+if args.capture_video:
+    original_env = Monitor(original_env, f'videos/{experiment_name}')
 env = wrap_pytorch(
     wrap_deepmind(
         wrap_atari(original_env),
@@ -411,8 +413,6 @@ env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 # respect the default timelimit
 assert isinstance(env.action_space, Discrete), "only discrete action space is supported"
-if args.capture_video:
-    env = Monitor(env, f'videos/{experiment_name}')
 
 # modified from https://github.com/seungeunrho/minimalRL/blob/master/dqn.py#
 class ReplayBuffer():
