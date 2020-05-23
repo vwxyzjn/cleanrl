@@ -373,7 +373,7 @@ if __name__ == "__main__":
                         help="the ending epsilon for exploration")
     parser.add_argument('--exploration-fraction', type=float, default=0.10,
                         help="the fraction of `total-timesteps` it takes from start-e to go end-e")
-    parser.add_argument('--learning-starts', type=int, default=10000,
+    parser.add_argument('--learning-starts', type=int, default=80000,
                         help="timestep to start learning")
     parser.add_argument('--train-frequency', type=int, default=4,
                         help="the frequency of training")
@@ -544,13 +544,12 @@ for global_step in range(args.total_timesteps):
 
     if done:
         # TRY NOT TO MODIFY: record rewards for plotting purposes
+        real_episode_reward += episode_reward
         if env.was_real_done:
             print(f"global_step={global_step}, episode_reward={real_episode_reward}")
             writer.add_scalar("charts/episode_reward", real_episode_reward, global_step)
             writer.add_scalar("charts/epsilon", epsilon, global_step)
             real_episode_reward = 0
-        else:
-            real_episode_reward += episode_reward
         obs, episode_reward = env.reset(), 0
 
 env.close()
