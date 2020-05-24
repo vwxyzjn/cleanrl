@@ -72,8 +72,8 @@ rolling_average = 20
 for env in envs:
     if not env.endswith("total_timesteps"):
         for idx, metrics_dataframe in enumerate(envs[env]):
-            envs[env][idx] = metrics_dataframe.dropna(subset=["charts/episode_reward"])
-            envs[env][idx]["charts/episode_reward"] = metrics_dataframe["charts/episode_reward"].rolling(rolling_average).mean()[rolling_average:]
+            envs[env][idx] = metrics_dataframe.dropna(subset=[feature_of_interest])
+            envs[env][idx][feature_of_interest] = metrics_dataframe[feature_of_interest].rolling(rolling_average).mean()[rolling_average:]
         
 
 sns.set(style="darkgrid")
