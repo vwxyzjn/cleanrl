@@ -411,7 +411,7 @@ def image_q_values(q_values, x_length, y_length, dpi=100):
     plt.close(fig)
     return q_value_rgb_array
 
-class QValueVisualizationWrapper(gym.Wrapper):
+class QValueAndReturnDistributionVisualizationWrapper(gym.Wrapper):
 
     def __init__(self, env):
         super().__init__(env)
@@ -419,7 +419,7 @@ class QValueVisualizationWrapper(gym.Wrapper):
         self.image_shape = self.env.render(mode="rgb_array").shape
         self.q_values = np.array([[0.,0.,0.,0.]])
         self.return_pmfs = np.zeros((4, 51))
-        self.metadata['video.frames_per_second'] = 240
+        self.metadata['video.frames_per_second'] = 60
 
     def set_q_values(self, q_values):
         self.q_values = q_values
@@ -456,7 +456,7 @@ device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cp
 env = gym.make(args.gym_id)
 env = wrap_atari(env)
 if args.capture_video:
-    env = QValueVisualizationWrapper(env)
+    env = QValueAndReturnDistributionVisualizationWrapper(env)
     env = Monitor(env, f'videos/{experiment_name}')
 env = wrap_pytorch(
     wrap_deepmind(
