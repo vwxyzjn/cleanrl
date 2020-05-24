@@ -65,6 +65,15 @@ else:
         all_df = pickle.load(handle)
     with open(f'{feature_name}/envs_cache.pkl', 'rb') as handle:
         envs = pickle.load(handle)
+print("data loaded")
+
+#smoothing
+rolling_average = 20
+for env in envs:
+    if not env.endswith("total_timesteps"):
+        for idx, metrics_dataframe in enumerate(envs[env]):
+            envs[env][idx] = metrics_dataframe.dropna(subset=["charts/episode_reward"])
+            envs[env][idx]["charts/episode_reward"] = metrics_dataframe["charts/episode_reward"].rolling(rolling_average).mean()[rolling_average:]
         
 
 sns.set(style="darkgrid")
