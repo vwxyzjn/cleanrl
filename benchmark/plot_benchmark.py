@@ -5,9 +5,15 @@ import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
+import os
 api = wandb.Api()
 
-if not path.exists("all_df_cache.pkl"):
+feature_of_interest = 'charts/episode_reward'
+feature_name = feature_of_interest.replace("/", "_")
+if not os.path.exists(feature_name):
+    os.makedirs(feature_name)
+
+if not path.exists(f"{feature_name}/all_df_cache.pkl"):
     # Change oreilly-class/cifar to <entity/project-name>
     runs = api.runs("cleanrl/cleanrl.benchmark")
     summary_list = [] 
@@ -19,27 +25,28 @@ if not path.exists("all_df_cache.pkl"):
     sample_points = 500
     
     for idx, run in enumerate(runs):
-        ls = run.history(keys=['charts/episode_reward', 'global_step'], pandas=False)
-        metrics_dataframe = pd.DataFrame(ls[0])
-        metrics_dataframe.insert(len(metrics_dataframe.columns), "algo", run.config['exp_name'])
-        metrics_dataframe.insert(len(metrics_dataframe.columns), "seed", run.config['seed'])
-        metrics_dataframe["charts/episode_reward"] = metrics_dataframe["charts/episode_reward"].rolling(rolling_average).mean()[rolling_average:]
-        data += [metrics_dataframe]
-        if run.config["gym_id"] not in envs:
-            envs[run.config["gym_id"]] = [metrics_dataframe]
-            envs[run.config["gym_id"]+"total_timesteps"] = run.config["total_timesteps"]
-        else:
-            envs[run.config["gym_id"]] += [metrics_dataframe]
-    
+        if feature_of_interest in run.summary:
+            ls = run.history(keys=[feature_of_interest, 'global_step'], pandas=False)
+            metrics_dataframe = pd.DataFrame(ls[0])
+            metrics_dataframe.insert(len(metrics_dataframe.columns), "algo", run.config['exp_name'])
+            metrics_dataframe.insert(len(metrics_dataframe.columns), "seed", run.config['seed'])
+            # metrics_dataframe[feature_of_interest] = metrics_dataframe[feature_of_interest].rolling(rolling_average).mean()[rolling_average:]
+            data += [metrics_dataframe]
+            if run.config["gym_id"] not in envs:
+                envs[run.config["gym_id"]] = [metrics_dataframe]
+                envs[run.config["gym_id"]+"total_timesteps"] = run.config["total_timesteps"]
+            else:
+                envs[run.config["gym_id"]] += [metrics_dataframe]
         
-        # run.summary are the output key/values like accuracy.  We call ._json_dict to omit large files 
-        summary_list.append(run.summary._json_dict) 
-    
-        # run.config is the input metrics.  We remove special values that start with _.
-        config_list.append({k:v for k,v in run.config.items() if not k.startswith('_')}) 
-    
-        # run.name is the name of the run.
-        name_list.append(run.name)       
+            
+            # run.summary are the output key/values like accuracy.  We call ._json_dict to omit large files 
+            summary_list.append(run.summary._json_dict) 
+        
+            # run.config is the input metrics.  We remove special values that start with _.
+            config_list.append({k:v for k,v in run.config.items() if not k.startswith('_')}) 
+        
+            # run.name is the name of the run.
+            name_list.append(run.name)       
     
     
     summary_df = pd.DataFrame.from_records(summary_list) 
@@ -49,14 +56,14 @@ if not path.exists("all_df_cache.pkl"):
     data = pd.concat(data, ignore_index=True)
     
     
-    with open('all_df_cache.pkl', 'wb') as handle:
+    with open(f'{feature_name}/all_df_cache.pkl', 'wb') as handle:
         pickle.dump(all_df, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    with open('envs_cache.pkl', 'wb') as handle:
+    with open(f'{feature_name}/envs_cache.pkl', 'wb') as handle:
         pickle.dump(envs, handle, protocol=pickle.HIGHEST_PROTOCOL)
 else:
-    with open('all_df_cache.pkl', 'rb') as handle:
+    with open(f'{feature_name}/all_df_cache.pkl', 'rb') as handle:
         all_df = pickle.load(handle)
-    with open('envs_cache.pkl', 'rb') as handle:
+    with open(f'{feature_name}/envs_cache.pkl', 'rb') as handle:
         envs = pickle.load(handle)
         
 
@@ -86,15 +93,16 @@ def get_df_for_env(gym_id):
 # uncommenet the following to generate all figures
 # for env in set(all_df["gym_id"]):
 #     data = get_df_for_env(env)
-#     sns.lineplot(data=data, x="global_step", y="charts/episode_reward", hue="algo", ci='sd')
+#     sns.lineplot(data=data, x="global_step", y=feature_of_interest, hue="algo", ci='sd')
 #     plt.legend(fontsize=6)
 #     plt.title(env)
 #     plt.savefig(f"{env}.svg")
 #     plt.clf()
 
 # debugging
-env = "InvertedPendulumBulletEnv-v0"
+env = "CartPole-v0"
 data = get_df_for_env(env)
-sns.lineplot(data=data, x="global_step", y="charts/episode_reward", hue="algo", ci='sd')
+data[feature_of_interest] = data[feature_of_interest].astype(np.float32)
+sns.lineplot(data=data, x="global_step", y=feature_of_interest, hue="algo", ci='sd')
 plt.legend(fontsize=6)
 plt.title(env)
