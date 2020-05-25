@@ -226,9 +226,6 @@ class Policy(nn.Module):
         probs = Normal(mean, std)
         if action is None:
             action = probs.sample()
-        else:
-            if not isinstance(action, torch.Tensor):
-                action = torch.Tensor(action).to(device)
         return action, probs.log_prob(action).sum(1), probs.entropy().sum(1)
 
 class Value(nn.Module):
@@ -378,7 +375,7 @@ while global_step < args.total_timesteps:
             end = start + args.minibatch_size
             minibatch_ind = inds[start:end]
             target_pg.load_state_dict(pg.state_dict())
-            _, newlogproba, entropy = pg.get_action(obs[minibatch_ind], actions[minibatch_ind])
+            _, newlogproba, entropy = pg.get_action(obs[minibatch_ind], torch.Tensor(actions[minibatch_ind]).to(device))
             ratio = (newlogproba - logprobs[minibatch_ind]).exp()
     
             # Policy loss as in OpenAI SpinUp
