@@ -89,8 +89,6 @@ if __name__ == "__main__":
                         help='the id of the gym environment')
     parser.add_argument('--seed', type=int, default=1,
                         help='seed of the experiment')
-    parser.add_argument('--episode-length', type=int, default=0,
-                        help='the maximum length of each episode')
     parser.add_argument('--total-timesteps', type=int, default=100000,
                         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
@@ -175,17 +173,8 @@ if args.prod_mode:
 # TRY NOT TO MODIFY: seeding
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 env = gym.make(args.gym_id)
-# respect the default timelimit
 assert isinstance(env.action_space, Box), "only continuous action space is supported"
-assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
-if isinstance(env, TimeLimit):
-    if int(args.episode_length):
-        env._max_episode_steps = int(args.episode_length)
-    args.episode_length = env._max_episode_steps
-else:
-    env = TimeLimit(env, int(args.episode_length))
 env = NormalizedEnv(env.env, ob=args.norm_obs, ret=args.norm_returns, clipob=args.obs_clip, cliprew=args.rew_clip, gamma=args.gamma)
-env = TimeLimit(env, int(args.episode_length))
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
