@@ -5,7 +5,6 @@ import torch.nn.functional as F
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
-from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
 from distutils.util import strtobool
 import numpy as np
@@ -130,29 +129,29 @@ if __name__ == "__main__":
                          help='If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl')
     parser.add_argument('--target-kl', type=float, default=0.015,
                          help='the target-kl variable that is referred by --kl')
-    parser.add_argument('--gae', action='store_true', default=False,
+    parser.add_argument('--gae', action='store_true', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help='Use GAE for advantage computation')
     parser.add_argument('--policy-lr', type=float, default=3e-4,
                          help="the learning rate of the policy optimizer")
     parser.add_argument('--value-lr', type=float, default=3e-4,
                          help="the learning rate of the critic optimizer")
-    parser.add_argument('--norm-obs', action='store_true', default=False,
+    parser.add_argument('--norm-obs', action='store_true', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help="Toggles observation normalization")
-    parser.add_argument('--norm-returns', action='store_true', default=False,
+    parser.add_argument('--norm-returns', action='store_true', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help="Toggles returns normalization")
-    parser.add_argument('--norm-adv', action='store_true', default=False,
+    parser.add_argument('--norm-adv', action='store_true', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help="Toggles advantages normalization")
     parser.add_argument('--obs-clip', type=float, default=10.0,
                          help="Value for reward clipping, as per the paper")
     parser.add_argument('--rew-clip', type=float, default=10.0,
                          help="Value for observation clipping, as per the paper")
-    parser.add_argument('--anneal-lr', action='store_true', default=False,
+    parser.add_argument('--anneal-lr', action='store_true', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument('--weights-init', default="xavier", choices=["xavier", 'orthogonal'],
+    parser.add_argument('--weights-init', default="orthogonal", choices=["xavier", 'orthogonal'],
                          help='Selects the scheme to be used for weights initialization'),
-    parser.add_argument('--clip-vloss', action="store_true", default=False,
+    parser.add_argument('--clip-vloss', action="store_true", type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
-    parser.add_argument('--pol-layer-norm', action='store_true', default=False,
+    parser.add_argument('--pol-layer-norm', action='store_true', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='Enables layer normalization in the policy network')
 
     args = parser.parse_args()
@@ -194,8 +193,6 @@ torch.backends.cudnn.deterministic = args.torch_deterministic
 env.seed(args.seed)
 env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
-input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
-output_shape = preprocess_ac_space(env.action_space)
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
@@ -203,10 +200,10 @@ if args.capture_video:
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        self.fc1 = nn.Linear(input_shape, 120)
+        self.fc1 = nn.Linear(np.array(env.observation_space.shape).prod(), 120)
         self.fc2 = nn.Linear(120, 84)
-        self.mean = nn.Linear(84, output_shape)
-        self.logstd = nn.Parameter(torch.zeros(1, output_shape))
+        self.mean = nn.Linear(84, np.prod(env.action_space.shape))
+        self.logstd = nn.Parameter(torch.zeros(1, np.prod(env.action_space.shape)))
 
         if args.pol_layer_norm:
             self.ln1 = torch.nn.LayerNorm(120)
@@ -223,7 +220,7 @@ class Policy(nn.Module):
             raise NotImplementedError
 
     def forward(self, x):
-        x = preprocess_obs_fn(x)
+        x = torch.Tensor(x).to(device)
         x = self.fc1(x)
         if args.pol_layer_norm: x = self.ln1(x)
         x = torch.tanh(x)
@@ -242,13 +239,13 @@ class Policy(nn.Module):
             action = probs.sample()
         else:
             if not isinstance(action, torch.Tensor):
-                action = preprocess_obs_fn(action)
+                action = torch.Tensor(action).to(device)
         return action, probs.log_prob(action).sum(1), probs.entropy().sum(1)
 
 class Value(nn.Module):
     def __init__(self):
         super(Value, self).__init__()
-        self.fc1 = nn.Linear(input_shape, 120)
+        self.fc1 = nn.Linear(np.array(env.observation_space.shape).prod(), 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 1)
 
@@ -264,7 +261,7 @@ class Value(nn.Module):
             raise NotImplementedError
 
     def forward(self, x):
-        x = preprocess_obs_fn(x)
+        x = torch.Tensor(x).to(device)
         x = torch.tanh(self.fc1(x))
         x = torch.tanh(self.fc2(x))
         x = self.fc3(x)
