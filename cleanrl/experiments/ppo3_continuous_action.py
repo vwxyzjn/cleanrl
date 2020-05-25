@@ -110,8 +110,6 @@ if __name__ == "__main__":
     # Algorithm specific arguments
     parser.add_argument('--batch-size', type=int, default=2048,
                         help='the batch size of ppo')
-    parser.add_argument('--minibatch-size', type=int, default=256,
-                        help='the mini batch size of ppo')
     parser.add_argument('--gamma', type=float, default=0.99,
                         help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.97,
@@ -383,66 +381,64 @@ while global_step < args.total_timesteps:
     # Optimizaing policy network
     # First Tensorize all that is need to be so, clears up the loss computation part
     logprobs = torch.Tensor(logprobs).to(device) # Called 2 times: during policy update and KL bound checked
+    approx_kls = []
     entropys = []
     target_pg = Policy().to(device)
-    inds = np.arange(args.batch_size,)
     for i_epoch_pi in range(args.update_epochs):
-        np.random.shuffle(inds)
-        for start in range(0, args.batch_size, args.minibatch_size):
-            end = start + args.minibatch_size
-            minibatch_ind = inds[start:end]
-            target_pg.load_state_dict(pg.state_dict())
-            _, newlogproba, entropy = pg.get_action(obs[minibatch_ind], actions[minibatch_ind])
-            ratio = (newlogproba - logprobs[minibatch_ind]).exp()
-    
-            # Policy loss as in OpenAI SpinUp
-            clip_adv = torch.where(advantages[minibatch_ind] > 0,
-                                    (1.+args.clip_coef) * advantages[minibatch_ind],
-                                    (1.-args.clip_coef) * advantages[minibatch_ind]).to(device)
-    
-            # Entropy computation with resampled actions
-            entropys.append(entropy.mean().item())
-            policy_loss = (-torch.min(ratio * advantages[minibatch_ind], clip_adv)).mean() + args.ent_coef * entropy.mean()
-            
-            pg_optimizer.zero_grad()
-            policy_loss.backward()
-            nn.utils.clip_grad_norm_(pg.parameters(), args.max_grad_norm)
-            pg_optimizer.step()
-    
-            # KEY TECHNIQUE: This will stop updating the policy once the KL has been breached
-            approx_kl = (logprobs[minibatch_ind] - newlogproba).mean()
-    
-            # Resample values
-            new_values = vf.forward(obs[minibatch_ind]).view(-1)
-    
-            # Value loss clipping
-            if args.clip_vloss:
-                v_loss_unclipped = ((new_values - returns[minibatch_ind]) ** 2)
-                v_clipped = values[minibatch_ind] + torch.clamp(new_values - values[minibatch_ind], -args.clip_coef, args.clip_coef)
-                v_loss_clipped = (v_clipped - returns[minibatch_ind])**2
-                v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
-                v_loss = 0.5 * v_loss_max.mean()
-            else:
-                v_loss = torch.mean((returns[minibatch_ind]- new_values).pow(2))
-    
-            v_optimizer.zero_grad()
-            v_loss.backward()
-            nn.utils.clip_grad_norm_(vf.parameters(), args.max_grad_norm)
-            v_optimizer.step()
+        target_pg.load_state_dict(pg.state_dict())
+        _, newlogproba, entropy = pg.get_action(obs, actions)
+        ratio = (newlogproba - logprobs).exp()
 
+        # Policy loss as in OpenAI SpinUp
+        clip_adv = torch.where(advantages > 0,
+                                (1.+args.clip_coef) * advantages,
+                                (1.-args.clip_coef) * advantages).to(device)
+
+        # Entropy computation with resampled actions
+        entropys.append(entropy.mean().item())
+        policy_loss = (-torch.min(ratio * advantages, clip_adv)).mean() + args.ent_coef * entropy.mean()
+
+        pg_optimizer.zero_grad()
+        policy_loss.backward()
+        nn.utils.clip_grad_norm_(pg.parameters(), args.max_grad_norm)
+        pg_optimizer.step()
+
+        # KEY TECHNIQUE: This will stop updating the policy once the KL has been breached
+        approx_kl = (logprobs - newlogproba).mean()
+        approx_kls.append(approx_kl.item())
         if args.kle_stop:
             if approx_kl > args.target_kl:
                 break
         if args.kle_rollback:
-            if (logprobs[minibatch_ind] - pg.get_action(obs[minibatch_ind], actions[minibatch_ind])[1]).mean() > args.target_kl:
+            if (logprobs - pg.get_action(obs, actions)[1]).mean() > args.target_kl:
                 pg.load_state_dict(target_pg.state_dict())
                 break
+
+    # Optimizing value network
+    for i_epoch in range(args.update_epochs):
+        # Resample values
+        new_values = vf.forward(obs).view(-1)
+
+        # Value loss clipping
+        if args.clip_vloss:
+            v_loss_unclipped = ((new_values - returns) ** 2)
+            v_clipped = values + torch.clamp(new_values - values, -args.clip_coef, args.clip_coef)
+            v_loss_clipped = (v_clipped - returns)**2
+            v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
+            v_loss = 0.5 * v_loss_max.mean()
+        else:
+            v_loss = loss_fn(returns, new_values)
+
+        v_optimizer.zero_grad()
+        v_loss.backward()
+        nn.utils.clip_grad_norm_(vf.parameters(), args.max_grad_norm)
+        v_optimizer.step()
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
     writer.add_scalar("losses/entropy", np.mean(entropys), global_step)
-    writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
+    writer.add_scalar("losses/approx_kl", np.mean(approx_kls), global_step)
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
 
