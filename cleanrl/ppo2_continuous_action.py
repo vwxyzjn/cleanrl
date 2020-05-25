@@ -123,35 +123,35 @@ if __name__ == "__main__":
                         help="the surrogate clipping coefficient")
     parser.add_argument('--update-epochs', type=int, default=10,
                          help="the K epochs to update the policy")
-    parser.add_argument('--kle-stop', action='store_true', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+    parser.add_argument('--kle-stop', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                          help='If toggled, the policy updates will be early stopped w.r.t target-kl')
-    parser.add_argument('--kle-rollback', action='store_true', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+    parser.add_argument('--kle-rollback', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                          help='If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl')
     parser.add_argument('--target-kl', type=float, default=0.015,
                          help='the target-kl variable that is referred by --kl')
-    parser.add_argument('--gae', action='store_true', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+    parser.add_argument('--gae', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help='Use GAE for advantage computation')
     parser.add_argument('--policy-lr', type=float, default=3e-4,
                          help="the learning rate of the policy optimizer")
     parser.add_argument('--value-lr', type=float, default=3e-4,
                          help="the learning rate of the critic optimizer")
-    parser.add_argument('--norm-obs', action='store_true', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+    parser.add_argument('--norm-obs', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help="Toggles observation normalization")
-    parser.add_argument('--norm-returns', action='store_true', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+    parser.add_argument('--norm-returns', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help="Toggles returns normalization")
-    parser.add_argument('--norm-adv', action='store_true', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+    parser.add_argument('--norm-adv', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help="Toggles advantages normalization")
     parser.add_argument('--obs-clip', type=float, default=10.0,
                          help="Value for reward clipping, as per the paper")
     parser.add_argument('--rew-clip', type=float, default=10.0,
                          help="Value for observation clipping, as per the paper")
-    parser.add_argument('--anneal-lr', action='store_true', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+    parser.add_argument('--anneal-lr', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument('--weights-init', default="orthogonal", choices=["xavier", 'orthogonal'],
                          help='Selects the scheme to be used for weights initialization'),
     parser.add_argument('--clip-vloss', action="store_true", type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
-    parser.add_argument('--pol-layer-norm', action='store_true', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+    parser.add_argument('--pol-layer-norm', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='Enables layer normalization in the policy network')
 
     args = parser.parse_args()
