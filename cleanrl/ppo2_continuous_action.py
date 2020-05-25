@@ -149,7 +149,7 @@ if __name__ == "__main__":
                          help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument('--weights-init', default="orthogonal", choices=["xavier", 'orthogonal'],
                          help='Selects the scheme to be used for weights initialization'),
-    parser.add_argument('--clip-vloss', action="store_true", type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+    parser.add_argument('--clip-vloss', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
     parser.add_argument('--pol-layer-norm', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='Enables layer normalization in the policy network')
