@@ -336,7 +336,7 @@ if __name__ == "__main__":
                         help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="BreakoutNoFrameskip-v4",
                         help='the id of the gym environment')
-    parser.add_argument('--learning-rate', type=float, default=1e-4,
+    parser.add_argument('--learning-rate', type=float, default=25e-5,
                         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=2,
                         help='seed of the experiment')
@@ -391,8 +391,8 @@ def image_return_distributions(pmfs, x_length, y_length, dpi=100):
     current_palette = sns.color_palette(n_colors=env.action_space.n)
     df = pd.DataFrame(pmfs.T)
     for idx, y in enumerate(df.columns):
-        ax.bar(df.index, df[y], color=current_palette[idx])
-    ax.set(xlabel='atoms of return', ylabel='probs')
+        ax.bar(np.linspace(args.v_min, args.v_max, num=args.n_atoms).astype(np.int), df[y], color=current_palette[idx])
+    ax.set(xlabel='return distribution', ylabel='probs')
     fig.canvas.draw()
     X = np.array(fig.canvas.renderer.buffer_rgba())
     return_distribution_rgb_array = np.array(Image.fromarray(X).convert('RGB'))
@@ -540,7 +540,7 @@ rb = ReplayBuffer(args.buffer_size)
 q_network = QNetwork(n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
 target_network = QNetwork(n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
 target_network.load_state_dict(q_network.state_dict())
-optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
+optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate, eps=1/args.batch_size)
 loss_fn = nn.MSELoss()
 print(device.__repr__())
 print(q_network)
