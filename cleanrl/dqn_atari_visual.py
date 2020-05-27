@@ -385,7 +385,7 @@ class QValueVisualizationWrapper(gym.Wrapper):
         self.env.reset()
         self.image_shape = self.env.render(mode="rgb_array").shape
         self.q_values = [[0.,0.,0.,0.]]
-        self.metadata['video.frames_per_second'] = 60
+        # self.metadata['video.frames_per_second'] = 60
         
     def set_q_values(self, q_values):
         self.q_values = q_values

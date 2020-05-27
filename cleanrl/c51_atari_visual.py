@@ -419,7 +419,7 @@ class QValueAndReturnDistributionVisualizationWrapper(gym.Wrapper):
         self.image_shape = self.env.render(mode="rgb_array").shape
         self.q_values = np.array([[0.,0.,0.,0.]])
         self.return_pmfs = np.zeros((4, 51))
-        self.metadata['video.frames_per_second'] = 60
+        # self.metadata['video.frames_per_second'] = 60
 
     def set_q_values(self, q_values):
         self.q_values = q_values
