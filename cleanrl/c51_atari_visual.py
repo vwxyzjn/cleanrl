@@ -554,7 +554,7 @@ real_episode_reward = 0
 for global_step in range(args.total_timesteps):
     # ALGO LOGIC: put action logic here
     epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
-    action, pmf, q_values, pmfs = target_network.get_action(obs.reshape((1,)+obs.shape))
+    action, pmf, q_values, pmfs = q_network.get_action(obs.reshape((1,)+obs.shape))
     action = action.tolist()[0]
     if args.capture_video:
         env.set_q_values(np.array(q_values.tolist()))
@@ -571,7 +571,7 @@ for global_step in range(args.total_timesteps):
     if global_step > args.learning_starts and global_step % args.train_frequency == 0:
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         with torch.no_grad():
-            _, next_pmfs, _, _ = q_network.get_action(s_next_obses)
+            _, next_pmfs, _, _ = target_network.get_action(s_next_obses)
             next_atoms = torch.Tensor(s_rewards).to(device).unsqueeze(-1) + args.gamma * q_network.atoms  * (1 - torch.Tensor(s_dones).to(device).unsqueeze(-1))
             # projection
             delta_z = q_network.atoms[1]-q_network.atoms[0]
