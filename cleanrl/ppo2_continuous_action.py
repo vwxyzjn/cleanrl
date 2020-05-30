@@ -371,10 +371,10 @@ while global_step < args.total_timesteps:
     inds = np.arange(args.batch_size,)
     for i_epoch_pi in range(args.update_epochs):
         np.random.shuffle(inds)
+        target_pg.load_state_dict(pg.state_dict())
         for start in range(0, args.batch_size, args.minibatch_size):
             end = start + args.minibatch_size
             minibatch_ind = inds[start:end]
-            target_pg.load_state_dict(pg.state_dict())
             _, newlogproba, entropy = pg.get_action(obs[minibatch_ind], torch.Tensor(actions[minibatch_ind]).to(device))
             ratio = (newlogproba - logprobs[minibatch_ind]).exp()
     
