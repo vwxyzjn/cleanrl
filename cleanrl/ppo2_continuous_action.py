@@ -417,7 +417,7 @@ while global_step < args.total_timesteps:
             if approx_kl > args.target_kl:
                 break
         if args.kle_rollback:
-            if (logprobs[minibatch_ind] - pg.get_action(obs[minibatch_ind], actions[minibatch_ind])[1]).mean() > args.target_kl:
+            if (logprobs[minibatch_ind] - pg.get_action(obs[minibatch_ind], torch.Tensor(actions[minibatch_ind]).to(device))[1]).mean() > args.target_kl:
                 pg.load_state_dict(target_pg.state_dict())
                 break
 
