@@ -197,7 +197,7 @@ if args.prod_mode:
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 env = ProcessObsInputEnv(gym.make(args.gym_id))
 assert isinstance(env.action_space, Discrete), "only continuous action space is supported"
-env = NormalizedEnv(env.env, ob=args.norm_obs, ret=args.norm_returns, clipob=args.obs_clip, cliprew=args.rew_clip, gamma=args.gamma)
+env = NormalizedEnv(env, ob=args.norm_obs, ret=args.norm_returns, clipob=args.obs_clip, cliprew=args.rew_clip, gamma=args.gamma)
 random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
@@ -387,10 +387,10 @@ while global_step < args.total_timesteps:
     inds = np.arange(args.batch_size,)
     for i_epoch_pi in range(args.update_epochs):
         np.random.shuffle(inds)
+        target_pg.load_state_dict(pg.state_dict())
         for start in range(0, args.batch_size, args.minibatch_size):
             end = start + args.minibatch_size
             minibatch_ind = inds[start:end]
-            target_pg.load_state_dict(pg.state_dict())
             _, newlogproba, entropy = pg.get_action(obs[minibatch_ind], torch.LongTensor(actions.astype(np.int)).to(device)[minibatch_ind])
             ratio = (newlogproba - logprobs[minibatch_ind]).exp()
     
