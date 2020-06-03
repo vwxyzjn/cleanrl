@@ -475,6 +475,7 @@ def make_env(gym_id, seed):
         return env
     return thunk
 envs = DummyVecEnv([make_env(args.gym_id, args.seed+i) for i in range(args.num_envs)])
+# envs = SubprocVecEnv([make_env(args.gym_id, args.seed+i) for i in range(args.num_envs)], "fork")
 # respect the default timelimit
 assert isinstance(envs.action_space, Discrete), "only discrete action space is supported"
 
@@ -681,13 +682,6 @@ while global_step < args.total_timesteps:
     advantages = torch.Tensor(advantages).to(device)
     returns = torch.Tensor(returns).to(device)
 
-
-    # Advantage normalization
-    if args.norm_adv:
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-10)
-
-
-
     # Optimizaing policy network
     # First Tensorize all that is need to be so, clears up the loss computation part
     logprobs = torch.Tensor(logprobs).to(device) # Called 2 times: during policy update and KL bound checked
@@ -700,18 +694,22 @@ while global_step < args.total_timesteps:
         for start in range(0, args.batch_size, args.minibatch_size):
             end = start + args.minibatch_size
             minibatch_ind = inds[start:end]
+            mb_advantages = advantages[minibatch_ind]
+            if args.norm_adv:
+                mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
+
             _, newlogproba, entropy = pg.get_action(obs[minibatch_ind], torch.LongTensor(actions.astype(np.int)).to(device)[minibatch_ind])
             ratio = (newlogproba - logprobs[minibatch_ind]).exp()
             
     
             # Policy loss as in OpenAI SpinUp
-            clip_adv = torch.where(advantages[minibatch_ind] > 0,
-                                    (1.+args.clip_coef) * advantages[minibatch_ind],
-                                    (1.-args.clip_coef) * advantages[minibatch_ind]).to(device)
+            clip_adv = torch.where(mb_advantages > 0,
+                                    (1.+args.clip_coef) * mb_advantages,
+                                    (1.-args.clip_coef) * mb_advantages).to(device)
     
             # Entropy computation with resampled actions
             entropys.append(entropy.mean().item())
-            policy_loss = (-torch.min(ratio * advantages[minibatch_ind], clip_adv)).mean() + args.ent_coef * entropy.mean()
+            policy_loss = (-torch.min(ratio * mb_advantages, clip_adv)).mean() + args.ent_coef * entropy.mean()
             
             pg_optimizer.zero_grad()
             policy_loss.backward()
