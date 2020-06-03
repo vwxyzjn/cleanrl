@@ -408,20 +408,6 @@ if __name__ == "__main__":
 
 args.batch_size = int(args.num_envs * args.num_steps)
 
-class RecordRealAtariEpisodeReward(gym.Wrapper):
-    def reset(self):
-        obs = super().reset()
-        self.real_episode_reward = 0
-        return obs
-    
-    def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-        self.real_episode_reward += reward
-        if self.env.was_real_done:
-            info["real_episode_reward"] = self.real_episode_reward
-            self.real_episode_reward = 0
-        return obs, reward, done, info
-
 class ProbsVisualizationWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
@@ -471,17 +457,18 @@ def make_env(gym_id, seed):
     def thunk():
         env = gym.make(gym_id)
         env = wrap_atari(env)
+        env = gym.wrappers.RecordEpisodeStatistics(env)
         if args.capture_video:
             # env = ProbsVisualizationWrapper(env)
             env = Monitor(env, f'videos/{experiment_name}')
-        env = RecordRealAtariEpisodeReward(wrap_pytorch(
+        env = wrap_pytorch(
             wrap_deepmind(
                 env,
                 clip_rewards=False,
                 frame_stack=True,
                 scale=False,
             )
-        ))
+        )
         env.seed(seed)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
@@ -635,9 +622,9 @@ while global_step < args.total_timesteps:
             pg_lr_scheduler.step()
             vf_lr_scheduler.step()
         for info in infos:
-            if "real_episode_reward" in info:
-                writer.add_scalar("charts/episode_reward", info["real_episode_reward"], global_step)
-                print(f"global_step={global_step}, episode_reward={info['real_episode_reward']}")
+            if 'episode' in info:
+                writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
+                print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
 
     # bootstrap reward if not done. reached the batch limit
     # last_value = 0
