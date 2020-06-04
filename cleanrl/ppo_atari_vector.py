@@ -365,6 +365,8 @@ if __name__ == "__main__":
                         help='the lambda for the general advantage estimation')
     parser.add_argument('--ent-coef', type=float, default=0.01,
                         help="coefficient of the entropy")
+    parser.add_argument('--vf-coef', type=float, default=0.5,
+                        help="coefficient of the value function")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                         help='the maximum norm for the gradient clipping')
     parser.add_argument('--clip-coef', type=float, default=0.1,
@@ -569,14 +571,12 @@ pg = Policy().to(device)
 vf = Value().to(device)
 
 # MODIFIED: Separate optimizer and learning rates
-pg_optimizer = optim.Adam(list(pg.parameters()), lr=args.policy_lr)
-v_optimizer = optim.Adam(list(vf.parameters()), lr=args.value_lr)
+optimizer = optim.Adam(list(pg.parameters())+list(vf.parameters()), lr=args.policy_lr)
 
 # MODIFIED: Initializing learning rate anneal scheduler when need
 if args.anneal_lr:
-    anneal_fn = lambda f: max(0, 1-f / args.total_timesteps)
-    pg_lr_scheduler = optim.lr_scheduler.LambdaLR(pg_optimizer, lr_lambda=anneal_fn)
-    vf_lr_scheduler = optim.lr_scheduler.LambdaLR(v_optimizer, lr_lambda=anneal_fn)
+    # https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/defaults.py#L20
+    lr = lambda f: f * 2.5e-4
 
 loss_fn = nn.MSELoss()
 
@@ -591,7 +591,14 @@ def sf01(arr):
 # TRY NOT TO MODIFY: start the game
 global_step = 0
 next_obs = envs.reset()
-while global_step < args.total_timesteps:
+num_updates = args.total_timesteps // args.batch_size
+
+for update in range(1, num_updates+1):
+    # Annealing the rate if instructed to do so.
+    if args.anneal_lr:
+        frac = 1.0 - (update - 1.0) / num_updates
+        lrnow = lr(frac)
+        optimizer.param_groups[0]['lr'] = lrnow
     # ALGO Logic: Storage for epoch data
     obs = np.empty((args.num_steps, args.num_envs) + envs.observation_space.shape)
     actions = np.empty((args.num_steps, args.num_envs) + envs.action_space.shape)
@@ -618,10 +625,6 @@ while global_step < args.total_timesteps:
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], infos = envs.step(action.tolist())
 
-        # Annealing the rate if instructed to do so.
-        if args.anneal_lr:
-            pg_lr_scheduler.step()
-            vf_lr_scheduler.step()
         for info in infos:
             if 'episode' in info:
                 writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
@@ -685,7 +688,6 @@ while global_step < args.total_timesteps:
     # Optimizaing policy network
     # First Tensorize all that is need to be so, clears up the loss computation part
     logprobs = torch.Tensor(logprobs).to(device) # Called 2 times: during policy update and KL bound checked
-    entropys = []
     target_pg = Policy().to(device)
     inds = np.arange(args.batch_size,)
     for i_epoch_pi in range(args.update_epochs):
@@ -701,28 +703,17 @@ while global_step < args.total_timesteps:
             _, newlogproba, entropy = pg.get_action(obs[minibatch_ind], torch.LongTensor(actions.astype(np.int)).to(device)[minibatch_ind])
             ratio = (newlogproba - logprobs[minibatch_ind]).exp()
             
-    
-            # Policy loss as in OpenAI SpinUp
-            clip_adv = torch.where(mb_advantages > 0,
-                                    (1.+args.clip_coef) * mb_advantages,
-                                    (1.-args.clip_coef) * mb_advantages).to(device)
-    
-            # Entropy computation with resampled actions
-            entropys.append(entropy.mean().item())
-            policy_loss = (-torch.min(ratio * mb_advantages, clip_adv)).mean() + args.ent_coef * entropy.mean()
-            
-            pg_optimizer.zero_grad()
-            policy_loss.backward()
-            nn.utils.clip_grad_norm_(pg.parameters(), args.max_grad_norm)
-            pg_optimizer.step()
-    
-            # KEY TECHNIQUE: This will stop updating the policy once the KL has been breached
+            # Stats
             approx_kl = (logprobs[minibatch_ind] - newlogproba).mean()
     
-            # Resample values
+            # Policy loss
+            pg_loss1 = -mb_advantages * ratio
+            pg_loss2 = -mb_advantages * torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef)
+            pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+            entropy_loss = entropy.mean()
+
+            # Value loss
             new_values = vf.forward(obs[minibatch_ind]).view(-1)
-    
-            # Value loss clipping
             if args.clip_vloss:
                 v_loss_unclipped = ((new_values - returns[minibatch_ind]) ** 2)
                 v_clipped = values[minibatch_ind] + torch.clamp(new_values - values[minibatch_ind], -args.clip_coef, args.clip_coef)
@@ -730,13 +721,15 @@ while global_step < args.total_timesteps:
                 v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
                 v_loss = 0.5 * v_loss_max.mean()
             else:
-                v_loss = torch.mean((returns[minibatch_ind]- new_values).pow(2))
-    
-            v_optimizer.zero_grad()
-            v_loss.backward()
-            nn.utils.clip_grad_norm_(vf.parameters(), args.max_grad_norm)
-            v_optimizer.step()
-        # raise
+                v_loss = 0.5 *((new_values - returns[minibatch_ind]) ** 2)
+
+            loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
+
+            optimizer.zero_grad()
+            loss.backward()
+            nn.utils.clip_grad_norm_(list(pg.parameters())+list(vf.parameters()), args.max_grad_norm)
+            optimizer.step()
+
         if args.kle_stop:
             if approx_kl > args.target_kl:
                 break
@@ -747,9 +740,10 @@ while global_step < args.total_timesteps:
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     print(approx_kl)
+    writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]['lr'], global_step)
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
-    writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
-    writer.add_scalar("losses/entropy", np.mean(entropys), global_step)
+    writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
+    writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
     writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
