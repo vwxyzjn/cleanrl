@@ -335,7 +335,7 @@ if __name__ == "__main__":
                         help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="BreakoutNoFrameskip-v4",
                         help='the id of the gym environment')
-    parser.add_argument('--learning-rate', type=float, default=3e-4,
+    parser.add_argument('--learning-rate', type=float, default=2.5e-4,
                         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
                         help='seed of the experiment')
@@ -438,7 +438,7 @@ class ProbsVisualizationWrapper(gym.Wrapper):
         self.image_shape = self.env.render(mode="rgb_array").shape
         self.probs = [[0.,0.,0.,0.]]
         # self.metadata['video.frames_per_second'] = 60
-        
+
     def set_probs(self, probs):
         self.probs = probs
 
@@ -556,7 +556,7 @@ agent = Agent().to(device)
 optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 if args.anneal_lr:
     # https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/defaults.py#L20
-    lr = lambda f: f * 2.5e-4
+    lr = lambda f: f * args.learning_rate
 
 # ALGO Logic: Storage for epoch data
 obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape).to(device)
@@ -580,7 +580,7 @@ for update in range(1, num_updates+1):
         frac = 1.0 - (update - 1.0) / num_updates
         lrnow = lr(frac)
         optimizer.param_groups[0]['lr'] = lrnow
-    
+
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(0, args.num_steps):
         global_step += 1 * args.num_envs
@@ -591,7 +591,7 @@ for update in range(1, num_updates+1):
         with torch.no_grad():
             values[step] = agent.get_value(obs[step]).flatten()
             action, logproba, _ = agent.get_action(obs[step])
-            
+
             # visualization
             probs_list = np.array(Categorical(
                 logits=agent.actor(agent.forward(obs[step]))).probs[0:1].tolist())
@@ -609,7 +609,7 @@ for update in range(1, num_updates+1):
                 print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
                 writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
 
-    # bootstrap reward if not done. reached the batch limit                
+    # bootstrap reward if not done. reached the batch limit
     with torch.no_grad():
         last_value = agent.get_value(next_obs.to(device)).reshape(1, -1)
         if args.gae:
@@ -660,10 +660,10 @@ for update in range(1, num_updates+1):
 
             _, newlogproba, entropy = agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind])
             ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
-            
+
             # Stats
             approx_kl = (b_logprobs[minibatch_ind] - newlogproba).mean()
-    
+
             # Policy loss
             pg_loss1 = -mb_advantages * ratio
             pg_loss2 = -mb_advantages * torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef)
