@@ -387,18 +387,18 @@ if __name__ == "__main__":
     #                      help="Toggles observation normalization")
     # parser.add_argument('--norm-returns', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
     #                      help="Toggles returns normalization")
-    # parser.add_argument('--norm-adv', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-    #                      help="Toggles advantages normalization")
+    parser.add_argument('--norm-adv', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+                          help="Toggles advantages normalization")
     # parser.add_argument('--obs-clip', type=float, default=10.0,
     #                      help="Value for reward clipping, as per the paper")
     # parser.add_argument('--rew-clip', type=float, default=10.0,
     #                      help="Value for observation clipping, as per the paper")
-    # parser.add_argument('--anneal-lr', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-    #                      help="Toggle learning rate annealing for policy and value networks")
+    parser.add_argument('--anneal-lr', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+                          help="Toggle learning rate annealing for policy and value networks")
     # parser.add_argument('--weights-init', default="orthogonal", choices=["xavier", 'orthogonal'],
     #                      help='Selects the scheme to be used for weights initialization'),
-    # parser.add_argument('--clip-vloss', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-    #                      help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
+    parser.add_argument('--clip-vloss', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+                          help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
     # parser.add_argument('--pol-layer-norm', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
     #                     help='Enables layer normalization in the policy network')
 
@@ -431,6 +431,35 @@ class VecPyTorch(VecEnvWrapper):
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
         return obs, reward, done, info
 
+class ProbsVisualizationWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        self.env.reset()
+        self.image_shape = self.env.render(mode="rgb_array").shape
+        self.probs = [[0.,0.,0.,0.]]
+        # self.metadata['video.frames_per_second'] = 60
+        
+    def set_probs(self, probs):
+        self.probs = probs
+
+    def render(self, mode="human"):
+        if mode=="rgb_array":
+            env_rgb_array = super().render(mode)
+            fig, ax = plt.subplots(figsize=(self.image_shape[1]/100,self.image_shape[0]/100), constrained_layout=True, dpi=100)
+            df = pd.DataFrame(np.array(self.probs).T)
+            sns.barplot(x=df.index, y=0, data=df, ax=ax)
+            ax.set(xlabel='actions', ylabel='probs')
+            fig.canvas.draw()
+            X = np.array(fig.canvas.renderer.buffer_rgba())
+            Image.fromarray(X)
+            # Image.fromarray(X)
+            rgb_image = np.array(Image.fromarray(X).convert('RGB'))
+            plt.close(fig)
+            q_value_rgb_array = rgb_image
+            return np.append(env_rgb_array, q_value_rgb_array, axis=1)
+        else:
+            super().render(mode)
+
 args.batch_size = int(args.num_envs * args.num_steps)
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -448,14 +477,15 @@ random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
-def make_env(gym_id, seed):
+def make_env(gym_id, seed, idx):
     def thunk():
         env = gym.make(gym_id)
         env = wrap_atari(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if args.capture_video:
-            # env = ProbsVisualizationWrapper(env)
-            env = Monitor(env, f'videos/{experiment_name}')
+            if idx == 0:
+                env = ProbsVisualizationWrapper(env)
+                env = Monitor(env, f'videos/{experiment_name}')
         env = wrap_pytorch(
             wrap_deepmind(
                 env,
@@ -469,11 +499,12 @@ def make_env(gym_id, seed):
         env.observation_space.seed(seed)
         return env
     return thunk
-# envs = DummyVecEnv([make_env(args.gym_id, args.seed+i) for i in range(args.num_envs)])
-envs = VecPyTorch(
-    SubprocVecEnv([make_env(args.gym_id, args.seed+i) for i in range(args.num_envs)], "fork"),
-    device
-)
+envs = VecPyTorch(DummyVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)]), device)
+if args.prod_mode:
+    envs = VecPyTorch(
+        SubprocVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)], "fork"),
+        device
+    )
 assert isinstance(envs.action_space, Discrete), "only discrete action space is supported"
 
 # ALGO LOGIC: initialize agent here:
@@ -579,6 +610,11 @@ for update in range(1, num_updates+1):
         with torch.no_grad():
             values[step] = agent.get_value(obs[step]).flatten()
             action, logproba, _ = agent.get_action(obs[step])
+            
+            # visualization
+            probs_list = np.array(Categorical(
+                logits=agent.actor(agent.forward(obs[step]))).probs[0:1].tolist())
+            envs.env_method("set_probs", probs_list, indices=0)
 
         actions[step] = action
         logprobs[step] = logproba
