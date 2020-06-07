@@ -383,24 +383,12 @@ if __name__ == "__main__":
                          help='the target-kl variable that is referred by --kl')
     parser.add_argument('--gae', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help='Use GAE for advantage computation')
-    # parser.add_argument('--norm-obs', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-    #                      help="Toggles observation normalization")
-    # parser.add_argument('--norm-returns', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-    #                      help="Toggles returns normalization")
     parser.add_argument('--norm-adv', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                           help="Toggles advantages normalization")
-    # parser.add_argument('--obs-clip', type=float, default=10.0,
-    #                      help="Value for reward clipping, as per the paper")
-    # parser.add_argument('--rew-clip', type=float, default=10.0,
-    #                      help="Value for observation clipping, as per the paper")
     parser.add_argument('--anneal-lr', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                           help="Toggle learning rate annealing for policy and value networks")
-    # parser.add_argument('--weights-init', default="orthogonal", choices=["xavier", 'orthogonal'],
-    #                      help='Selects the scheme to be used for weights initialization'),
     parser.add_argument('--clip-vloss', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                           help='Toggles wheter or not to use a clipped loss for the value function, as per the paper.')
-    # parser.add_argument('--pol-layer-norm', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-    #                     help='Enables layer normalization in the policy network')
 
     args = parser.parse_args()
     if not args.seed:
@@ -408,10 +396,8 @@ if __name__ == "__main__":
 
 class VecPyTorch(VecEnvWrapper):
     def __init__(self, venv, device):
-        """Return only every `skip`-th frame"""
         super(VecPyTorch, self).__init__(venv)
         self.device = device
-        # TODO: Fix data types
 
     def reset(self):
         obs = self.venv.reset()
@@ -420,7 +406,6 @@ class VecPyTorch(VecEnvWrapper):
 
     def step_async(self, actions):
         if isinstance(actions, torch.LongTensor):
-            # Squeeze the dimension for discrete actions
             actions = actions.squeeze(1)
         actions = actions.cpu().numpy()
         self.venv.step_async(actions)
@@ -563,12 +548,12 @@ obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape
 actions = torch.zeros((args.num_steps, args.num_envs) + envs.action_space.shape).to(device)
 logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
 rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
-# real_rewards = []
 dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
 values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 
 # TRY NOT TO MODIFY: start the game
 global_step = 0
+episode_step = 0
 # Note how `next_obs` and `next_done` are used; their usage is equivalent to
 # https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/84a7582477fb0d5c82ad6d850fe476829dddd2e1/a2c_ppo_acktr/storage.py#L60
 next_obs = envs.reset()
@@ -606,8 +591,9 @@ for update in range(1, num_updates+1):
 
         for info in infos:
             if 'episode' in info.keys():
-                print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-                writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
+                episode_step += info['episode']['l']
+                print(f"global_step={episode_step}, episode_reward={info['episode']['r']}")
+                writer.add_scalar("charts/episode_reward", info['episode']['r'], episode_step)
 
     # bootstrap reward if not done. reached the batch limit
     with torch.no_grad():
