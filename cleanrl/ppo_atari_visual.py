@@ -355,12 +355,12 @@ if __name__ == "__main__":
                         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--minibatch-size', type=int, default=256,
-                        help='the mini batch size of ppo')
+    parser.add_argument('--n-minibatch', type=int, default=4,
+                        help='the number of mini batch')
     parser.add_argument('--num-envs', type=int, default=8,
-                        help='the mini batch size of ppo')
+                        help='the number of parallel game environment')
     parser.add_argument('--num-steps', type=int, default=128,
-                        help='the mini batch size of ppo')
+                        help='the number of steps per game environment')
     parser.add_argument('--gamma', type=float, default=0.99,
                         help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.95,
@@ -393,6 +393,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
+
+args.batch_size = int(args.num_envs * args.num_steps)
+args.minibatch_size = int(args.batch_size // args.n_minibatch)
 
 class VecPyTorch(VecEnvWrapper):
     def __init__(self, venv, device):
@@ -445,7 +448,6 @@ class ProbsVisualizationWrapper(gym.Wrapper):
         else:
             super().render(mode)
 
-args.batch_size = int(args.num_envs * args.num_steps)
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
@@ -631,7 +633,7 @@ for update in range(1, num_updates+1):
     b_returns = returns.reshape(-1)
     b_values = values.reshape(-1)
 
-    # Optimizaing policy network
+    # Optimizaing the policy and value network
     target_agent = Agent().to(device)
     inds = np.arange(args.batch_size,)
     for i_epoch_pi in range(args.update_epochs):
@@ -683,7 +685,6 @@ for update in range(1, num_updates+1):
                 break
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
-    print(approx_kl)
     writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]['lr'], global_step)
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
