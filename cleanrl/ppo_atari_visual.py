@@ -408,8 +408,6 @@ class VecPyTorch(VecEnvWrapper):
         return obs
 
     def step_async(self, actions):
-        if isinstance(actions, torch.LongTensor):
-            actions = actions.squeeze(1)
         actions = actions.cpu().numpy()
         self.venv.step_async(actions)
 
