@@ -628,7 +628,7 @@ for update in range(1, num_updates+1):
     # flatten the batch
     b_obs = obs.reshape((-1,)+envs.observation_space.shape)
     b_logprobs = logprobs.reshape(-1)
-    b_actions = actions.reshape(-1)
+    b_actions = actions.reshape((-1,)+envs.action_space.shape)
     b_advantages = advantages.reshape(-1)
     b_returns = returns.reshape(-1)
     b_values = values.reshape(-1)
