@@ -589,9 +589,11 @@ for update in range(1, num_updates+1):
         next_obs, rs, ds, infos = envs.step(action)
         rewards[step], next_done = rs.view(-1), torch.Tensor(ds).to(device)
 
-        if 'episode' in infos[0].keys():
-            print(f"global_step={global_step}, episode_reward={infos[0]['episode']['r']}")
-            writer.add_scalar("charts/episode_reward", infos[0]['episode']['r'], global_step)
+        for info in infos:
+            if 'episode' in info.keys():
+                print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
+                writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
+                break
 
     # bootstrap reward if not done. reached the batch limit
     with torch.no_grad():
