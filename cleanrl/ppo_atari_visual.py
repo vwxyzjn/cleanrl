@@ -347,7 +347,7 @@ if __name__ == "__main__":
                         help='if toggled, cuda will not be enabled by default')
     parser.add_argument('--prod-mode', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='run the script in production mode and use wandb to log outputs')
-    parser.add_argument('--capture-video', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+    parser.add_argument('--capture-video', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='weather to capture videos of the agent performances (check out `videos` folder)')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                         help="the wandb's project name")
@@ -485,11 +485,11 @@ def make_env(gym_id, seed, idx):
         return env
     return thunk
 envs = VecPyTorch(DummyVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)]), device)
-if args.prod_mode:
-    envs = VecPyTorch(
-        SubprocVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)], "fork"),
-        device
-    )
+# if args.prod_mode:
+#     envs = VecPyTorch(
+#         SubprocVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)], "fork"),
+#         device
+#     )
 assert isinstance(envs.action_space, Discrete), "only discrete action space is supported"
 
 # ALGO LOGIC: initialize agent here:
@@ -553,7 +553,6 @@ values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 
 # TRY NOT TO MODIFY: start the game
 global_step = 0
-episode_step = 0
 # Note how `next_obs` and `next_done` are used; their usage is equivalent to
 # https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/84a7582477fb0d5c82ad6d850fe476829dddd2e1/a2c_ppo_acktr/storage.py#L60
 next_obs = envs.reset()
@@ -578,9 +577,10 @@ for update in range(1, num_updates+1):
             action, logproba, _ = agent.get_action(obs[step])
 
             # visualization
-            probs_list = np.array(Categorical(
-                logits=agent.actor(agent.forward(obs[step]))).probs[0:1].tolist())
-            envs.env_method("set_probs", probs_list, indices=0)
+            if args.capture_video:
+                probs_list = np.array(Categorical(
+                    logits=agent.actor(agent.forward(obs[step]))).probs[0:1].tolist())
+                envs.env_method("set_probs", probs_list, indices=0)
 
         actions[step] = action
         logprobs[step] = logproba
@@ -589,11 +589,9 @@ for update in range(1, num_updates+1):
         next_obs, rs, ds, infos = envs.step(action)
         rewards[step], next_done = rs.view(-1), torch.Tensor(ds).to(device)
 
-        for info in infos:
-            if 'episode' in info.keys():
-                episode_step += info['episode']['l']
-                print(f"global_step={episode_step}, episode_reward={info['episode']['r']}")
-                writer.add_scalar("charts/episode_reward", info['episode']['r'], episode_step)
+        if 'episode' in infos[0].keys():
+            print(f"global_step={global_step}, episode_reward={infos[0]['episode']['r']}")
+            writer.add_scalar("charts/episode_reward", infos[0]['episode']['r'], global_step)
 
     # bootstrap reward if not done. reached the batch limit
     with torch.no_grad():
