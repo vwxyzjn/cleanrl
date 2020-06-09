@@ -395,12 +395,13 @@ if args.prod_mode:
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 env = gym.make(args.gym_id)
 env = wrap_atari(env)
+env = gym.wrappers.RecordEpisodeStatistics(env) # records episode reward in `info['episode']['r']`
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 env = wrap_pytorch(
     wrap_deepmind(
         env,
-        clip_rewards=False,
+        clip_rewards=True,
         frame_stack=True,
         scale=False,
     )
@@ -440,12 +441,20 @@ class ReplayBuffer():
                np.array(done_mask_lst)
 
 # ALGO LOGIC: initialize agent here:
+class Scale(nn.Module):
+    def __init__(self, scale):
+        super().__init__()
+        self.scale = scale
+
+    def forward(self, x):
+        return x * self.scale
 class QNetwork(nn.Module):
     def __init__(self, frames=4, n_atoms=51, v_min=-10, v_max=10):
         super(QNetwork, self).__init__()
         self.n_atoms = n_atoms
         self.atoms = torch.linspace(v_min, v_max, steps=n_atoms).to(device)
         self.network = nn.Sequential(
+            Scale(1/255),
             nn.Conv2d(frames, 32, 8, stride=4),
             nn.ReLU(),
             nn.Conv2d(32, 64, 4, stride=2),
@@ -479,7 +488,7 @@ rb = ReplayBuffer(args.buffer_size)
 q_network = QNetwork(n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
 target_network = QNetwork(n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
 target_network.load_state_dict(q_network.state_dict())
-optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
+optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate, eps=0.01/args.batch_size)
 loss_fn = nn.MSELoss()
 print(device.__repr__())
 print(q_network)
@@ -487,9 +496,6 @@ print(q_network)
 # TRY NOT TO MODIFY: start the game
 obs = env.reset()
 episode_reward = 0
-# important to note that because `EpisodicLifeEnv` wrapper is applied,
-# the real episode reward is actually the sum of episode reward of 5 lives
-real_episode_reward = 0
 for global_step in range(args.total_timesteps):
     # ALGO LOGIC: put action logic here
     epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
@@ -500,8 +506,14 @@ for global_step in range(args.total_timesteps):
         action = action.tolist()[0]
 
     # TRY NOT TO MODIFY: execute the game and log data.
-    next_obs, reward, done, _ = env.step(action)
+    next_obs, reward, done, info = env.step(action)
     episode_reward += reward
+
+    # TRY NOT TO MODIFY: record rewards for plotting purposes
+    if 'episode' in info.keys():
+        print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
+        writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
+        writer.add_scalar("charts/epsilon", epsilon, global_step)
 
     # ALGO LOGIC: training.
     rb.put((obs, action, reward, next_obs, done))
@@ -543,15 +555,10 @@ for global_step in range(args.total_timesteps):
 
     # TRY NOT TO MODIFY: CRUCIAL step easy to overlook 
     obs = next_obs
-
     if done:
-        # TRY NOT TO MODIFY: record rewards for plotting purposes
-        real_episode_reward += episode_reward
-        if env.was_real_done:
-            print(f"global_step={global_step}, episode_reward={real_episode_reward}")
-            writer.add_scalar("charts/episode_reward", real_episode_reward, global_step)
-            writer.add_scalar("charts/epsilon", epsilon, global_step)
-            real_episode_reward = 0
+        # important to note that because `EpisodicLifeEnv` wrapper is applied,
+        # the real episode reward is actually the sum of episode reward of 5 lives
+        # which we record through `info['episode']['r']` provided by gym.wrappers.RecordEpisodeStatistics
         obs, episode_reward = env.reset(), 0
 
 env.close()

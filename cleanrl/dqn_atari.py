@@ -394,7 +394,7 @@ if args.capture_video:
 env = wrap_pytorch(
     wrap_deepmind(
         env,
-        clip_rewards=False,
+        clip_rewards=True,
         frame_stack=True,
         scale=False,
     )
