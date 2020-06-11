@@ -472,6 +472,14 @@ class ReplayBuffer(object):
         return np.array(obses_t), np.array(actions), np.array(rewards), np.array(obses_tp1), np.array(dones)
 
 # ALGO LOGIC: initialize agent here:
+# tricks taken from https://github.com/cpnota/autonomous-learning-library/blob/6d1111afce0d1582de463326f7d078a86e850551/all/presets/atari/models/__init__.py#L16
+# apparently matters
+class Linear0(nn.Linear):
+    def reset_parameters(self):
+        nn.init.constant_(self.weight, 0.0)
+        if self.bias is not None:
+            nn.init.constant_(self.bias, 0.0)
+
 class Scale(nn.Module):
     def __init__(self, scale):
         super().__init__()
@@ -493,7 +501,7 @@ class QNetwork(nn.Module):
             nn.Flatten(),
             nn.Linear(3136, 512),
             nn.ReLU(),
-            nn.Linear(512, env.action_space.n)
+            Linear0(512, env.action_space.n)
         )
 
     def forward(self, x):
