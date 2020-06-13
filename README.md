@@ -20,7 +20,7 @@ The highlight features of this repo are:
 * **Hackable** and being able to debug *directly* in Python’s interactive shell (Especially if you use the Spyder editor from Anaconda :) ).
 * Simple use of command line arguments for hyper-parameters tuning; no need for arcane configuration files.
 
-## Benchmarked Implementation
+## Benchmarked Implementation (obsolete, new benchmark coming soon)
 
 Our implementation is benchmarked to ensure quality. We log all of our benchmarked experiments using wandb so that you can check the hyper-parameters, videos of the agents playing the game, and the exact commands to reproduce it. See https://cleanrl.costa.sh.
 
