@@ -17,43 +17,43 @@ runs_match = re.findall('(python)(.+)((?:\n.+)+)(seed)',strings)
 for run_match in runs_match:
     run_match_str = "".join(run_match).replace("\\\n", "")
     # print(run_match_str)
-    for seed in range(2):
+    for seed in range(1,3):
         final_run_cmds += [run_match_str.replace("$seed", str(seed)).split()]
 
 # use docker directly
-cores = 40
-repo = "vwxyzjn/cleanrl_shared_memory:latest"
-current_core = 0
-for final_run_cmd in final_run_cmds:
-    print(f'docker run -d --cpuset-cpus="{current_core}" -e WANDB={wandb_key} {repo} ' + " ".join(final_run_cmds[0]))
-    current_core = current_core + 1 % cores
+# cores = 40
+# repo = "vwxyzjn/cleanrl_shared_memory:latest"
+# current_core = 0
+# for final_run_cmd in final_run_cmds:
+#     print(f'docker run -d --shm-size="500m" --cpuset-cpus="{current_core}" -e WANDB={wandb_key} {repo} ' + " ".join(final_run_cmd))
+#     current_core = current_core + 1 % cores
 
 # submit jobs
-for final_run_cmd in final_run_cmds:
-    job_name = re.findall('(python)(.+)(.py)'," ".join(final_run_cmd))[0][1].strip() + str(int(time.time()))
-    job_name = job_name.replace("/", "_")
-    response = client.submit_job(
-        jobName=job_name,
-        jobQueue='cleanrl',
-        jobDefinition='cleanrl',
-        containerOverrides={
-            'vcpus': 1,
-            'memory': 300,
-            'command': final_run_cmd,
-            'environment': [
-                {
-                    'name': 'WANDB',
-                    'value': wandb_key
-                }
-            ]
-        },
-        retryStrategy={
-            'attempts': 1
-        },
-        timeout={
-            'attemptDurationSeconds': 16*60*60 # 16 hours
-        }
-    )
-    if response['ResponseMetadata']['HTTPStatusCode'] != 200:
-        print(response)
-        raise Exception("jobs submit failure")
+# for final_run_cmd in final_run_cmds:
+#     job_name = re.findall('(python)(.+)(.py)'," ".join(final_run_cmd))[0][1].strip() + str(int(time.time()))
+#     job_name = job_name.replace("/", "_")
+#     response = client.submit_job(
+#         jobName=job_name,
+#         jobQueue='cleanrl',
+#         jobDefinition='cleanrl',
+#         containerOverrides={
+#             'vcpus': 1,
+#             'memory': 1000,
+#             'command': final_run_cmd,
+#             'environment': [
+#                 {
+#                     'name': 'WANDB',
+#                     'value': wandb_key
+#                 }
+#             ]
+#         },
+#         retryStrategy={
+#             'attempts': 1
+#         },
+#         timeout={
+#             'attemptDurationSeconds': 20*60*60 # 16 hours
+#         }
+#     )
+#     if response['ResponseMetadata']['HTTPStatusCode'] != 200:
+#         print(response)
+#         raise Exception("jobs submit failure")

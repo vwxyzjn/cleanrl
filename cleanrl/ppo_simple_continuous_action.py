@@ -1,8 +1,9 @@
+# Primary reference: https://github.com/zhangchuheng123/Reinforcement-Implementation/blob/master/code/ppo.py
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from torch.distributions.categorical import Categorical
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
@@ -12,17 +13,18 @@ from distutils.util import strtobool
 import numpy as np
 import gym
 from gym.wrappers import TimeLimit, Monitor
+import pybullet_envs
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
 import os
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='A2C agent')
+    parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="CartPole-v0",
+    parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
                         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=7e-4,
                         help='the learning rate of the optimizer')
@@ -30,7 +32,7 @@ if __name__ == "__main__":
                         help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=0,
                         help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=4000000,
+    parser.add_argument('--total-timesteps', type=int, default=100000,
                         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -54,6 +56,10 @@ if __name__ == "__main__":
                         help='the maximum norm for the gradient clipping')
     parser.add_argument('--ent-coef', type=float, default=0.01,
                         help="policy entropy's coefficient the loss function")
+    parser.add_argument('--clip-coef', type=float, default=0.2,
+                        help="the surrogate clipping coefficient")
+    parser.add_argument('--update-epochs', type=int, default=3,
+                         help="the K epochs to update the policy")
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -70,7 +76,7 @@ if args.prod_mode:
 
 
 # TRY NOT TO MODIFY: seeding
-device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
+device = torch.device('cpu')
 env = gym.make(args.gym_id)
 random.seed(args.seed)
 np.random.seed(args.seed)
@@ -93,19 +99,35 @@ if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
 # ALGO LOGIC: initialize agent here:
+
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
         self.fc1 = nn.Linear(input_shape, 120)
         self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, output_shape)
+        self.mean = nn.Linear(84, output_shape)
+        self.logstd = nn.Parameter(torch.zeros(1, output_shape))
 
     def forward(self, x):
         x = preprocess_obs_fn(x)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
+        x = torch.tanh(self.fc1(x))
+        x = torch.tanh(self.fc2(x))
+        action_mean = self.mean(x)
+        action_logstd = self.logstd.expand_as(action_mean)
+        return action_mean, action_logstd
+
+    def get_action(self, x):
+        mean, logstd = self.forward(x)
+        std = torch.exp(logstd)
+        probs = Normal(mean, std)
+        action = probs.sample()
+        return action, probs.log_prob(action).sum(1)
+
+    def get_logproba(self, x, actions):
+        action_mean, action_logstd = self.forward(x)
+        action_std = torch.exp(action_logstd)
+        dist = Normal(action_mean, action_std)
+        return dist.log_prob(actions).sum(1)
 
 class Value(nn.Module):
     def __init__(self):
@@ -115,7 +137,7 @@ class Value(nn.Module):
 
     def forward(self, x):
         x = preprocess_obs_fn(x)
-        x = F.relu(self.fc1(x))
+        x = torch.tanh(self.fc1(x))
         x = self.fc2(x)
         return x
 
@@ -123,52 +145,39 @@ pg = Policy().to(device)
 vf = Value().to(device)
 optimizer = optim.Adam(list(pg.parameters()) + list(vf.parameters()), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
+#print(pg.logstd.bias)
 
 # TRY NOT TO MODIFY: start the game
 global_step = 0
 while global_step < args.total_timesteps:
     next_obs = np.array(env.reset())
-    actions = np.empty((args.episode_length,), dtype=object)
+    actions = np.empty((args.episode_length,) + env.action_space.shape)
     rewards, dones = np.zeros((2, args.episode_length))
     obs = np.empty((args.episode_length,) + env.observation_space.shape)
 
     # ALGO LOGIC: put other storage logic here
     values = torch.zeros((args.episode_length), device=device)
-    neglogprobs = torch.zeros((args.episode_length,), device=device)
+    logprobs = np.zeros((args.episode_length,),)
     entropys = torch.zeros((args.episode_length,), device=device)
 
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(args.episode_length):
         global_step += 1
         obs[step] = next_obs.copy()
-
+        
         # ALGO LOGIC: put action logic here
-        logits = pg.forward(obs[step:step+1])
-        values[step] = vf.forward(obs[step:step+1])
-
-        # ALGO LOGIC: `env.action_space` specific logic
-        if isinstance(env.action_space, Discrete):
-            probs = Categorical(logits=logits)
-            action = probs.sample()
-            actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], -probs.log_prob(action), probs.entropy()
-
-        elif isinstance(env.action_space, MultiDiscrete):
-            logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
-            action = []
-            probs_categories = []
-            probs_entropies = torch.zeros((logits.shape[0]), device=device)
-            neglogprob = torch.zeros((logits.shape[0]), device=device)
-            for i in range(len(logits_categories)):
-                probs_categories.append(Categorical(logits=logits_categories[i]))
-                if len(action) != env.action_space.shape:
-                    action.append(probs_categories[i].sample())
-                neglogprob -= probs_categories[i].log_prob(action[i])
-                probs_entropies += probs_categories[i].entropy()
-            action = torch.stack(action).transpose(0, 1).tolist()
-            actions[step], neglogprobs[step], entropys[step] = action[0], neglogprob, probs_entropies
+        with torch.no_grad():
+            values[step] = vf.forward(obs[step:step+1])
+            action, logproba = pg.get_action(obs[step:step+1])
+        actions[step] = action.data.numpy()[0]
+        logprobs[step] = logproba.data.numpy()[0]
+        
+        # sometimes causes the performance to stay the same for a really long time.. hmmm
+        # could be a degenarate seed
+        clipped_action = np.clip(action.tolist(), env.action_space.low, env.action_space.high)[0]
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards[step], dones[step], _ = env.step(actions[step])
+        next_obs, rewards[step], dones[step], _ = env.step(clipped_action)
         next_obs = np.array(next_obs)
         if dones[step]:
             break
@@ -176,25 +185,32 @@ while global_step < args.total_timesteps:
     # ALGO LOGIC: training.
     # calculate the discounted rewards, or namely, returns
     returns = np.zeros_like(rewards)
+    returns[step] = rewards[step]
     for t in reversed(range(rewards.shape[0]-1)):
         returns[t] = rewards[t] + args.gamma * returns[t+1] * (1-dones[t])
     # advantages are returns - baseline, value estimates in our case
     advantages = returns - values.detach().cpu().numpy()
 
-    vf_loss = loss_fn(torch.Tensor(returns).to(device), values) * args.vf_coef
-    pg_loss = torch.Tensor(advantages).to(device) * neglogprobs
-    loss = (pg_loss - entropys * args.ent_coef).mean() + vf_loss
-
-    optimizer.zero_grad()
-    loss.backward()
-    nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
-    optimizer.step()
+    for _ in range(args.update_epochs):
+        newlogproba = pg.get_logproba(obs[:step+1], torch.Tensor(actions[:step+1]))
+        ratio = torch.exp(newlogproba - torch.Tensor(logprobs[:step+1]))
+        surrogate1 = ratio * torch.Tensor(advantages[:step+1])
+        surrogate2 = ratio.clamp(1 - args.clip_coef, 1 + args.clip_coef) * torch.Tensor(advantages[:step+1])
+        policy_loss = -torch.mean(torch.min(surrogate1, surrogate2))
+        newvalues = vf.forward(obs[:step+1]).flatten()
+        vf_loss = torch.mean((newvalues - torch.Tensor(returns[:step+1])).pow(2))
+        entropy_loss = torch.mean(torch.exp(newlogproba) * newlogproba)
+        loss = policy_loss + args.vf_coef * vf_loss + args.ent_coef * entropy_loss
+        optimizer.zero_grad()
+        loss.backward()
+        nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
+        optimizer.step()
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     print(f"global_step={global_step}, episode_reward={rewards.sum()}")
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
     writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
     writer.add_scalar("losses/entropy", entropys[:step+1].mean().item(), global_step)
-    writer.add_scalar("losses/policy_loss", pg_loss.mean().item(), global_step)
+    writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
 env.close()
 writer.close()

@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
-from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
 from cleanrl.common import preprocess_obs_space, preprocess_ac_space
@@ -18,7 +17,7 @@ import random
 import os
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='A2C agent')
+    parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
@@ -30,7 +29,7 @@ if __name__ == "__main__":
                         help='seed of the experiment')
     parser.add_argument('--episode-length', type=int, default=0,
                         help='the maximum length of each episode')
-    parser.add_argument('--total-timesteps', type=int, default=4000000,
+    parser.add_argument('--total-timesteps', type=int, default=100000,
                         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -54,6 +53,10 @@ if __name__ == "__main__":
                         help='the maximum norm for the gradient clipping')
     parser.add_argument('--ent-coef', type=float, default=0.01,
                         help="policy entropy's coefficient the loss function")
+    parser.add_argument('--clip-coef', type=float, default=0.2,
+                        help="the surrogate clipping coefficient")
+    parser.add_argument('--update-epochs', type=int, default=3,
+                         help="the K epochs to update the policy")
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -107,6 +110,13 @@ class Policy(nn.Module):
         x = self.fc3(x)
         return x
 
+    def get_action(self, x, action=None):
+        logits = self.forward(x)
+        probs = Categorical(logits=logits)
+        if action is None:
+            action = probs.sample()
+        return action, probs.log_prob(action), probs.entropy()
+
 class Value(nn.Module):
     def __init__(self):
         super(Value, self).__init__()
@@ -134,7 +144,7 @@ while global_step < args.total_timesteps:
 
     # ALGO LOGIC: put other storage logic here
     values = torch.zeros((args.episode_length), device=device)
-    neglogprobs = torch.zeros((args.episode_length,), device=device)
+    logprobs = np.zeros((args.episode_length,),)
     entropys = torch.zeros((args.episode_length,), device=device)
 
     # TRY NOT TO MODIFY: prepare the execution of the game.
@@ -143,29 +153,9 @@ while global_step < args.total_timesteps:
         obs[step] = next_obs.copy()
 
         # ALGO LOGIC: put action logic here
-        logits = pg.forward(obs[step:step+1])
         values[step] = vf.forward(obs[step:step+1])
-
-        # ALGO LOGIC: `env.action_space` specific logic
-        if isinstance(env.action_space, Discrete):
-            probs = Categorical(logits=logits)
-            action = probs.sample()
-            actions[step], neglogprobs[step], entropys[step] = action.tolist()[0], -probs.log_prob(action), probs.entropy()
-
-        elif isinstance(env.action_space, MultiDiscrete):
-            logits_categories = torch.split(logits, env.action_space.nvec.tolist(), dim=1)
-            action = []
-            probs_categories = []
-            probs_entropies = torch.zeros((logits.shape[0]), device=device)
-            neglogprob = torch.zeros((logits.shape[0]), device=device)
-            for i in range(len(logits_categories)):
-                probs_categories.append(Categorical(logits=logits_categories[i]))
-                if len(action) != env.action_space.shape:
-                    action.append(probs_categories[i].sample())
-                neglogprob -= probs_categories[i].log_prob(action[i])
-                probs_entropies += probs_categories[i].entropy()
-            action = torch.stack(action).transpose(0, 1).tolist()
-            actions[step], neglogprobs[step], entropys[step] = action[0], neglogprob, probs_entropies
+        action, logprob, entropy = pg.get_action(obs[step:step+1])
+        actions[step], logprobs[step], entropys[step] = action.tolist()[0], logprob, entropy
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards[step], dones[step], _ = env.step(actions[step])
@@ -181,20 +171,29 @@ while global_step < args.total_timesteps:
     # advantages are returns - baseline, value estimates in our case
     advantages = returns - values.detach().cpu().numpy()
 
-    vf_loss = loss_fn(torch.Tensor(returns).to(device), values) * args.vf_coef
-    pg_loss = torch.Tensor(advantages).to(device) * neglogprobs
-    loss = (pg_loss - entropys * args.ent_coef).mean() + vf_loss
+    for _ in range(args.update_epochs):
+        # ALGO LOGIC: `env.action_space` specific logic
+        _, newlogproba, _ = pg.get_action(obs[:step+1], torch.LongTensor(actions[:step+1].astype(np.int)).to(device))
 
-    optimizer.zero_grad()
-    loss.backward()
-    nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
-    optimizer.step()
+        ratio = torch.exp(newlogproba - torch.Tensor(logprobs[:step+1]).to(device))
+        surrogate1 = ratio * torch.Tensor(advantages)[:step+1].to(device)
+        surrogate2 = torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef) * torch.Tensor(advantages)[:step+1].to(device)
+        policy_loss = -torch.mean(torch.min(surrogate1, surrogate2))
+        newvalues = vf.forward(obs[:step+1]).flatten()
+        vf_loss = torch.mean((newvalues - torch.Tensor(returns[:step+1]).to(device)).pow(2))
+        entropy_loss = torch.mean(torch.exp(newlogproba) * newlogproba)
+        loss = policy_loss + args.vf_coef * vf_loss + args.ent_coef * entropy_loss
+
+        optimizer.zero_grad()
+        loss.backward()
+        # print(pg.fc1.weight.grad.sum())
+        nn.utils.clip_grad_norm_(list(pg.parameters()) + list(vf.parameters()), args.max_grad_norm)
+        optimizer.step()
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     print(f"global_step={global_step}, episode_reward={rewards.sum()}")
     writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
     writer.add_scalar("losses/value_loss", vf_loss.item(), global_step)
     writer.add_scalar("losses/entropy", entropys[:step+1].mean().item(), global_step)
-    writer.add_scalar("losses/policy_loss", pg_loss.mean().item(), global_step)
 env.close()
 writer.close()
