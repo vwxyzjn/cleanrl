@@ -59,8 +59,10 @@ if __name__ == "__main__":
                         help='the maximum norm for the gradient clipping')
     parser.add_argument('--batch-size', type=int, default=256,
                         help="the batch size of sample from the reply memory")
-    parser.add_argument('--action-noise', default="normal", choices=["ou", 'normal'],
-                         help='Selects the scheme to be used for weights initialization')
+    parser.add_argument('--policy-noise', type=float, default=0.2,
+                        help='the scale of policy noise')
+    parser.add_argument('--exploration-noise', type=float, default=0.1,
+                        help='the scale of exploration noise')
     parser.add_argument('--learning-starts', type=int, default=25e3,
                         help="timestep to start learning")
     parser.add_argument('--policy-frequency', type=int, default=2,
@@ -103,43 +105,6 @@ else:
     env = TimeLimit(env, int(args.episode_length))
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
-
-# taken from https://github.com/openai/baselines/blob/master/baselines/ddpg/noise.py
-class NormalActionNoise():
-    def __init__(self, mu, sigma=0.1):
-        self.mu = mu
-        self.sigma = sigma
-
-    def __call__(self):
-        return np.random.normal(self.mu, self.sigma)
-
-    def reset(self):
-        pass
-
-    def __repr__(self):
-        return 'NormalActionNoise(mu={}, sigma={})'.format(self.mu, self.sigma)
-
-
-# Based on http://math.stackexchange.com/questions/1287634/implementing-ornstein-uhlenbeck-in-matlab
-class OrnsteinUhlenbeckActionNoise():
-    def __init__(self, mu, sigma=0.1, theta=.15, dt=1e-2, x0=None):
-        self.theta = theta
-        self.mu = mu
-        self.sigma = sigma
-        self.dt = dt
-        self.x0 = x0
-        self.reset()
-
-    def __call__(self):
-        x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + self.sigma * np.sqrt(self.dt) * np.random.normal(size=self.mu.shape)
-        self.x_prev = x
-        return x
-
-    def reset(self):
-        self.x_prev = self.x0 if self.x0 is not None else np.zeros_like(self.mu)
-
-    def __repr__(self):
-        return 'OrnsteinUhlenbeckActionNoise(mu={}, sigma={})'.format(self.mu, self.sigma)
 
 # modified from https://github.com/seungeunrho/minimalRL/blob/master/dqn.py#
 class ReplayBuffer():
@@ -199,6 +164,7 @@ def linear_schedule(start_sigma: float, end_sigma: float, duration: int, t: int)
     slope =  (end_sigma - start_sigma) / duration
     return max(slope * t + start_sigma, end_sigma)
 
+max_action = float(env.action_space.high[0])
 rb = ReplayBuffer(args.buffer_size)
 actor = Actor().to(device)
 qf1 = QNetwork().to(device)
@@ -212,14 +178,9 @@ qf2_target.load_state_dict(qf2.state_dict())
 q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.learning_rate)
 actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
-exploration_noise = NormalActionNoise(np.zeros(np.prod(env.action_space.shape))) if args.action_noise == "normal" else OrnsteinUhlenbeckActionNoise(np.zeros(np.prod(env.action_space.shape)))
-policy_noise = NormalActionNoise(np.zeros(np.prod(env.action_space.shape))) if args.action_noise == "normal" else OrnsteinUhlenbeckActionNoise(np.zeros(np.prod(env.action_space.shape)))
-
 # TRY NOT TO MODIFY: start the game
 obs = env.reset()
 episode_reward = 0
-exploration_noise.sigma = 0.1
-policy_noise.sigma = 0.2
 
 for global_step in range(args.total_timesteps):
     # ALGO LOGIC: put action logic here
@@ -227,7 +188,10 @@ for global_step in range(args.total_timesteps):
         action = env.action_space.sample()
     else:
         action = actor.forward(obs.reshape((1,)+obs.shape))
-        action = (action.tolist()[0] + exploration_noise()).clip(env.action_space.low, env.action_space.high)
+        action = (
+            action.tolist()[0]
+            + np.random.normal(0, max_action * args.exploration_noise, size=env.action_space.shape[0])
+        ).clip(env.action_space.low, env.action_space.high)
 
     # TRY NOT TO MODIFY: execute the game and log data.
     next_obs, reward, done, info = env.step(action)
@@ -238,9 +202,12 @@ for global_step in range(args.total_timesteps):
     if global_step > args.learning_starts:
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         with torch.no_grad():
-            clipped_noise = np.clip(policy_noise(), -args.noise_clip, args.noise_clip)
+            clipped_noise = (
+				torch.randn_like(torch.Tensor(action)) * args.policy_noise
+			).clamp(-args.noise_clip, args.noise_clip)
+
             next_state_actions = (
-                actor.forward(s_next_obses) + torch.Tensor(clipped_noise).to(device)
+                target_actor.forward(s_next_obses) + clipped_noise.to(device)
             ).clamp(env.action_space.low[0], env.action_space.high[0])
             qf1_next_target = qf1_target.forward(s_next_obses, next_state_actions)
             qf2_next_target = qf2_target.forward(s_next_obses, next_state_actions)
@@ -282,7 +249,6 @@ for global_step in range(args.total_timesteps):
     obs = next_obs
 
     if done:
-        exploration_noise.reset()
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         print(f"global_step={global_step}, episode_reward={episode_reward}")
         writer.add_scalar("charts/episode_reward", episode_reward, global_step)
