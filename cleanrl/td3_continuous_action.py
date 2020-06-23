@@ -21,7 +21,7 @@ import random
 import os
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='DDPG agent')
+    parser = argparse.ArgumentParser(description='TD3 agent')
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
