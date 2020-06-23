@@ -222,12 +222,6 @@ for update in range(1, num_updates+1):
             values[step] = agent.get_value(obs[step]).flatten()
             action, logproba, _ = agent.get_action(obs[step])
 
-            # visualization
-            if args.capture_video:
-                probs_list = np.array(Categorical(
-                    logits=agent.actor(agent.forward(obs[step]))).probs[0:1].tolist())
-                envs.env_method("set_probs", probs_list, indices=0)
-
         actions[step] = action
         logprobs[step] = logproba
 
