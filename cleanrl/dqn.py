@@ -194,7 +194,9 @@ for global_step in range(args.total_timesteps):
             td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
         old_val = q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
         loss = loss_fn(td_target, old_val)
-        writer.add_scalar("losses/td_loss", loss, global_step)
+
+        if global_step % 100 == 0:
+            writer.add_scalar("losses/td_loss", loss, global_step)
 
         # optimize the midel
         optimizer.zero_grad()
