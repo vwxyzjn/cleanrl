@@ -8,7 +8,6 @@ from torch.distributions.categorical import Categorical
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
-from cleanrl.common import preprocess_obs_space, preprocess_ac_space
 import argparse
 from distutils.util import strtobool
 import collections
@@ -16,6 +15,10 @@ import numpy as np
 import gym
 from gym.wrappers import TimeLimit, Monitor
 import pybullet_envs
+try:
+    import mujoco_py
+except Exception as e:
+    print(e)
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
@@ -48,22 +51,42 @@ if __name__ == "__main__":
                         help="the wandb's project name")
     parser.add_argument('--wandb-entity', type=str, default=None,
                         help="the entity (team) of wandb's project")
-    
+    parser.add_argument('--autotune', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+                        help='automatic tuning of the entropy coefficient.')
+
     # Algorithm specific arguments
-    parser.add_argument('--buffer-size', type=int, default=10000,
+    parser.add_argument('--buffer-size', type=int, default=1000000,
                          help='the replay memory buffer size')
     parser.add_argument('--gamma', type=float, default=0.99,
                         help='the discount factor gamma')
-    parser.add_argument('--target-network-frequency', type=int, default=500,
+    parser.add_argument('--target-network-frequency', type=int, default=1, # Denis Yarats' implementation delays this by 2.
                         help="the timesteps it takes to update the target network")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                         help='the maximum norm for the gradient clipping')
-    parser.add_argument('--batch-size', type=int, default=32,
+    parser.add_argument('--batch-size', type=int, default=256, # Worked better in my experiments, still have to do ablation on this. Please remind me
                         help="the batch size of sample from the reply memory")
     parser.add_argument('--tau', type=float, default=0.005,
                         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument('--alpha', type=float, default=0.2,
                         help="Entropy regularization coefficient.")
+    parser.add_argument('--learning-starts', type=int, default=5e3,
+                        help="timestep to start learning")
+
+
+    # Additional hyper parameters for tweaks
+    ## Separating the learning rate of the policy and value commonly seen: (Original implementation, Denis Yarats)
+    parser.add_argument('--policy-lr', type=float, default=3e-4,
+                        help='the learning rate of the policy network optimizer')
+    parser.add_argument('--q-lr', type=float, default=1e-3,
+                        help='the learning rate of the Q network network optimizer')
+    parser.add_argument('--policy-frequency', type=int, default=1,
+                        help='delays the update of the actor, as per the TD3 paper.')
+    # NN Parameterization
+    parser.add_argument('--weights-init', default='xavier', const='xavier', nargs='?', choices=['xavier', 'uniform'],
+                        help='weight initialization scheme for the neural networks.')
+    parser.add_argument('--bias-init', default='zeros', const='xavier', nargs='?', choices=['zeros', 'uniform'],
+                        help='weight initialization scheme for the neural networks.')
+
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
@@ -89,8 +112,8 @@ torch.backends.cudnn.deterministic = args.torch_deterministic
 env.seed(args.seed)
 env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
-input_shape, preprocess_obs_fn = preprocess_obs_space(env.observation_space, device)
-output_shape = preprocess_ac_space(env.action_space)
+input_shape = env.observation_space.shape[0]
+output_shape = env.action_space.shape[0]
 # respect the default timelimit
 assert isinstance(env.action_space, Box), "only continuous action space is supported"
 assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
@@ -104,26 +127,56 @@ if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
 # ALGO LOGIC: initialize agent here:
+# Weight init scheme
+def weights_and_bias_init_(m):
+    if isinstance(m, nn.Linear):
+        # Weights section
+        if args.weights_init == "xavier":
+            torch.nn.init.xavier_uniform_(m.weight, gain=1)
+        elif args.weights_init == "uniform":
+            # TODO: Enable uniform parameterization
+            # By default: https://pytorch.org/docs/stable/nn.html?highlight=linear#torch.nn.Linear
+            pass
+        else:
+            raise NotImplementedError
+
+        # Bias section
+        if args.bias_init == "zeros":
+            torch.nn.init.constant_(m.bias, 0)
+        elif args.bias_init == "uniform":
+            # TODO: Enable uniform parameterization
+            # By default: https://pytorch.org/docs/stable/nn.html?highlight=linear#torch.nn.Linear
+            pass
+        else:
+            raise NotImplementedError
+
+LOG_STD_MAX = 2
+LOG_STD_MIN = -5
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        self.fc1 = nn.Linear(input_shape, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.mean = nn.Linear(84, output_shape)
-        self.logstd = nn.Linear(84, output_shape)
+        self.fc1 = nn.Linear(input_shape, 256) # Better result with slightly wider networks.
+        self.fc2 = nn.Linear(256, 128)
+        self.mean = nn.Linear(128, output_shape)
+        self.logstd = nn.Linear(128, output_shape)
         # action rescaling
         self.action_scale = torch.FloatTensor(
             (env.action_space.high - env.action_space.low) / 2.)
         self.action_bias = torch.FloatTensor(
             (env.action_space.high + env.action_space.low) / 2.)
-    
+        self.apply(weights_and_bias_init_)
+
     def forward(self, x):
-        x = preprocess_obs_fn(x)
+        if not isinstance(x, torch.Tensor):
+            x = torch.Tensor(x).to(device)
+
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         mean = self.mean(x)
         log_std = self.logstd(x)
-        log_std = torch.clamp(log_std, min=-20., max=2)
+        log_std = torch.tanh(log_std)
+        log_std = LOG_STD_MIN + 0.5 * (LOG_STD_MAX - LOG_STD_MIN) * (log_std + 1) # From SpinUp / Denis Yarats
+
         return mean, log_std
 
     def get_action(self, x):
@@ -148,12 +201,16 @@ class Policy(nn.Module):
 class SoftQNetwork(nn.Module):
     def __init__(self):
         super(SoftQNetwork, self).__init__()
-        self.fc1 = nn.Linear(input_shape+output_shape, 120)
-        self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 1)
+        self.fc1 = nn.Linear(input_shape+output_shape, 256)
+        self.fc2 = nn.Linear(256, 128)
+        self.fc3 = nn.Linear(128, 1)
+        self.apply(weights_and_bias_init_)
 
     def forward(self, x, a):
-        x = preprocess_obs_fn(x)
+        if not isinstance(x, torch.Tensor):
+            x = torch.Tensor(x).to(device)
+        if not isinstance(a, torch.Tensor):
+            a = torch.Tensor(a).to(device)
         x = torch.cat([x, a], 1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
@@ -164,14 +221,14 @@ class SoftQNetwork(nn.Module):
 class ReplayBuffer():
     def __init__(self, buffer_limit):
         self.buffer = collections.deque(maxlen=buffer_limit)
-    
+
     def put(self, transition):
         self.buffer.append(transition)
-    
+
     def sample(self, n):
         mini_batch = random.sample(self.buffer, n)
         s_lst, a_lst, r_lst, s_prime_lst, done_mask_lst = [], [], [], [], []
-        
+
         for transition in mini_batch:
             s, a, r, s_prime, done_mask = transition
             s_lst.append(s)
@@ -192,88 +249,116 @@ qf1_target = SoftQNetwork().to(device)
 qf2_target = SoftQNetwork().to(device)
 qf1_target.load_state_dict(qf1.state_dict())
 qf2_target.load_state_dict(qf2.state_dict())
-values_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.learning_rate)
-policy_optimizer = optim.Adam(list(pg.parameters()), lr=args.learning_rate)
+values_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
+policy_optimizer = optim.Adam(list(pg.parameters()), lr=args.policy_lr)
 loss_fn = nn.MSELoss()
 
+# Automatic entropy tuning
+if args.autotune:
+    target_entropy = - torch.prod(torch.Tensor(env.action_space.shape).to(device)).item()
+    log_alpha = torch.zeros(1, requires_grad=True, device=device)
+    alpha = log_alpha.exp().item()
+    a_optimizer = optim.Adam([log_alpha], lr=args.q_lr)
+else:
+    alpha = args.alpha
+
 # TRY NOT TO MODIFY: start the game
-global_step = 0
-while global_step < args.total_timesteps:
-    next_obs = np.array(env.reset())
-    actions = np.empty((args.episode_length,), dtype=object)
-    rewards, dones = np.zeros((2, args.episode_length))
-    qf1_losses, qf2_losses, policy_losses = np.zeros((3, args.episode_length))
-    obs = np.empty((args.episode_length,) + env.observation_space.shape)
-    
-    # ALGO LOGIC: put other storage logic here
-    entropys = torch.zeros((args.episode_length,), device=device)
-    
-    # TRY NOT TO MODIFY: prepare the execution of the game.
-    for step in range(args.episode_length):
-        global_step += 1
-        obs[step] = next_obs.copy()
-        
-        # ALGO LOGIC: put action logic here
-        action, _, _ = pg.get_action(obs[step:step+1])
-        actions[step] = action.tolist()[0]
-    
-        # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards[step], dones[step], _ = env.step(action.tolist()[0])
-        rb.put((obs[step], actions[step], rewards[step], next_obs, dones[step]))
-        next_obs = np.array(next_obs)
-        # ALGO LOGIC: training.
-        if len(rb.buffer) > 2000:
-            s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
-            with torch.no_grad():
-                next_state_actions, next_state_log_pi, _ = pg.get_action(s_next_obses)
-                qf1_next_target = qf1_target.forward(s_next_obses, next_state_actions)
-                qf2_next_target = qf2_target.forward(s_next_obses, next_state_actions)
-                min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - args.alpha * next_state_log_pi
-                next_q_value = torch.Tensor(s_rewards).to(device) + (1 - torch.Tensor(s_dones).to(device)) * args.gamma * (min_qf_next_target).view(-1)
+global_episode = 0
+obs, done = env.reset(), False
+episode_reward, episode_length= 0.,0
 
-            qf1_a_values = qf1.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
-            qf2_a_values = qf2.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
-            # qf1, qf2 = critic(state_batch, action_batch)  # Two Q-functions to mitigate positive bias in the policy improvement step
-            qf1_loss = loss_fn(qf1_a_values, next_q_value)
-            qf2_loss = loss_fn(qf2_a_values, next_q_value)
+for global_step in range(1, args.total_timesteps+1):
 
-            pi, log_pi, _ = pg.get_action(s_obs)
-            qf1_pi = qf1.forward(s_obs, pi)
-            qf2_pi = qf2.forward(s_obs, pi)
-            min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
+    # ALGO LOGIC: put action logic here
+    if global_step < args.learning_starts:
+        action = env.action_space.sample()
+    else:
+        action, _, _ = pg.get_action([obs])
+        action = action.tolist()[0]
 
-            policy_loss = ((args.alpha * log_pi) - min_qf_pi).mean()
+    # TRY NOT TO MODIFY: execute the game and log data.
+    next_obs, rew, done, _ = env.step(action)
+    rb.put((obs,action,rew,next_obs,done))
+    episode_reward += rew
+    episode_length += 1
+    obs = np.array(next_obs)
 
-            values_optimizer.zero_grad()
-            qf1_loss.backward()
-            values_optimizer.step()
+    # ALGO LOGIC: training.
+    if len(rb.buffer) > args.batch_size: # starts update as soon as there is enough data.
+        s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
+        with torch.no_grad():
+            next_state_actions, next_state_log_pi, _ = pg.get_action(s_next_obses)
+            qf1_next_target = qf1_target.forward(s_next_obses, next_state_actions)
+            qf2_next_target = qf2_target.forward(s_next_obses, next_state_actions)
+            min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
+            next_q_value = torch.Tensor(s_rewards).to(device) + (1 - torch.Tensor(s_dones).to(device)) * args.gamma * (min_qf_next_target).view(-1)
 
-            values_optimizer.zero_grad()
-            qf2_loss.backward()
-            values_optimizer.step()
-            
-            policy_optimizer.zero_grad()
-            policy_loss.backward()
-            policy_optimizer.step()
+        qf1_a_values = qf1.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
+        qf2_a_values = qf2.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
+        qf1_loss = loss_fn(qf1_a_values, next_q_value)
+        qf2_loss = loss_fn(qf2_a_values, next_q_value)
 
-            # update the target network
+        qf_loss = (qf1_loss + qf2_loss) / 2
+
+        values_optimizer.zero_grad()
+        qf_loss.backward()
+        values_optimizer.step()
+
+        if global_step % args.policy_frequency == 0: # TD 3 Delayed update support
+            for _ in range(args.policy_frequency): # compensate for the delay by doing 'actor_update_interval' instead of 1
+                pi, log_pi, _ = pg.get_action(s_obs)
+                qf1_pi = qf1.forward(s_obs, pi)
+                qf2_pi = qf2.forward(s_obs, pi)
+                min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
+
+                policy_loss = ((alpha * log_pi) - min_qf_pi).mean()
+
+                policy_optimizer.zero_grad()
+                policy_loss.backward()
+                policy_optimizer.step()
+
+                if args.autotune:
+                    with torch.no_grad():
+                        _, log_pi, _ = pg.get_action( s_obs)
+                    alpha_loss = ( -log_alpha * (log_pi + target_entropy)).mean()
+
+                    a_optimizer.zero_grad()
+                    alpha_loss.backward()
+                    a_optimizer.step()
+
+                    alpha = log_alpha.exp().item()
+
+        # update the target network
+        if global_step % args.target_network_frequency == 0:
             for param, target_param in zip(qf1.parameters(), qf1_target.parameters()):
                 target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
             for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
                 target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
-            qf1_losses[step] = qf1_loss.item()
-            qf2_losses[step] = qf2_loss.item()
-            policy_losses[step] = policy_loss.item()
 
-        if dones[step]:
-            break
+    if done:
+        global_episode += 1 # Outside the loop already means the epsiode is done
 
-    # TRY NOT TO MODIFY: record rewards for plotting purposes
-    print(f"global_step={global_step}, episode_reward={rewards.sum()}")
-    writer.add_scalar("charts/episode_reward", rewards.sum(), global_step)
-    writer.add_scalar("losses/entropy", entropys[:step+1].mean().item(), global_step)
-    writer.add_scalar("losses/soft_q_value_1_loss", qf1_losses[:step+1].mean(), global_step)
-    writer.add_scalar("losses/soft_q_value_2_loss", qf2_losses[:step+1].mean(), global_step)
-    writer.add_scalar("losses/policy_loss", policy_losses[:step+1].mean(), global_step)
+        writer.add_scalar("charts/episode_reward", episode_reward, global_step)
+        writer.add_scalar("charts/episode_length", episode_length, global_step)
+
+        if len(rb.buffer) > args.batch_size: # Makes sure loss and such are actually available.
+            writer.add_scalar("losses/soft_q_value_1_loss", qf1_loss.item(), global_step)
+            writer.add_scalar("losses/soft_q_value_2_loss", qf2_loss.item(), global_step)
+            writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
+            writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
+            writer.add_scalar("losses/alpha", alpha, global_step)
+            if args.autotune:
+                writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
+
+        # Terminal verbosity
+        if global_episode > 0 and global_episode % 10 == 0:
+            print(f"Episode: {global_episode} Step: {global_step}, Ep. Reward: {episode_reward}")
+
+        # Reseting what need to be
+        obs, done = env.reset(), False
+        episode_reward, episode_length = 0., 0
+
+
+
 writer.close()
 env.close()
