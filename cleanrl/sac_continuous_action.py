@@ -112,13 +112,6 @@ input_shape = env.observation_space.shape[0]
 output_shape = env.action_space.shape[0]
 # respect the default timelimit
 assert isinstance(env.action_space, Box), "only continuous action space is supported"
-assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
-if isinstance(env, TimeLimit):
-    if int(args.episode_length):
-        env._max_episode_steps = int(args.episode_length)
-    args.episode_length = env._max_episode_steps
-else:
-    env = TimeLimit(env, int(args.episode_length))
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
@@ -132,7 +125,6 @@ def layer_init(layer, weight_gain=1, bias_const=0):
             torch.nn.init.xavier_uniform_(layer.weight, gain=weight_gain)
         elif args.weights_init == "orthogonal":
             torch.nn.init.orthogonal_(layer.weight, gain=weight_gain)
-
         if args.bias_init == "zeros":
             torch.nn.init.constant_(layer.bias, bias_const)
 
@@ -248,7 +240,6 @@ obs, done = env.reset(), False
 episode_reward, episode_length= 0.,0
 
 for global_step in range(1, args.total_timesteps+1):
-
     # ALGO LOGIC: put action logic here
     if global_step < args.learning_starts:
         action = env.action_space.sample()
@@ -277,7 +268,6 @@ for global_step in range(1, args.total_timesteps+1):
         qf2_a_values = qf2.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
         qf1_loss = loss_fn(qf1_a_values, next_q_value)
         qf2_loss = loss_fn(qf2_a_values, next_q_value)
-
         qf_loss = (qf1_loss + qf2_loss) / 2
 
         values_optimizer.zero_grad()
@@ -290,7 +280,6 @@ for global_step in range(1, args.total_timesteps+1):
                 qf1_pi = qf1.forward(s_obs, pi)
                 qf2_pi = qf2.forward(s_obs, pi)
                 min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
-
                 policy_loss = ((alpha * log_pi) - min_qf_pi).mean()
 
                 policy_optimizer.zero_grad()
@@ -305,7 +294,6 @@ for global_step in range(1, args.total_timesteps+1):
                     a_optimizer.zero_grad()
                     alpha_loss.backward()
                     a_optimizer.step()
-
                     alpha = log_alpha.exp().item()
 
         # update the target network
@@ -315,30 +303,26 @@ for global_step in range(1, args.total_timesteps+1):
             for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
                 target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
+    if len(rb.buffer) > args.batch_size and global_step % 100 == 0:
+        writer.add_scalar("losses/soft_q_value_1_loss", qf1_loss.item(), global_step)
+        writer.add_scalar("losses/soft_q_value_2_loss", qf2_loss.item(), global_step)
+        writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
+        writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
+        writer.add_scalar("losses/alpha", alpha, global_step)
+        if args.autotune:
+            writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
+    
     if done:
         global_episode += 1 # Outside the loop already means the epsiode is done
-
         writer.add_scalar("charts/episode_reward", episode_reward, global_step)
         writer.add_scalar("charts/episode_length", episode_length, global_step)
-
         # Terminal verbosity
         if global_episode % 10 == 0:
             print(f"Episode: {global_episode} Step: {global_step}, Ep. Reward: {episode_reward}")
 
-        if len(rb.buffer) > args.batch_size and global_step % 100 == 0:
-            writer.add_scalar("losses/soft_q_value_1_loss", qf1_loss.item(), global_step)
-            writer.add_scalar("losses/soft_q_value_2_loss", qf2_loss.item(), global_step)
-            writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
-            writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
-            writer.add_scalar("losses/alpha", alpha, global_step)
-            if args.autotune:
-                writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
-
         # Reseting what need to be
         obs, done = env.reset(), False
         episode_reward, episode_length = 0., 0
-
-
 
 writer.close()
 env.close()
