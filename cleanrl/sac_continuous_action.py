@@ -15,10 +15,6 @@ import numpy as np
 import gym
 from gym.wrappers import TimeLimit, Monitor
 import pybullet_envs
-try:
-    import mujoco_py
-except Exception as e:
-    print(e)
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
@@ -51,7 +47,7 @@ if __name__ == "__main__":
                         help="the wandb's project name")
     parser.add_argument('--wandb-entity', type=str, default=None,
                         help="the entity (team) of wandb's project")
-    parser.add_argument('--autotune', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+    parser.add_argument('--autotune', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='automatic tuning of the entropy coefficient.')
 
     # Algorithm specific arguments
@@ -82,7 +78,7 @@ if __name__ == "__main__":
     parser.add_argument('--policy-frequency', type=int, default=1,
                         help='delays the update of the actor, as per the TD3 paper.')
     # NN Parameterization
-    parser.add_argument('--weights-init', default='xavier', const='xavier', nargs='?', choices=['xavier', 'uniform'],
+    parser.add_argument('--weights-init', default='xavier', const='xavier', nargs='?', choices=['xavier', "orthogonal", 'uniform'],
                         help='weight initialization scheme for the neural networks.')
     parser.add_argument('--bias-init', default='zeros', const='xavier', nargs='?', choices=['zeros', 'uniform'],
                         help='weight initialization scheme for the neural networks.')
@@ -127,31 +123,19 @@ if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
 # ALGO LOGIC: initialize agent here:
-# Weight init scheme
-def weights_and_bias_init_(m):
-    if isinstance(m, nn.Linear):
-        # Weights section
-        if args.weights_init == "xavier":
-            torch.nn.init.xavier_uniform_(m.weight, gain=1)
-        elif args.weights_init == "uniform":
-            # TODO: Enable uniform parameterization
-            # By default: https://pytorch.org/docs/stable/nn.html?highlight=linear#torch.nn.Linear
-            pass
-        else:
-            raise NotImplementedError
-
-        # Bias section
-        if args.bias_init == "zeros":
-            torch.nn.init.constant_(m.bias, 0)
-        elif args.bias_init == "uniform":
-            # TODO: Enable uniform parameterization
-            # By default: https://pytorch.org/docs/stable/nn.html?highlight=linear#torch.nn.Linear
-            pass
-        else:
-            raise NotImplementedError
-
 LOG_STD_MAX = 2
 LOG_STD_MIN = -5
+
+def layer_init(layer, weight_gain=1, bias_const=0):
+    if isinstance(layer, nn.Linear):
+        if args.weights_init == "xavier":
+            torch.nn.init.xavier_uniform_(layer.weight, gain=weight_gain)
+        elif args.weights_init == "orthogonal":
+            torch.nn.init.orthogonal_(layer.weight, gain=weight_gain)
+
+        if args.bias_init == "zeros":
+            torch.nn.init.constant_(layer.bias, bias_const)
+
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
@@ -164,11 +148,10 @@ class Policy(nn.Module):
             (env.action_space.high - env.action_space.low) / 2.)
         self.action_bias = torch.FloatTensor(
             (env.action_space.high + env.action_space.low) / 2.)
-        self.apply(weights_and_bias_init_)
+        self.apply(layer_init)
 
     def forward(self, x):
-        if not isinstance(x, torch.Tensor):
-            x = torch.Tensor(x).to(device)
+        x = torch.Tensor(x).to(device)
 
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
@@ -204,13 +187,10 @@ class SoftQNetwork(nn.Module):
         self.fc1 = nn.Linear(input_shape+output_shape, 256)
         self.fc2 = nn.Linear(256, 128)
         self.fc3 = nn.Linear(128, 1)
-        self.apply(weights_and_bias_init_)
+        self.apply(layer_init)
 
     def forward(self, x, a):
-        if not isinstance(x, torch.Tensor):
-            x = torch.Tensor(x).to(device)
-        if not isinstance(a, torch.Tensor):
-            a = torch.Tensor(a).to(device)
+        x = torch.Tensor(x).to(device)
         x = torch.cat([x, a], 1)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
@@ -277,9 +257,9 @@ for global_step in range(1, args.total_timesteps+1):
         action = action.tolist()[0]
 
     # TRY NOT TO MODIFY: execute the game and log data.
-    next_obs, rew, done, _ = env.step(action)
-    rb.put((obs,action,rew,next_obs,done))
-    episode_reward += rew
+    next_obs, reward, done, _ = env.step(action)
+    rb.put((obs, action, reward, next_obs, done))
+    episode_reward += reward
     episode_length += 1
     obs = np.array(next_obs)
 
@@ -341,7 +321,11 @@ for global_step in range(1, args.total_timesteps+1):
         writer.add_scalar("charts/episode_reward", episode_reward, global_step)
         writer.add_scalar("charts/episode_length", episode_length, global_step)
 
-        if len(rb.buffer) > args.batch_size: # Makes sure loss and such are actually available.
+        # Terminal verbosity
+        if global_episode % 10 == 0:
+            print(f"Episode: {global_episode} Step: {global_step}, Ep. Reward: {episode_reward}")
+
+        if len(rb.buffer) > args.batch_size and global_step % 100 == 0:
             writer.add_scalar("losses/soft_q_value_1_loss", qf1_loss.item(), global_step)
             writer.add_scalar("losses/soft_q_value_2_loss", qf2_loss.item(), global_step)
             writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
@@ -349,10 +333,6 @@ for global_step in range(1, args.total_timesteps+1):
             writer.add_scalar("losses/alpha", alpha, global_step)
             if args.autotune:
                 writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
-
-        # Terminal verbosity
-        if global_episode > 0 and global_episode % 10 == 0:
-            print(f"Episode: {global_episode} Step: {global_step}, Ep. Reward: {episode_reward}")
 
         # Reseting what need to be
         obs, done = env.reset(), False
