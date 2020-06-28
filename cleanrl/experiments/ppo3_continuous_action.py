@@ -276,7 +276,7 @@ def discount_cumsum(x, dones, gamma):
         [x0,       [0,
          x1,        0,
          x2         1,
-         x3         0, 
+         x3         0,
          x4]        0]
     output:
         [x0 + discount * x1 + discount^2 * x2,
