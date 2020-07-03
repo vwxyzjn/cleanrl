@@ -667,7 +667,7 @@ for update in range(1, num_updates+1):
                 v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
                 v_loss = 0.5 * v_loss_max.mean()
             else:
-                v_loss = 0.5 *((new_values - b_returns[minibatch_ind]) ** 2)
+                v_loss = 0.5 * ((new_values - b_returns[minibatch_ind]) ** 2).mean()
 
             loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
