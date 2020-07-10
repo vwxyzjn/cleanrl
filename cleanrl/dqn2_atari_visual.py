@@ -331,7 +331,7 @@ import pandas as pd
 from PIL import Image
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='DQN agent')
+    parser = argparse.ArgumentParser(description='Double DQN Agent')
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
@@ -551,8 +551,12 @@ for global_step in range(args.total_timesteps):
     if global_step > args.learning_starts and global_step % args.train_frequency == 0:
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         with torch.no_grad():
-            target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
+            # target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
+            current_value = q_network.forward(s_next_obses)
+            target_value = target_network.forward(s_next_obses)
+            target_max = target_value.gather(1, torch.max(current_value, 1)[1].unsqueeze(1)).squeeze(1)
             td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
+
         old_val = q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
         loss = loss_fn(td_target, old_val)
         writer.add_scalar("losses/td_loss", loss, global_step)
