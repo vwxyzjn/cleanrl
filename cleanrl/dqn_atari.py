@@ -195,7 +195,7 @@ class FrameStack(gym.Wrapper):
         self.k = k
         self.frames = deque([], maxlen=k)
         shp = env.observation_space.shape
-        self.observation_space = spaces.Box(low=0, high=255, shape=(shp[:-1] + (shp[-1] * k,)), dtype=env.observation_space.dtype)
+        self.observation_space = spaces.Box(low=0, high=255, shape=((shp[0] * k,)+shp[1:]), dtype=env.observation_space.dtype)
 
     def reset(self):
         ob = self.env.reset()
@@ -234,7 +234,7 @@ class LazyFrames(object):
 
     def _force(self):
         if self._out is None:
-            self._out = np.concatenate(self._frames, axis=-1)
+            self._out = np.concatenate(self._frames, axis=0)
             self._frames = None
         return self._out
 
@@ -266,23 +266,6 @@ def wrap_atari(env, max_episode_steps=None):
 
     return env
 
-def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False):
-    """Configure environment for DeepMind-style Atari.
-    """
-    if episode_life:
-        env = EpisodicLifeEnv(env)
-    if 'FIRE' in env.unwrapped.get_action_meanings():
-        env = FireResetEnv(env)
-    env = WarpFrame(env)
-    if scale:
-        env = ScaledFloatFrame(env)
-    if clip_rewards:
-        env = ClipRewardEnv(env)
-    if frame_stack:
-        env = FrameStack(env, 4)
-    return env
-
-
 class ImageToPyTorch(gym.ObservationWrapper):
     """
     Image shape to channels x weight x height
@@ -301,8 +284,22 @@ class ImageToPyTorch(gym.ObservationWrapper):
     def observation(self, observation):
         return np.transpose(observation, axes=(2, 0, 1))
 
-def wrap_pytorch(env):
-    return ImageToPyTorch(env)
+def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False):
+    """Configure environment for DeepMind-style Atari.
+    """
+    if episode_life:
+        env = EpisodicLifeEnv(env)
+    if 'FIRE' in env.unwrapped.get_action_meanings():
+        env = FireResetEnv(env)
+    env = WarpFrame(env)
+    if scale:
+        env = ScaledFloatFrame(env)
+    if clip_rewards:
+        env = ClipRewardEnv(env)
+    env = ImageToPyTorch(env)
+    if frame_stack:
+        env = FrameStack(env, 4)
+    return env
 
 # Reference: https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf
 
@@ -391,13 +388,11 @@ env = wrap_atari(env)
 env = gym.wrappers.RecordEpisodeStatistics(env) # records episode reward in `info['episode']['r']`
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
-env = wrap_pytorch(
-    wrap_deepmind(
-        env,
-        clip_rewards=True,
-        frame_stack=True,
-        scale=False,
-    )
+env = wrap_deepmind(
+    env,
+    clip_rewards=True,
+    frame_stack=True,
+    scale=False,
 )
 random.seed(args.seed)
 np.random.seed(args.seed)
@@ -484,6 +479,7 @@ episode_reward = 0
 for global_step in range(args.total_timesteps):
     # ALGO LOGIC: put action logic here
     epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
+    obs = np.array(obs)
     if random.random() < epsilon:
         action = env.action_space.sample()
     else:
