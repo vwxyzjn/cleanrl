@@ -1,6 +1,8 @@
 *.tfevents.*
 wandb
 openaigym.*
+benchmark/**/*.svg
+benchmark/**/*.pkl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
