@@ -5,14 +5,14 @@ from gym import error, spaces, utils
 from gym.envs.registration import register
 
 """
-First kind of termination: True Done
-As an example, the true done of the Breakout game in Atari 2600
+First kind of termination: true termination
+As an example, the true termination of the Breakout game in Atari 2600
 comes when you lose all of your lives.
 """
 class TestEnv(gym.Env):
     """
     A simple env that always ends after 10 timesteps, which 
-    can be considered as the ``true done'' from the environment.
+    can be considered as the ``true termination'' from the environment.
     At each timestep, its observation is its internal timestep
     """
     def __init__(self):
@@ -42,14 +42,14 @@ for i in range(2):
         if done:
             print(f"all observation in episode {i}:")
             print(all_obs)
-            print("true done")
+            print("true termination")
             print()
             break
 print("=========")
 
 """
-Second kind of termination: TimeLimit Done
-As an example, timelimit done comes when the episode of "CartPole-v0"
+Second kind of termination: time limit termination
+As an example, time limit termination comes when the episode of "CartPole-v0"
 exceeds length 200.
 """
 if "TestEnvTimeLimit3-v0" not in gym.envs.registry.env_specs:
@@ -73,13 +73,13 @@ for i in range(2):
         if done:
             print(f"all observation in episode {i}:")
             print(all_obs)
-            print("timelimit done")
+            print("time limit termination")
             print()
             break
 print("=========")
 
 """
-Third kind of termination: Early Done by `n_steps`
+Third kind of termination: early termination by `n_steps`
 This is usually combined with TimeLimit wrapped env,
 but you can use it without the TimeLimit
 """
@@ -94,11 +94,10 @@ for i in range(3):
     for j in range(n_steps):
         all_obss += [obss.astype("float")]
         obss, rewards, dones, infos = envs.step(np.array([1.,1.]))
-        print(infos)
+        # print(infos)
     
-    print(f"all observation in episode {i}:")
+    print(f"all observation in trajectory {i}:")
     print(all_obss)
-    print("early done by `n_steps`")
+    print("early termination by `n_steps`")
     print()
 print("=========")
-    
