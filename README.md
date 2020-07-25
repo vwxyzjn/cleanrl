@@ -31,11 +31,28 @@ The current dashboard of wandb does not allow us to show the agents performance 
 
 <img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/legend.svg">
 
-Benchmarked Learning Curves             |  Atari
-:-------------------------:|:-------------------------:
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/QbertNoFrameskip-v4.svg)  |  ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BeamRiderNoFrameskip-v4.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/SpaceInvadersNoFrameskip-v4.svg)  |  ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/PongNoFrameskip-v4.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BreakoutNoFrameskip-v4.svg)  |  &nbsp;
+<table>
+    <tr>
+        <th align="center">Benchmarked Learning Curves</th>
+        <th align="center">Atari</th>
+    </tr>
+    <tr>
+        <td align="center" colspan="2">Metrics, logs, and recorded videos are at https://app.wandb.ai/cleanrl/cleanrl.benchmark/reports/Atari--VmlldzoxMTExNTI</td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/QbertNoFrameskip-v4.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BeamRiderNoFrameskip-v4.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/SpaceInvadersNoFrameskip-v4.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/PongNoFrameskip-v4.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BreakoutNoFrameskip-v4.svg"></td>
+        <td></td>
+    </tr>
+</table>
+
 
 Benchmarked Learning Curves             |  Mujoco
 :-------------------------:|:-------------------------:
