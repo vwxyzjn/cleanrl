@@ -65,7 +65,8 @@ Benchmarked Learning Curves             |  Classic Control
 
 Benchmarked Learning Curves             |  Other Experiments
 :-------------------------:|:-------------------------:
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BipedalWalkerHardcore-v3.svg)  |![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/SlimeVolleySelfPlayEnv-v0.svg)
+![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BipedalWalkerHardcore-v3.svg)  |![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/SlimeVolleySelfPlayEnv-v0.svg) 
+&nbsp; | *note*: this is a self-play environment, so its episode reward should not steadily increase. Check out the video for the agent's actual performance
 
 
 ## Get started
