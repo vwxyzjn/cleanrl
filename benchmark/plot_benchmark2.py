@@ -123,10 +123,12 @@ if not os.path.exists(f"{feature_name}/plots"):
 if not os.path.exists(f"{feature_name}/legends"):
     os.makedirs(f"{feature_name}/legends")
 
-interested_exp_names = ['ppo_continuous_action', 'ppo_atari_visual']
+interested_exp_names = set(all_df["exp_name"]) # ['ppo_continuous_action', 'ppo_atari_visual']
 
+current_palette = sns.color_palette(n_colors=len(interested_exp_names))
+current_palette_dict = dict(zip(interested_exp_names, current_palette))
 
-all_legend = []
+legend_df = pd.DataFrame()
 # uncommenet the following to generate all figures
 for env in set(all_df["gym_id"]):
     if not path.exists(f"{feature_name}/data/{env}.pkl"):
@@ -137,16 +139,22 @@ for env in set(all_df["gym_id"]):
         with open(f"{feature_name}/data/{env}.pkl", 'rb') as handle:
             data = pickle.load(handle)
             print(f"{env}'s data loaded")
-    ax = sns.lineplot(data=data.loc[data['algo'].isin(interested_exp_names)], x="global_step", y=feature_of_interest, hue="algo", ci='sd')
+    legend_df = legend_df.append(data)
+    ax = sns.lineplot(data=data.loc[data['algo'].isin(interested_exp_names)], x="global_step", y=feature_of_interest, hue="algo", ci='sd', palette=current_palette_dict,)
     ax.set(xlabel='Time Steps', ylabel='Average Episode Reward')
     ax.legend().remove()
     plt.title(env)
     plt.savefig(f"{feature_name}/plots/{env}.svg")
-    if "".join(sorted(ax.get_legend_handles_labels()[1])) not in all_legend:
-        all_legend += ["".join(sorted(ax.get_legend_handles_labels()[1]))]
-        export_legend(ax, f"{feature_name}/legends/{env}.svg")
     plt.clf()
 
+# export legend
+ax = sns.lineplot(data=legend_df, x="global_step", y=feature_of_interest, hue="algo", ci='sd', palette=current_palette_dict,)
+ax.set(xlabel='Time Steps', ylabel='Average Episode Reward')
+ax.legend().remove()
+# plt.title(env)
+# plt.savefig(f"{feature_name}/plots/{env}.svg")
+export_legend(ax, f"{feature_name}/legend.svg")
+plt.clf()
 # # debugging
 # # demo figures
 # env = "HalfCheetahBulletEnv-v0"
