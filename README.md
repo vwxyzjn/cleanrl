@@ -54,36 +54,122 @@ The current dashboard of wandb does not allow us to show the agents performance 
 </table>
 
 
-Benchmarked Learning Curves             |  Mujoco
-:-------------------------:|:-------------------------:
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Reacher-v2.svg) | ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/InvertedPendulum-v2.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Hopper-v2.svg) | ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Pusher-v2.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Striker-v2.svg) | ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Thrower-v2.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Ant-v2.svg) | ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/HalfCheetah-v2.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Walker2d-v2.svg) | ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Swimmer-v2.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Humanoid-v2.svg)
+<table>
+    <tr>
+        <th align="center">Benchmarked Learning Curves</th>
+        <th align="center">Mujoco</th>
+    </tr>
+    <tr>
+        <td align="center" colspan="2">Metrics, logs, and recorded videos are at https://app.wandb.ai/cleanrl/cleanrl.benchmark/reports/Mujoco--VmlldzoxODE0NjE</td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Reacher-v2.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/InvertedPendulum-v2.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Hopper-v2.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Pusher-v2.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Striker-v2.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Thrower-v2.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Ant-v2.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/HalfCheetah-v2.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Walker2d-v2.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Swimmer-v2.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Humanoid-v2.svg"></td>
+        <td></td>
+    </tr>
+</table>
 
-Benchmarked Learning Curves             |  Pybullet
-:-------------------------:|:-------------------------:
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/InvertedDoublePendulumBulletEnv-v0.svg) | ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MinitaurBulletDuckEnv-v0.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/AntBulletEnv-v0.svg) | ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/HopperBulletEnv-v0.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/InvertedPendulumBulletEnv-v0.svg) | ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MinitaurBulletEnv-v0.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/PusherBulletEnv-v0.svg)  |![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Walker2DBulletEnv-v0.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/HalfCheetahBulletEnv-v0.svg)  |![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/ReacherBulletEnv-v0.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/HumanoidBulletEnv-v0.svg)
+<table>
+    <tr>
+        <th align="center">Benchmarked Learning Curves</th>
+        <th align="center">Pybullet</th>
+    </tr>
+    <tr>
+        <td align="center" colspan="2">Metrics, logs, and recorded videos are at https://app.wandb.ai/cleanrl/cleanrl.benchmark/reports/PyBullet--VmlldzoxODE0NzY</td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/InvertedDoublePendulumBulletEnv-v0.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MinitaurBulletDuckEnv-v0.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/AntBulletEnv-v0.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/HopperBulletEnv-v0.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/InvertedPendulumBulletEnv-v0.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MinitaurBulletEnv-v0.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/PusherBulletEnv-v0.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Walker2DBulletEnv-v0.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/HalfCheetahBulletEnv-v0.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/ReacherBulletEnv-v0.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/HumanoidBulletEnv-v0.svg"></td>
+        <td></td>
+    </tr>
+</table>
 
-Benchmarked Learning Curves             |  Classic Control
-:-------------------------:|:-------------------------:
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/CartPole-v1.svg) | ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MountainCar-v0.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Taxi-v3.svg) | ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/CartPole-v0.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/LunarLander-v2.svg) | ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BipedalWalker-v3.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/LunarLanderContinuous-v2.svg)  |![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Acrobot-v1.svg)
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MountainCarContinuous-v0.svg)  |![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Pendulum-v0.svg)
+<table>
+    <tr>
+        <th align="center">Benchmarked Learning Curves</th>
+        <th align="center">Classic Controlt</th>
+    </tr>
+    <tr>
+        <td align="center" colspan="2">Metrics, logs, and recorded videos are at https://app.wandb.ai/cleanrl/cleanrl.benchmark/reports/Classic-Control--VmlldzoxODE0OTQ</td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/CartPole-v1.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MountainCar-v0.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Taxi-v3.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/CartPole-v0.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/LunarLander-v2.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BipedalWalker-v3.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/LunarLanderContinuous-v2.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Acrobot-v1.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MountainCarContinuous-v0.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Pendulum-v0.svg"></td>
+    </tr>
+</table>
 
-Benchmarked Learning Curves             |  Other Experiments
-:-------------------------:|:-------------------------:
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BipedalWalkerHardcore-v3.svg)  |![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/SlimeVolleySelfPlayEnv-v0.svg) 
-&nbsp; | *note*: this is a self-play environment, so its episode reward should not steadily increase. Check out the video for the agent's actual performance
+
+<table>
+    <tr>
+        <th align="center">Benchmarked Learning Curves</th>
+        <th align="center">Other Experiments</th>
+    </tr>
+    <tr>
+        <td align="center" colspan="2">Metrics, logs, and recorded videos are at https://app.wandb.ai/cleanrl/cleanrl.benchmark/reports/Classic-Control--VmlldzoxODE0OTQ</td>
+    </tr>
+    <tr>
+        <td>![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BipedalWalkerHardcore-v3.svg)</td>
+        <td>![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/SlimeVolleySelfPlayEnv-v0.svg)</td>
+    </tr>
+    <tr>
+        <td>&amp;nbsp;</td>
+        <td>*note*: this is a self-play environment, so its episode reward should not steadily increase. Check out the video for the agent's actual performance</td>
+    </tr>
+</table>
 
 
 ## Get started
