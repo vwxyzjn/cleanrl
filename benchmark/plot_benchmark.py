@@ -74,7 +74,6 @@ for env in envs:
         for idx, metrics_dataframe in enumerate(envs[env]):
             envs[env][idx] = metrics_dataframe.dropna(subset=[feature_of_interest])
             envs[env][idx][feature_of_interest] = metrics_dataframe[feature_of_interest].rolling(rolling_average).mean()[rolling_average:]
-        
 
 sns.set(style="darkgrid")
 def get_df_for_env(gym_id):
@@ -99,19 +98,85 @@ def get_df_for_env(gym_id):
         envs_same_x_axis += [df]
     return pd.concat(envs_same_x_axis, ignore_index=True)
 
-# uncommenet the following to generate all figures
-# for env in set(all_df["gym_id"]):
-#     data = get_df_for_env(env)
-#     sns.lineplot(data=data, x="global_step", y=feature_of_interest, hue="algo", ci='sd')
-#     plt.legend(fontsize=6)
-#     plt.title(env)
-#     plt.savefig(f"{env}.svg")
-#     plt.clf()
+def export_legend(ax, filename="legend.pdf"):
+    # import matplotlib as mpl
+    # mpl.rcParams['text.usetex'] = True
+    # mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}'] #for \text command
+    fig2 = plt.figure()
+    ax2 = fig2.add_subplot()
+    ax2.axis('off')
+    handles, labels = ax.get_legend_handles_labels()
 
-# debugging
-env = "CartPole-v0"
-data = get_df_for_env(env)
-data[feature_of_interest] = data[feature_of_interest].astype(np.float32)
-sns.lineplot(data=data, x="global_step", y=feature_of_interest, hue="algo", ci='sd')
-plt.legend(fontsize=6)
-plt.title(env)
+    legend = ax2.legend(handles=handles[1:], labels=labels[1:], frameon=False, loc='lower center', ncol=5, fontsize=20, handlelength=1)
+    for line in legend.get_lines():
+        line.set_linewidth(4.0)
+    fig  = legend.figure
+    fig.canvas.draw()
+    bbox  = legend.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+    fig.savefig(filename, dpi="figure", bbox_inches=bbox)
+    fig.clf()
+
+if not os.path.exists(f"{feature_name}/data"):
+    os.makedirs(f"{feature_name}/data")
+if not os.path.exists(f"{feature_name}/plots"):
+    os.makedirs(f"{feature_name}/plots")
+if not os.path.exists(f"{feature_name}/legends"):
+    os.makedirs(f"{feature_name}/legends")
+
+interested_exp_names = set(all_df["exp_name"]) # ['ppo_continuous_action', 'ppo_atari_visual']
+
+current_palette = sns.color_palette(n_colors=len(interested_exp_names))
+current_palette_dict = dict(zip(interested_exp_names, current_palette))
+
+legend_df = pd.DataFrame()
+# uncommenet the following to generate all figures
+for env in set(all_df["gym_id"]):
+    if not path.exists(f"{feature_name}/data/{env}.pkl"):
+        with open(f"{feature_name}/data/{env}.pkl", 'wb') as handle:
+            data = get_df_for_env(env)
+            pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    else:
+        with open(f"{feature_name}/data/{env}.pkl", 'rb') as handle:
+            data = pickle.load(handle)
+            print(f"{env}'s data loaded")
+    legend_df = legend_df.append(data)
+    ax = sns.lineplot(data=data.loc[data['algo'].isin(interested_exp_names)], x="global_step", y=feature_of_interest, hue="algo", ci='sd', palette=current_palette_dict,)
+    ax.set(xlabel='Time Steps', ylabel='Average Episode Reward')
+    ax.legend().remove()
+    plt.title(env)
+    plt.tight_layout()
+    plt.savefig(f"{feature_name}/plots/{env}.svg")
+    plt.clf()
+
+# export legend
+ax = sns.lineplot(data=legend_df, x="global_step", y=feature_of_interest, hue="algo", ci='sd', palette=current_palette_dict,)
+ax.set(xlabel='Time Steps', ylabel='Average Episode Reward')
+ax.legend().remove()
+# plt.title(env)
+# plt.savefig(f"{feature_name}/plots/{env}.svg")
+export_legend(ax, f"{feature_name}/legend.svg")
+plt.clf()
+# # debugging
+# # demo figures
+# env = "HalfCheetahBulletEnv-v0"
+# data = get_df_for_env(env)
+# sns.set_style("white")
+# ax = sns.lineplot(data=data, x="global_step", y=feature_of_interest, hue="algo", ci='sd')
+# handles, labels = ax.get_legend_handles_labels()
+# ax.set(xlabel='Time Steps', ylabel='Average Episode Reward')
+# leg = ax.legend(handles=handles[1:], labels=labels[1:], loc='upper left')
+# # for text in leg.get_texts():
+# #     text.set_text(exp_convert_dict[text.get_text()])
+# # plt.title(env)
+# plt.tight_layout()
+# plt.savefig(f"{env}Reward.svg")
+
+#     # mpl.rcParams['text.usetex'] = False
+# export_legend(ax, "legend1.svg")
+
+
+# # print legend color
+# from matplotlib import colors
+# for handle, label in zip(handles[1:], labels[1:]):
+#     print(label, colors.to_hex(handle.get_color()))
+    
