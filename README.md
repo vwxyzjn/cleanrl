@@ -29,19 +29,12 @@ Our implementation is benchmarked to ensure quality. We log all of our benchmark
 
 The current dashboard of wandb does not allow us to show the agents performance in all the games at the same panel, so you have to click each panel in https://cleanrl.costa.sh to check the benchmarked performance, which can be inconvenient sometimes. So we additionally post the benchmarked performance for each game using seaborn as follows (the result is created by using [`benchmark/plot_benchmark.py`](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/plot_benchmark.py)
 
-<img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BipedalWalker-v3.svg" width="280"><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/CartPole-v0.svg" width="280">
-<img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/HalfCheetahBulletEnv-v0.svg" width="280">
-<img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/HopperBulletEnv-v0.svg" width="280">
-<img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/HumanoidBulletEnv-v0.svg" width="280">
-<img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/InvertedPendulumBulletEnv-v0.svg" width="280">
-<img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/LunarLander-v2.svg" width="280">
-<img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MountainCar-v0.svg" width="280">
-<img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MountainCarContinuous-v0.svg" width="280">
-<img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Pendulum-v0.svg" width="280">
-<img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/PongNoFrameskip-v4.svg" width="280">
-<img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/ReacherBulletEnv-v0.svg" width="280">
-<img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Taxi-v3.svg" width="280">
-<img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Walker2DBulletEnv-v0.svg" width="280">
+Benchmarked Learning Curves             |  Atari
+:-------------------------:|:-------------------------:
+![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/QbertNoFrameskip-v4.svg)  |  ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BeamRiderNoFrameskip-v4.svg)
+![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/SpaceInvadersNoFrameskip-v4.svg)  |  ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/PongNoFrameskip-v4.svg)
+![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BreakoutNoFrameskip-v4.svg)  |  &nbsp;
+
 
 ## Get started
 
