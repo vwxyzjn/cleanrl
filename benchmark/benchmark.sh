@@ -62,6 +62,22 @@ python generate_exp.py --exp-script scripts/ddpg_pybullet.sh \
     --wandb-entity cleanrl \
     --cuda
 
+python generate_exp.py --exp-script scripts/sac_mujoco.sh \
+    --algo sac_continuous_action.py \
+    --total-timesteps 2000000 \
+    --gym-ids Reacher-v2 Pusher-v2 Thrower-v2 Striker-v2 InvertedPendulum-v2 HalfCheetah-v2 Hopper-v2 Swimmer-v2 Walker2d-v2 Ant-v2 Humanoid-v2 \
+    --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
+    --cuda
+    
+python generate_exp.py --exp-script scripts/sac_pybullet.sh \
+    --algo sac_continuous_action.py \
+    --total-timesteps 2000000 \
+    --gym-ids MinitaurBulletEnv-v0 MinitaurBulletDuckEnv-v0 InvertedPendulumBulletEnv-v0 InvertedDoublePendulumBulletEnv-v0 Walker2DBulletEnv-v0 HalfCheetahBulletEnv-v0 AntBulletEnv-v0 HopperBulletEnv-v0 HumanoidBulletEnv-v0 BipedalWalker-v3 LunarLanderContinuous-v2 Pendulum-v0 MountainCarContinuous-v0 \
+    --wandb-project-name cleanrl.benchmark \
+    --wandb-entity cleanrl \
+    --cuda
+
 python generate_exp.py --exp-script scripts/dqn_atari.sh \
     --algo dqn_atari_visual.py \
     --total-timesteps 10000000 \
