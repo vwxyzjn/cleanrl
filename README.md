@@ -159,7 +159,7 @@ The current dashboard of wandb does not allow us to show the agents performance 
         <th align="center">Other Experiments</th>
     </tr>
     <tr>
-        <td align="center" colspan="2">Metrics, logs, and recorded videos are at https://app.wandb.ai/cleanrl/cleanrl.benchmark/reports/Classic-Control--VmlldzoxODE0OTQ</td>
+        <td align="center" colspan="2">Metrics, logs, and recorded videos are at https://app.wandb.ai/cleanrl/cleanrl.benchmark/reports/Others--VmlldzoxODg5ODE</td>
     </tr>
     <tr>
         <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BipedalWalkerHardcore-v3.svg">
