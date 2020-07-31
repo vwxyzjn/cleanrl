@@ -51,21 +51,6 @@ class RewardForwardFilter(object):
             self.rewems = self.rewems * self.gamma + rews
         return self.rewems
 
-def _flatten_helper(T, N, _tensor):
-    return _tensor.view(T * N, *_tensor.size()[2:])
-
-def _unflatten_helper(T, N, _tensor):
-    return _tensor.view(T, N, *_tensor.size()[1:])
-
-def init(module, weight_init, bias_init, gain=1):
-    weight_init(module.weight.data, gain=gain)
-    bias_init(module.bias.data)
-    return module
-
-def init_normc_(weight, gain=1):
-    weight.normal_(0, 1)
-    weight *= gain / torch.sqrt(weight.pow(2).sum(1, keepdim=True))
-
 class NoopResetEnv(gym.Wrapper):
     def __init__(self, env, noop_max=30):
         """Sample initial states by taking random number of no-ops on reset.
@@ -593,6 +578,8 @@ if __name__ == "__main__":
                         help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--capture-video', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='weather to capture videos of the agent performances (check out `videos` folder)')
+    parser.add_argument('--video-interval', type=int, default=50,
+                        help='the episode interval for capturing video')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                         help="the wandb's project name")
     parser.add_argument('--wandb-entity', type=str, default=None,
@@ -780,7 +767,7 @@ def make_env(gym_id, seed, idx):
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if args.capture_video:
             if idx == 0:
-                env = Monitor(env, f'videos/{experiment_name}',  video_callable=lambda episode_id: episode_id%50==0)
+                env = Monitor(env, f'videos/{experiment_name}',  video_callable=lambda episode_id: episode_id%args.video_interval==0)
         env = wrap_pytorch(
             wrap_deepmind(
                 env,
@@ -907,7 +894,6 @@ for step in range(args.num_steps * 50):
 del acs
 print('End to initalize...')
 
-start = time.time()
 for update in range(1, num_updates+1):
     # Annealing the rate if instructed to do so.
     if args.anneal_lr:
@@ -915,7 +901,6 @@ for update in range(1, num_updates+1):
         lrnow = lr(frac)
         optimizer.param_groups[0]['lr'] = lrnow
 
-    # print("collect: ", torch.cuda.memory_allocated())
     # TRY NOT TO MODIFY: prepare the execution of the game.
     for step in range(0, args.num_steps):
         global_step += 1 * args.num_envs
@@ -952,6 +937,7 @@ for update in range(1, num_updates+1):
     reward_rms.update_from_moments(mean, std ** 2, count)
 
     curiosity_rewards /= np.sqrt(reward_rms.var)
+
     # bootstrap reward if not done. reached the batch limit
     with torch.no_grad():
         last_value_ext, last_value_int = agent.get_value(next_obs.to(device))
@@ -1078,11 +1064,8 @@ for update in range(1, num_updates+1):
             if (b_logprobs[minibatch_ind] - agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind])[1]).mean() > args.target_kl:
                 agent.load_state_dict(target_agent.state_dict())
                 break
-    # print("finish: ", torch.cuda.memory_allocated())
+
     # TRY NOT TO MODIFY: record rewards for plotting purposes
-    end = time.time()
-    total_num_steps = (update + 1) * args.num_envs * args.num_steps
-    writer.add_scalar("charts/fps", int(total_num_steps/(end-start)), global_step)
     writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]['lr'], global_step)
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
