@@ -86,7 +86,7 @@ To run experiments locally, give the following a try:
 $ git clone https://github.com/vwxyzjn/cleanrl.git && cd cleanrl
 $ pip install -e .
 $ cd cleanrl
-$ python a2c.py \
+$ python ppo.py \
     --seed 1 \
     --gym-id CartPole-v0 \
     --total-timesteps 50000 \
@@ -103,7 +103,7 @@ Then run
 $ cd cleanrl
 $ pip install wandb
 $ wandb login ${WANBD_API_KEY}
-$ python a2c.py \
+$ python ppo.py \
     --seed 1 \
     --gym-id CartPole-v0 \
     --total-timesteps 50000 \
