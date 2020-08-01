@@ -667,26 +667,26 @@ class RNDModel(nn.Module):
 
         # Target network
         self.target = nn.Sequential(
-            nn.Conv2d(
+            layer_init(nn.Conv2d(
                 in_channels=1,
                 out_channels=32,
                 kernel_size=8,
-                stride=4),
+                stride=4)),
             nn.LeakyReLU(),
-            nn.Conv2d(
+            layer_init(nn.Conv2d(
                 in_channels=32,
                 out_channels=64,
                 kernel_size=4,
-                stride=2),
+                stride=2)),
             nn.LeakyReLU(),
-            nn.Conv2d(
+            layer_init(nn.Conv2d(
                 in_channels=64,
                 out_channels=64,
                 kernel_size=3,
-                stride=1),
+                stride=1)),
             nn.LeakyReLU(),
             Flatten(),
-            nn.Linear(feature_output, 512)
+            layer_init(nn.Linear(feature_output, 512))
         )
 
         # Set that target network is not trainable
@@ -772,7 +772,7 @@ for update in range(1, num_updates+1):
         
         actions[step] = action
         logprobs[step] = logproba
-        
+
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rs, ds, infos = envs.step(action)
         rewards[step], next_done = rs.view(-1), torch.Tensor(ds).to(device)
