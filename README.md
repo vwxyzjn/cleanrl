@@ -117,34 +117,47 @@ Checkout the demo sites at [https://app.wandb.ai/costa-huang/cleanrltest](https:
 ![demo2.gif](demo2.gif)
 
 ## Algorithms Implemented
-- [x] Advantage Actor Critic (A2C)
-    * [a2c.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/a2c.py)
-        * Discrete action space
-    * [a2c_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/a2c_continuous_action.py)
-        * Continuous action space
+- [x] ~~Advantage Actor Critic (A2C)~~
+    * Since A2C is a special case of PPO when setting `update-epochs=1`, where the clipped objective becomes essentially the A2C's objective, we neglect the implementation for A2C. We might add it back in the future for educational purposes. However, we kept the old A2C implementations in the `experiments` folder
+        * [experiments/a2c.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experiments/a2c.py)
+            * (Not recommended for using) For discrete action space.
+        * [experiments/a2c_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experiments/a2c_continuous_action.py)
+            * (Not recommended for using) For continuous action space.
 - [x] Deep Q-Learning (DQN)
     * [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py)
-        * Discrete action space
-    * [dqn_cnn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_cnn.py)
-        * Specifically for playing Atari games. It uses convolutional layers and other pre-processing techniques.
-- [x] Soft Actor Critic (SAC)
-    * [sac.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac.py)
-        * Discrete action space
-    * [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py)
-        * Continuous action space
+        * For discrete action space.
+    * [dqn_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py)
+        * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+    * [dqn_atari_visual.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari_visual.py)
+        * Adds q-values visulization for `dqn_atari.py`.
 - [x] Proximal Policy Gradient (PPO) 
+    * All of the PPO implementations below are augmented with some code-level optimizations. See https://costa.sh/blog-the-32-implementation-details-of-ppo.html for more details
     * [ppo.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py)
-        * Discrete action space
+        * For discrete action space.
     * [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py)
-        * Continuous action space
-    * [ppo2_continuous_actions.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo2_continuous_actions.py)
-        * Also for continuous action space, but this script allows you to toggle following techniques
-            * GAE (general advantage estimation)
-            * Reward normalization and clipping
-            * Observation normalization and clipping
-            * KL divergence bounding
-            * Learning rate annealing
-            * Orthogonal layer initialization
+        * For continuous action space. Also implemented Mujoco-specific code-level optimizations
+    * [ppo_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py)
+        * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+    * [ppo_atari_visual.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_visual.py)
+        * Adds action probability visulization for `ppo_atari.py`.
+    * [experiments/ppo_self_play.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experiments/ppo_self_play.py)
+        * Implements a self-play agent for https://github.com/hardmaru/slimevolleygym
+    * [experiments/ppo_microrts.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experiments/ppo_microrts.py)
+        * Implements invalid action masking and handling of `MultiDiscrete` action space for https://github.com/vwxyzjn/gym-microrts
+    * [experiments/ppo_simple.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experiments/ppo_simple.py)
+        * (Not recommended for using) Naive implementation for discrete action space. I keep it here for educational purposes because I feel this is what most people would implement if they had just read the paper, usually unaware of the amount of implementation details that come with the well-tuned PPO implmentation.
+    * [experiments/ppo_simple_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experiments/ppo_simple_continuous_action.py)
+        * (Not recommended for using) Naive implementation for continuous action space. 
+- [x] Soft Actor Critic (SAC)
+    * [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py)
+        * For continuous action space.
+- [x] Deep Deterministic Policy Gradient (DDPG)
+    * [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py)
+        * For continuous action space.
+- [x] Twin Delayed Deep Deterministic Policy Gradient (TD3)
+    * [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py)
+        * For continuous action space.
+
 
 ## Support and get involved
 
