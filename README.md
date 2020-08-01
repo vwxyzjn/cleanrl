@@ -73,8 +73,10 @@ Benchmarked Learning Curves             |  Others (Experimental Domains)
 :-------------------------:|:-------------------------:
 Metrics, logs, and recorded videos are at  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;|  [cleanrl.benchmark/reports/Others](https://app.wandb.ai/cleanrl/cleanrl.benchmark/reports/Others--VmlldzoxODg5ODE) 
 ![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BipedalWalkerHardcore-v3.svg)  | This is a rather challenging continuous action tasks that usually require 100M+ timesteps to solve.
-![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/SlimeVolleySelfPlayEnv-v0.svg) | This is a self-play environment, so its episode reward should not steadily increase. Check out the video for the agent's  actual performance 
-![](https://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MicrortsCombinedReward10x10F9BuildCombatUnits-v0.svg) | This is a self-play environment, so its episode reward should not steadily increase. Check out the video for the agent's  actual performance 
+![](http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/SlimeVolleySelfPlayEnv-v0.svg) | This is a self-play environment from https://github.com/hardmaru/slimevolleygym, so its episode reward should not steadily increase. Check out the video for the agent's  actual performance (i.e. go check out [cleanrl.benchmark/reports/Others](https://app.wandb.ai/cleanrl/cleanrl.benchmark/reports/Others--VmlldzoxODg5ODE) )
+![](https://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MicrortsCombinedReward10x10F9BuildCombatUnits-v0.svg) | This is a MicroRTS environment to build as many combat units as possible, see https://github.com/vwxyzjn/gym-microrts. These runs are created by https://github.com/vwxyzjn/gym-microrts/blob/master/experiments/ppo.py, which additionally implements invalid action masking and handling of multi-discrete action space for PPO.
+
+
 
 ## Get started
 
