@@ -91,10 +91,10 @@ The current dashboard of wandb does not allow us to show the agents performance 
 <table>
     <tr>
         <th align="center">Benchmarked Learning Curves</th>
-        <th align="center">Pybullet</th>
+        <th align="center">PyBullet and Other Continuous Action Tasks</th>
     </tr>
     <tr>
-        <td align="center" colspan="2">Metrics, logs, and recorded videos are at https://app.wandb.ai/cleanrl/cleanrl.benchmark/reports/PyBullet--VmlldzoxODE0NzY</td>
+        <td align="center" colspan="2">Metrics, logs, and recorded videos are at https://app.wandb.ai/cleanrl/cleanrl.benchmark/reports/PyBullet-and-Other-Continuous-Action-Tasks--VmlldzoxODE0NzY</td>
     </tr>
     <tr>
         <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/InvertedDoublePendulumBulletEnv-v0.svg"></td>
@@ -118,6 +118,14 @@ The current dashboard of wandb does not allow us to show the agents performance 
     </tr>
     <tr>
         <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/HumanoidBulletEnv-v0.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Pendulum-v0.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/LunarLanderContinuous-v2.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MountainCarContinuous-v0.svg"></td>
+    </tr>
+    <tr>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BipedalWalker-v3.svg"></td>
         <td></td>
     </tr>
 </table>
@@ -132,23 +140,11 @@ The current dashboard of wandb does not allow us to show the agents performance 
     </tr>
     <tr>
         <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/CartPole-v1.svg"></td>
-        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MountainCar-v0.svg"></td>
-    </tr>
-    <tr>
-        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Taxi-v3.svg"></td>
-        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/CartPole-v0.svg"></td>
-    </tr>
-    <tr>
-        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/LunarLander-v2.svg"></td>
-        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/BipedalWalker-v3.svg"></td>
-    </tr>
-    <tr>
-        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/LunarLanderContinuous-v2.svg"></td>
         <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Acrobot-v1.svg"></td>
     </tr>
     <tr>
-        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MountainCarContinuous-v0.svg"></td>
-        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/Pendulum-v0.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/LunarLander-v2.svg"></td>
+        <td><img src="http://microrts.s3.amazonaws.com/microrts/cleanrl/open-rl-benchmark/0.3/plots/MountainCar-v0.svg"></td>
     </tr>
 </table>
 
