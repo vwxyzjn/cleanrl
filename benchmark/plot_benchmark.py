@@ -22,7 +22,7 @@ if not path.exists(f"{feature_name}/all_df_cache.pkl"):
     envs = {}
     data = []
     rolling_average = 10
-    sample_points = 500
+    sample_points = 1000
     
     for idx, run in enumerate(runs):
         if feature_of_interest in run.summary:

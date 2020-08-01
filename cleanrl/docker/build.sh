@@ -4,3 +4,6 @@ docker build -t vwxyzjn/cleanrl:$VERSION  -t vwxyzjn/cleanrl:latest -f Dockerfil
 docker push vwxyzjn/cleanrl:latest
 docker push vwxyzjn/cleanrl:$VERSION
 
+docker build -t vwxyzjn/cleanrl:m$VERSION  -t vwxyzjn/cleanrl:mlatest -f m.Dockerfile .
+docker push vwxyzjn/cleanrl:mlatest
+docker push vwxyzjn/cleanrl:m$VERSION

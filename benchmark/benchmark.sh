@@ -24,7 +24,7 @@ python generate_exp.py --exp-script scripts/ppo_atari.sh \
 
 python generate_exp.py --exp-script scripts/ppo_other.sh \
     --algo ppo.py \
-    --total-timesteps 100000 \
+    --total-timesteps 2000000 \
     --gym-ids CartPole-v1 Acrobot-v1 MountainCar-v0 LunarLander-v2 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
@@ -88,7 +88,7 @@ python generate_exp.py --exp-script scripts/dqn_atari.sh \
 
 python generate_exp.py --exp-script scripts/dqn_other.sh \
     --algo dqn.py \
-    --total-timesteps 1000000 \
+    --total-timesteps 2000000 \
     --gym-ids CartPole-v1 Acrobot-v1 MountainCar-v0 LunarLander-v2 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \
@@ -104,7 +104,7 @@ python generate_exp.py --exp-script scripts/c51_atari.sh \
 
 python generate_exp.py --exp-script scripts/c51_other.sh \
     --algo c51.py \
-    --total-timesteps 1000000 \
+    --total-timesteps 2000000 \
     --gym-ids CartPole-v1 Acrobot-v1 MountainCar-v0 LunarLander-v2 \
     --wandb-project-name cleanrl.benchmark \
     --wandb-entity cleanrl \

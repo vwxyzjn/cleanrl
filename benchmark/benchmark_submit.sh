@@ -48,3 +48,23 @@ python jobs.py --exp-script scripts/ppo_other.sh \
     --num-memory 1500 \
     --num-hours 16.0 \
     --submit-aws $SUBMIT_AWS
+
+python jobs.py --exp-script scripts/dqn_other.sh \
+    --job-queue cleanrl \
+    --job-definition cleanrl \
+    --num-seed 2 \
+    --num-vcpu 2 \
+    --num-gpu 1 \
+    --num-memory 1500 \
+    --num-hours 16.0 \
+    --submit-aws $SUBMIT_AWS
+
+python jobs.py --exp-script scripts/c51_other.sh \
+    --job-queue cleanrl \
+    --job-definition cleanrl \
+    --num-seed 2 \
+    --num-vcpu 2 \
+    --num-gpu 1 \
+    --num-memory 1500 \
+    --num-hours 16.0 \
+    --submit-aws $SUBMIT_AWS
