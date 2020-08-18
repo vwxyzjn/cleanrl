@@ -659,8 +659,43 @@ import os
 import threading
 os.environ["OMP_NUM_THREADS"] = "1"  # Necessary for multithreading.
 from torch import multiprocessing as mp
-
 from multiprocessing.managers import SyncManager
+
+import matplotlib
+matplotlib.use('Agg')
+import seaborn as sns
+import matplotlib.pyplot as plt
+import pandas as pd
+from PIL import Image
+
+class QValueVisualizationWrapper(gym.Wrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        self.env.reset()
+        self.image_shape = self.env.render(mode="rgb_array").shape
+        self.q_values = [[0.,0.,0.,0.]]
+        # self.metadata['video.frames_per_second'] = 60
+        
+    def set_q_values(self, q_values):
+        self.q_values = q_values
+
+    def render(self, mode="human"):
+        if mode=="rgb_array":
+            env_rgb_array = super().render(mode)
+            fig, ax = plt.subplots(figsize=(self.image_shape[1]/100,self.image_shape[0]/100), constrained_layout=True, dpi=100)
+            df = pd.DataFrame(np.array(self.q_values).T)
+            sns.barplot(x=df.index, y=0, data=df, ax=ax)
+            ax.set(xlabel='actions', ylabel='q-values')
+            fig.canvas.draw()
+            X = np.array(fig.canvas.renderer.buffer_rgba())
+            Image.fromarray(X)
+            # Image.fromarray(X)
+            rgb_image = np.array(Image.fromarray(X).convert('RGB'))
+            plt.close(fig)
+            q_value_rgb_array = rgb_image
+            return np.append(env_rgb_array, q_value_rgb_array, axis=1)
+        else:
+            super().render(mode)
 
 class Scale(nn.Module):
     def __init__(self, scale):
@@ -698,12 +733,14 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     else:
         return min(slope * t + start_e, end_e)
 
-def act(args, i, rb, q_network, target_network, lock, rollouts_queue, queue, stats_queue, global_step, device, writer):
+def act(args, experiment_name, i, q_network, target_network, lock, rollouts_queue, stats_queue, global_step, device):
     env = gym.make(args.gym_id)
     env = wrap_atari(env)
     env = gym.wrappers.RecordEpisodeStatistics(env) # records episode reward in `info['episode']['r']`
     if args.capture_video:
-        env = Monitor(env, f'videos/{experiment_name}')
+        if i == 0:
+            env = QValueVisualizationWrapper(env)
+            env = Monitor(env, f'videos/{experiment_name}')
     env = wrap_deepmind(
         env,
         clip_rewards=True,
@@ -723,12 +760,14 @@ def act(args, i, rb, q_network, target_network, lock, rollouts_queue, queue, sta
         # ALGO LOGIC: put action logic here
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
         obs = np.array(obs)
+        logits = q_network.forward(obs.reshape((1,)+obs.shape))
+        if args.capture_video:
+            if i == 0:
+                env.set_q_values(logits.tolist())
         if random.random() < epsilon:
             action = env.action_space.sample()
         else:
-            logits = q_network.forward(obs.reshape((1,)+obs.shape))
             action = torch.argmax(logits, dim=1).tolist()[0]
-        # action = env.action_space.sample()
     
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, reward, done, info = env.step(action)
@@ -770,13 +809,13 @@ def act(args, i, rb, q_network, target_network, lock, rollouts_queue, queue, sta
             # the real episode reward is actually the sum of episode reward of 5 lives
             # which we record through `info['episode']['r']` provided by gym.wrappers.RecordEpisodeStatistics
             obs, episode_reward = env.reset(), 0
+    
+    stats_queue.put(["END"])
 
 def learn(args, rb, global_step, rollouts_queue, stats_queue, lock, learn_target_network, target_network, learn_q_network, q_network, optimizer, device):
     loss_fn = nn.MSELoss()
     update_step = 0
-    # time.sleep(10)
     while global_step < (args.total_timesteps):
-        # if global_step > args.learning_starts and update_step % args.train_frequency == 0:
         (storage, new_priorities) = rollouts_queue.get()
         for data, priority in zip(storage, new_priorities):
             obs, action, reward, next_obs, done = data
@@ -786,7 +825,6 @@ def learn(args, rb, global_step, rollouts_queue, stats_queue, lock, learn_target
             experience = rb.sample(args.batch_size, beta=beta)
             (s_obs, s_actions, s_rewards, s_next_obses, s_dones, s_weights, s_batch_idxes) = experience
             with torch.no_grad():
-                # target_max = torch.max(learn_target_network.forward(s_next_obses), dim=1)[0]
                 current_value = learn_q_network.forward(s_next_obses)
                 target_value = learn_target_network.forward(s_next_obses)
                 target_max = target_value.gather(1, torch.max(current_value, 1)[1].unsqueeze(1)).squeeze(1)
@@ -795,34 +833,25 @@ def learn(args, rb, global_step, rollouts_queue, stats_queue, lock, learn_target
     
             old_val = learn_q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
             td_errors = td_target - old_val
-            
             loss = (td_errors ** 2).mean()
-            # writer.add_scalar("losses/td_loss", loss, global_step)
             
             # update the weights in the prioritized replay
             new_priorities = np.abs(td_errors.tolist()) + args.pr_eps
             rb.update_priorities(s_batch_idxes, new_priorities)
             
-            # if global_step % 100 == 0:
             stats_queue.put(("losses/td_loss", loss.item(), update_step+args.learning_starts))
-            #     writer.add_scalar("losses/td_loss", loss, update_step+args.learning_starts)
         
             # optimize the midel
             optimizer.zero_grad()
             loss.backward()
             nn.utils.clip_grad_norm_(list(learn_q_network.parameters()), args.max_grad_norm)
             optimizer.step()
-            
-            # the actor models are a little delayed and needs to be updated
-            # if update_step % 1 == 0:
-            # with lock:
             q_network.load_state_dict(learn_q_network.state_dict())
         
             # update the target network
             if update_step % args.target_network_frequency == 0:
                 learn_target_network.load_state_dict(learn_q_network.state_dict())
                 target_network.load_state_dict(learn_q_network.state_dict())
-                    # print("updated")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='DQN agent')
@@ -900,8 +929,6 @@ if __name__ == "__main__":
     env = gym.make(args.gym_id)
     env = wrap_atari(env)
     env = gym.wrappers.RecordEpisodeStatistics(env) # records episode reward in `info['episode']['r']`
-    if args.capture_video:
-        env = Monitor(env, f'videos/{experiment_name}')
     env = wrap_deepmind(
         env,
         clip_rewards=True,
@@ -915,17 +942,12 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
-    
-    # respect the default timelimit
     assert isinstance(env.action_space, Discrete), "only discrete action space is supported"
-    SyncManager.register('PrioritizedReplayBuffer',
-                         PrioritizedReplayBuffer)
+
     m = SyncManager()
     m.start()
     lock = m.Lock()
-
     rb = CustomPrioritizedReplayBuffer(args.buffer_size, args.pr_alpha)
-    
 
     q_network = QNetwork()
     q_network.share_memory()
@@ -942,110 +964,67 @@ if __name__ == "__main__":
     learn_target_network.load_state_dict(q_network.state_dict())
     optimizer = optim.Adam(learn_q_network.parameters(), lr=args.learning_rate)
     
-    
     global_step = torch.tensor(0)
     global_step.share_memory_()
     actor_processes = []
     ctx = mp.get_context("forkserver")
-    queue = ctx.Queue(1000)
-    queues = None
     stats_queue = ctx.SimpleQueue()
     rollouts_queue = ctx.Queue(1000)
-    # raise
-    
-    
+
     for i in range(4):
         actor = ctx.Process(
             target=act,
             args=(
                 args,
+                experiment_name,
                 i,
-                rb,
                 q_network,
                 target_network,
                 lock,
-                rollouts_queue, queue,
+                rollouts_queue,
                 stats_queue,
                 global_step,
-                "cpu",
-                None
+                "cpu"
             ),
         )
         actor.start()
         actor_processes.append(actor)
-    
-    # for actor in actor_processes:
-    #     actor.join()
 
-
-    learner_processes = []
-    # lm = mp.Manager()
-    # llock = lm.Lock()
-    for i in range(1):
-        learner = ctx.Process(
-            target=learn,
-            args=(
-                args, rb, global_step,
-                rollouts_queue, stats_queue, lock, learn_target_network, target_network, learn_q_network, q_network, optimizer, device
-            ),
-        )
-        learner.start()
-        learner_processes.append(learner)
+    learner = ctx.Process(
+        target=learn,
+        args=(
+            args, rb, global_step,
+            rollouts_queue, stats_queue, lock, learn_target_network, target_network, learn_q_network, q_network, optimizer, device
+        ),
+    )
+    learner.start()
 
     approx_global_step= 0
     start_time = time.time()
     import timeit
     update_step_temp = 0
-    while True:
-        m = stats_queue.get()
-        update_step_temp += 1
-        if m[0] == "charts/episode_reward":
-            r, l = m[1], m[2]
-            approx_global_step += l
-            print(f"global_step={approx_global_step}, episode_reward={r}")
-            writer.add_scalar("charts/episode_reward", r, approx_global_step)
-        else:
-            writer.add_scalar(m[0], m[1], global_step)
-            # print(m[0], m[1], global_step)
-        # writer.add_scalar("charts/qsize", queue.qsize(), approx_global_step)
-        # print(queue.qsize())
-        # sps = int((approx_global_step) / (time.time() - start_time))
-        # print(sps)
-        # writer.add_scalar("charts/sps", sps, approx_global_step)
-        # print(rb.get_stored_size())
-        # print(rb._it_sum.sum())
-        
-
-        # print(list(q_network.network)[-1].weight.sum().item())
-        # print(list(learn_q_network.network)[-1].weight.sum().item())
-        # update_step += 1
-        # s_obs, s_actions, s_rewards, s_next_obses, s_dones = queues[0].get(), queues[1].get(), queues[2].get(), queues[3].get(), queues[4].get()
-        # s_obs, s_actions, s_rewards, s_next_obses, s_dones = queues[0].get().to(device), queues[1].get().to(device), queues[2].get().to(device), queues[3].get().to(device), queues[4].get().to(device)
-        # with torch.no_grad():
-        #     target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
-        #     td_target = s_rewards + args.gamma * target_max * (1 - s_dones)
-        # old_val = learn_q_network.forward(s_obs).gather(1, s_actions.long().view(-1,1)).squeeze()
-        # loss = loss_fn(td_target, old_val)
-        
-        # if global_step % 100 == 0:
-        #     writer.add_scalar("losses/td_loss", loss, update_step+args.learning_starts)
-    
-        # # optimize the midel
-        # optimizer.zero_grad()
-        # loss.backward()
-        # nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
-        # optimizer.step()
-        
-        # # the actor models are a little delayed and needs to be updated
-        # if update_step % 20 == 0:
-        #     q_network.load_state_dict(learn_q_network.state_dict())
-    
-        # # update the target network
-        # if update_step % args.target_network_frequency == 0:
-        #     target_network.load_state_dict(q_network.state_dict())
-        #     print("updated")
-
-
-
-# # env.close()
-# # writer.close()
+    try:
+        while True:
+            m = stats_queue.get()
+            update_step_temp += 1
+            if m[0] == "END":
+                for actor in actor_processes:
+                    actor.join()
+                print("broke")
+                break
+            elif m[0] == "charts/episode_reward":
+                r, l = m[1], m[2]
+                approx_global_step += l
+                print(f"global_step={approx_global_step}, episode_reward={r}")
+                writer.add_scalar("charts/episode_reward", r, approx_global_step)
+            else:
+                print(m[0], m[1], global_step)
+                writer.add_scalar(m[0], m[1], global_step)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        learner.join(timeout=1)
+        for actor in actor_processes:
+            actor.join(timeout=1)
+    # env.close()
+    writer.close()
