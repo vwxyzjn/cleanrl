@@ -821,6 +821,7 @@ def learn(args, rb, global_step, rollouts_queue, stats_queue, lock, learn_target
             obs, action, reward, next_obs, done = data
             rb.add_with_priority(obs, action, reward, next_obs, done, priority)
         if len(rb) > args.learning_starts:
+            update_step += 1
             beta = linear_schedule(args.pr_beta0, 1.0, args.total_timesteps, global_step)
             experience = rb.sample(args.batch_size, beta=beta)
             (s_obs, s_actions, s_rewards, s_next_obses, s_dones, s_weights, s_batch_idxes) = experience
@@ -1018,7 +1019,6 @@ if __name__ == "__main__":
                 print(f"global_step={approx_global_step}, episode_reward={r}")
                 writer.add_scalar("charts/episode_reward", r, approx_global_step)
             else:
-                print(m[0], m[1], global_step)
                 writer.add_scalar(m[0], m[1], global_step)
     except KeyboardInterrupt:
         pass
