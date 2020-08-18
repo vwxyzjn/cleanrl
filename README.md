@@ -15,7 +15,7 @@ Good luck have fun :rocket:
 
 The highlight features of this repo are:
 
-* Most algorithms are self-contained in single files with a common dependency file [common.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/common.py) that handles different gym spaces.
+* Our implementation is self-contained in a single file. *Everything* about an algorithm is right there! Easy to understand and do research with.
 * Easy logging of training processes using Tensorboard and Integration with wandb.com to log experiments on the cloud. Check out https://cleanrl.costa.sh.
 * **Hackable** and being able to debug *directly* in Python’s interactive shell (Especially if you use the Spyder editor from Anaconda :) ).
 * Simple use of command line arguments for hyper-parameters tuning; no need for arcane configuration files.
@@ -130,6 +130,13 @@ Checkout the demo sites at [https://app.wandb.ai/costa-huang/cleanrltest](https:
         * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
     * [dqn_atari_visual.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari_visual.py)
         * Adds q-values visulization for `dqn_atari.py`.
+- [x] Categorical DQN (C51)
+    * [c51.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/c51.py)
+        * For discrete action space.
+    * [c51_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/c51_atari.py)
+        * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+    * [c51_atari_visual.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/c51_atari_visual.py)
+        * Adds return and q-values visulization for `dqn_atari.py`.
 - [x] Proximal Policy Gradient (PPO) 
     * All of the PPO implementations below are augmented with some code-level optimizations. See https://costa.sh/blog-the-32-implementation-details-of-ppo.html for more details
     * [ppo.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py)

@@ -11,7 +11,7 @@ client = boto3.client('batch')
 
 parser = argparse.ArgumentParser(description='CleanRL Experiment Submission')
 # Common arguments
-parser.add_argument('--exp-script', type=str, default="scripts/td3_mujoco.sh",
+parser.add_argument('--exp-script', type=str, default="scripts/td3_pybullet.sh",
                    help='the name of this experiment')
 parser.add_argument('--job-queue', type=str, default="cleanrl",
                    help='the name of the job queue')
