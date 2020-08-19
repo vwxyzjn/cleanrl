@@ -812,47 +812,76 @@ def act(args, experiment_name, i, q_network, target_network, lock, rollouts_queu
     
     stats_queue.put(["END"])
 
-def learn(args, rb, global_step, rollouts_queue, stats_queue, lock, learn_target_network, target_network, learn_q_network, q_network, optimizer, device):
-    loss_fn = nn.MSELoss()
-    update_step = 0
-    while global_step < (args.total_timesteps):
+# TODO: delete
+# def data_process_test(args, i, global_step, rollouts_queue, data_process_queue, device):
+#     worker_rb_size = args.buffer_size // args.num_actors
+#     rb = CustomPrioritizedReplayBuffer(worker_rb_size, args.pr_alpha)
+#     g = torch.tensor(1).to(device)
+#     data_process_queue.put([g])
+#     data_process_queue.put(hex(id(g)))
+#     g += 3
+#     # g = torch.tensor(3).to(device)
+
+def data_process(args, i, global_step, rollouts_queue, data_process_queue, data_process_back_queues, device):
+    worker_rb_size = args.buffer_size // args.num_actors
+    rb = CustomPrioritizedReplayBuffer(worker_rb_size, args.pr_alpha)
+    while True:
         (storage, new_priorities) = rollouts_queue.get()
         for data, priority in zip(storage, new_priorities):
             obs, action, reward, next_obs, done = data
             rb.add_with_priority(obs, action, reward, next_obs, done, priority)
-        if len(rb) > args.learning_starts:
-            update_step += 1
+        if len(rb) > args.learning_starts // args.num_actors:
             beta = linear_schedule(args.pr_beta0, 1.0, args.total_timesteps, global_step)
             experience = rb.sample(args.batch_size, beta=beta)
             (s_obs, s_actions, s_rewards, s_next_obses, s_dones, s_weights, s_batch_idxes) = experience
-            with torch.no_grad():
-                current_value = learn_q_network.forward(s_next_obses)
-                target_value = learn_target_network.forward(s_next_obses)
-                target_max = target_value.gather(1, torch.max(current_value, 1)[1].unsqueeze(1)).squeeze(1)
-
-                td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
-    
-            old_val = learn_q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
-            td_errors = td_target - old_val
-            loss = (td_errors ** 2).mean()
             
-            # update the weights in the prioritized replay
-            new_priorities = np.abs(td_errors.tolist()) + args.pr_eps
+            s_obs, s_actions, s_rewards, s_next_obses, s_dones = torch.Tensor(s_obs).to(device), torch.LongTensor(s_actions).to(device), torch.Tensor(s_rewards).to(device), torch.Tensor(s_next_obses).to(device), torch.Tensor(s_dones).to(device)
+            data_process_queue.put([i, s_obs, s_actions, s_rewards, s_next_obses, s_dones])
+            new_priorities = data_process_back_queues[i].get()
             rb.update_priorities(s_batch_idxes, new_priorities)
-            
-            stats_queue.put(("losses/td_loss", loss.item(), update_step+args.learning_starts))
+            del new_priorities
+
+def learn(args, rb, global_step, data_process_queue, data_process_back_queues, stats_queue, lock, learn_target_network, target_network, learn_q_network, q_network, optimizer, device):
+    # s = data_process_queue.get()
+    # stats_queue.put(("s", s[0].item(), 0))
+    # stats_queue.put(("s m", data_process_queue.get(), 0))
+    # stats_queue.put(("s m", hex(id(s)), 0))
+
+    update_step = 0
+    while True:
+        update_step += 1
+        experience = data_process_queue.get()
+        (i, s_obs, s_actions, s_rewards, s_next_obses, s_dones) = experience
+        with torch.no_grad():
+            current_value = learn_q_network.network(s_next_obses)
+            target_value = learn_target_network.network(s_next_obses)
+            target_max = target_value.gather(1, torch.max(current_value, 1)[1].unsqueeze(1)).squeeze(1)
+
+            td_target = s_rewards + args.gamma * target_max * (1 - s_dones)
+
+        old_val = learn_q_network.network(s_obs).gather(1, s_actions.view(-1,1)).squeeze()
+        td_errors = td_target - old_val
+        loss = (td_errors ** 2).mean()
         
-            # optimize the midel
-            optimizer.zero_grad()
-            loss.backward()
-            nn.utils.clip_grad_norm_(list(learn_q_network.parameters()), args.max_grad_norm)
-            optimizer.step()
-            q_network.load_state_dict(learn_q_network.state_dict())
+        # update the weights in the prioritized replay
+        new_priorities = np.abs(td_errors.tolist()) + args.pr_eps
+        data_process_back_queues[i].put(new_priorities)
+        # rb.update_priorities(s_batch_idxes, new_priorities)
         
-            # update the target network
-            if update_step % args.target_network_frequency == 0:
-                learn_target_network.load_state_dict(learn_q_network.state_dict())
-                target_network.load_state_dict(learn_q_network.state_dict())
+        stats_queue.put(("losses/td_loss", loss.item(), update_step+args.learning_starts))
+    
+        # optimize the midel
+        optimizer.zero_grad()
+        loss.backward()
+        nn.utils.clip_grad_norm_(list(learn_q_network.parameters()), args.max_grad_norm)
+        optimizer.step()
+        q_network.load_state_dict(learn_q_network.state_dict())
+        del i, s_obs, s_actions, s_rewards, s_next_obses, s_dones
+    
+        # update the target network
+        if update_step % args.target_network_frequency == 0:
+            learn_target_network.load_state_dict(learn_q_network.state_dict())
+            target_network.load_state_dict(learn_q_network.state_dict())
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='DQN agent')
@@ -881,7 +910,9 @@ if __name__ == "__main__":
                         help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
-    parser.add_argument('--num-actor', type=int, default=4,
+    parser.add_argument('--num-actors', type=int, default=4,
+                         help='the replay memory buffer size')
+    parser.add_argument('--num-data-processors', type=int, default=2,
                          help='the replay memory buffer size')
     parser.add_argument('--actor-buffer-size', type=int, default=50,
                          help='the replay memory buffer size')
@@ -907,7 +938,7 @@ if __name__ == "__main__":
                         help="the ending epsilon for exploration")
     parser.add_argument('--exploration-fraction', type=float, default=0.10,
                         help="the fraction of `total-timesteps` it takes from start-e to go end-e")
-    parser.add_argument('--learning-starts', type=int, default=8000,
+    parser.add_argument('--learning-starts', type=int, default=80000,
                         help="timestep to start learning")
     parser.add_argument('--train-frequency', type=int, default=4,
                         help="the frequency of training")
@@ -970,9 +1001,11 @@ if __name__ == "__main__":
     actor_processes = []
     ctx = mp.get_context("forkserver")
     stats_queue = ctx.SimpleQueue()
-    rollouts_queue = ctx.Queue(1000)
+    rollouts_queue = ctx.Queue(100)
+    data_process_queue = ctx.Queue(10)
+    data_process_back_queues = []
 
-    for i in range(4):
+    for i in range(args.num_actors):
         actor = ctx.Process(
             target=act,
             args=(
@@ -990,22 +1023,44 @@ if __name__ == "__main__":
         )
         actor.start()
         actor_processes.append(actor)
+        
+    for i in range(args.num_data_processors):
+        data_process_back_queues += [ctx.Queue(1)]
+        data_processor = ctx.Process(
+            target=data_process,
+            args=(
+                args,
+                i,
+                global_step,
+                rollouts_queue,
+                data_process_queue,
+                data_process_back_queues,
+                device
+            ),
+        )
+        data_processor.start()
+        # actor_processes.append(actor)
+
 
     learner = ctx.Process(
         target=learn,
         args=(
             args, rb, global_step,
-            rollouts_queue, stats_queue, lock, learn_target_network, target_network, learn_q_network, q_network, optimizer, device
+            data_process_queue,
+            data_process_back_queues, stats_queue, lock, learn_target_network, target_network, learn_q_network, q_network, optimizer, device
         ),
     )
     learner.start()
 
     approx_global_step= 0
-    start_time = time.time()
+    
     import timeit
+    timer = timeit.default_timer
     update_step_temp = 0
     try:
         while True:
+            start_global_step = global_step.item()
+            start_time = timer()
             m = stats_queue.get()
             update_step_temp += 1
             if m[0] == "END":
@@ -1018,13 +1073,18 @@ if __name__ == "__main__":
                 approx_global_step += l
                 print(f"global_step={approx_global_step}, episode_reward={r}")
                 writer.add_scalar("charts/episode_reward", r, approx_global_step)
+                writer.add_scalar("charts/qsize", rollouts_queue.qsize(), approx_global_step)
+                writer.add_scalar("charts/fps", (global_step.item() - start_global_step) / (timer() - start_time), approx_global_step)
+                print("FPS: ", (global_step.item() - start_global_step) / (timer() - start_time))
             else:
+                # print(m[0], m[1], global_step)
                 writer.add_scalar(m[0], m[1], global_step)
     except KeyboardInterrupt:
         pass
     finally:
-        learner.join(timeout=1)
+        # learner.join(timeout=1)
         for actor in actor_processes:
             actor.join(timeout=1)
     # env.close()
     writer.close()
+
