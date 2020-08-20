@@ -812,8 +812,6 @@ def act(args, experiment_name, i, q_network, target_network, lock, rollouts_queu
             # the real episode reward is actually the sum of episode reward of 5 lives
             # which we record through `info['episode']['r']` provided by gym.wrappers.RecordEpisodeStatistics
             obs, episode_reward = env.reset(), 0
-    
-    stats_queue.put(["END"])
 
 def data_process(args, i, global_step, rollouts_queue, data_process_queue, data_process_back_queues, device):
     worker_rb_size = args.buffer_size // args.num_data_processors
@@ -1040,25 +1038,20 @@ if __name__ == "__main__":
     )
     learner.start()
 
-    approx_global_step= 0
-    
     import timeit
     timer = timeit.default_timer
-    update_step_temp = 0
     try:
         while global_step < args.total_timesteps:
             start_global_step = global_step.item()
             start_time = timer()
             m = stats_queue.get()
-            update_step_temp += 1
             if m[0] == "charts/episode_reward":
                 r, l = m[1], m[2]
-                approx_global_step += l
-                print(f"global_step={approx_global_step}, episode_reward={r}")
-                writer.add_scalar("charts/episode_reward", r, approx_global_step)
-                writer.add_scalar("charts/rollouts_queue_size", rollouts_queue.qsize(), approx_global_step)
-                writer.add_scalar("charts/data_process_queue_size", data_process_queue.qsize(), approx_global_step)
-                writer.add_scalar("charts/fps", (global_step.item() - start_global_step) / (timer() - start_time), approx_global_step)
+                print(f"global_step={global_step}, episode_reward={r}")
+                writer.add_scalar("charts/episode_reward", r, global_step)
+                writer.add_scalar("charts/rollouts_queue_size", rollouts_queue.qsize(), global_step)
+                writer.add_scalar("charts/data_process_queue_size", data_process_queue.qsize(), global_step)
+                writer.add_scalar("charts/fps", (global_step.item() - start_global_step) / (timer() - start_time), global_step)
                 print("FPS: ", (global_step.item() - start_global_step) / (timer() - start_time))
             else:
                 # print(m[0], m[1], global_step)
