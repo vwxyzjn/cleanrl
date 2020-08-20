@@ -816,14 +816,14 @@ def act(args, experiment_name, i, q_network, target_network, lock, rollouts_queu
     stats_queue.put(["END"])
 
 def data_process(args, i, global_step, rollouts_queue, data_process_queue, data_process_back_queues, device):
-    worker_rb_size = args.buffer_size // args.num_actors
+    worker_rb_size = args.buffer_size // args.num_data_processors
     rb = CustomPrioritizedReplayBuffer(worker_rb_size, args.pr_alpha)
     while True:
         (storage, new_priorities) = rollouts_queue.get()
         for data, priority in zip(storage, new_priorities):
             obs, action, reward, next_obs, done = data
             rb.add_with_priority(obs, action, reward, next_obs, done, priority)
-        if len(rb) > args.learning_starts // args.num_actors:
+        if len(rb) > args.learning_starts // args.num_data_processors:
             beta = linear_schedule(args.pr_beta0, 1.0, args.total_timesteps, global_step)
             experience = rb.sample(args.batch_size, beta=beta)
             (s_obs, s_actions, s_rewards, s_next_obses, s_dones, s_weights, s_batch_idxes) = experience
@@ -1056,7 +1056,8 @@ if __name__ == "__main__":
                 approx_global_step += l
                 print(f"global_step={approx_global_step}, episode_reward={r}")
                 writer.add_scalar("charts/episode_reward", r, approx_global_step)
-                writer.add_scalar("charts/qsize", rollouts_queue.qsize(), approx_global_step)
+                writer.add_scalar("charts/rollouts_queue_size", rollouts_queue.qsize(), approx_global_step)
+                writer.add_scalar("charts/data_process_queue_size", data_process_queue.qsize(), approx_global_step)
                 writer.add_scalar("charts/fps", (global_step.item() - start_global_step) / (timer() - start_time), approx_global_step)
                 print("FPS: ", (global_step.item() - start_global_step) / (timer() - start_time))
             else:
