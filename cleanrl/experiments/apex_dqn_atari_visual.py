@@ -668,6 +668,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from PIL import Image
 
+
+import glob
+
 class QValueVisualizationWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
@@ -754,7 +757,7 @@ def act(args, experiment_name, i, q_network, target_network, lock, rollouts_queu
     storage = []
     episode_reward = 0
     update_step = 0
-    while global_step < (args.total_timesteps):
+    while True:
         update_step += 1
         # global_step *= args.num_actor
         # ALGO LOGIC: put action logic here
@@ -812,16 +815,6 @@ def act(args, experiment_name, i, q_network, target_network, lock, rollouts_queu
     
     stats_queue.put(["END"])
 
-# TODO: delete
-# def data_process_test(args, i, global_step, rollouts_queue, data_process_queue, device):
-#     worker_rb_size = args.buffer_size // args.num_actors
-#     rb = CustomPrioritizedReplayBuffer(worker_rb_size, args.pr_alpha)
-#     g = torch.tensor(1).to(device)
-#     data_process_queue.put([g])
-#     data_process_queue.put(hex(id(g)))
-#     g += 3
-#     # g = torch.tensor(3).to(device)
-
 def data_process(args, i, global_step, rollouts_queue, data_process_queue, data_process_back_queues, device):
     worker_rb_size = args.buffer_size // args.num_actors
     rb = CustomPrioritizedReplayBuffer(worker_rb_size, args.pr_alpha)
@@ -842,11 +835,6 @@ def data_process(args, i, global_step, rollouts_queue, data_process_queue, data_
             del new_priorities
 
 def learn(args, rb, global_step, data_process_queue, data_process_back_queues, stats_queue, lock, learn_target_network, target_network, learn_q_network, q_network, optimizer, device):
-    # s = data_process_queue.get()
-    # stats_queue.put(("s", s[0].item(), 0))
-    # stats_queue.put(("s m", data_process_queue.get(), 0))
-    # stats_queue.put(("s m", hex(id(s)), 0))
-
     update_step = 0
     while True:
         update_step += 1
@@ -866,7 +854,6 @@ def learn(args, rb, global_step, data_process_queue, data_process_back_queues, s
         # update the weights in the prioritized replay
         new_priorities = np.abs(td_errors.tolist()) + args.pr_eps
         data_process_back_queues[i].put(new_priorities)
-        # rb.update_priorities(s_batch_idxes, new_priorities)
         
         stats_queue.put(("losses/td_loss", loss.item(), update_step+args.learning_starts))
     
@@ -999,6 +986,7 @@ if __name__ == "__main__":
     global_step = torch.tensor(0)
     global_step.share_memory_()
     actor_processes = []
+    data_processor_processes = []
     ctx = mp.get_context("forkserver")
     stats_queue = ctx.SimpleQueue()
     rollouts_queue = ctx.Queue(100)
@@ -1039,7 +1027,7 @@ if __name__ == "__main__":
             ),
         )
         data_processor.start()
-        # actor_processes.append(actor)
+        data_processor_processes.append(data_processor)
 
 
     learner = ctx.Process(
@@ -1058,17 +1046,12 @@ if __name__ == "__main__":
     timer = timeit.default_timer
     update_step_temp = 0
     try:
-        while True:
+        while global_step < args.total_timesteps:
             start_global_step = global_step.item()
             start_time = timer()
             m = stats_queue.get()
             update_step_temp += 1
-            if m[0] == "END":
-                for actor in actor_processes:
-                    actor.join()
-                print("broke")
-                break
-            elif m[0] == "charts/episode_reward":
+            if m[0] == "charts/episode_reward":
                 r, l = m[1], m[2]
                 approx_global_step += l
                 print(f"global_step={approx_global_step}, episode_reward={r}")
@@ -1082,9 +1065,18 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         pass
     finally:
-        # learner.join(timeout=1)
+        learner.terminate()
+        learner.join(timeout=1)
         for actor in actor_processes:
+            actor.terminate()
             actor.join(timeout=1)
+        for data_processor in data_processor_processes:
+            data_processor.terminate()
+            data_processor.join(timeout=1)
     # env.close()
     writer.close()
-
+    # if args.prod_mode:
+    #     glob.glob('./*.txt')
+    #     wandb.save(f'videos/{experiment_name}')
+    if args.prod_mode:
+        wandb.save(f'videos/{experiment_name}')
