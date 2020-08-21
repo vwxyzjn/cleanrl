@@ -5,9 +5,8 @@ do
     --gym-id CartPole-v1 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --wandb-entity cleanrl \
     --prod-mode \
-    --cuda \
+    --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
     ) >& /dev/null &
@@ -19,9 +18,8 @@ do
     --gym-id Acrobot-v1 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --wandb-entity cleanrl \
     --prod-mode \
-    --cuda \
+    --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
     ) >& /dev/null &
@@ -33,9 +31,8 @@ do
     --gym-id MountainCar-v0 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --wandb-entity cleanrl \
     --prod-mode \
-    --cuda \
+    --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
     ) >& /dev/null &
@@ -47,9 +44,8 @@ do
     --gym-id LunarLander-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --wandb-entity cleanrl \
     --prod-mode \
-    --cuda \
+    --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
     ) >& /dev/null &
