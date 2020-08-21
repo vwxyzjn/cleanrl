@@ -667,8 +667,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 from PIL import Image
-
-
 import glob
 
 class QValueVisualizationWrapper(gym.Wrapper):
@@ -930,7 +928,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
-    
+
     # TRY NOT TO MODIFY: setup the environment
     experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     writer = SummaryWriter(f"runs/{experiment_name}")
@@ -967,30 +965,27 @@ if __name__ == "__main__":
     rb = CustomPrioritizedReplayBuffer(args.buffer_size, args.pr_alpha)
 
     q_network = QNetwork()
-    q_network.share_memory()
     target_network = QNetwork()
-    target_network.share_memory()
     target_network.load_state_dict(q_network.state_dict())
-    print(device.__repr__())
-    print(q_network)
     learn_q_network = QNetwork(device).to(device)
-    learn_q_network.share_memory()
     learn_q_network.load_state_dict(q_network.state_dict())
     learn_target_network = QNetwork(device).to(device)
-    learn_target_network.share_memory()
     learn_target_network.load_state_dict(q_network.state_dict())
     optimizer = optim.Adam(learn_q_network.parameters(), lr=args.learning_rate)
-    
+
+    print(device.__repr__())
+    print(q_network)
+
     global_step = torch.tensor(0)
     global_step.share_memory_()
     actor_processes = []
     data_processor_processes = []
     ctx = mp.get_context("forkserver")
-    stats_queue = ctx.SimpleQueue()
-    rollouts_queue = ctx.Queue(100)
+    stats_queue = ctx.Queue(10)
+    rollouts_queue = ctx.Queue(10)
     data_process_queue = ctx.Queue(10)
     data_process_back_queues = []
-
+    
     for i in range(args.num_actors):
         actor = ctx.Process(
             target=act,
@@ -1040,6 +1035,7 @@ if __name__ == "__main__":
 
     import timeit
     timer = timeit.default_timer
+    existing_video_files = []
     try:
         while global_step < args.total_timesteps:
             start_global_step = global_step.item()
@@ -1049,6 +1045,7 @@ if __name__ == "__main__":
                 r, l = m[1], m[2]
                 print(f"global_step={global_step}, episode_reward={r}")
                 writer.add_scalar("charts/episode_reward", r, global_step)
+                writer.add_scalar("charts/stats_queue_size", stats_queue.qsize(), global_step)
                 writer.add_scalar("charts/rollouts_queue_size", rollouts_queue.qsize(), global_step)
                 writer.add_scalar("charts/data_process_queue_size", data_process_queue.qsize(), global_step)
                 writer.add_scalar("charts/fps", (global_step.item() - start_global_step) / (timer() - start_time), global_step)
@@ -1056,6 +1053,14 @@ if __name__ == "__main__":
             else:
                 # print(m[0], m[1], global_step)
                 writer.add_scalar(m[0], m[1], global_step)
+            if args.capture_video and args.prod_mode:
+                video_files = glob.glob(f'videos/{experiment_name}/*.mp4')
+                for video_file in video_files:
+                    if video_file not in existing_video_files:
+                        existing_video_files += [video_file]
+                        print(video_file)
+                        if len(existing_video_files) > 1:
+                            wandb.log({"video.0": wandb.Video(existing_video_files[-2])})
     except KeyboardInterrupt:
         pass
     finally:
@@ -1067,10 +1072,7 @@ if __name__ == "__main__":
         for data_processor in data_processor_processes:
             data_processor.terminate()
             data_processor.join(timeout=1)
+        if args.capture_video and args.prod_mode:
+            wandb.log({"video.0": wandb.Video(existing_video_files[-1])})
     # env.close()
     writer.close()
-    # if args.prod_mode:
-    #     glob.glob('./*.txt')
-    #     wandb.save(f'videos/{experiment_name}')
-    if args.prod_mode:
-        wandb.save(f'videos/{experiment_name}')
