@@ -84,29 +84,3 @@ response = client.create_job_queue(
 )
 print(response)
 print("job queue created \n=============================")
-
-print("creating job definition")
-response = client.register_job_definition(
-    jobDefinitionName='cleanrl_gpu',
-    type='container',
-    containerProperties={
-        'image': 'vwxyzjn/cleanrl:latest',
-        'vcpus': 4,
-        'memory': 60000,
-        'privileged': True,
-        'resourceRequirements': [
-            {
-                'value': '1',
-                'type': 'GPU'
-            },
-        ],
-    },
-    retryStrategy={
-        'attempts': 1
-    },
-    timeout={
-        'attemptDurationSeconds': 1800
-    }
-)
-print(response)
-print("job definition created \n=============================")

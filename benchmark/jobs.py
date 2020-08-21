@@ -16,6 +16,8 @@ parser.add_argument('--exp-script', type=str, default="scripts/td3_pybullet.sh",
 parser.add_argument('--job-queue', type=str, default="cleanrl",
                    help='the name of the job queue')
 parser.add_argument('--wandb-key', type=str, default="",
+                   help='the wandb key. If not provided, the script will try to read the env variable `WANDB_KEY`')
+parser.add_argument('--docker-repo', type=str, default="vwxyzjn/gym-microrts:latest",
                    help='the name of the job queue')
 parser.add_argument('--job-definition', type=str, default="cleanrl",
                    help='the name of the job definition')
@@ -29,8 +31,8 @@ parser.add_argument('--num-gpu', type=int, default=0,
                    help='number of gpu per experiment')
 parser.add_argument('--num-hours', type=float, default=16.0,
                    help='number of hours allocated experiment')
-parser.add_argument('--upload-files', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                    help='if toggled, script will need to be uploaded')
+parser.add_argument('--upload-files-baseurl', type=str, default="",
+                   help='the baseurl of your website if you decide to upload files')
 parser.add_argument('--submit-aws', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                     help='if toggled, script will need to be uploaded')
 args = parser.parse_args()
@@ -40,11 +42,6 @@ args = parser.parse_args()
 if not args.wandb_key:
     args.wandb_key = os.environ['WANDB_KEY']
 assert len(args.wandb_key) > 0, "set the environment variable `WANDB_KEY` to your WANDB API key, something like `export WANDB_KEY=fdsfdsfdsfads` "
-if args.upload_files:
-    response = requests.get('http://127.0.0.1:4040/api/tunnels')
-    content = json.loads(response.content.decode())
-    assert response.status_code == 200
-    url = content['tunnels'][0]['public_url']
 # extract runs from bash scripts
 final_run_cmds = []
 with open(args.exp_script) as f:
@@ -55,19 +52,17 @@ for run_match in runs_match:
     # print(run_match_str)
     for seed in range(1,1+args.num_seed):
         final_run_cmds += [run_match_str.replace("$seed", str(seed)).split()]
-        
-        if args.upload_files:
+        if args.upload_files_baseurl:
             file_name = final_run_cmds[-1][1]
-            link = url + '/' + file_name
+            link = args.upload_files_baseurl + '/' + file_name
             final_run_cmds[-1] = ['wget', link, ';'] + final_run_cmds[-1]
 
 # use docker directly
 if not args.submit_aws:
     cores = 40
-    repo = "vwxyzjn/cleanrl:latest"
     current_core = 0
     for final_run_cmd in final_run_cmds:
-        print(f'docker run -d --cpuset-cpus="{current_core}" -e WANDB={args.wandb_key} {repo} ' + 
+        print(f'docker run -d --cpuset-cpus="{current_core}" -e WANDB={args.wandb_key} {args.docker_repo} ' + 
             '/bin/bash -c "' + " ".join(final_run_cmd) + '"')
         current_core = (current_core + 1) % cores
 
@@ -80,7 +75,7 @@ if args.submit_aws:
         if args.num_gpu:
             resources_requirements = [
                 {
-                    'value': '1',
+                    'value': str(args.num_gpu),
                     'type': 'GPU'
                 },
             ]

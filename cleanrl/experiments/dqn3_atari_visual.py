@@ -611,6 +611,48 @@ class PrioritizedReplayBuffer(ReplayBuffer):
 
             self._max_priority = max(self._max_priority, priority)
 
+# https://github.com/younggyoseo/Ape-X/blob/master/memory.py
+class CustomPrioritizedReplayBuffer(PrioritizedReplayBuffer):
+    """
+    Customized PrioritizedReplayBuffer class
+    1. Edited add method to receive priority as input. This enables to enter priority when adding sample.
+    This efficiently merges two methods (add, update_priorities) which enables less shared memory lock.
+    2. If we save obs as numpy.array, this will decompress LazyFrame which leads to memory explosion.
+    To achieve memory efficiency, It is necessary to remove np.array(obs) from _encode_sample.
+    """
+    def __init__(self, size, alpha):
+        super(CustomPrioritizedReplayBuffer, self).__init__(size, alpha)
+
+    def add_with_priority(self, state, action, reward, next_state, done, priority):
+        idx = self._next_idx
+        data = (state, action, reward, next_state, done)
+
+        if self._next_idx >= len(self._storage):
+            self._storage.append(data)
+        else:
+            self._storage[self._next_idx] = data
+        self._next_idx = (self._next_idx + 1) % self._maxsize
+
+        self._it_sum[idx] = priority ** self._alpha
+        self._it_min[idx] = priority ** self._alpha
+        self._max_priority = max(self._max_priority, priority)
+
+    # def _encode_sample(self, idxes):
+    #     obses_t, actions, rewards, obses_tp1, dones = [], [], [], [], []
+    #     for i in idxes:
+    #         data = self._storage[i]
+    #         obs_t, action, reward, obs_tp1, done = data
+    #         obses_t.append(obs_t)
+    #         actions.append(np.array(action, copy=False))
+    #         rewards.append(np.array(reward, copy=False))
+    #         obses_tp1.append(obs_tp1)
+    #         dones.append(np.array(done, copy=False))
+    #     return (obses_t,
+    #             np.array(actions),
+    #             np.array(rewards),
+    #             obses_tp1,
+    #             np.array(dones))
+
 # Reference: https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf
 
 import torch
