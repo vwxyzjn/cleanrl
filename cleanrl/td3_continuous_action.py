@@ -96,13 +96,6 @@ env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 # respect the default timelimit
 assert isinstance(env.action_space, Box), "only continuous action space is supported"
-assert isinstance(env, TimeLimit) or int(args.episode_length), "the gym env does not have a built in TimeLimit, please specify by using --episode-length"
-if isinstance(env, TimeLimit):
-    if int(args.episode_length):
-        env._max_episode_steps = int(args.episode_length)
-    args.episode_length = env._max_episode_steps
-else:
-    env = TimeLimit(env, int(args.episode_length))
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
