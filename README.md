@@ -72,6 +72,7 @@ Good luck have fun :rocket:
 ## Open RL Benchmark (https://benchmark.cleanrl.dev)
 <img src="wandb.png">
 We provide a benchmark of popular Deep Reinforcement Learning algorithms in 34+ games with unprecedented level of transparency, openness, and reproducibility. Our Open RL Benchmark ensures the quality of our implmentation. We log all of our experiments using Weights and Biases so that you can check the following information:
+
 * hyper-parameters (check it at the [Overview](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/overview?workspace=user-costa-huang) tab of a run)
 * training metrics (e.g. episode reward, training losses. Check it at the [Charts](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg?workspace=user-costa-huang) tab of a run)
 * videos of the agents playing the game (check it at the [Charts](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg?workspace=user-costa-huang) tab of a run)
