@@ -71,9 +71,7 @@ Good luck have fun :rocket:
 
 ## Open RL Benchmark (https://benchmark.cleanrl.dev)
 <img src="wandb.png">
-We provide a benchmark of popular Deep Reinforcement Learning algorithms in 34+ games with unprecedented level of transparency, openness, and reproducibility.
-
-All of our implementation is benchmarked to ensure quality. We log all of our experiments using Weights and Biases so that you can check the following information:
+We provide a benchmark of popular Deep Reinforcement Learning algorithms in 34+ games with unprecedented level of transparency, openness, and reproducibility. Our Open RL Benchmark ensures the quality of our implmentation. We log all of our experiments using Weights and Biases so that you can check the following information:
 * hyper-parameters (check it at the [Overview](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/overview?workspace=user-costa-huang) tab of a run)
 * training metrics (e.g. episode reward, training losses. Check it at the [Charts](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg?workspace=user-costa-huang) tab of a run)
 * videos of the agents playing the game (check it at the [Charts](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg?workspace=user-costa-huang) tab of a run)
@@ -86,7 +84,7 @@ https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/files/requirements.
 https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/code?workspace=user-costa-huang) tab of a run))
 * the exact commands to reproduce it (check it at the [Overview](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/overview?workspace=user-costa-huang) tab of a run. Public access is blocked by https://github.com/wandb/client/issues/1177). 
 
-See the table below for the performance of selected algorithms and environments
+Our implmentation performs competitively against published results. See the table below for the performance of selected algorithms and environments
 
 | gym_id                      | c51_atari_visual   | dqn_atari_visual   | ppo_atari_visual   |
 |:----------------------------|:-------------------|:-------------------|:-------------------|
