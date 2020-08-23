@@ -87,7 +87,7 @@ https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/code?workspace=user
 
 Our implmentation performs competitively against published results. See the table below for selected examples
 
-|                       | c51_atari_visual   | dqn_atari_visual   | ppo_atari_visual   |
+|                       | c51_atari_visual.py   | dqn_atari_visual.py   | ppo_atari_visual.py   |
 |:----------------------------|:-------------------|:-------------------|:-------------------|
 | BeamRiderNoFrameskip-v4     | 9128.00 ± 0.00     | 6156.13 ± 461.47   | 1881.11 ± 166.89   |
 | QbertNoFrameskip-v4         | 13814.24 ± 3357.99 | 15241.67 ± 0.00    | 18755.36 ± 205.36  |
@@ -95,7 +95,7 @@ Our implmentation performs competitively against published results. See the tabl
 | PongNoFrameskip-v4          | 16.33 ± 0.00       | 19.33 ± 0.33       | 20.89 ± 0.00       |
 | BreakoutNoFrameskip-v4      | 404.11 ± 0.00      | 354.78 ± 9.22      | 413.73 ± 15.39     |
 
-|                    | ddpg_continuous_action   | td3_continuous_action   | ppo_continuous_action   |
+|                    | ddpg_continuous_action.py   | td3_continuous_action.py   | ppo_continuous_action.py   |
 |:-------------------------|:-------------------------|:------------------------|:------------------------|
 | Ant-v2                   | 503.32 ± 18.70           | 5368.18 ± 771.11        | 3368.17 ± 759.13        |
 | Humanoid-v2              | 942.16 ± 436.22          | 6334.40 ± 140.05        | 918.19 ± 102.71         |
