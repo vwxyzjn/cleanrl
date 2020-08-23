@@ -4,21 +4,21 @@
 [![Mailing List : cleanrl](https://img.shields.io/badge/mailing%20list-cleanrl-orange.svg)](https://groups.google.com/forum/#!forum/rlimplementation/join)
 [![Meeting Recordings : cleanrl](https://img.shields.io/badge/meeting%20recordings-cleanrl-orange.svg)](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
 
-CleanRL dedicates to be the most user-friendly Reinforcement Learning library. The implementation is clean, simple, and *self-contained*; you don't have to look through dozens of files to understand what is going on. Just read, print out a few things and you can easily customize.
 
-At the same time, CleanRL tries to supply many research-friendly features such as cloud experiment management, support for continuous and discrete observation and action spaces, video recording of the game play, etc. These features will be very helpful for doing research, especially the video recording feature that *allows you to visually inspect the agents' behavior at various stages of the training*.
+CleanRL is a Deep Reinforcement Learning library that provides high-quality single-file implementation with research-friendly features. The implementation is clean and simple, yet we can scale it to run thousands of experiments at scale using AWS Batch. The highlight features of CleanRL are:
+
+<!-- At the same time, CleanRL tries to supply many research-friendly features such as cloud experiment management, support for continuous and discrete observation and action spaces, video recording of the game play, etc. These features will be very helpful for doing research, especially the video recording feature that *allows you to visually inspect the agents' behavior at various stages of the training*. -->
+
+
+
+* Single-file implementation
+   * *Every detail about an algorithm is put into its own file.* It is therefore easier to fully understand an algortihm and do research with.
+* Tensorboard Logging
+* Videos of Gameplay Capturing
+* Experiment Management with [Weights and Biases](wandb.com)
+* Cloud Integration with docker and AWS 
 
 Good luck have fun :rocket:
-
-
-### This project is WIP currently at 0.2.1 release, expect breaking changes.
-
-The highlight features of this repo are:
-
-* Our implementation is self-contained in a single file. *Everything* about an algorithm is right there! Easy to understand and do research with.
-* Easy logging of training processes using Tensorboard and Integration with wandb.com to log experiments on the cloud. Check out https://cleanrl.costa.sh.
-* **Hackable** and being able to debug *directly* in Python’s interactive shell (Especially if you use the Spyder editor from Anaconda :) ).
-* Simple use of command line arguments for hyper-parameters tuning; no need for arcane configuration files.
 
 ## Algorithms Implemented
 - [x] ~~Advantage Actor Critic (A2C)~~
