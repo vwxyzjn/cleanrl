@@ -85,7 +85,7 @@ https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/logs?workspace=user
 https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/files/requirements.txt) tab of a run))
 * source code (this is especially helpful since we have *single file implementation*, so we know exactly all of the code that is responsible for the run. Check it at the [Code](
 https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/code?workspace=user-costa-huang) tab of a run))
-* the exact commands to reproduce it (check it at the [Overview](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/overview?workspace=user-costa-huang) tab of a run. Public access is blocked by https://github.com/wandb/client/issues/1177). 
+* (Currently not working. Public access is blocked by https://github.com/wandb/client/issues/1177) the exact commands to reproduce it (check it at the [Overview](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/overview?workspace=user-costa-huang) tab of a run.
 
 Our implmentation performs competitively against published results. See the table below for selected examples
 
