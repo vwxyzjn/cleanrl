@@ -159,57 +159,6 @@ We have a [Slack Community](https://join.slack.com/t/cleanrl/shared_invite/zt-cj
 In addition, we also have a monthly development cycle to implement new RL algorithms. Feel free to participate or ask questions there, too. You can sign up for our mailing list at our [Google Groups](https://groups.google.com/forum/#!forum/rlimplementation/join) to receive event RVSP which contains the Hangout video call address every week. Our past video recordings are available at [YouTube](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
 
 
-
-
-## User's Guide for Researcher (Please read this if consider using CleanRL)
-
-CleanRL focuses on early and mid stages of RL research, where one would try to understand ideas and do hacky experimentation with the algorithms. If your goal does not include messing with different parts of RL algorithms, perhaps library like [stable-baselines](https://github.com/hill-a/stable-baselines), [ray](https://github.com/ray-project/ray), or [catalyst](https://github.com/catalyst-team/catalyst) would be more suited for your use cases since they are built to be highly optimized, concurrent and fast.
-
-CleanRL, however, is built to provide a simplified and streamlined approach to conduct RL experiment. Let's give an example. Say you are interested in implementing the [GAE (Generalized Advantage Estimation) technique](https://arxiv.org/abs/1506.02438) to see if it improves the A2C's performance on `CartPole-v0`. The workflow roughly looks like this:
-
-1. Make a copy of `cleanrl/cleanrl/a2c.py` to `cleanrl/cleanrl/experiments/a2c_gae.py`
-2. Implement the GAE technique. This should relatively simple because you don't have to navigate into dozens of files and find the some function named `compute_advantages()`
-3. Run `python cleanrl/cleanrl/experiments/a2c_gae.py` in the terminal or using an interactive shell like [Spyder](https://www.spyder-ide.org/). The latter gives you the ability to stop the program at any time and execute arbitrary code; so you can program on the fly.
-4. Open another terminal and type `tensorboard --logdir cleanrl/cleanrl/experiments/runs` and checkout the `episode_rewards`, `losses/policy_loss`, etc. If something appears not right, go to step 2 and continue.
-5. If the technique works, you want to see if it works with other games such as `Taxi-v3` or different parameters as well. Execute 
-    ```
-    $ wandb login ${WANBD_API_KEY}
-    $ for seed in {1..2}
-        do
-            (sleep 0.3 && nohup python a2c_gae.py \
-            --seed $seed \
-            --gym-id CartPole-v0 \
-            --total-timesteps 30000 \
-            --wandb-project-name myRLproject \
-            --prod-mode
-            ) >& /dev/null &
-        done
-    $ for seed in {1..2}
-        do
-            (sleep 0.3 && nohup python a2c_gae.py \
-            --seed $seed \
-            --gym-id Taxi-v3 \   # different env
-            --total-timesteps 30000 \
-            --gamma 0.8 \ # a lower discount factor
-            --wandb-project-name myRLproject \
-            --prod-mode
-            ) >& /dev/null &
-        done
-    ```
-    And then you can monitor the performances and keep good track of all the parameters used in your experiments
-6. Continue this process
-
-This pipline described above should give you an idea of how to use CleanRL for your research.
-
-## Feature TODOs:
-
-- [x] Add automatic benchmark 
-    - Completed. See https://app.wandb.ai/costa-huang/cleanrl.benchmark/reports?view=costa-huang%2Fbenchmark
-- [x] Support continuous action spaces
-    - Preliminary support with [a2c_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/a2c_continuous_action.py)
-- [x] Support using GPU
-- [ ] Support using multiprocessing
-
 ## References
 
 I have been heavily inspired by the many repos and blog posts. Below contains a incomplete list of them.
