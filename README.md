@@ -158,6 +158,21 @@ We have a [Slack Community](https://join.slack.com/t/cleanrl/shared_invite/zt-cj
 
 In addition, we also have a monthly development cycle to implement new RL algorithms. Feel free to participate or ask questions there, too. You can sign up for our mailing list at our [Google Groups](https://groups.google.com/forum/#!forum/rlimplementation/join) to receive event RVSP which contains the Hangout video call address every week. Our past video recordings are available at [YouTube](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
 
+## Citing our project
+
+Please consider using the following Bibtex entry:
+
+```
+@misc{cleanrl,
+  author = {Shengyi Huang, Rousslan Dossa, and Chang Ye},
+  title = {CleanRL: High-quality Single-file Implementation of Deep Reinforcement Learning algorithms},
+  year = {2020},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/vwxyzjn/cleanrl/}},
+}
+```
+
 
 ## References
 
