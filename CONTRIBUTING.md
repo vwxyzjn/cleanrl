@@ -2,8 +2,6 @@
 
 Thank you for being interested in contributing to our project. All kinds of contribution are welcome. 
 
-There are three main areas where 
-
 Below are some steps to help you get started:
 
 1. 👋 Join our slack channel at https://join.slack.com/t/cleanrl/shared_invite/zt-cj64t5eq-xKZ6sD0KPGFKu1QicHEvVg
