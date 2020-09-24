@@ -11,14 +11,14 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 
 
 
-* Single-file implementation
+* 📜 Single-file implementation
    * *Every detail about an algorithm is put into the algorithm's own file.* It is therefore easier to fully understand an algortihm and do research with.
-* Benchmarked Implementation (7+ algorithms and 34+ games at https://benchmark.cleanrl.dev)
-* Tensorboard Logging
-* Local Reproducibility via Seeding
-* Videos of Gameplay Capturing
-* Experiment Management with [Weights and Biases](wandb.com)
-* Cloud Integration with docker and AWS 
+* 📊 Benchmarked Implementation (7+ algorithms and 34+ games at https://benchmark.cleanrl.dev)
+* 📈 Tensorboard Logging
+* 🪛 Local Reproducibility via Seeding
+* 🎮 Videos of Gameplay Capturing
+* 🧫 Experiment Management with [Weights and Biases](wandb.com)
+* 💸 Cloud Integration with docker and AWS 
 
 Good luck have fun :rocket:
 
@@ -71,9 +71,9 @@ Good luck have fun :rocket:
         * [experiments/a2c_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experiments/a2c_continuous_action.py)
             * (Not recommended for using) For continuous action space.
 
-## Open RL Benchmark (https://benchmark.cleanrl.dev)
-<img src="wandb.png">
-We provide a benchmark of popular Deep Reinforcement Learning algorithms in 34+ games with a new level of transparency, openness, and reproducibility. Our Open RL Benchmark ensures the quality of our implmentation. We log all of our experiments using Weights and Biases so that you can check the following information:
+## Open RL Benchmark
+
+Open RL Benchmark (https://benchmark.cleanrl.dev) is our project to create a comprehensive benchmark of popular DRL algorithms in a variety of games, **where everything about the benchmark is open**. That is, you can check the following information for each experiment:
 
 * hyper-parameters (check it at the [Overview](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/overview?workspace=user-costa-huang) tab of a run)
 * training metrics (e.g. episode reward, training losses. Check it at the [Charts](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg?workspace=user-costa-huang) tab of a run)
@@ -87,7 +87,11 @@ https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/files/requirements.
 https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/code?workspace=user-costa-huang) tab of a run))
 * (Currently not working. Public access is blocked by https://github.com/wandb/client/issues/1177) the exact commands to reproduce it (check it at the [Overview](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/overview?workspace=user-costa-huang) tab of a run.
 
-Our implmentation performs competitively against published results. See the table below for selected examples
+We hope it could bring a new level of transparency, openness, and reproducibility. Our plan is to 
+benchmark as many algorithms and games as possible. If you are interested, please join us and contribute
+more algorithms and games. To get started, check out our [contribution guide](https://github.com/vwxyzjn/cleanrl/blob/master/CONTRIBUTING.md) and our [roadmap for the Open RL Benchmark](https://github.com/vwxyzjn/cleanrl/projects/1)
+
+We currently support  34+ games and our implmentation performs competitively against published results. See the table below for selected examples
 
 |                       | c51_atari_visual.py   | dqn_atari_visual.py   | ppo_atari_visual.py   |
 |:----------------------------|:-------------------|:-------------------|:-------------------|
@@ -157,6 +161,26 @@ Checkout the demo sites at [https://app.wandb.ai/costa-huang/cleanrltest](https:
 We have a [Slack Community](https://join.slack.com/t/cleanrl/shared_invite/zt-cj64t5eq-xKZ6sD0KPGFKu1QicHEvVg) for support. Feel free to ask questions. Posting in [Github Issues](https://github.com/vwxyzjn/cleanrl/issues) and PRs are also welcome. 
 
 In addition, we also have a monthly development cycle to implement new RL algorithms. Feel free to participate or ask questions there, too. You can sign up for our mailing list at our [Google Groups](https://groups.google.com/forum/#!forum/rlimplementation/join) to receive event RVSP which contains the Hangout video call address every week. Our past video recordings are available at [YouTube](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
+
+## Contribution
+
+We have a short contribution guide here https://github.com/vwxyzjn/cleanrl/blob/master/CONTRIBUTING.md. Consider adding new algorithms 
+or test new games on the Open RL Benchmark (https://benchmark.cleanrl.dev)
+
+## Citing our project
+
+Please consider using the following Bibtex entry:
+
+```
+@misc{cleanrl,
+  author = {Shengyi Huang, Rousslan Dossa, and Chang Ye},
+  title = {CleanRL: High-quality Single-file Implementation of Deep Reinforcement Learning algorithms},
+  year = {2020},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/vwxyzjn/cleanrl/}},
+}
+```
 
 
 ## References
