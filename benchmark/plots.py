@@ -6,8 +6,6 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 import os
-api = wandb.Api()
-
 import argparse
 from distutils.util import strtobool
 
@@ -42,16 +40,11 @@ parser.add_argument('--y-lim-bottom', type=float, default=0.0,
 parser.add_argument('--output-format', type=str, default="svg",
                    help='either `pdf`, `png`, or `svg`')
 args = parser.parse_args()
+api = wandb.Api()
 
 exp_convert_dict = {
-    'ppo_positive_reward-positive_likelihood-0-': 'sparse reward - no PLO',
-    'ppo': 'sparse reward',
-    'ppo_ac_positive_reward-shift-2000000--adaptation-2000000--positive_likelihood-0-': 'action guidance - multi-agent  w/ PLO',
-    'ppo_ac_positive_reward-shift-2000000--adaptation-7000000--positive_likelihood-0-': 'action guidance - long adaptation w/ PLO',
-    'ppo_ac_positive_reward-shift-800000--adaptation-1000000--positive_likelihood-0-': 'action guidance - short adaptation w/ PLO',
-    'ppo_ac_positive_reward-shift-2000000--adaptation-7000000--positive_likelihood-1-': 'action guidance - long adaptation',
-    'ppo_ac_positive_reward-shift-800000--adaptation-1000000--positive_likelihood-1-': 'action guidance - short adaptation',
-    'pposhaped': 'shaped reward',
+    # "ppo_atari_visual": "ppo",
+    # "ppo_continuous_action": "ppo"
 }
 
 # args.feature_of_interest = 'charts/episode_reward'
