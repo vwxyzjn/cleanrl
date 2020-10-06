@@ -485,7 +485,7 @@ class Scale(nn.Module):
     def forward(self, x):
         return x * self.scale
 class QNetwork(nn.Module):
-    def __init__(self, frames=4):
+    def __init__(self, env, frames=4):
         super(QNetwork, self).__init__()
         self.network = nn.Sequential(
             Scale(1/255),
@@ -501,7 +501,7 @@ class QNetwork(nn.Module):
             Linear0(512, env.action_space.n)
         )
 
-    def forward(self, x):
+    def forward(self, x, device):
         x = torch.Tensor(x).to(device)
         return self.network(x)
 
@@ -510,8 +510,8 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     return max(slope * t + start_e, end_e)
 
 rb = ReplayBuffer(args.buffer_size)
-q_network = QNetwork().to(device)
-target_network = QNetwork().to(device)
+q_network = QNetwork(env).to(device)
+target_network = QNetwork(env).to(device)
 target_network.load_state_dict(q_network.state_dict())
 optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
@@ -525,7 +525,7 @@ for global_step in range(args.total_timesteps):
     # ALGO LOGIC: put action logic here
     epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
     obs = np.array(obs)
-    logits = q_network.forward(obs.reshape((1,)+obs.shape))
+    logits = q_network.forward(obs.reshape((1,)+obs.shape), device)
     if args.capture_video:
         env.set_q_values(logits.tolist())
     if random.random() < epsilon:
@@ -548,9 +548,9 @@ for global_step in range(args.total_timesteps):
     if global_step > args.learning_starts and global_step % args.train_frequency == 0:
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         with torch.no_grad():
-            target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
+            target_max = torch.max(target_network.forward(s_next_obses, device), dim=1)[0]
             td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
-        old_val = q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
+        old_val = q_network.forward(s_obs, device).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
         loss = loss_fn(td_target, old_val)
         writer.add_scalar("losses/td_loss", loss, global_step)
 

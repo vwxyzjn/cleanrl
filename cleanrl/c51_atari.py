@@ -449,7 +449,7 @@ class Scale(nn.Module):
     def forward(self, x):
         return x * self.scale
 class QNetwork(nn.Module):
-    def __init__(self, frames=4, n_atoms=51, v_min=-10, v_max=10):
+    def __init__(self, env, device, frames=4, n_atoms=51, v_min=-10, v_max=10):
         super(QNetwork, self).__init__()
         self.n_atoms = n_atoms
         self.atoms = torch.linspace(v_min, v_max, steps=n_atoms).to(device)
@@ -467,12 +467,12 @@ class QNetwork(nn.Module):
             nn.Linear(512, env.action_space.n * n_atoms)
         )
 
-    def forward(self, x):
+    def forward(self, x, device):
         x = torch.Tensor(x).to(device)
         return self.network(x)
 
-    def get_action(self, x, action=None):
-        logits = self.forward(x)
+    def get_action(self, env, device, x,action=None):
+        logits = self.forward(x, device)
         # probability mass function for each action
         pmfs = torch.softmax(logits.view(len(x), env.action_space.n, self.n_atoms), dim=2)
         q_values = (pmfs*self.atoms).sum(2)
@@ -485,8 +485,8 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     return max(slope * t + start_e, end_e)
 
 rb = ReplayBuffer(args.buffer_size)
-q_network = QNetwork(n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
-target_network = QNetwork(n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
+q_network = QNetwork(env, device, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
+target_network = QNetwork(env, device, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
 target_network.load_state_dict(q_network.state_dict())
 optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate, eps=0.01/args.batch_size)
 loss_fn = nn.MSELoss()
@@ -502,7 +502,7 @@ for global_step in range(args.total_timesteps):
     if random.random() < epsilon:
         action = env.action_space.sample()
     else:
-        action, pmf = target_network.get_action(obs.reshape((1,)+obs.shape))
+        action, pmf = target_network.get_action(env, device, obs.reshape((1,)+obs.shape))
         action = action.tolist()[0]
 
     # TRY NOT TO MODIFY: execute the game and log data.
@@ -520,7 +520,7 @@ for global_step in range(args.total_timesteps):
     if global_step > args.learning_starts and global_step % args.train_frequency == 0:
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         with torch.no_grad():
-            _, next_pmfs = q_network.get_action(s_next_obses)
+            _, next_pmfs = q_network.get_action(env, device, s_next_obses)
             next_atoms = torch.Tensor(s_rewards).to(device).unsqueeze(-1) + args.gamma * q_network.atoms  * (1 - torch.Tensor(s_dones).to(device).unsqueeze(-1))
             # projection
             delta_z = q_network.atoms[1]-q_network.atoms[0]
@@ -538,7 +538,7 @@ for global_step in range(args.total_timesteps):
                 target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
                 target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
         
-        _, old_pmfs = q_network.get_action(s_obs, s_actions)
+        _, old_pmfs = q_network.get_action(env, device, s_obs, s_actions)
         loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5).log()).sum(-1)).mean()
         # loss = (target_pmfs * (target_pmfs.clamp(min=1e-5).log() - old_pmfs.clamp(min=1e-5).log())).sum(-1).mean()
         
@@ -555,7 +555,7 @@ for global_step in range(args.total_timesteps):
         if global_step % args.target_network_frequency == 0:
             target_network.load_state_dict(q_network.state_dict())
 
-    # TRY NOT TO MODIFY: CRUCIAL step easy to overlook 
+    # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
     obs = next_obs
     if done:
         # important to note that because `EpisodicLifeEnv` wrapper is applied,

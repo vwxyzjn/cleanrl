@@ -706,7 +706,7 @@ class Scale(nn.Module):
     def forward(self, x):
         return x * self.scale
 class QNetwork(nn.Module):
-    def __init__(self, device="cpu", frames=4):
+    def __init__(self, env, device="cpu", frames=4):
         super(QNetwork, self).__init__()
         self.device = device
         self.network = nn.Sequential(
@@ -723,7 +723,7 @@ class QNetwork(nn.Module):
             nn.Linear(512, env.action_space.n)
         )
 
-    def forward(self, x):
+    def forward(self, x, device):
         x = torch.Tensor(x).to(self.device)
         return self.network(x)
 
@@ -761,7 +761,7 @@ def act(args, experiment_name, i, q_network, target_network, lock, rollouts_queu
         # ALGO LOGIC: put action logic here
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
         obs = np.array(obs)
-        logits = q_network.forward(obs.reshape((1,)+obs.shape))
+        logits = q_network.forward(obs.reshape((1,)+obs.shape), device)
         if args.capture_video:
             if i == 0:
                 env.set_q_values(logits.tolist())
@@ -792,12 +792,12 @@ def act(args, experiment_name, i, q_network, target_network, lock, rollouts_queu
 
             with torch.no_grad():
                 # target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
-                current_value = q_network.forward(s_next_obses)
-                target_value = target_network.forward(s_next_obses)
+                current_value = q_network.forward(s_next_obses, device)
+                target_value = target_network.forward(s_next_obses, device)
                 target_max = target_value.gather(1, torch.max(current_value, 1)[1].unsqueeze(1)).squeeze(1)
                 td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
                 
-                old_val = q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
+                old_val = q_network.forward(s_obs, device).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
                 td_errors = td_target - old_val
             new_priorities = np.abs(td_errors.tolist()) + args.pr_eps
             rollouts_queue.put((storage, new_priorities))
@@ -964,12 +964,12 @@ if __name__ == "__main__":
     lock = m.Lock()
     rb = CustomPrioritizedReplayBuffer(args.buffer_size, args.pr_alpha)
 
-    q_network = QNetwork()
-    target_network = QNetwork()
+    q_network = QNetwork(env)
+    target_network = QNetwork(env)
     target_network.load_state_dict(q_network.state_dict())
-    learn_q_network = QNetwork(device).to(device)
+    learn_q_network = QNetwork(env, device).to(device)
     learn_q_network.load_state_dict(q_network.state_dict())
-    learn_target_network = QNetwork(device).to(device)
+    learn_target_network = QNetwork(env, device).to(device)
     learn_target_network.load_state_dict(q_network.state_dict())
     optimizer = optim.Adam(learn_q_network.parameters(), lr=args.learning_rate)
 
