@@ -581,7 +581,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 class Agent(nn.Module):
-    def __init__(self, frames=4):
+    def __init__(self, envs, frames=4):
         super(Agent, self).__init__()
         self.network = nn.Sequential(
             Scale(1/255),
@@ -604,8 +604,8 @@ class Agent(nn.Module):
             nn.ReLU()
         )
         self.actor = nn.Sequential(
-            layer_init(nn.Linear(448, 448), std=0.01), 
-            nn.ReLU(),  
+            layer_init(nn.Linear(448, 448), std=0.01),
+            nn.ReLU(),
             layer_init(nn.Linear(448, envs.action_space.n), std=0.01))
         self.critic_ext = layer_init(nn.Linear(448, 1), std=0.01)
         self.critic_int = layer_init(nn.Linear(448, 1), std=0.01)
@@ -700,7 +700,7 @@ class RNDModel(nn.Module):
         return predict_feature, target_feature
 
 
-agent = Agent().to(device)
+agent = Agent(envs).to(device)
 
 rnd_model = RNDModel(4, envs.action_space.n).to(device)
 
@@ -856,7 +856,7 @@ for update in range(1, num_updates+1):
 
     # Optimizaing the policy and value network
     forward_mse = nn.MSELoss(reduction='none')
-    target_agent = Agent().to(device)
+    target_agent = Agent(envs).to(device)
     inds = np.arange(args.batch_size,)
 
     rnd_next_obs = torch.FloatTensor(((b_obs.data.cpu().numpy()[:,3,:,:].reshape(-1, 1, 84, 84) - obs_rms.mean) / np.sqrt(obs_rms.var)).clip(-5, 5)).to(device)

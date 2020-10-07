@@ -129,7 +129,7 @@ def layer_init(layer, weight_gain=1, bias_const=0):
             torch.nn.init.constant_(layer.bias, bias_const)
 
 class Policy(nn.Module):
-    def __init__(self):
+    def __init__(self, input_shape, output_shape, env):
         super(Policy, self).__init__()
         self.fc1 = nn.Linear(input_shape, 256) # Better result with slightly wider networks.
         self.fc2 = nn.Linear(256, 128)
@@ -142,7 +142,7 @@ class Policy(nn.Module):
             (env.action_space.high + env.action_space.low) / 2.)
         self.apply(layer_init)
 
-    def forward(self, x):
+    def forward(self, x, device):
         x = torch.Tensor(x).to(device)
 
         x = F.relu(self.fc1(x))
@@ -154,8 +154,8 @@ class Policy(nn.Module):
 
         return mean, log_std
 
-    def get_action(self, x):
-        mean, log_std = self.forward(x)
+    def get_action(self, x, device):
+        mean, log_std = self.forward(x, device)
         std = log_std.exp()
         normal = Normal(mean, std)
         x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
@@ -174,14 +174,14 @@ class Policy(nn.Module):
         return super(Policy, self).to(device)
 
 class SoftQNetwork(nn.Module):
-    def __init__(self):
+    def __init__(self, input_shape, output_shape, layer_init):
         super(SoftQNetwork, self).__init__()
         self.fc1 = nn.Linear(input_shape+output_shape, 256)
         self.fc2 = nn.Linear(256, 128)
         self.fc3 = nn.Linear(128, 1)
         self.apply(layer_init)
 
-    def forward(self, x, a):
+    def forward(self, x, a, device):
         x = torch.Tensor(x).to(device)
         x = torch.cat([x, a], 1)
         x = F.relu(self.fc1(x))
@@ -214,11 +214,11 @@ class ReplayBuffer():
                np.array(done_mask_lst)
 
 rb = ReplayBuffer(args.buffer_size)
-pg = Policy().to(device)
-qf1 = SoftQNetwork().to(device)
-qf2 = SoftQNetwork().to(device)
-qf1_target = SoftQNetwork().to(device)
-qf2_target = SoftQNetwork().to(device)
+pg = Policy(input_shape, output_shape, env).to(device)
+qf1 = SoftQNetwork(input_shape, output_shape, layer_init).to(device)
+qf2 = SoftQNetwork(input_shape, output_shape, layer_init).to(device)
+qf1_target = SoftQNetwork(input_shape, output_shape, layer_init).to(device)
+qf2_target = SoftQNetwork(input_shape, output_shape, layer_init).to(device)
 qf1_target.load_state_dict(qf1.state_dict())
 qf2_target.load_state_dict(qf2.state_dict())
 values_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
@@ -244,7 +244,7 @@ for global_step in range(1, args.total_timesteps+1):
     if global_step < args.learning_starts:
         action = env.action_space.sample()
     else:
-        action, _, _ = pg.get_action([obs])
+        action, _, _ = pg.get_action([obs], device)
         action = action.tolist()[0]
 
     # TRY NOT TO MODIFY: execute the game and log data.
@@ -258,14 +258,14 @@ for global_step in range(1, args.total_timesteps+1):
     if len(rb.buffer) > args.batch_size: # starts update as soon as there is enough data.
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         with torch.no_grad():
-            next_state_actions, next_state_log_pi, _ = pg.get_action(s_next_obses)
-            qf1_next_target = qf1_target.forward(s_next_obses, next_state_actions)
-            qf2_next_target = qf2_target.forward(s_next_obses, next_state_actions)
+            next_state_actions, next_state_log_pi, _ = pg.get_action(s_next_obses, device)
+            qf1_next_target = qf1_target.forward(s_next_obses, next_state_actions, device)
+            qf2_next_target = qf2_target.forward(s_next_obses, next_state_actions, device)
             min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
             next_q_value = torch.Tensor(s_rewards).to(device) + (1 - torch.Tensor(s_dones).to(device)) * args.gamma * (min_qf_next_target).view(-1)
 
-        qf1_a_values = qf1.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
-        qf2_a_values = qf2.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
+        qf1_a_values = qf1.forward(s_obs, torch.Tensor(s_actions).to(device), device).view(-1)
+        qf2_a_values = qf2.forward(s_obs, torch.Tensor(s_actions).to(device), device).view(-1)
         qf1_loss = loss_fn(qf1_a_values, next_q_value)
         qf2_loss = loss_fn(qf2_a_values, next_q_value)
         qf_loss = (qf1_loss + qf2_loss) / 2
@@ -276,9 +276,9 @@ for global_step in range(1, args.total_timesteps+1):
 
         if global_step % args.policy_frequency == 0: # TD 3 Delayed update support
             for _ in range(args.policy_frequency): # compensate for the delay by doing 'actor_update_interval' instead of 1
-                pi, log_pi, _ = pg.get_action(s_obs)
-                qf1_pi = qf1.forward(s_obs, pi)
-                qf2_pi = qf2.forward(s_obs, pi)
+                pi, log_pi, _ = pg.get_action(s_obs, device)
+                qf1_pi = qf1.forward(s_obs, pi, device)
+                qf2_pi = qf2.forward(s_obs, pi, device)
                 min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
                 policy_loss = ((alpha * log_pi) - min_qf_pi).mean()
 
@@ -288,7 +288,7 @@ for global_step in range(1, args.total_timesteps+1):
 
                 if args.autotune:
                     with torch.no_grad():
-                        _, log_pi, _ = pg.get_action( s_obs)
+                        _, log_pi, _ = pg.get_action(s_obs, device)
                     alpha_loss = ( -log_alpha * (log_pi + target_entropy)).mean()
 
                     a_optimizer.zero_grad()

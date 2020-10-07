@@ -130,14 +130,14 @@ class ReplayBuffer():
 
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
-    def __init__(self):
+    def __init__(self, env):
         super(QNetwork, self).__init__()
         self.fc1 = nn.Linear(
             np.array(env.observation_space.shape).prod()+np.prod(env.action_space.shape), 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
-    def forward(self, x, a):
+    def forward(self, x, a, device):
         x = torch.Tensor(x).to(device)
         x = torch.cat([x, a], 1)
         x = F.relu(self.fc1(x))
@@ -146,13 +146,13 @@ class QNetwork(nn.Module):
         return x
 
 class Actor(nn.Module):
-    def __init__(self):
+    def __init__(self, env):
         super(Actor, self).__init__()
         self.fc1 = nn.Linear(np.array(env.observation_space.shape).prod(), 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc_mu = nn.Linear(256, np.prod(env.action_space.shape))
 
-    def forward(self, x):
+    def forward(self, x, device):
         x = torch.Tensor(x).to(device)
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
@@ -165,8 +165,8 @@ def linear_schedule(start_sigma: float, end_sigma: float, duration: int, t: int)
 max_action = float(env.action_space.high[0])
 rb = ReplayBuffer(args.buffer_size)
 actor = Actor().to(device)
-qf1 = QNetwork().to(device)
-qf1_target = QNetwork().to(device)
+qf1 = QNetwork(env).to(device)
+qf1_target = QNetwork(env).to(device)
 target_actor = Actor().to(device)
 target_actor.load_state_dict(actor.state_dict())
 qf1_target.load_state_dict(qf1.state_dict())
@@ -182,7 +182,7 @@ for global_step in range(args.total_timesteps):
     if global_step < args.learning_starts:
         action = env.action_space.sample()
     else:
-        action = actor.forward(obs.reshape((1,)+obs.shape))
+        action = actor.forward(obs.reshape((1,)+obs.shape), device)
         action = (
             action.tolist()[0]
             + np.random.normal(0, max_action * args.exploration_noise, size=env.action_space.shape[0])
@@ -198,12 +198,12 @@ for global_step in range(args.total_timesteps):
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         with torch.no_grad():
             next_state_actions = (
-                target_actor.forward(s_next_obses)
+                target_actor.forward(s_next_obses, device)
             ).clamp(env.action_space.low[0], env.action_space.high[0])
-            qf1_next_target = qf1_target.forward(s_next_obses, next_state_actions)
+            qf1_next_target = qf1_target.forward(s_next_obses, next_state_actions, device)
             next_q_value = torch.Tensor(s_rewards).to(device) + (1 - torch.Tensor(s_dones).to(device)) * args.gamma * (qf1_next_target).view(-1)
 
-        qf1_a_values = qf1.forward(s_obs, torch.Tensor(s_actions).to(device)).view(-1)
+        qf1_a_values = qf1.forward(s_obs, torch.Tensor(s_actions).to(device), device).view(-1)
         qf1_loss = loss_fn(qf1_a_values, next_q_value)
 
         # optimize the midel
@@ -213,7 +213,7 @@ for global_step in range(args.total_timesteps):
         q_optimizer.step()
 
         if global_step % args.policy_frequency == 0:
-            actor_loss = -qf1.forward(s_obs, actor.forward(s_obs)).mean()
+            actor_loss = -qf1.forward(s_obs, actor.forward(s_obs, device), device).mean()
             actor_optimizer.zero_grad()
             actor_loss.backward()
             nn.utils.clip_grad_norm_(list(actor.parameters()), args.max_grad_norm)

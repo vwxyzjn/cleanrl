@@ -472,7 +472,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 class Agent(nn.Module):
-    def __init__(self, frames=4):
+    def __init__(self, envs, frames=4):
         super(Agent, self).__init__()
         self.network = nn.Sequential(
             Scale(1/255),
@@ -502,7 +502,7 @@ class Agent(nn.Module):
     def get_value(self, x):
         return self.critic(self.forward(x))
 
-agent = Agent().to(device)
+agent = Agent(envs).to(device)
 optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 if args.anneal_lr:
     # https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/defaults.py#L20
@@ -591,7 +591,7 @@ for update in range(1, num_updates+1):
     b_values = values.reshape(-1)
 
     # Optimizaing the policy and value network
-    target_agent = Agent().to(device)
+    target_agent = Agent(envs).to(device)
     inds = np.arange(args.batch_size,)
     for i_epoch_pi in range(args.update_epochs):
         np.random.shuffle(inds)
