@@ -36,7 +36,7 @@ if __name__ == "__main__":
                         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
                         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=10000000,
+    parser.add_argument('--total-timesteps', type=int, default=int(25e6),
                         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -52,13 +52,13 @@ if __name__ == "__main__":
                         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--n-minibatch', type=int, default=4,
+    parser.add_argument('--n-minibatch', type=int, default=8,
                         help='the number of mini batch')
-    parser.add_argument('--num-envs', type=int, default=8,
+    parser.add_argument('--num-envs', type=int, default=64,
                         help='the number of parallel game environment')
-    parser.add_argument('--num-steps', type=int, default=128,
+    parser.add_argument('--num-steps', type=int, default=256,
                         help='the number of steps per game environment')
-    parser.add_argument('--gamma', type=float, default=0.99,
+    parser.add_argument('--gamma', type=float, default=0.999,
                         help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.95,
                         help='the lambda for the general advantage estimation')
@@ -68,9 +68,9 @@ if __name__ == "__main__":
                         help="coefficient of the value function")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                         help='the maximum norm for the gradient clipping')
-    parser.add_argument('--clip-coef', type=float, default=0.1,
+    parser.add_argument('--clip-coef', type=float, default=0.2,
                         help="the surrogate clipping coefficient")
-    parser.add_argument('--update-epochs', type=int, default=4,
+    parser.add_argument('--update-epochs', type=int, default=3,
                          help="the K epochs to update the policy")
     parser.add_argument('--kle-stop', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                          help='If toggled, the policy updates will be early stopped w.r.t target-kl')
@@ -93,6 +93,71 @@ if __name__ == "__main__":
 
 args.batch_size = int(args.num_envs * args.num_steps)
 args.minibatch_size = int(args.batch_size // args.n_minibatch)
+
+# taken from https://github.com/openai/baselines/blob/master/baselines/common/vec_env/vec_normalize.py
+class RunningMeanStd(object):
+    def __init__(self, epsilon=1e-4, shape=()):
+        self.mean = np.zeros(shape, 'float64')
+        self.var = np.ones(shape, 'float64')
+        self.count = epsilon
+
+    def update(self, x):
+        batch_mean = np.mean([x], axis=0)
+        batch_var = np.var([x], axis=0)
+        batch_count = 1
+        self.update_from_moments(batch_mean, batch_var, batch_count)
+
+    def update_from_moments(self, batch_mean, batch_var, batch_count):
+        self.mean, self.var, self.count = update_mean_var_count_from_moments(
+            self.mean, self.var, self.count, batch_mean, batch_var, batch_count)
+
+def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, batch_count):
+    delta = batch_mean - mean
+    tot_count = count + batch_count
+
+    new_mean = mean + delta * batch_count / tot_count
+    m_a = var * count
+    m_b = batch_var * batch_count
+    M2 = m_a + m_b + np.square(delta) * count * batch_count / tot_count
+    new_var = M2 / tot_count
+    new_count = tot_count
+
+    return new_mean, new_var, new_count
+
+class NormalizedEnv(gym.core.Wrapper):
+    def __init__(self, env, ob=True, ret=True, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8):
+        super(NormalizedEnv, self).__init__(env)
+        self.ob_rms = RunningMeanStd(shape=self.observation_space.shape) if ob else None
+        self.ret_rms = RunningMeanStd(shape=(1,)) if ret else None
+        self.clipob = clipob
+        self.cliprew = cliprew
+        self.ret = np.zeros(())
+        self.gamma = gamma
+        self.epsilon = epsilon
+
+    def step(self, action):
+        obs, rews, dones, infos = self.env.step(action)
+        infos['real_reward'] = rews
+        self.ret = self.ret * self.gamma + rews
+        obs = self._obfilt(obs)
+        if self.ret_rms:
+            self.ret_rms.update(np.array([self.ret].copy()))
+            rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
+        self.ret = self.ret * (1-float(dones))
+        return obs, rews, dones, infos
+
+    def _obfilt(self, obs):
+        if self.ob_rms:
+            self.ob_rms.update(obs)
+            obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
+            return obs
+        else:
+            return obs
+
+    def reset(self):
+        self.ret = np.zeros(())
+        obs = self.env.reset()
+        return self._obfilt(obs)
 
 class ClipRewardEnv(gym.RewardWrapper):
     def __init__(self, env):
@@ -189,6 +254,7 @@ def make_env(gym_id, seed, idx):
     def thunk():
         env = gym.make(gym_id, render_mode='rgb_array')
         env = gym.wrappers.RecordEpisodeStatistics(env)
+        env = NormalizedEnv(env, ob=False)
         if args.capture_video:
             if idx == 0:
                 env = ProbsVisualizationWrapper(env)
