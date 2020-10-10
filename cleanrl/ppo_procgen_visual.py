@@ -187,7 +187,7 @@ torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 def make_env(gym_id, seed, idx):
     def thunk():
-        env = gym.make(gym_id)
+        env = gym.make(gym_id, render_mode='rgb_array')
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if args.capture_video:
             if idx == 0:
