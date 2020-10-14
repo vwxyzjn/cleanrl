@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions.categorical import Categorical
+from torch import distributions as td
 from torch.utils.tensorboard import SummaryWriter
 
 import argparse
@@ -36,7 +37,7 @@ if __name__ == "__main__":
                         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
                         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=int(25e6),
+    parser.add_argument('--total-timesteps', type=int, default=10000000,
                         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -52,13 +53,27 @@ if __name__ == "__main__":
                         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--n-minibatch', type=int, default=8,
+    parser.add_argument('--n-iteration', type=int, default=16,
+                        help="N_pi: the number of policy update in the policy phase ")
+    parser.add_argument('--e-policy', type=int, default=1,
+                        help="E_pi: the number of policy update in the policy phase ")
+    parser.add_argument('--v-value', type=int, default=1,
+                        help="E_V: the number of policy update in the policy phase ")
+    parser.add_argument('--e-auxiliary', type=int, default=6,
+                        help="E_aux:the K epochs to update the policy")
+    parser.add_argument('--beta-clone', type=float, default=1.0,
+                        help='the behavior cloning coefficient')
+    parser.add_argument('--n-aux-minibatch', type=int, default=8,
+                        help='the number of mini batch in the auxiliary phase')
+
+
+    parser.add_argument('--n-minibatch', type=int, default=4,
                         help='the number of mini batch')
-    parser.add_argument('--num-envs', type=int, default=64,
+    parser.add_argument('--num-envs', type=int, default=8,
                         help='the number of parallel game environment')
-    parser.add_argument('--num-steps', type=int, default=256,
+    parser.add_argument('--num-steps', type=int, default=128,
                         help='the number of steps per game environment')
-    parser.add_argument('--gamma', type=float, default=0.999,
+    parser.add_argument('--gamma', type=float, default=0.99,
                         help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.95,
                         help='the lambda for the general advantage estimation')
@@ -68,14 +83,10 @@ if __name__ == "__main__":
                         help="coefficient of the value function")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                         help='the maximum norm for the gradient clipping')
-    parser.add_argument('--clip-coef', type=float, default=0.2,
+    parser.add_argument('--clip-coef', type=float, default=0.1,
                         help="the surrogate clipping coefficient")
-    parser.add_argument('--update-epochs', type=int, default=3,
-                         help="the K epochs to update the policy")
     parser.add_argument('--kle-stop', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                          help='If toggled, the policy updates will be early stopped w.r.t target-kl')
-    parser.add_argument('--kle-rollback', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                         help='If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl')
     parser.add_argument('--target-kl', type=float, default=0.03,
                          help='the target-kl variable that is referred by --kl')
     parser.add_argument('--gae', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
@@ -93,6 +104,8 @@ if __name__ == "__main__":
 
 args.batch_size = int(args.num_envs * args.num_steps)
 args.minibatch_size = int(args.batch_size // args.n_minibatch)
+args.aux_batch_size = int(args.batch_size * args.n_iteration)
+args.aux_minibatch_size  = int(args.aux_batch_size // args.n_aux_minibatch)
 
 # taken from https://github.com/openai/baselines/blob/master/baselines/common/vec_env/vec_normalize.py
 class RunningMeanStd(object):
@@ -304,20 +317,39 @@ class Agent(nn.Module):
             nn.ReLU()
         )
         self.actor = layer_init(nn.Linear(512, envs.action_space.n), std=0.01)
-        self.critic = layer_init(nn.Linear(512, 1), std=1)
+        self.aux_critic = layer_init(nn.Linear(512, 1), std=1)
 
-    def forward(self, x):
-        return self.network(x)
+        self.critic = nn.Sequential(
+            Scale(1/255),
+            layer_init(nn.Conv2d(channels, 32, 4, stride=3)),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(32, 64, 3, stride=2)),
+            nn.ReLU(),
+            layer_init(nn.Conv2d(64, 32, 3, stride=1)),
+            nn.ReLU(),
+            nn.Flatten(),
+            layer_init(nn.Linear(8*8*32, 512)),
+            nn.ReLU(),
+            layer_init(nn.Linear(512, 1), std=1)
+        )
 
     def get_action(self, x, action=None):
-        logits = self.actor(self.forward(x))
+        logits = self.actor(self.network(x))
         probs = Categorical(logits=logits)
         if action is None:
             action = probs.sample()
         return action, probs.log_prob(action), probs.entropy()
 
     def get_value(self, x):
-        return self.critic(self.forward(x))
+        return self.critic(x)
+
+    # PPG logic:
+    def get_pi(self, x):
+        logits = self.actor(self.network(x))
+        return Categorical(logits=logits)
+
+    def get_aux_value(self, x):
+        return self.aux_critic(self.network(x))
 
 agent = Agent(envs).to(device)
 optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
@@ -340,138 +372,178 @@ global_step = 0
 next_obs = envs.reset()
 next_done = torch.zeros(args.num_envs).to(device)
 num_updates = args.total_timesteps // args.batch_size
-for update in range(1, num_updates+1):
-    # Annealing the rate if instructed to do so.
-    if args.anneal_lr:
-        frac = 1.0 - (update - 1.0) / num_updates
-        lrnow = lr(frac)
-        optimizer.param_groups[0]['lr'] = lrnow
+num_phases = num_updates // args.n_iteration
 
-    # TRY NOT TO MODIFY: prepare the execution of the game.
-    for step in range(0, args.num_steps):
-        global_step += 1 * args.num_envs
-        obs[step] = next_obs
-        dones[step] = next_done
+## CRASH AND RESUME LOGIC:
+starting_phase = 1
 
-        # ALGO LOGIC: put action logic here
+for phase in range(starting_phase, num_phases):
+    aux_obs = []
+    aux_returns = []
+    for policy_update in range(1, args.n_iteration+1):
+        # Annealing the rate if instructed to do so.
+        if args.anneal_lr:
+            frac = 1.0 - (policy_update - 1.0) / num_updates
+            lrnow = lr(frac)
+            optimizer.param_groups[0]['lr'] = lrnow
+    
+        # TRY NOT TO MODIFY: prepare the execution of the game.
+        for step in range(0, args.num_steps):
+            global_step += 1 * args.num_envs
+            obs[step] = next_obs
+            dones[step] = next_done
+    
+            # ALGO LOGIC: put action logic here
+            with torch.no_grad():
+                values[step] = agent.get_value(obs[step]).flatten()
+                action, logproba, _ = agent.get_action(obs[step])
+    
+                # visualization
+                if args.capture_video:
+                    probs_list = np.array(Categorical(
+                        logits=agent.actor(agent.network(obs[step]))).probs[0:1].tolist())
+                    envs.env_method("set_probs", probs_list, indices=0)
+    
+            actions[step] = action
+            logprobs[step] = logproba
+    
+            # TRY NOT TO MODIFY: execute the game and log data.
+            next_obs, rs, ds, infos = envs.step(action)
+            rewards[step], next_done = rs.view(-1), torch.Tensor(ds).to(device)
+    
+            for info in infos:
+                if 'episode' in info.keys():
+                    print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
+                    writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
+                    break
+    
+        # bootstrap reward if not done. reached the batch limit
         with torch.no_grad():
-            values[step] = agent.get_value(obs[step]).flatten()
-            action, logproba, _ = agent.get_action(obs[step])
-
-            # visualization
-            if args.capture_video:
-                probs_list = np.array(Categorical(
-                    logits=agent.actor(agent.forward(obs[step]))).probs[0:1].tolist())
-                envs.env_method("set_probs", probs_list, indices=0)
-
-        actions[step] = action
-        logprobs[step] = logproba
-
-        # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rs, ds, infos = envs.step(action)
-        rewards[step], next_done = rs.view(-1), torch.Tensor(ds).to(device)
-
-        for info in infos:
-            if 'episode' in info.keys():
-                print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-                writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
-                break
-
-    # bootstrap reward if not done. reached the batch limit
-    with torch.no_grad():
-        last_value = agent.get_value(next_obs.to(device)).reshape(1, -1)
-        if args.gae:
-            advantages = torch.zeros_like(rewards).to(device)
-            lastgaelam = 0
-            for t in reversed(range(args.num_steps)):
-                if t == args.num_steps - 1:
-                    nextnonterminal = 1.0 - next_done
-                    nextvalues = last_value
-                else:
-                    nextnonterminal = 1.0 - dones[t+1]
-                    nextvalues = values[t+1]
-                delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
-                advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
-            returns = advantages + values
-        else:
-            returns = torch.zeros_like(rewards).to(device)
-            for t in reversed(range(args.num_steps)):
-                if t == args.num_steps - 1:
-                    nextnonterminal = 1.0 - next_done
-                    next_return = last_value
-                else:
-                    nextnonterminal = 1.0 - dones[t+1]
-                    next_return = returns[t+1]
-                returns[t] = rewards[t] + args.gamma * nextnonterminal * next_return
-            advantages = returns - values
-
-    # flatten the batch
-    b_obs = obs.reshape((-1,)+envs.observation_space.shape)
-    b_logprobs = logprobs.reshape(-1)
-    b_actions = actions.reshape((-1,)+envs.action_space.shape)
-    b_advantages = advantages.reshape(-1)
-    b_returns = returns.reshape(-1)
-    b_values = values.reshape(-1)
-
-    # Optimizaing the policy and value network
-    target_agent = Agent(envs).to(device)
-    inds = np.arange(args.batch_size,)
-    for i_epoch_pi in range(args.update_epochs):
-        np.random.shuffle(inds)
-        target_agent.load_state_dict(agent.state_dict())
-        for start in range(0, args.batch_size, args.minibatch_size):
-            end = start + args.minibatch_size
-            minibatch_ind = inds[start:end]
-            mb_advantages = b_advantages[minibatch_ind]
-            if args.norm_adv:
-                mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
-
-            _, newlogproba, entropy = agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind])
-            ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
-
-            # Stats
-            approx_kl = (b_logprobs[minibatch_ind] - newlogproba).mean()
-
-            # Policy loss
-            pg_loss1 = -mb_advantages * ratio
-            pg_loss2 = -mb_advantages * torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef)
-            pg_loss = torch.max(pg_loss1, pg_loss2).mean()
-            entropy_loss = entropy.mean()
-
-            # Value loss
-            new_values = agent.get_value(b_obs[minibatch_ind]).view(-1)
-            if args.clip_vloss:
-                v_loss_unclipped = ((new_values - b_returns[minibatch_ind]) ** 2)
-                v_clipped = b_values[minibatch_ind] + torch.clamp(new_values - b_values[minibatch_ind], -args.clip_coef, args.clip_coef)
-                v_loss_clipped = (v_clipped - b_returns[minibatch_ind])**2
-                v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
-                v_loss = 0.5 * v_loss_max.mean()
+            last_value = agent.get_value(next_obs.to(device)).reshape(1, -1)
+            if args.gae:
+                advantages = torch.zeros_like(rewards).to(device)
+                lastgaelam = 0
+                for t in reversed(range(args.num_steps)):
+                    if t == args.num_steps - 1:
+                        nextnonterminal = 1.0 - next_done
+                        nextvalues = last_value
+                    else:
+                        nextnonterminal = 1.0 - dones[t+1]
+                        nextvalues = values[t+1]
+                    delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
+                    advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
+                returns = advantages + values
             else:
-                v_loss = 0.5 * ((new_values - b_returns[minibatch_ind]) ** 2).mean()
+                returns = torch.zeros_like(rewards).to(device)
+                for t in reversed(range(args.num_steps)):
+                    if t == args.num_steps - 1:
+                        nextnonterminal = 1.0 - next_done
+                        next_return = last_value
+                    else:
+                        nextnonterminal = 1.0 - dones[t+1]
+                        next_return = returns[t+1]
+                    returns[t] = rewards[t] + args.gamma * nextnonterminal * next_return
+                advantages = returns - values
+    
+        # flatten the batch
+        b_obs = obs.reshape((-1,)+envs.observation_space.shape)
+        b_logprobs = logprobs.reshape(-1)
+        b_actions = actions.reshape((-1,)+envs.action_space.shape)
+        b_advantages = advantages.reshape(-1)
+        b_returns = returns.reshape(-1)
+        b_values = values.reshape(-1)
+    
+        # Optimizaing the policy and value network
+        inds = np.arange(args.batch_size,)
+        for i_epoch_pi in range(args.e_policy):
+            np.random.shuffle(inds)
+            for start in range(0, args.batch_size, args.minibatch_size):
+                end = start + args.minibatch_size
+                minibatch_ind = inds[start:end]
+                mb_advantages = b_advantages[minibatch_ind]
+                if args.norm_adv:
+                    mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
+    
+                _, newlogproba, entropy = agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind])
+                ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
+    
+                # Stats
+                approx_kl = (b_logprobs[minibatch_ind] - newlogproba).mean()
+    
+                # Policy loss
+                pg_loss1 = -mb_advantages * ratio
+                pg_loss2 = -mb_advantages * torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef)
+                pg_loss = torch.max(pg_loss1, pg_loss2).mean()
+                entropy_loss = entropy.mean()
+    
+                # Value loss
+                new_values = agent.get_value(b_obs[minibatch_ind]).view(-1)
+                if args.clip_vloss:
+                    v_loss_unclipped = ((new_values - b_returns[minibatch_ind]) ** 2)
+                    v_clipped = b_values[minibatch_ind] + torch.clamp(new_values - b_values[minibatch_ind], -args.clip_coef, args.clip_coef)
+                    v_loss_clipped = (v_clipped - b_returns[minibatch_ind])**2
+                    v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
+                    v_loss = 0.5 * v_loss_max.mean()
+                else:
+                    v_loss = 0.5 * ((new_values - b_returns[minibatch_ind]) ** 2).mean()
+    
+                loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
+    
+                optimizer.zero_grad()
+                loss.backward()
+                nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
+                optimizer.step()
+    
+            if args.kle_stop:
+                if approx_kl > args.target_kl:
+                    break
 
-            loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
+        # TRY NOT TO MODIFY: record rewards for plotting purposes
+        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]['lr'], global_step)
+        writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
+        writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
+        writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
+        writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
+        if args.kle_stop:
+            writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
+        
+        # PPG Storage:
+        aux_obs += [b_obs.cpu().clone()]
+        aux_returns += [b_returns.cpu().clone()]
+        
 
+    aux_obs = torch.cat(aux_obs)
+    aux_returns = torch.cat(aux_returns)
+    old_agent = Agent(envs).to(device)
+    old_agent.load_state_dict(agent.state_dict())
+    aux_inds = np.arange(args.aux_batch_size,)
+    print("aux phase starts")
+    for auxiliary_update in range(1, args.e_auxiliary+1):
+        np.random.shuffle(aux_inds)
+        for start in range(0, args.aux_batch_size, args.aux_minibatch_size):
+            end = start + args.aux_minibatch_size
+            aux_minibatch_ind = aux_inds[start:end]
+            m_aux_obs = aux_obs[aux_minibatch_ind].to(device)
+            m_aux_returns = aux_returns[aux_minibatch_ind].to(device)
+            
+            new_values = agent.get_value(m_aux_obs).view(-1)
+            new_aux_values = agent.get_aux_value(m_aux_obs).view(-1)
+            kl_loss = td.kl_divergence(agent.get_pi(m_aux_obs), old_agent.get_pi(m_aux_obs)).mean()
+            
+            real_value_loss = 0.5 * ((new_values - m_aux_returns) ** 2).mean()
+            aux_value_loss = 0.5 * ((new_aux_values - m_aux_returns) ** 2).mean()
+            joint_loss = aux_value_loss + args.beta_clone * kl_loss
+            
             optimizer.zero_grad()
-            loss.backward()
+            (joint_loss+real_value_loss).backward()
             nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
             optimizer.step()
-
-        if args.kle_stop:
-            if approx_kl > args.target_kl:
-                break
-        if args.kle_rollback:
-            if (b_logprobs[minibatch_ind] - agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind])[1]).mean() > args.target_kl:
-                agent.load_state_dict(target_agent.state_dict())
-                break
-
-    # TRY NOT TO MODIFY: record rewards for plotting purposes
-    writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]['lr'], global_step)
-    writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
-    writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
-    writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
-    writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
-    if args.kle_stop or args.kle_rollback:
-        writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
-
+            
+            del m_aux_obs, m_aux_returns
+    writer.add_scalar("losses/aux/kl_loss", kl_loss.mean().item(), global_step)
+    writer.add_scalar("losses/aux/aux_value_loss", aux_value_loss.item(), global_step)
+    writer.add_scalar("losses/aux/real_value_loss", real_value_loss.item(), global_step)
+            
+            
 envs.close()
 writer.close()
