@@ -33,7 +33,7 @@ if __name__ == "__main__":
                         help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="procgen-starpilot-v0",
                         help='the id of the gym environment')
-    parser.add_argument('--learning-rate', type=float, default=2.5e-4,
+    parser.add_argument('--learning-rate', type=float, default=5e-4,
                         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
                         help='seed of the experiment')
@@ -53,7 +53,7 @@ if __name__ == "__main__":
                         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--n-iteration', type=int, default=16,
+    parser.add_argument('--n-iteration', type=int, default=32,
                         help="N_pi: the number of policy update in the policy phase ")
     parser.add_argument('--e-policy', type=int, default=1,
                         help="E_pi: the number of policy update in the policy phase ")
@@ -63,17 +63,17 @@ if __name__ == "__main__":
                         help="E_aux:the K epochs to update the policy")
     parser.add_argument('--beta-clone', type=float, default=1.0,
                         help='the behavior cloning coefficient')
-    parser.add_argument('--n-aux-minibatch', type=int, default=8,
+    parser.add_argument('--n-aux-minibatch', type=int, default=16,
                         help='the number of mini batch in the auxiliary phase')
 
 
-    parser.add_argument('--n-minibatch', type=int, default=4,
+    parser.add_argument('--n-minibatch', type=int, default=8,
                         help='the number of mini batch')
-    parser.add_argument('--num-envs', type=int, default=8,
+    parser.add_argument('--num-envs', type=int, default=64,
                         help='the number of parallel game environment')
-    parser.add_argument('--num-steps', type=int, default=128,
+    parser.add_argument('--num-steps', type=int, default=256,
                         help='the number of steps per game environment')
-    parser.add_argument('--gamma', type=float, default=0.99,
+    parser.add_argument('--gamma', type=float, default=0.999,
                         help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.95,
                         help='the lambda for the general advantage estimation')
@@ -83,7 +83,7 @@ if __name__ == "__main__":
                         help="coefficient of the value function")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
                         help='the maximum norm for the gradient clipping')
-    parser.add_argument('--clip-coef', type=float, default=0.1,
+    parser.add_argument('--clip-coef', type=float, default=0.2,
                         help="the surrogate clipping coefficient")
     parser.add_argument('--kle-stop', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                          help='If toggled, the policy updates will be early stopped w.r.t target-kl')
