@@ -55,7 +55,7 @@ for run_match in runs_match:
         if args.upload_files_baseurl:
             file_name = final_run_cmds[-1][1]
             link = args.upload_files_baseurl + '/' + file_name
-            final_run_cmds[-1] = ['wget', link, ';'] + final_run_cmds[-1]
+            final_run_cmds[-1] = ['curl', '-O', link, ';'] + final_run_cmds[-1]
 
 # use docker directly
 if not args.submit_aws:
