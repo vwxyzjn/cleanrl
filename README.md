@@ -167,6 +167,9 @@ In addition, we also have a monthly development cycle to implement new RL algori
 We have a short contribution guide here https://github.com/vwxyzjn/cleanrl/blob/master/CONTRIBUTING.md. Consider adding new algorithms 
 or test new games on the Open RL Benchmark (https://benchmark.cleanrl.dev)
 
+Big thanks to all the contributors of CleanRL!
+
+
 ## Citing our project
 
 Please consider using the following Bibtex entry:
