@@ -1,7 +1,7 @@
 # CleanRL (Clean Implementation of RL Algorithms)
 
 [<img src="https://img.shields.io/badge/slack-@cleanrl-yellow.svg?logo=slack">](https://join.slack.com/t/cleanrl/shared_invite/zt-cj64t5eq-xKZ6sD0KPGFKu1QicHEvVg)
-[![Mailing List : cleanrl](https://img.shields.io/badge/mailing%20list-cleanrl-orange.svg)](https://groups.google.com/forum/#!forum/rlimplementation/join)
+[![Mailing List : cleanrl](https://img.shields.io/badge/future%20meeting%20invites-cleanrl-green?logo=Google%20Hangouts%20Meet&logoColor=ffffff&labelColor=00796b&color=282828&style=flat?label=healthinesses)](https://calendar.google.com/event?action=TEMPLATE&tmeid=NWp2dnZyazI5ZGg0dWU4aDlkZWJ0ZWFlcGRfMjAyMDEwMjNUMjEwMDAwWiBjb3N0YS5odWFuZy5jc0Bt&tmsrc=costa.huang.cs%40gmail.com&scp=ALL)
 [![Meeting Recordings : cleanrl](https://img.shields.io/badge/meeting%20recordings-cleanrl-green?logo=youtube&logoColor=ffffff&labelColor=FF0000&color=282828&style=flat?label=healthinesses)](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
 
 
