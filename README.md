@@ -2,7 +2,7 @@
 
 [<img src="https://img.shields.io/badge/slack-@cleanrl-yellow.svg?logo=slack">](https://join.slack.com/t/cleanrl/shared_invite/zt-cj64t5eq-xKZ6sD0KPGFKu1QicHEvVg)
 [![Mailing List : cleanrl](https://img.shields.io/badge/mailing%20list-cleanrl-orange.svg)](https://groups.google.com/forum/#!forum/rlimplementation/join)
-[![Meeting Recordings : cleanrl](https://img.shields.io/badge/meeting%20recordings-cleanrl-orange.svg)](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
+[![Meeting Recordings : cleanrl](https://img.shields.io/badge/meeting%20recordings-cleanrl-green?logo=youtube&logoColor=ffffff&labelColor=FF0000&color=282828&style=flat?label=healthinesses)](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
 
 
 CleanRL is a Deep Reinforcement Learning library that provides high-quality single-file implementation with research-friendly features. The implementation is clean and simple, yet we can scale it to run thousands of experiments at scale using AWS Batch. The highlight features of CleanRL are:
