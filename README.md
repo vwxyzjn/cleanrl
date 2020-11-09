@@ -64,12 +64,10 @@ Good luck have fun :rocket:
 - [x] Twin Delayed Deep Deterministic Policy Gradient (TD3)
     * [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py)
         * For continuous action space.
-- [x] ~~Advantage Actor Critic (A2C)~~
-    * Since A2C is a special case of PPO when setting `update-epochs=1`, where the clipped objective becomes essentially the A2C's objective, we neglect the implementation for A2C. We might add it back in the future for educational purposes. However, we kept the old A2C implementations in the `experiments` folder
-        * [experiments/a2c.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experiments/a2c.py)
-            * (Not recommended for using) For discrete action space.
-        * [experiments/a2c_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experiments/a2c_continuous_action.py)
-            * (Not recommended for using) For continuous action space.
+- [x] Apex Deep Q-Learning (Apex-DQN)
+    * [apex_dqn_atari_visual.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/apex_dqn_atari_visual.py)
+        * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+
 
 ## Open RL Benchmark
 
