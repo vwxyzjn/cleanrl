@@ -210,7 +210,7 @@ class FrameStack(gym.Wrapper):
 
     def _get_ob(self):
         assert len(self.frames) == self.k
-        return LazyFrames(list(self.frames))
+        return np.concatenate(self.frames)
 
 class ScaledFloatFrame(gym.ObservationWrapper):
     def __init__(self, env):
@@ -221,41 +221,6 @@ class ScaledFloatFrame(gym.ObservationWrapper):
         # careful! This undoes the memory optimization, use
         # with smaller replay buffers only.
         return np.array(observation).astype(np.float32) / 255.0
-
-class LazyFrames(object):
-    def __init__(self, frames):
-        """This object ensures that common frames between the observations are only stored once.
-        It exists purely to optimize memory usage which can be huge for DQN's 1M frames replay
-        buffers.
-        This object should only be converted to numpy array before being passed to the model.
-        You'd not believe how complex the previous solution was."""
-        self._frames = frames
-        self._out = None
-
-    def _force(self):
-        if self._out is None:
-            self._out = np.concatenate(self._frames, axis=0)
-            self._frames = None
-        return self._out
-
-    def __array__(self, dtype=None):
-        out = self._force()
-        if dtype is not None:
-            out = out.astype(dtype)
-        return out
-
-    def __len__(self):
-        return len(self._force())
-
-    def __getitem__(self, i):
-        return self._force()[i]
-
-    def count(self):
-        frames = self._force()
-        return frames.shape[frames.ndim - 1]
-
-    def frame(self, i):
-        return self._force()[..., i]
 
 def wrap_atari(env, max_episode_steps=None):
     assert 'NoFrameskip' in env.spec.id
@@ -323,9 +288,29 @@ import os
 # import threading
 # os.environ["OMP_NUM_THREADS"] = "1"  # Necessary for multithreading.
 from torch import multiprocessing as mp
-from multiprocessing.managers import SyncManager
+from multiprocessing.managers import SyncManager, SharedMemoryManager
+from multiprocessing.shared_memory import SharedMemory
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
 from faster_fifo import Queue as MpQueue
+
+class SharedNDArray(np.ndarray):
+    def set_shm(self, shm):
+        self.shm = shm
+
+    def close(self):
+        self.shm.close()
+
+    def unlink(self):
+        self.shm.unlink()
+
+
+def share_memory(arr):
+    shm = SharedMemory(create=True, size=arr.nbytes)
+    shm_arr = SharedNDArray(arr.shape, dtype=arr.dtype, buffer=shm.buf)
+    shm_arr[:] = arr[:]
+    shm_arr.set_shm(shm)
+    return shm_arr
+
 class Scale(nn.Module):
     def __init__(self, scale):
         super().__init__()
@@ -372,50 +357,51 @@ class Agent(nn.Module):
 
             
 def act(inputs):
-    args, experiment_name, i, lock, stats_queue, device = inputs
+    args, experiment_name, i, lock, stats_queue, device, \
+        obs, actions, logprobs, rewards, dones, values, traj_availables = inputs
     envs = []
     
     def make_env(gym_id, seed, idx):
         env = gym.make(gym_id)
-        # env = wrap_atari(env)
+        env = wrap_atari(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
-        # env = wrap_deepmind(
-        #     env,
-        #     clip_rewards=True,
-        #     frame_stack=True,
-        #     scale=False,
-        # )
+        env = wrap_deepmind(
+            env,
+            clip_rewards=True,
+            frame_stack=True,
+            scale=False,
+        )
         env.seed(seed)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
     envs = [make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)]
+    envs = np.array(envs, dtype=object)
 
-
-    episode_length = [0 for _ in envs]
-    episode_lengths = [deque([], maxlen=20) for _ in envs]
-
-    for env_idx, env in enumerate(envs):
-        env.reset()
-        # print('Process %d finished resetting %d/%d envs', env_idx + 1, len(envs))
+    next_obs = [env.reset() for env in envs]
+    next_done = np.zeros(args.num_envs)
 
     last_report = last_report_frames = total_env_frames = 0
     while True:
         for env_idx, env in enumerate(envs):
-            action = env.action_space.sample()
-            obs, rewards, dones, info = env.step(action)
+            for step in range(args.num_steps):
 
-            num_frames = 1
-            total_env_frames += num_frames
-            episode_length[env_idx] += num_frames
+                action = env.action_space.sample()
+                o, r, d, info = env.step(action)
+                if d:
+                    o = env.reset()
+                obs[i,env_idx,0,0,step] = o
+                rewards[i,env_idx,0,0,step] = r
+                dones[i,env_idx,0,0,step] = d
 
-            if 'episode' in info.keys():
-                stats_queue.put(info['episode']['l'])
+                num_frames = 1
+                total_env_frames += num_frames
+    
+                if 'episode' in info.keys():
+                    stats_queue.put(info['episode']['l'])
 
-            if dones:
-                env.reset()
-                episode_lengths[env_idx].append(episode_length[env_idx])
-                episode_length[env_idx] = 0
+def policy_worker(inputs):
+    pass
 
 
 def learn(args, rb, global_step, data_process_queue, data_process_back_queues, stats_queue, lock, learn_target_network, target_network, learn_q_network, q_network, optimizer, device):
@@ -488,9 +474,9 @@ if __name__ == "__main__":
                          help='the number of policy workers')
     parser.add_argument('--num-envs', type=int, default=20,
                          help='the number of envs per rollout worker')
-    parser.add_argument('--num-traj-buffers', type=int, default=20,
+    parser.add_argument('--num-traj-buffers', type=int, default=1,
                          help='the number of trajectory buffers per rollout worker')
-    parser.add_argument('--num-steps', type=int, default=128,
+    parser.add_argument('--num-steps', type=int, default=32,
                         help='the number of steps per game environment')
     parser.add_argument('--gamma', type=float, default=0.99,
                         help='the discount factor gamma')
@@ -537,18 +523,23 @@ if __name__ == "__main__":
     
     # TRY NOT TO MODIFY: seeding
     device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
-    env = gym.make(args.gym_id)
-    env = wrap_atari(env)
-    env = gym.wrappers.RecordEpisodeStatistics(env) # records episode reward in `info['episode']['r']`
-    env = wrap_deepmind(
-        env,
-        clip_rewards=True,
-        frame_stack=True,
-        scale=False,
-    )
-    env.seed(args.seed)
-    env.action_space.seed(args.seed)
-    env.observation_space.seed(args.seed)
+    
+    def make_env(gym_id, seed, idx):
+        env = gym.make(gym_id)
+        env = wrap_atari(env)
+        env = gym.wrappers.RecordEpisodeStatistics(env)
+        env = wrap_deepmind(
+            env,
+            clip_rewards=True,
+            frame_stack=True,
+            scale=False,
+        )
+        env.seed(seed)
+        env.action_space.seed(seed)
+        env.observation_space.seed(seed)
+        return env
+    
+    env = make_env(args.gym_id, args.seed, 0)
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -558,16 +549,23 @@ if __name__ == "__main__":
     # m = SyncManager()
     # m.start()
     lock = mp.Lock()
-    dimensions = [
+    dimensions = (
         args.num_rollout_workers,
         args.num_envs,
         args.num_policy_workers,
         args.num_traj_buffers,
         args.num_steps,
-    ]
-    # raise
-    # global_step = torch.tensor(0)
-    # global_step.share_memory_()
+    )
+    
+    obs = share_memory(np.zeros(dimensions + env.observation_space.shape))
+    actions = share_memory(np.zeros(dimensions + env.action_space.shape))
+    logprobs = share_memory(np.zeros(dimensions))
+    rewards = share_memory(np.zeros(dimensions))
+    dones = share_memory(np.zeros(dimensions))
+    values = share_memory(np.zeros(dimensions))
+    traj_availables = share_memory(np.ones(dimensions))
+    raise
+    
     actor_processes = []
     data_processor_processes = []
     ctx = mp.get_context("forkserver")
@@ -576,12 +574,13 @@ if __name__ == "__main__":
     rollouts_queue = mp.Queue(1000)
     data_process_queue = mp.Queue(1000)
     data_process_back_queues = []
-    
+
+
     for i in range(args.num_rollout_workers):
-        inputs = [args, experiment_name, i, lock, stats_queue, device]
         actor = mp.Process(
             target=act,
-            args=[inputs],
+            args=[args, experiment_name, i, lock, stats_queue, device,
+                  obs, actions, logprobs, rewards, dones, values, traj_availables],
         )
         actor.start()
         actor_processes.append(actor)
