@@ -427,15 +427,18 @@ def start_policy_worker(inputs):
     device = torch.device('cuda')
     agent = Agent(4).to(device)
     min_num_requests = 6
+    wait_for_min_requests = 0.01
+    # time.sleep(5)
     while True:
-        current_num_request = 0
+        waiting_started = time.time()
         policy_requests = []
-        while current_num_request < min_num_requests:
+        while len(policy_requests) < min_num_requests and time.time() - waiting_started < wait_for_min_requests:
             try:
                 policy_requests.extend(policy_request_queue.get_many(timeout=0.005))
-                current_num_request += 1
             except Empty:
                 pass
+        if len(policy_requests) == 0:
+            continue
         ls = np.concatenate(policy_requests)
         rollout_worker_idxs = ls.T[0,::args.num_envs//args.num_env_split]
         split_idxs = ls.T[1,::args.num_envs//args.num_env_split]
@@ -453,7 +456,7 @@ def start_policy_worker(inputs):
 
         # print("rollouts out")
         # raise
-
+        
 # def start_policy_inference_worker(inputs):
 #     # raise
 #     args, experiment_name, i, lock, stats_queue, device, \
@@ -530,11 +533,11 @@ if __name__ == "__main__":
                         help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
-    parser.add_argument('--num-rollout-workers', type=int, default=mp.cpu_count(),
+    parser.add_argument('--num-rollout-workers', type=int, default=20,
                          help='the number of rollout workers')
     parser.add_argument('--num-env-split', type=int, default=2,
                          help='the number of rollout workers')
-    parser.add_argument('--num-policy-workers', type=int, default=4,
+    parser.add_argument('--num-policy-workers', type=int, default=1,
                          help='the number of policy workers')
     parser.add_argument('--num-envs', type=int, default=20,
                          help='the number of envs per rollout worker')
