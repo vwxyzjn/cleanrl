@@ -288,10 +288,12 @@ import os
 # import threading
 # os.environ["OMP_NUM_THREADS"] = "1"  # Necessary for multithreading.
 from torch import multiprocessing as mp
+# mp.set_start_method('forkserver')
 from multiprocessing.managers import SyncManager, SharedMemoryManager
 from multiprocessing.shared_memory import SharedMemory
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
 from faster_fifo import Queue as MpQueue
+from queue import Empty
 
 class SharedNDArray(np.ndarray):
     def set_shm(self, shm):
@@ -325,7 +327,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 class Agent(nn.Module):
-    def __init__(self, envs, frames=4):
+    def __init__(self, n, frames=4):
         super(Agent, self).__init__()
         self.network = nn.Sequential(
             Scale(1/255),
@@ -339,7 +341,7 @@ class Agent(nn.Module):
             layer_init(nn.Linear(3136, 512)),
             nn.ReLU()
         )
-        self.actor = layer_init(nn.Linear(512, envs.action_space.n), std=0.01)
+        self.actor = layer_init(nn.Linear(512, n), std=0.01)
         self.critic = layer_init(nn.Linear(512, 1), std=1)
 
     def forward(self, x):
@@ -358,7 +360,8 @@ class Agent(nn.Module):
             
 def act(inputs):
     args, experiment_name, i, lock, stats_queue, device, \
-        obs, actions, logprobs, rewards, dones, values, traj_availables = inputs
+        next_obs, next_done, obs, actions, logprobs, rewards, dones, values, traj_availables, \
+            rollout_task_queue, policy_request_queue, learner_request_queue = inputs
     envs = []
     
     def make_env(gym_id, seed, idx):
@@ -378,31 +381,90 @@ def act(inputs):
     envs = [make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)]
     envs = np.array(envs, dtype=object)
 
-    next_obs = [env.reset() for env in envs]
-    next_done = np.zeros(args.num_envs)
+    # for "Double-buffered" sampling
+    for split_idx in range(args.num_env_split):
+        policy_request_idxs = []
+        for env_idx, env in enumerate(envs[split_idx::args.num_env_split]):
+            next_obs[i,split_idx,env_idx,0,0] = env.reset()
+            next_done[i,split_idx,env_idx,0,0] = 0
+            policy_request_idxs += [[i,split_idx,env_idx,0,0,0]]
+        policy_request_queue.put(policy_request_idxs)
 
     last_report = last_report_frames = total_env_frames = 0
     while True:
-        for env_idx, env in enumerate(envs):
-            for step in range(args.num_steps):
-
-                action = env.action_space.sample()
-                o, r, d, info = env.step(action)
-                if d:
-                    o = env.reset()
-                obs[i,env_idx,0,0,step] = o
-                rewards[i,env_idx,0,0,step] = r
-                dones[i,env_idx,0,0,step] = d
-
-                num_frames = 1
-                total_env_frames += num_frames
+        try:
+            tasks = rollout_task_queue.get_many(timeout=0.01)
+            for task in tasks:
+                # for "Double-buffered" sampling
+                split_idx, step = task
+                policy_request_idxs = []
+                for env_idx, env in enumerate(envs[split_idx::args.num_env_split]):
+                    obs[i,split_idx,env_idx,0,0,step] = next_obs[i,split_idx,env_idx,0,0].copy()
+                    dones[i,split_idx,env_idx,0,0,step] = next_done[i,split_idx,env_idx,0,0]
+                    next_obs[i,split_idx,env_idx,0,0], r, d, info = env.step(actions[i,split_idx,env_idx,0,0,step])
+                    if d:
+                        next_obs[i,split_idx,env_idx,0,0] = env.reset()
+                    rewards[i,split_idx,env_idx,0,0,step] = r
+                    next_done[env_idx] = d
+                    
+                    next_step = (step + 1) % args.num_steps  
+                    policy_request_idxs += [[i,split_idx,env_idx,0,0,next_step]]
     
-                if 'episode' in info.keys():
-                    stats_queue.put(info['episode']['l'])
+                    num_frames = 1
+                    total_env_frames += num_frames
+        
+                    if 'episode' in info.keys():
+                        stats_queue.put(info['episode']['l'])
+                policy_request_queue.put(policy_request_idxs)
+        except Empty:
+            pass
 
-def policy_worker(inputs):
-    pass
+def start_policy_worker(inputs):
+    # raise
+    args, experiment_name, i, lock, stats_queue, device, \
+        next_obs, next_done, obs, actions, logprobs, rewards, dones, values, traj_availables, \
+            rollout_task_queues, policy_request_queue, learner_request_queue = inputs
+    device = torch.device('cuda')
+    agent = Agent(4).to(device)
+    min_num_requests = 6
+    while True:
+        current_num_request = 0
+        policy_requests = []
+        while current_num_request < min_num_requests:
+            try:
+                policy_requests.extend(policy_request_queue.get_many(timeout=0.005))
+                current_num_request += 1
+            except Empty:
+                pass
+        ls = np.concatenate(policy_requests)
+        rollout_worker_idxs = ls.T[0,::args.num_envs//args.num_env_split]
+        split_idxs = ls.T[1,::args.num_envs//args.num_env_split]
+        step_idxs = ls.T[-1,::args.num_envs//args.num_env_split]
+        idxs = tuple(ls.T)
+        next_o = torch.from_numpy(next_obs[idxs[:-1]]).float().to(device)
+        a, l, e = agent.get_action(next_o)
+        actions[idxs] = a.cpu()
+        
+        for j in range(len(rollout_worker_idxs)):
+            rollout_worker_idx = rollout_worker_idxs[j]
+            split_idx = split_idxs[j]
+            step_idx = step_idxs[j]
+            rollout_task_queues[rollout_worker_idx].put([split_idx,step_idx])
 
+        # print("rollouts out")
+        # raise
+
+# def start_policy_inference_worker(inputs):
+#     # raise
+#     args, experiment_name, i, lock, stats_queue, device, \
+#         next_obs, next_done, obs, actions, logprobs, rewards, dones, values, traj_availables, \
+#             rollout_task_queues, policy_request_queue, learner_request_queue = inputs
+#     device = torch.device('cuda')
+#     agent = Agent(4).to(device)
+#     min_num_requests = 6
+#     while True:
+#         a, l, e = agent.get_action(next_o)
+#         actions[idxs] = a.cpu()
 
 def learn(args, rb, global_step, data_process_queue, data_process_back_queues, stats_queue, lock, learn_target_network, target_network, learn_q_network, q_network, optimizer, device):
     pass
@@ -470,7 +532,9 @@ if __name__ == "__main__":
     # Algorithm specific arguments
     parser.add_argument('--num-rollout-workers', type=int, default=mp.cpu_count(),
                          help='the number of rollout workers')
-    parser.add_argument('--num-policy-workers', type=int, default=1,
+    parser.add_argument('--num-env-split', type=int, default=2,
+                         help='the number of rollout workers')
+    parser.add_argument('--num-policy-workers', type=int, default=4,
                          help='the number of policy workers')
     parser.add_argument('--num-envs', type=int, default=20,
                          help='the number of envs per rollout worker')
@@ -522,7 +586,7 @@ if __name__ == "__main__":
         writer = SummaryWriter(f"/tmp/{experiment_name}")
     
     # TRY NOT TO MODIFY: seeding
-    device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
+    # device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
     
     def make_env(gym_id, seed, idx):
         env = gym.make(gym_id)
@@ -551,40 +615,53 @@ if __name__ == "__main__":
     lock = mp.Lock()
     dimensions = (
         args.num_rollout_workers,
-        args.num_envs,
+        args.num_env_split,
+        args.num_envs // args.num_env_split,
         args.num_policy_workers,
         args.num_traj_buffers,
         args.num_steps,
     )
     
-    obs = share_memory(np.zeros(dimensions + env.observation_space.shape))
-    actions = share_memory(np.zeros(dimensions + env.action_space.shape))
+    next_obs = share_memory(np.zeros(dimensions[:-1]+env.observation_space.shape))
+    next_done = share_memory(np.zeros(dimensions[:-1]))
+    obs = share_memory(np.zeros(dimensions+env.observation_space.shape))
+    actions = share_memory(np.zeros(dimensions+env.action_space.shape, dtype=env.action_space.dtype))
     logprobs = share_memory(np.zeros(dimensions))
     rewards = share_memory(np.zeros(dimensions))
     dones = share_memory(np.zeros(dimensions))
     values = share_memory(np.zeros(dimensions))
     traj_availables = share_memory(np.ones(dimensions))
-    raise
     
     actor_processes = []
-    data_processor_processes = []
-    ctx = mp.get_context("forkserver")
+    policy_workers = []
     stats_queue = MpQueue()
-    # stats_queue = mp.Queue(1000)
-    rollouts_queue = mp.Queue(1000)
-    data_process_queue = mp.Queue(1000)
+    rollout_task_queues = [MpQueue() for i in range(args.num_rollout_workers)]
+    
+    policy_request_queue = MpQueue()
+    learner_request_queue = MpQueue()
     data_process_back_queues = []
 
 
     for i in range(args.num_rollout_workers):
         actor = mp.Process(
             target=act,
-            args=[args, experiment_name, i, lock, stats_queue, device,
-                  obs, actions, logprobs, rewards, dones, values, traj_availables],
+            args=[[args, experiment_name, i, lock, stats_queue, 0,
+                  next_obs, next_done, obs, actions, logprobs, rewards, dones, values, traj_availables,
+                  rollout_task_queues[i], policy_request_queue, learner_request_queue]],
         )
         actor.start()
         actor_processes.append(actor)
-    
+
+
+    for i in range(args.num_policy_workers):
+        policy_worker = mp.Process(
+            target=start_policy_worker,
+            args=[[args, experiment_name, i, lock, stats_queue, 0,
+                  next_obs, next_done, obs, actions, logprobs, rewards, dones, values, traj_availables,
+                  rollout_task_queues, policy_request_queue, learner_request_queue]],
+        )
+        policy_worker.start()
+        policy_workers.append(policy_worker)
     # learner = ctx.Process(
     #     target=learn,
     #     args=(
@@ -646,9 +723,9 @@ if __name__ == "__main__":
         for actor in actor_processes:
             actor.terminate()
             actor.join(timeout=1)
-        for data_processor in data_processor_processes:
-            data_processor.terminate()
-            data_processor.join(timeout=1)
+        # for data_processor in data_processor_processes:
+        #     data_processor.terminate()
+        #     data_processor.join(timeout=1)
         if args.capture_video and args.prod_mode:
             wandb.log({"video.0": wandb.Video(existing_video_files[-1])})
     # env.close()
