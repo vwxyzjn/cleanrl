@@ -294,6 +294,7 @@ from multiprocessing.shared_memory import SharedMemory
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
 from faster_fifo import Queue as MpQueue
 from queue import Empty
+import stopwatch
 
 class SharedNDArray(np.ndarray):
     def set_shm(self, shm):
@@ -359,6 +360,7 @@ class Agent(nn.Module):
 
             
 def act(inputs):
+    sw = stopwatch.StopWatch()
     args, experiment_name, i, lock, stats_queue, device, \
         next_obs, next_done, obs, actions, logprobs, rewards, dones, values, traj_availables, \
             rollout_task_queue, policy_request_queue, learner_request_queue = inputs
@@ -392,83 +394,97 @@ def act(inputs):
 
     last_report = last_report_frames = total_env_frames = 0
     while True:
-        try:
-            tasks = rollout_task_queue.get_many(timeout=0.01)
+        with sw.timer('act'):
+            with sw.timer('wait_rollout_task_queue'):
+                tasks = []
+                while len(tasks) == 0:
+                    try:
+                        tasks = rollout_task_queue.get_many(timeout=0.01)
+                    except Empty:
+                        pass
             for task in tasks:
                 # for "Double-buffered" sampling
-                split_idx, step = task
-                policy_request_idxs = []
-                for env_idx, env in enumerate(envs[split_idx::args.num_env_split]):
-                    obs[i,split_idx,env_idx,0,0,step] = next_obs[i,split_idx,env_idx,0,0].copy()
-                    dones[i,split_idx,env_idx,0,0,step] = next_done[i,split_idx,env_idx,0,0]
-                    next_obs[i,split_idx,env_idx,0,0], r, d, info = env.step(actions[i,split_idx,env_idx,0,0,step])
-                    if d:
-                        next_obs[i,split_idx,env_idx,0,0] = env.reset()
-                    rewards[i,split_idx,env_idx,0,0,step] = r
-                    next_done[env_idx] = d
-                    
-                    next_step = (step + 1) % args.num_steps  
-                    policy_request_idxs += [[i,split_idx,env_idx,0,0,next_step]]
-    
-                    num_frames = 1
-                    total_env_frames += num_frames
+                with sw.timer('rollouts'):
+                    split_idx, step = task
+                    policy_request_idxs = []
+                    for env_idx, env in enumerate(envs[split_idx::args.num_env_split]):
+                        obs[i,split_idx,env_idx,0,0,step] = next_obs[i,split_idx,env_idx,0,0].copy()
+                        dones[i,split_idx,env_idx,0,0,step] = next_done[i,split_idx,env_idx,0,0]
+                        next_obs[i,split_idx,env_idx,0,0], r, d, info = env.step(actions[i,split_idx,env_idx,0,0,step])
+                        if d:
+                            next_obs[i,split_idx,env_idx,0,0] = env.reset()
+                        rewards[i,split_idx,env_idx,0,0,step] = r
+                        next_done[env_idx] = d
+                        
+                        next_step = (step + 1) % args.num_steps  
+                        policy_request_idxs += [[i,split_idx,env_idx,0,0,next_step]]
         
-                    if 'episode' in info.keys():
-                        stats_queue.put(info['episode']['l'])
-                policy_request_queue.put(policy_request_idxs)
-        except Empty:
-            pass
+                        num_frames = 1
+                        total_env_frames += num_frames
+            
+                        if 'episode' in info.keys():
+                            stats_queue.put(info['episode']['l'])
+                with sw.timer('policy_request_queue.put'):
+                    policy_request_queue.put(policy_request_idxs)
+        if total_env_frames % 1000 == 0 and i == 0:
+            print(stopwatch.format_report(sw.get_last_aggregated_report()))
+
 
 def start_policy_worker(inputs):
-    # raise
+    raise
     args, experiment_name, i, lock, stats_queue, device, \
         next_obs, next_done, obs, actions, logprobs, rewards, dones, values, traj_availables, \
             rollout_task_queues, policy_request_queue, learner_request_queue = inputs
+    sw = stopwatch.StopWatch()
     device = torch.device('cuda')
     agent = Agent(4).to(device)
-    min_num_requests = 6
+    min_num_requests = 3
     wait_for_min_requests = 0.01
     # time.sleep(5)
+    step = 0
     while True:
-        waiting_started = time.time()
-        policy_requests = []
-        while len(policy_requests) < min_num_requests and time.time() - waiting_started < wait_for_min_requests:
-            try:
-                policy_requests.extend(policy_request_queue.get_many(timeout=0.005))
-            except Empty:
-                pass
-        if len(policy_requests) == 0:
-            continue
-        ls = np.concatenate(policy_requests)
-        rollout_worker_idxs = ls.T[0,::args.num_envs//args.num_env_split]
-        split_idxs = ls.T[1,::args.num_envs//args.num_env_split]
-        step_idxs = ls.T[-1,::args.num_envs//args.num_env_split]
-        idxs = tuple(ls.T)
-        next_o = torch.from_numpy(next_obs[idxs[:-1]]).float().to(device)
-        a, l, e = agent.get_action(next_o)
-        actions[idxs] = a.cpu()
-        
-        for j in range(len(rollout_worker_idxs)):
-            rollout_worker_idx = rollout_worker_idxs[j]
-            split_idx = split_idxs[j]
-            step_idx = step_idxs[j]
-            rollout_task_queues[rollout_worker_idx].put([split_idx,step_idx])
-
-        # print("rollouts out")
+        step += 1
+        with sw.timer('policy_worker'):
+            waiting_started = time.time()
+            policy_requests = []
+            with sw.timer('policy_requests'):
+                while len(policy_requests) < min_num_requests and time.time() - waiting_started < wait_for_min_requests:
+                    try:
+                        policy_requests.extend(policy_request_queue.get_many(timeout=0.005))
+                    except Empty:
+                        pass
+                if len(policy_requests) == 0:
+                    continue
+            with sw.timer('prepare_data'):
+                ls = np.concatenate(policy_requests)
+                rollout_worker_idxs = ls.T[0,::args.num_envs//args.num_env_split]
+                split_idxs = ls.T[1,::args.num_envs//args.num_env_split]
+                step_idxs = ls.T[-1,::args.num_envs//args.num_env_split]
+                idxs = tuple(ls.T)
+            with sw.timer('index'):
+                t1 = next_obs[idxs[:-1]]
+            with sw.timer('create array at gpu'):
+                next_o = torch.tensor(t1, device=device)
+                # next_o = torch.tensor(np.array([next_obs[tuple(item[:-1])] for item in ls]), device=device)
+            # with sw.timer(''):
+            #     next_o = t3.to(device)
+                # next_o = torch.from_numpy(next_obs[idxs[:-1]]).float().to(device)
+            with sw.timer('inference'):
+                with torch.no_grad():
+                    a, l, e = agent.get_action(next_o)
+            with sw.timer('move_to_cpu'):
+                actions[idxs] = a.cpu()
+            with sw.timer('execute_action'):
+                for j in range(len(rollout_worker_idxs)):
+                    rollout_worker_idx = rollout_worker_idxs[j]
+                    split_idx = split_idxs[j]
+                    step_idx = step_idxs[j]
+                    rollout_task_queues[rollout_worker_idx].put([split_idx,step_idx])
+        if step % 100 == 0:
+            print(ls.shape)
+            print(stopwatch.format_report(sw.get_last_aggregated_report()))
         # raise
         
-# def start_policy_inference_worker(inputs):
-#     # raise
-#     args, experiment_name, i, lock, stats_queue, device, \
-#         next_obs, next_done, obs, actions, logprobs, rewards, dones, values, traj_availables, \
-#             rollout_task_queues, policy_request_queue, learner_request_queue = inputs
-#     device = torch.device('cuda')
-#     agent = Agent(4).to(device)
-#     min_num_requests = 6
-#     while True:
-#         a, l, e = agent.get_action(next_o)
-#         actions[idxs] = a.cpu()
-
 def learn(args, rb, global_step, data_process_queue, data_process_back_queues, stats_queue, lock, learn_target_network, target_network, learn_q_network, q_network, optimizer, device):
     pass
     # update_step = 0
@@ -533,7 +549,7 @@ if __name__ == "__main__":
                         help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
-    parser.add_argument('--num-rollout-workers', type=int, default=20,
+    parser.add_argument('--num-rollout-workers', type=int, default=mp.cpu_count(),
                          help='the number of rollout workers')
     parser.add_argument('--num-env-split', type=int, default=2,
                          help='the number of rollout workers')
@@ -625,16 +641,15 @@ if __name__ == "__main__":
         args.num_steps,
     )
     
-    next_obs = share_memory(np.zeros(dimensions[:-1]+env.observation_space.shape))
-    next_done = share_memory(np.zeros(dimensions[:-1]))
-    obs = share_memory(np.zeros(dimensions+env.observation_space.shape))
+    next_obs = share_memory(np.zeros(dimensions[:-1]+env.observation_space.shape, dtype=np.float32))
+    next_done = share_memory(np.zeros(dimensions[:-1], dtype=np.float32))
+    obs = share_memory(np.zeros(dimensions+env.observation_space.shape, dtype=np.float32))
     actions = share_memory(np.zeros(dimensions+env.action_space.shape, dtype=env.action_space.dtype))
-    logprobs = share_memory(np.zeros(dimensions))
-    rewards = share_memory(np.zeros(dimensions))
-    dones = share_memory(np.zeros(dimensions))
-    values = share_memory(np.zeros(dimensions))
-    traj_availables = share_memory(np.ones(dimensions))
-    
+    logprobs = share_memory(np.zeros(dimensions, dtype=np.float32))
+    rewards = share_memory(np.zeros(dimensions, dtype=np.float32))
+    dones = share_memory(np.zeros(dimensions, dtype=np.float32))
+    values = share_memory(np.zeros(dimensions, dtype=np.float32))
+    traj_availables = share_memory(np.ones(dimensions, dtype=np.float32))
     actor_processes = []
     policy_workers = []
     stats_queue = MpQueue()
@@ -702,6 +717,8 @@ if __name__ == "__main__":
                 print(f"global_step={global_step}")
                 global_step += global_step_increment
                 writer.add_scalar("charts/fps", global_step_increment / (time.time() - start_time), global_step)
+                writer.add_scalar("charts/policy_request_queue", policy_request_queue.qsize(), global_step)
+                writer.add_scalar("charts/rollout_task_queues[0]", rollout_task_queues[0].qsize(), global_step)
                 print("FPS: ", global_step_increment / (time.time() - start_time))
                 global_step_increment = 0
                 start_time = time.time()
