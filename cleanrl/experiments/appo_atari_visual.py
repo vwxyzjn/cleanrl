@@ -363,7 +363,7 @@ def act(inputs):
     sw = stopwatch.StopWatch()
     args, experiment_name, i, lock, stats_queue, device, \
         next_obs, next_done, obs, actions, logprobs, rewards, dones, values, traj_availables, \
-            rollout_task_queue, policy_request_queue, learner_request_queue = inputs
+            rollout_task_queue, policy_request_queues, learner_request_queue = inputs
     envs = []
     
     def make_env(gym_id, seed, idx):
@@ -384,15 +384,18 @@ def act(inputs):
     envs = np.array(envs, dtype=object)
 
     # for "Double-buffered" sampling
+    policy_request_queue_idx = 0
     for split_idx in range(args.num_env_split):
         policy_request_idxs = []
         for env_idx, env in enumerate(envs[split_idx::args.num_env_split]):
             next_obs[i,split_idx,env_idx,0,0] = env.reset()
             next_done[i,split_idx,env_idx,0,0] = 0
             policy_request_idxs += [[i,split_idx,env_idx,0,0,0]]
-        policy_request_queue.put(policy_request_idxs)
+        policy_request_queue_idx = (policy_request_queue_idx + 1) % args.num_policy_workers
+        policy_request_queues[policy_request_queue_idx].put(policy_request_idxs)
 
     last_report = last_report_frames = total_env_frames = 0
+    
     while True:
         with sw.timer('act'):
             with sw.timer('wait_rollout_task_queue'):
@@ -425,13 +428,14 @@ def act(inputs):
                         if 'episode' in info.keys():
                             stats_queue.put(info['episode']['l'])
                 with sw.timer('policy_request_queue.put'):
-                    policy_request_queue.put(policy_request_idxs)
+                    policy_request_queue_idx = (policy_request_queue_idx + 1) % args.num_policy_workers
+                    policy_request_queues[policy_request_queue_idx].put(policy_request_idxs)
         if total_env_frames % 1000 == 0 and i == 0:
             print(stopwatch.format_report(sw.get_last_aggregated_report()))
 
 
 def start_policy_worker(inputs):
-    raise
+    # raise
     args, experiment_name, i, lock, stats_queue, device, \
         next_obs, next_done, obs, actions, logprobs, rewards, dones, values, traj_availables, \
             rollout_task_queues, policy_request_queue, learner_request_queue = inputs
@@ -465,10 +469,6 @@ def start_policy_worker(inputs):
                 t1 = next_obs[idxs[:-1]]
             with sw.timer('create array at gpu'):
                 next_o = torch.tensor(t1, device=device)
-                # next_o = torch.tensor(np.array([next_obs[tuple(item[:-1])] for item in ls]), device=device)
-            # with sw.timer(''):
-            #     next_o = t3.to(device)
-                # next_o = torch.from_numpy(next_obs[idxs[:-1]]).float().to(device)
             with sw.timer('inference'):
                 with torch.no_grad():
                     a, l, e = agent.get_action(next_o)
@@ -636,7 +636,7 @@ if __name__ == "__main__":
         args.num_rollout_workers,
         args.num_env_split,
         args.num_envs // args.num_env_split,
-        args.num_policy_workers,
+        1, # args.num_policy_workers,
         args.num_traj_buffers,
         args.num_steps,
     )
@@ -655,7 +655,7 @@ if __name__ == "__main__":
     stats_queue = MpQueue()
     rollout_task_queues = [MpQueue() for i in range(args.num_rollout_workers)]
     
-    policy_request_queue = MpQueue()
+    policy_request_queues = [MpQueue() for i in range(args.num_policy_workers)]
     learner_request_queue = MpQueue()
     data_process_back_queues = []
 
@@ -665,7 +665,7 @@ if __name__ == "__main__":
             target=act,
             args=[[args, experiment_name, i, lock, stats_queue, 0,
                   next_obs, next_done, obs, actions, logprobs, rewards, dones, values, traj_availables,
-                  rollout_task_queues[i], policy_request_queue, learner_request_queue]],
+                  rollout_task_queues[i], policy_request_queues, learner_request_queue]],
         )
         actor.start()
         actor_processes.append(actor)
@@ -676,7 +676,7 @@ if __name__ == "__main__":
             target=start_policy_worker,
             args=[[args, experiment_name, i, lock, stats_queue, 0,
                   next_obs, next_done, obs, actions, logprobs, rewards, dones, values, traj_availables,
-                  rollout_task_queues, policy_request_queue, learner_request_queue]],
+                  rollout_task_queues, policy_request_queues[i], learner_request_queue]],
         )
         policy_worker.start()
         policy_workers.append(policy_worker)
@@ -717,7 +717,7 @@ if __name__ == "__main__":
                 print(f"global_step={global_step}")
                 global_step += global_step_increment
                 writer.add_scalar("charts/fps", global_step_increment / (time.time() - start_time), global_step)
-                writer.add_scalar("charts/policy_request_queue", policy_request_queue.qsize(), global_step)
+                writer.add_scalar("charts/policy_request_queue", policy_request_queues[0].qsize(), global_step)
                 writer.add_scalar("charts/rollout_task_queues[0]", rollout_task_queues[0].qsize(), global_step)
                 print("FPS: ", global_step_increment / (time.time() - start_time))
                 global_step_increment = 0
