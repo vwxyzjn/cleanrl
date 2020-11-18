@@ -516,13 +516,6 @@ class Environment:
     def close(self):
         self.gym_env.close()
 
-logging.basicConfig(
-    format=(
-        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
-    ),
-    level=0,
-)
-
 Buffers = typing.Dict[str, typing.List[torch.Tensor]]
 
 
@@ -875,8 +868,97 @@ class AtariNet(nn.Module):
         )
 
 
-Net = AtariNet
+def batch_and_learn(i, lock=threading.Lock()):
+    """Thread target for the learning process."""
+    global step, stats
+    timings = Timings()
+    while step < flags.total_steps:
+        timings.reset()
+        batch, agent_state = get_batch(
+            flags,
+            free_queue,
+            full_queue,
+            buffers,
+            initial_agent_state_buffers,
+            timings,
+        )
+        actor_model = model
+        initial_agent_state = agent_state
+        """Performs a learning (optimization) step."""
+        with lock:
+            learner_outputs, unused_state = learner_model(batch, initial_agent_state)
 
+            # Take final value function slice for bootstrapping.
+            bootstrap_value = learner_outputs["baseline"][-1]
+
+            # Move from obs[t] -> action[t] to action[t] -> obs[t].
+            batch = {key: tensor[1:] for key, tensor in batch.items()}
+            learner_outputs = {key: tensor[:-1] for key, tensor in learner_outputs.items()}
+
+            rewards = batch["reward"]
+            if flags.reward_clipping == "abs_one":
+                clipped_rewards = torch.clamp(rewards, -1, 1)
+            elif flags.reward_clipping == "none":
+                clipped_rewards = rewards
+
+            discounts = (~batch["done"]).float() * flags.discounting
+
+            vtrace_returns = from_logits(
+                behavior_policy_logits=batch["policy_logits"],
+                target_policy_logits=learner_outputs["policy_logits"],
+                actions=batch["action"],
+                discounts=discounts,
+                rewards=clipped_rewards,
+                values=learner_outputs["baseline"],
+                bootstrap_value=bootstrap_value,
+            )
+
+            pg_loss = compute_policy_gradient_loss(
+                learner_outputs["policy_logits"],
+                batch["action"],
+                vtrace_returns.pg_advantages,
+            )
+            baseline_loss = flags.baseline_cost * compute_baseline_loss(
+                vtrace_returns.vs - learner_outputs["baseline"]
+            )
+            entropy_loss = flags.entropy_cost * compute_entropy_loss(
+                learner_outputs["policy_logits"]
+            )
+
+            total_loss = pg_loss + baseline_loss + entropy_loss
+
+            episode_returns = batch["episode_return"][batch["done"]]
+            stats = {
+                "episode_returns": tuple(episode_returns.cpu().numpy()),
+                "mean_episode_return": torch.mean(episode_returns).item(),
+                "total_loss": total_loss.item(),
+                "pg_loss": pg_loss.item(),
+                "baseline_loss": baseline_loss.item(),
+                "entropy_loss": entropy_loss.item(),
+            }
+
+            optimizer.zero_grad()
+            total_loss.backward()
+            nn.utils.clip_grad_norm_(learner_model.parameters(), flags.grad_norm_clipping)
+            optimizer.step()
+            scheduler.step()
+
+            actor_model.load_state_dict(learner_model.state_dict())
+        timings.time("learn")
+        with lock:
+            step += T * B
+
+    if i == 0:
+        logging.info("Batch and learn: %s", timings.summary())
+
+logging.basicConfig(
+    format=(
+        "[%(levelname)s:%(process)d %(module)s:%(lineno)d %(asctime)s] " "%(message)s"
+    ),
+    level=0,
+)
+
+Net = AtariNet
 
 def create_env(flags):
     return wrap_pytorch(
@@ -978,88 +1060,7 @@ logger.info("# Step\t%s", "\t".join(stat_keys))
 
 step, stats = 0, {}
 
-def batch_and_learn(i, lock=threading.Lock()):
-    """Thread target for the learning process."""
-    global step, stats
-    timings = Timings()
-    while step < flags.total_steps:
-        timings.reset()
-        batch, agent_state = get_batch(
-            flags,
-            free_queue,
-            full_queue,
-            buffers,
-            initial_agent_state_buffers,
-            timings,
-        )
-        actor_model = model
-        initial_agent_state = agent_state
-        """Performs a learning (optimization) step."""
-        with lock:
-            learner_outputs, unused_state = learner_model(batch, initial_agent_state)
 
-            # Take final value function slice for bootstrapping.
-            bootstrap_value = learner_outputs["baseline"][-1]
-
-            # Move from obs[t] -> action[t] to action[t] -> obs[t].
-            batch = {key: tensor[1:] for key, tensor in batch.items()}
-            learner_outputs = {key: tensor[:-1] for key, tensor in learner_outputs.items()}
-
-            rewards = batch["reward"]
-            if flags.reward_clipping == "abs_one":
-                clipped_rewards = torch.clamp(rewards, -1, 1)
-            elif flags.reward_clipping == "none":
-                clipped_rewards = rewards
-
-            discounts = (~batch["done"]).float() * flags.discounting
-
-            vtrace_returns = from_logits(
-                behavior_policy_logits=batch["policy_logits"],
-                target_policy_logits=learner_outputs["policy_logits"],
-                actions=batch["action"],
-                discounts=discounts,
-                rewards=clipped_rewards,
-                values=learner_outputs["baseline"],
-                bootstrap_value=bootstrap_value,
-            )
-
-            pg_loss = compute_policy_gradient_loss(
-                learner_outputs["policy_logits"],
-                batch["action"],
-                vtrace_returns.pg_advantages,
-            )
-            baseline_loss = flags.baseline_cost * compute_baseline_loss(
-                vtrace_returns.vs - learner_outputs["baseline"]
-            )
-            entropy_loss = flags.entropy_cost * compute_entropy_loss(
-                learner_outputs["policy_logits"]
-            )
-
-            total_loss = pg_loss + baseline_loss + entropy_loss
-
-            episode_returns = batch["episode_return"][batch["done"]]
-            stats = {
-                "episode_returns": tuple(episode_returns.cpu().numpy()),
-                "mean_episode_return": torch.mean(episode_returns).item(),
-                "total_loss": total_loss.item(),
-                "pg_loss": pg_loss.item(),
-                "baseline_loss": baseline_loss.item(),
-                "entropy_loss": entropy_loss.item(),
-            }
-
-            optimizer.zero_grad()
-            total_loss.backward()
-            nn.utils.clip_grad_norm_(learner_model.parameters(), flags.grad_norm_clipping)
-            optimizer.step()
-            scheduler.step()
-
-            actor_model.load_state_dict(learner_model.state_dict())
-        timings.time("learn")
-        with lock:
-            step += T * B
-
-    if i == 0:
-        logging.info("Batch and learn: %s", timings.summary())
 
 for m in range(flags.num_buffers):
     free_queue.put(m)
