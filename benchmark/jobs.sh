@@ -107,3 +107,23 @@ python jobs.py --exp-script scripts/apex_dqn_atari.sh \
     --num-memory 63000 \
     --num-hours 48.0 \
     --submit-aws $SUBMIT_AWS
+
+python jobs.py --exp-script scripts/offline_dqn_atari_visual.sh \
+    --job-queue cleanrl_gpu_large_memory \
+    --job-definition cleanrl \
+    --num-seed 2 \
+    --num-vcpu 16 \
+    --num-gpu 1 \
+    --num-memory 63000 \
+    --num-hours 48.0 \
+    --submit-aws $SUBMIT_AWS
+
+python jobs.py --exp-script scripts/offline_dqn_cql_atari_visual.sh \
+    --job-queue cleanrl_gpu_large_memory \
+    --job-definition cleanrl \
+    --num-seed 2 \
+    --num-vcpu 16 \
+    --num-gpu 1 \
+    --num-memory 63000 \
+    --num-hours 48.0 \
+    --submit-aws $SUBMIT_AWS

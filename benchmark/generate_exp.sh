@@ -102,3 +102,17 @@ python generate_exp.py --exp-script scripts/apex_dqn_atari.sh \
     --gym-ids BeamRiderNoFrameskip-v4 QbertNoFrameskip-v4 SpaceInvadersNoFrameskip-v4 PongNoFrameskip-v4 BreakoutNoFrameskip-v4 \
     --wandb-project-name cleanrl.benchmark \
     --other-args "--wandb-entity cleanrl --cuda True"
+
+python generate_exp.py --exp-script scripts/offline_dqn_atari_visual.sh \
+    --algo offline_dqn_atari_visual.py \
+    --total-timesteps 10000000 \
+    --gym-ids BeamRiderNoFrameskip-v4 QbertNoFrameskip-v4 SpaceInvadersNoFrameskip-v4 PongNoFrameskip-v4 BreakoutNoFrameskip-v4 \
+    --wandb-project-name cleanrl.benchmark \
+    --other-args "--wandb-entity cleanrl --cuda True"
+
+python generate_exp.py --exp-script scripts/offline_dqn_cql_atari_visual.sh \
+    --algo offline_dqn_cql_atari_visual.py \
+    --total-timesteps 10000000 \
+    --gym-ids BeamRiderNoFrameskip-v4 QbertNoFrameskip-v4 SpaceInvadersNoFrameskip-v4 PongNoFrameskip-v4 BreakoutNoFrameskip-v4 \
+    --wandb-project-name cleanrl.benchmark \
+    --other-args "--wandb-entity cleanrl --cuda True"
