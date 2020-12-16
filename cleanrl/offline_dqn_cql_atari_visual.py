@@ -321,6 +321,7 @@ from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
 import os
+import re
 
 import matplotlib
 matplotlib.use('Agg')
@@ -356,7 +357,7 @@ if __name__ == "__main__":
                         help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
-    parser.add_argument('--offline-gym-id', type=str, default="breakout-expert-v0",
+    parser.add_argument('--offline-dataset-id', type=str, default="expert-v0",
                         help='the id of the offline dataset gym environment')
     parser.add_argument('--min-q-weight', type=float, default=10.0,
                         help="the scale of the CQL's objective to minimize the q values")
@@ -383,6 +384,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
+    # create offline gym id: 'BeamRiderNoFrameskip-v4' -> 'beam-rider-expert-v0'
+    args.offline_gym_id = re.sub(r'(?<!^)(?=[A-Z])', '-', args.gym_id).lower().replace(
+        "no-frameskip-v4", "") + args.offline_dataset_id
 
 class QValueVisualizationWrapper(gym.Wrapper):
     def __init__(self, env):
