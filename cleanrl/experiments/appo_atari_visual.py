@@ -426,7 +426,8 @@ def act(inputs):
                         total_env_frames += num_frames
             
                         if 'episode' in info.keys():
-                            stats_queue.put(info['episode']['l'])
+                            stats_queue.put(['l', info['episode']['l']])
+                            stats_queue.put(["charts/episode_reward", info['episode']['r']])
                 with sw.timer('policy_request_queue.put'):
                     if next_step == 0:
                         learner_request_queue.put(policy_request_idxs)
@@ -485,11 +486,12 @@ def start_policy_worker(inputs):
                     step_idx = step_idxs[j]
                     rollout_task_queues[rollout_worker_idx].put([split_idx,step_idx])
             with sw.timer('update_policy'):
-                try:
-                    new_policies = new_policy_queues[i].get_many(timeout=0.005)
-                    agent.load_state_dict(new_policies[-1])
-                except Empty:
-                    pass
+                if step % 10 == 0:
+                    try:
+                        new_policies = new_policy_queues[i].get_many(timeout=0.005)
+                        agent.load_state_dict(new_policies[-1])
+                    except Empty:
+                        pass
         if step % 100 == 0:
             print(ls.shape)
             print(stopwatch.format_report(sw.get_last_aggregated_report()))
@@ -573,8 +575,8 @@ def learn(inputs):
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
         # Optimizaing the policy and value network
-        target_agent = Agent(4).to(device)
-        inds = np.arange(min(1024, len(b_obs)),)
+        # target_agent = Agent(4).to(device)
+        inds = np.arange(len(b_obs))
         minibatch_ind = inds
         # for i_epoch_pi in range(args.update_epochs):
         #     np.random.shuffle(inds)
@@ -626,6 +628,11 @@ def learn(inputs):
         # update the policy in the policy worker
         for new_policy_queue in new_policy_queues:
             new_policy_queue.put(agent.state_dict())
+
+        stats_queue.put(["losses/value_loss", v_loss.item()])
+        stats_queue.put(["losses/policy_loss", pg_loss.item()])
+        stats_queue.put(["losses/entropy", entropy_loss.item()])
+        stats_queue.put(["losses/approx_kl", approx_kl.item()])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='DQN agent')
@@ -805,12 +812,29 @@ if __name__ == "__main__":
     update_step = 0
     try:
         while global_step < args.total_timesteps:
-            update_step += 1
-            # start_global_step = global_step
             try:
-                ls = stats_queue.get_many(timeout=1)
-                for l in ls:
-                    global_step_increment += l
+                update_step += 1
+                ms = stats_queue.get_many(timeout=1)
+                for m in ms:
+                    if m[0] == 'l':
+                        global_step_increment += m[1]
+                        global_step += m[1]
+                    else:
+                        writer.add_scalar(m[0], m[1], global_step)
+                        if m[0] == "charts/episode_reward":
+                            print(f"global_step={global_step}, episode_reward={m[1]}")
+
+
+                if update_step % 10 == 0:
+                    # print(f"global_step={global_step}, episode_reward={r}")
+                    print(f"global_step={global_step}")
+                    # global_step += global_step_increment
+                    writer.add_scalar("charts/fps", global_step_increment / (time.time() - start_time), global_step)
+                    writer.add_scalar("charts/policy_request_queue", policy_request_queues[0].qsize(), global_step)
+                    writer.add_scalar("charts/rollout_task_queues[0]", rollout_task_queues[0].qsize(), global_step)
+                    print("FPS: ", global_step_increment / (time.time() - start_time))
+                    global_step_increment = 0
+                    start_time = time.time()
             except:
                 continue
 
@@ -818,16 +842,7 @@ if __name__ == "__main__":
             # writer.add_scalar("charts/stats_queue_size", stats_queue.qsize(), global_step)
             # writer.add_scalar("charts/rollouts_queue_size", rollouts_queue.qsize(), global_step)
             # writer.add_scalar("charts/data_process_queue_size", data_process_queue.qsize(), global_step)
-            if update_step % 10 == 0:
-                # print(f"global_step={global_step}, episode_reward={r}")
-                print(f"global_step={global_step}")
-                global_step += global_step_increment
-                writer.add_scalar("charts/fps", global_step_increment / (time.time() - start_time), global_step)
-                writer.add_scalar("charts/policy_request_queue", policy_request_queues[0].qsize(), global_step)
-                writer.add_scalar("charts/rollout_task_queues[0]", rollout_task_queues[0].qsize(), global_step)
-                print("FPS: ", global_step_increment / (time.time() - start_time))
-                global_step_increment = 0
-                start_time = time.time()
+
 
             # else:
             #     # print(m[0], m[1], global_step)
