@@ -325,6 +325,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvW
 
 from torch import multiprocessing as mp
 from multiprocessing.shared_memory import SharedMemory
+os.environ["OMP_NUM_THREADS"] = "1"  # Necessary for multithreading.
 
 import stopwatch
 
@@ -337,7 +338,6 @@ class SharedNDArray(np.ndarray):
 
     def unlink(self):
         self.shm.unlink()
-
 
 def share_memory(arr):
     shm = SharedMemory(create=True, size=arr.nbytes)
@@ -554,7 +554,6 @@ class AsyncEnvs:
     def start_rollout_worker(self, rollout_worker_idx):
         sw = stopwatch.StopWatch()
         next_obs, next_done, obs, actions, logprobs, rewards, dones, values = self.storage
-        rollout_task_queue = self.rollout_task_queues[rollout_worker_idx]
         env_idxs = range(rollout_worker_idx*self.num_envs_per_rollout_worker, 
                          rollout_worker_idx*self.num_envs_per_rollout_worker+self.num_envs_per_rollout_worker)
         for env_idx in env_idxs:
@@ -562,34 +561,36 @@ class AsyncEnvs:
             self.policy_request_queue.put([next_step, env_idx, rollout_worker_idx])
             next_obs[env_idx] = torch.tensor(self.envs[env_idx].reset())
             next_done[env_idx] = 0
-            
-        last_report = last_report_frames = total_env_frames = 0
 
+        local_step = 0
         while True:
             with sw.timer('act'):
                 with sw.timer('wait_rollout_task_queue'):
-                    
                     task = self.rollout_task_queues[rollout_worker_idx].get()
-                # for task in tasks:
-                    # print(tasks)
                     step, env_idx = task
-                    with sw.timer('rollouts'):
-                        obs[step,env_idx] = next_obs[env_idx].copy()
-                        dones[step,env_idx] = next_done[env_idx].copy()
+                with sw.timer('rollouts'):
+                    obs[step,env_idx] = next_obs[env_idx].copy()
+                    dones[step,env_idx] = next_done[env_idx].copy()
+                    
+                    next_obs[env_idx], r, d, info = self.envs[env_idx].step(actions[step,env_idx])
+                    if d:
+                        next_obs[env_idx] = self.envs[env_idx].reset()
+                    rewards[step,env_idx] = r
+                    next_done[env_idx] = d
+                    next_step = step + 1
+                    local_step += 1
+                    # if next_step == 0:
+                    #     raise
+                with sw.timer('logging'):
+                    self.policy_request_queue.put([next_step, env_idx, rollout_worker_idx])
+                    if 'episode' in info.keys():
+                        # print(["charts/episode_reward", info['episode']['r']])
+                        self.stats_queue.put(['l', info['episode']['l']])
+                        self.stats_queue.put(["charts/episode_reward", info['episode']['r']])
                         
-                        next_obs[env_idx], r, d, info = self.envs[env_idx].step(actions[step,env_idx])
-                        if d:
-                            next_obs[env_idx] = self.envs[env_idx].reset()
-                        rewards[step,env_idx] = r
-                        next_done[env_idx] = d
-                        next_step = step + 1
-                        # if next_step == 0:
-                        #     raise
-                        self.policy_request_queue.put([next_step, env_idx, rollout_worker_idx])
-                        if 'episode' in info.keys():
-                            # print(["charts/episode_reward", info['episode']['r']])
-                            self.stats_queue.put(['l', info['episode']['l']])
-                            self.stats_queue.put(["charts/episode_reward", info['episode']['r']])
+            if local_step % 1000 == 0:
+                print(stopwatch.format_report(sw.get_last_aggregated_report()))
+                print()
 
 env_fns = [make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)]
 async_envs = AsyncEnvs(env_fns, args.num_rollout_workers, args.num_steps, device, agent,
@@ -619,7 +620,7 @@ for update in range(1, num_updates+1):
             pass
         
         policy_requests = []
-        for _ in range(4):
+        for _ in range(8):
             try:
                 policy_request = async_envs.policy_request_queue.get(timeout=0.005)
             except:
