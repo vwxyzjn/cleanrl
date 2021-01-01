@@ -540,6 +540,7 @@ class AsyncEnvs:
         self.agent = agent
         ctx = mp.get_context("fork")
         self.rollout_task_queues = [ctx.Queue(10) for i in range(num_rollout_workers)]
+        self.stats_queue = ctx.Queue(10)
         self.policy_request_queue = ctx.Queue(10)
         self.storage = storage
         
@@ -586,9 +587,9 @@ class AsyncEnvs:
                         #     raise
                         self.policy_request_queue.put([next_step, env_idx, rollout_worker_idx])
                         if 'episode' in info.keys():
-                            print(["charts/episode_reward", info['episode']['r']])
-                            # stats_queue.put(['l', info['episode']['l']])
-                            # stats_queue.put()
+                            # print(["charts/episode_reward", info['episode']['r']])
+                            self.stats_queue.put(['l', info['episode']['l']])
+                            self.stats_queue.put(["charts/episode_reward", info['episode']['r']])
 
 env_fns = [make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)]
 async_envs = AsyncEnvs(env_fns, args.num_rollout_workers, args.num_steps, device, agent,
@@ -607,6 +608,16 @@ for update in range(1, num_updates+1):
     # TRY NOT TO MODIFY: prepare the execution of the game.
     end_policy_requests = []
     while True:
+        try:
+            m1, m2 = async_envs.stats_queue.get(timeout=0.005)
+            if m1 == 'l':
+                global_step += m2
+            else:
+                print(f"global_step={global_step}, episode_reward={m2}")
+                writer.add_scalar(m1, m2, global_step)
+        except:
+            pass
+        
         policy_requests = []
         for _ in range(4):
             try:
