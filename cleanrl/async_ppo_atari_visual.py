@@ -326,27 +326,9 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvW
 from torch import multiprocessing as mp
 from faster_fifo import Queue as FastQueue
 from queue import Full, Empty
-from multiprocessing.shared_memory import SharedMemory
 os.environ["OMP_NUM_THREADS"] = "1"  # Necessary for multithreading.
 
 import stopwatch
-
-class SharedNDArray(np.ndarray):
-    def set_shm(self, shm):
-        self.shm = shm
-
-    def close(self):
-        self.shm.close()
-
-    def unlink(self):
-        self.shm.unlink()
-
-def share_memory(arr):
-    shm = SharedMemory(create=True, size=arr.nbytes)
-    shm_arr = SharedNDArray(arr.shape, dtype=arr.dtype, buffer=shm.buf)
-    shm_arr[:] = arr[:]
-    shm_arr.set_shm(shm)
-    return shm_arr
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
@@ -516,21 +498,31 @@ if args.anneal_lr:
     lr = lambda f: f * args.learning_rate
 
 # ALGO Logic: Storage for epoch data
-obs = share_memory(np.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape, dtype=np.float32))
-actions = share_memory(np.zeros((args.num_steps, args.num_envs) + envs.action_space.shape, dtype=envs.action_space.dtype))
-logprobs = share_memory(np.zeros((args.num_steps, args.num_envs), dtype=np.float32))
-rewards = share_memory(np.zeros((args.num_steps, args.num_envs), dtype=np.float32))
-dones = share_memory(np.zeros((args.num_steps, args.num_envs), dtype=np.float32))
-values = share_memory(np.zeros((args.num_steps, args.num_envs), dtype=np.float32))
+obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape)
+actions = torch.zeros((args.num_steps, args.num_envs) + envs.action_space.shape).long()
+logprobs = torch.zeros((args.num_steps, args.num_envs))
+rewards = torch.zeros((args.num_steps, args.num_envs))
+dones = torch.zeros((args.num_steps, args.num_envs))
+values = torch.zeros((args.num_steps, args.num_envs))
+
 
 # TRY NOT TO MODIFY: start the game
 global_step = 0
 # Note how `next_obs` and `next_done` are used; their usage is equivalent to
 # https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/84a7582477fb0d5c82ad6d850fe476829dddd2e1/a2c_ppo_acktr/storage.py#L60
-next_obs = share_memory(np.zeros((args.num_envs,)+envs.observation_space.shape, dtype=np.float32))
-next_done = share_memory(np.zeros(args.num_envs, dtype=np.float32))
+next_obs = torch.zeros((args.num_envs,)+envs.observation_space.shape)
+next_done = torch.zeros(args.num_envs)
 num_updates = args.total_timesteps // args.batch_size
 
+storage = []
+cudart = torch.cuda.cudart()
+for x in [next_obs, next_done, obs, actions, logprobs, rewards, dones, values]:
+    x.share_memory_()
+    r = cudart.cudaHostRegister(x.data_ptr(), x.numel() * x.element_size(), 0)
+    assert r == 0 # assert pin success
+    assert x.is_shared()
+    assert x.is_pinned()
+    storage += [x.numpy()]
 
 class AsyncEnvs:
 
@@ -543,7 +535,7 @@ class AsyncEnvs:
         self.agent = agent
         # ctx = mp.get_context("fork")
         self.rollout_task_queues = [FastQueue(1000) for i in range(num_rollout_workers)]
-        self.stats_queue = mp.Queue(1000)
+        self.stats_queue = FastQueue(1000)
         self.policy_request_queue = FastQueue(1000)
         self.storage = storage
         
@@ -569,12 +561,7 @@ class AsyncEnvs:
         while True:
             with sw.timer('act'):
                 with sw.timer('wait_rollout_task_queue'):
-                    tasks = []
-                    while len(tasks) == 0:
-                        try:
-                            tasks = self.rollout_task_queues[rollout_worker_idx].get_many(timeout=0.01)
-                        except Empty:
-                            pass
+                    tasks = self.rollout_task_queues[rollout_worker_idx].get_many()
 
                 with sw.timer('rollouts'):
                     # print(tasks)
@@ -604,7 +591,7 @@ class AsyncEnvs:
 
 env_fns = [make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)]
 async_envs = AsyncEnvs(env_fns, args.num_rollout_workers, args.num_steps, device, agent,
-                 [next_obs, next_done, obs, actions, logprobs, rewards, dones, values])
+                 storage)
 # raise
 
 start_time = time.time()
@@ -622,39 +609,37 @@ for update in range(1, num_updates+1):
     end_policy_requests = []
     while True:
         try:
-            m1, m2 = async_envs.stats_queue.get(timeout=0.005)
-            if m1 == 'l':
-                global_step += m2
-            else:
-                print(f"global_step={global_step}, episode_reward={m2}")
-                writer.add_scalar(m1, m2, global_step)
+            if async_envs.stats_queue.qsize() != 0:
+                ms = async_envs.stats_queue.get_many()
+                for m1, m2 in ms:
+                # m1, m2 = async_envs.stats_queue.get_many(timeout=0.005)
+                    if m1 == 'l':
+                        global_step += m2
+                    else:
+                        print(f"global_step={global_step}, episode_reward={m2}")
+                        writer.add_scalar(m1, m2, global_step)
         except:
             pass
         
-        waiting_started = time.time()
         policy_requests = []
-        while len(policy_requests) < min_num_requests and time.time() - waiting_started < wait_for_min_requests:
-            try:
-                temp_policy_requests = async_envs.policy_request_queue.get_many(timeout=0.005)
-                for policy_request in temp_policy_requests:
-                    next_step = policy_request[0] = policy_request[0] % args.num_steps
-                    if next_step == 0:
-                        end_policy_requests += [policy_request]
-                    else:
-                        policy_requests += [policy_request]
-            except Empty:
-                pass
-
+        if async_envs.policy_request_queue.qsize() != 0:
+            temp_policy_requests = async_envs.policy_request_queue.get_many()
+            for policy_request in temp_policy_requests:
+                next_step = policy_request[0] = policy_request[0] % args.num_steps
+                if next_step == 0:
+                    end_policy_requests += [policy_request]
+                else:
+                    policy_requests += [policy_request]
 
         if len(end_policy_requests) == args.num_envs:
             break
+        
         if len(policy_requests) > 0:
             ls = np.array(policy_requests)
-            next_o = torch.tensor(next_obs[ls[:,1]]).pin_memory().to(device, non_blocking=True)
+            next_o = next_obs[ls[:,1]].to(device, non_blocking=True)
             with torch.no_grad():
                 a, l, _ = agent.get_action(next_o)
                 v = agent.get_value(next_o)
-            
             actions[tuple(ls[:,[0,1]].T)] = a.cpu()
             logprobs[tuple(ls[:,[0,1]].T)] = l.cpu()
             values[tuple(ls[:,[0,1]].T)] = v.flatten().cpu()
@@ -662,14 +647,14 @@ for update in range(1, num_updates+1):
                 async_envs.rollout_task_queues[item[2]].put([item[0], item[1]])
 
     # bootstrap reward if not done. reached the batch limit
-    gpu_obs = torch.tensor(obs).pin_memory().to(device, non_blocking=True)
-    gpu_actions = torch.tensor(actions).pin_memory().to(device, non_blocking=True)
-    gpu_logprobs = torch.tensor(logprobs).pin_memory().to(device, non_blocking=True)
-    gpu_rewards = torch.tensor(rewards).pin_memory().to(device, non_blocking=True)
-    gpu_dones = torch.tensor(dones).pin_memory().to(device, non_blocking=True)
-    gpu_values = torch.tensor(values).pin_memory().to(device, non_blocking=True)
-    gpu_next_obs = torch.tensor(next_obs).pin_memory().to(device, non_blocking=True)
-    gpu_next_done = torch.tensor(next_done).pin_memory().to(device, non_blocking=True)
+    gpu_obs = obs.to(device, non_blocking=True)
+    gpu_actions = actions.to(device, non_blocking=True)
+    gpu_logprobs = logprobs.to(device, non_blocking=True)
+    gpu_rewards = rewards.to(device, non_blocking=True)
+    gpu_dones = dones.to(device, non_blocking=True)
+    gpu_values = values.to(device, non_blocking=True)
+    gpu_next_obs = next_obs.to(device, non_blocking=True)
+    gpu_next_done = next_done.to(device, non_blocking=True)
 
     with torch.no_grad():
         last_value = agent.get_value(gpu_next_obs).reshape(1, -1)
@@ -766,11 +751,11 @@ for update in range(1, num_updates+1):
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
     
     # continue
-    print("SPS:", int(global_step / (time.time() - start_time)))
     print('restart')
+    print("SPS:", int(global_step / (time.time() - start_time)))
     # raise
     ls = np.array(end_policy_requests)
-    next_o = torch.tensor(next_obs[ls[:,1]]).pin_memory().to(device, non_blocking=True)
+    next_o = next_obs[ls[:,1]].to(device, non_blocking=True)
     with torch.no_grad():
         a, l, _ = agent.get_action(next_o)
         v = agent.get_value(next_o)
@@ -780,7 +765,6 @@ for update in range(1, num_updates+1):
     values[tuple(ls[:,[0,1]].T)] = v.flatten().cpu()
     for item in ls:
         async_envs.rollout_task_queues[item[2]].put([item[0], item[1]])
-
 envs.close()
 writer.close()
 
