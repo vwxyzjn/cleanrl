@@ -324,6 +324,8 @@ import os
 from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
 
 from torch import multiprocessing as mp
+from faster_fifo import Queue as FastQueue
+from queue import Full, Empty
 from multiprocessing.shared_memory import SharedMemory
 os.environ["OMP_NUM_THREADS"] = "1"  # Necessary for multithreading.
 
@@ -529,6 +531,7 @@ next_obs = share_memory(np.zeros((args.num_envs,)+envs.observation_space.shape, 
 next_done = share_memory(np.zeros(args.num_envs, dtype=np.float32))
 num_updates = args.total_timesteps // args.batch_size
 
+
 class AsyncEnvs:
 
     def __init__(self, env_fns, num_rollout_workers, num_steps, device, agent,
@@ -538,10 +541,10 @@ class AsyncEnvs:
         self.num_steps = num_steps
         self.device = device
         self.agent = agent
-        ctx = mp.get_context("fork")
-        self.rollout_task_queues = [ctx.Queue(10) for i in range(num_rollout_workers)]
-        self.stats_queue = ctx.Queue(10)
-        self.policy_request_queue = ctx.Queue(10)
+        # ctx = mp.get_context("fork")
+        self.rollout_task_queues = [FastQueue(1000) for i in range(num_rollout_workers)]
+        self.stats_queue = mp.Queue(1000)
+        self.policy_request_queue = FastQueue(1000)
         self.storage = storage
         
         assert len(env_fns) % self.num_rollout_workers == 0, \
@@ -549,7 +552,7 @@ class AsyncEnvs:
         self.num_envs_per_rollout_worker = len(env_fns) // self.num_rollout_workers
         
         for rollout_worker_idx in range(self.num_rollout_workers):
-            ctx.Process(target=self.start_rollout_worker, args=(rollout_worker_idx,)).start()
+            mp.Process(target=self.start_rollout_worker, args=(rollout_worker_idx,)).start()
 
     def start_rollout_worker(self, rollout_worker_idx):
         sw = stopwatch.StopWatch()
@@ -566,27 +569,34 @@ class AsyncEnvs:
         while True:
             with sw.timer('act'):
                 with sw.timer('wait_rollout_task_queue'):
-                    task = self.rollout_task_queues[rollout_worker_idx].get()
-                    step, env_idx = task
+                    tasks = []
+                    while len(tasks) == 0:
+                        try:
+                            tasks = self.rollout_task_queues[rollout_worker_idx].get_many(timeout=0.01)
+                        except Empty:
+                            pass
+
                 with sw.timer('rollouts'):
-                    obs[step,env_idx] = next_obs[env_idx].copy()
-                    dones[step,env_idx] = next_done[env_idx].copy()
-                    
-                    next_obs[env_idx], r, d, info = self.envs[env_idx].step(actions[step,env_idx])
-                    if d:
-                        next_obs[env_idx] = self.envs[env_idx].reset()
-                    rewards[step,env_idx] = r
-                    next_done[env_idx] = d
-                    next_step = step + 1
-                    local_step += 1
-                    # if next_step == 0:
-                    #     raise
-                with sw.timer('logging'):
-                    self.policy_request_queue.put([next_step, env_idx, rollout_worker_idx])
-                    if 'episode' in info.keys():
-                        # print(["charts/episode_reward", info['episode']['r']])
-                        self.stats_queue.put(['l', info['episode']['l']])
-                        self.stats_queue.put(["charts/episode_reward", info['episode']['r']])
+                    # print(tasks)
+                    for task in tasks:
+                        step, env_idx = task
+                        obs[step,env_idx] = next_obs[env_idx].copy()
+                        dones[step,env_idx] = next_done[env_idx].copy()
+                        
+                        next_obs[env_idx], r, d, info = self.envs[env_idx].step(actions[step,env_idx])
+                        if d:
+                            next_obs[env_idx] = self.envs[env_idx].reset()
+                        rewards[step,env_idx] = r
+                        next_done[env_idx] = d
+                        next_step = step + 1
+                        local_step += 1
+                        
+                        with sw.timer('logging'):
+                            self.policy_request_queue.put([next_step, env_idx, rollout_worker_idx])
+                            if 'episode' in info.keys():
+                                # print(["charts/episode_reward", info['episode']['r']])
+                                self.stats_queue.put(['l', info['episode']['l']])
+                                self.stats_queue.put(["charts/episode_reward", info['episode']['r']])
                         
             if local_step % 1000 == 0:
                 print(stopwatch.format_report(sw.get_last_aggregated_report()))
@@ -597,8 +607,10 @@ async_envs = AsyncEnvs(env_fns, args.num_rollout_workers, args.num_steps, device
                  [next_obs, next_done, obs, actions, logprobs, rewards, dones, values])
 # raise
 
-
-
+start_time = time.time()
+min_num_requests = 1
+wait_for_min_requests = 0.01
+# raise
 for update in range(1, num_updates+1):
     # Annealing the rate if instructed to do so.
     if args.anneal_lr:
@@ -619,17 +631,21 @@ for update in range(1, num_updates+1):
         except:
             pass
         
+        waiting_started = time.time()
         policy_requests = []
-        for _ in range(8):
+        while len(policy_requests) < min_num_requests and time.time() - waiting_started < wait_for_min_requests:
             try:
-                policy_request = async_envs.policy_request_queue.get(timeout=0.005)
-            except:
-                continue
-            next_step = policy_request[0] = policy_request[0] % args.num_steps
-            if next_step == 0:
-                end_policy_requests += [policy_request]
-            else:
-                policy_requests += [policy_request]
+                temp_policy_requests = async_envs.policy_request_queue.get_many(timeout=0.005)
+                for policy_request in temp_policy_requests:
+                    next_step = policy_request[0] = policy_request[0] % args.num_steps
+                    if next_step == 0:
+                        end_policy_requests += [policy_request]
+                    else:
+                        policy_requests += [policy_request]
+            except Empty:
+                pass
+
+
         if len(end_policy_requests) == args.num_envs:
             break
         if len(policy_requests) > 0:
@@ -644,35 +660,6 @@ for update in range(1, num_updates+1):
             values[tuple(ls[:,[0,1]].T)] = v.flatten().cpu()
             for item in ls:
                 async_envs.rollout_task_queues[item[2]].put([item[0], item[1]])
-    
-    # for step in range(0, args.num_steps):
-    #     global_step += 1 * args.num_envs
-    #     obs[step] = next_obs
-    #     dones[step] = next_done
-
-    #     # ALGO LOGIC: put action logic here
-    #     with torch.no_grad():
-    #         values[step] = agent.get_value(obs[step]).flatten()
-    #         action, logproba, _ = agent.get_action(obs[step])
-
-    #         # visualization
-    #         if args.capture_video:
-    #             probs_list = np.array(Categorical(
-    #                 logits=agent.actor(agent.forward(obs[step]))).probs[0:1].tolist())
-    #             envs.env_method("set_probs", probs_list, indices=0)
-
-    #     actions[step] = action
-    #     logprobs[step] = logproba
-
-    #     # TRY NOT TO MODIFY: execute the game and log data.
-    #     next_obs, rs, ds, infos = envs.step(action)
-    #     rewards[step], next_done = rs.view(-1), torch.Tensor(ds).to(device)
-
-    #     for info in infos:
-    #         if 'episode' in info.keys():
-    #             print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-    #             writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
-    #             break
 
     # bootstrap reward if not done. reached the batch limit
     gpu_obs = torch.tensor(obs).pin_memory().to(device, non_blocking=True)
@@ -779,6 +766,7 @@ for update in range(1, num_updates+1):
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
     
     # continue
+    print("SPS:", int(global_step / (time.time() - start_time)))
     print('restart')
     # raise
     ls = np.array(end_policy_requests)
