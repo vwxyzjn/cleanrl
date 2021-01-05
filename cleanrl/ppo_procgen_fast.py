@@ -16,7 +16,7 @@ from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
 import os
-from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper, VecNormalize
+from stable_baselines3.common.vec_env import VecEnvWrapper, VecNormalize, VecVideoRecorder
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
