@@ -383,7 +383,7 @@ for epoch in range(args.n_epochs):
     writer.add_scalar("losses/soft_q_value_1_loss", qf1_loss.item(), global_step)
     writer.add_scalar("losses/soft_q_value_2_loss", qf2_loss.item(), global_step)
     writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
-    writer.add_scalar("losses/cql_qf_loss", qf_loss.item(), global_step)
+    writer.add_scalar("losses/cql_qf_loss", cql_qf_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", policy_loss.item(), global_step)
     writer.add_scalar("losses/alpha", alpha, global_step)
     writer.add_scalar("charts/episode_reward", eval_stats["test_mean_return"], global_step)
