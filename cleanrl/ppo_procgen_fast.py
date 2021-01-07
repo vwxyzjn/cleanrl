@@ -9,34 +9,27 @@ import argparse
 from distutils.util import strtobool
 import numpy as np
 import gym
-import procgen
+from procgen import ProcgenEnv
 from gym.wrappers import TimeLimit, Monitor
 import pybullet_envs
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
 import os
-from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
-
-import matplotlib
-matplotlib.use('Agg')
-import seaborn as sns
-import matplotlib.pyplot as plt
-import pandas as pd
-from PIL import Image
+from stable_baselines3.common.vec_env import VecEnvWrapper, VecNormalize, VecVideoRecorder
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="procgen-starpilot-v0",
+    parser.add_argument('--gym-id', type=str, default="starpilot",
                         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
                         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
                         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=int(25e6),
+    parser.add_argument('--total-timesteps', type=int, default=int(1e8),
                         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -94,97 +87,6 @@ if __name__ == "__main__":
 args.batch_size = int(args.num_envs * args.num_steps)
 args.minibatch_size = int(args.batch_size // args.n_minibatch)
 
-# taken from https://github.com/openai/baselines/blob/master/baselines/common/vec_env/vec_normalize.py
-class RunningMeanStd(object):
-    def __init__(self, epsilon=1e-4, shape=()):
-        self.mean = np.zeros(shape, 'float64')
-        self.var = np.ones(shape, 'float64')
-        self.count = epsilon
-
-    def update(self, x):
-        batch_mean = np.mean([x], axis=0)
-        batch_var = np.var([x], axis=0)
-        batch_count = 1
-        self.update_from_moments(batch_mean, batch_var, batch_count)
-
-    def update_from_moments(self, batch_mean, batch_var, batch_count):
-        self.mean, self.var, self.count = update_mean_var_count_from_moments(
-            self.mean, self.var, self.count, batch_mean, batch_var, batch_count)
-
-def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, batch_count):
-    delta = batch_mean - mean
-    tot_count = count + batch_count
-
-    new_mean = mean + delta * batch_count / tot_count
-    m_a = var * count
-    m_b = batch_var * batch_count
-    M2 = m_a + m_b + np.square(delta) * count * batch_count / tot_count
-    new_var = M2 / tot_count
-    new_count = tot_count
-
-    return new_mean, new_var, new_count
-
-class NormalizedEnv(gym.core.Wrapper):
-    def __init__(self, env, ob=True, ret=True, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8):
-        super(NormalizedEnv, self).__init__(env)
-        self.ob_rms = RunningMeanStd(shape=self.observation_space.shape) if ob else None
-        self.ret_rms = RunningMeanStd(shape=(1,)) if ret else None
-        self.clipob = clipob
-        self.cliprew = cliprew
-        self.ret = np.zeros(())
-        self.gamma = gamma
-        self.epsilon = epsilon
-
-    def step(self, action):
-        obs, rews, dones, infos = self.env.step(action)
-        infos['real_reward'] = rews
-        self.ret = self.ret * self.gamma + rews
-        obs = self._obfilt(obs)
-        if self.ret_rms:
-            self.ret_rms.update(np.array([self.ret].copy()))
-            rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
-        self.ret = self.ret * (1-float(dones))
-        return obs, rews, dones, infos
-
-    def _obfilt(self, obs):
-        if self.ob_rms:
-            self.ob_rms.update(obs)
-            obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
-            return obs
-        else:
-            return obs
-
-    def reset(self):
-        self.ret = np.zeros(())
-        obs = self.env.reset()
-        return self._obfilt(obs)
-
-class ClipRewardEnv(gym.RewardWrapper):
-    def __init__(self, env):
-        gym.RewardWrapper.__init__(self, env)
-
-    def reward(self, reward):
-        """Bin reward to {+1, 0, -1} by its sign."""
-        return np.sign(reward)
-
-class ImageToPyTorch(gym.ObservationWrapper):
-    """
-    Image shape to channels x weight x height
-    """
-
-    def __init__(self, env):
-        super(ImageToPyTorch, self).__init__(env)
-        old_shape = self.observation_space.shape
-        self.observation_space = gym.spaces.Box(
-            low=0,
-            high=255,
-            shape=(old_shape[-1], old_shape[0], old_shape[1]),
-            dtype=np.uint8,
-        )
-
-    def observation(self, observation):
-        return np.transpose(observation, axes=(2, 0, 1))
-
 class VecPyTorch(VecEnvWrapper):
     def __init__(self, venv, device):
         super(VecPyTorch, self).__init__(venv)
@@ -205,34 +107,53 @@ class VecPyTorch(VecEnvWrapper):
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
         return obs, reward, done, info
 
-class ProbsVisualizationWrapper(gym.Wrapper):
-    def __init__(self, env):
-        super().__init__(env)
-        self.env.reset()
-        self.image_shape = self.env.render(mode="rgb_array").shape
-        self.probs = [[0.,0.,0.,0.]]
-        # self.metadata['video.frames_per_second'] = 60
+class VecExtractDictObs(VecEnvWrapper):
+    def __init__(self, venv, key):
+        self.key = key
+        super().__init__(venv=venv,
+            observation_space=venv.observation_space.spaces[self.key])
 
-    def set_probs(self, probs):
-        self.probs = probs
+    def reset(self):
+        obs = self.venv.reset()
+        return obs[self.key]
 
-    def render(self, mode="human"):
-        if mode=="rgb_array":
-            env_rgb_array = super().render(mode)
-            fig, ax = plt.subplots(figsize=(self.image_shape[1]/100,self.image_shape[0]/100), constrained_layout=True, dpi=100)
-            df = pd.DataFrame(np.array(self.probs).T)
-            sns.barplot(x=df.index, y=0, data=df, ax=ax)
-            ax.set(xlabel='actions', ylabel='probs')
-            fig.canvas.draw()
-            X = np.array(fig.canvas.renderer.buffer_rgba())
-            Image.fromarray(X)
-            # Image.fromarray(X)
-            rgb_image = np.array(Image.fromarray(X).convert('RGB'))
-            plt.close(fig)
-            q_value_rgb_array = rgb_image
-            return np.append(env_rgb_array, q_value_rgb_array, axis=1)
-        else:
-            super().render(mode)
+    def step_wait(self):
+        obs, reward, done, info = self.venv.step_wait()
+        return obs[self.key], reward, done, info
+
+
+class VecMonitor(VecEnvWrapper):
+    def __init__(self, venv):
+        VecEnvWrapper.__init__(self, venv)
+        self.eprets = None
+        self.eplens = None
+        self.epcount = 0
+        self.tstart = time.time()
+
+    def reset(self):
+        obs = self.venv.reset()
+        self.eprets = np.zeros(self.num_envs, 'f')
+        self.eplens = np.zeros(self.num_envs, 'i')
+        return obs
+
+    def step_wait(self):
+        obs, rews, dones, infos = self.venv.step_wait()
+        self.eprets += rews
+        self.eplens += 1
+
+        newinfos = list(infos[:])
+        for i in range(len(dones)):
+            if dones[i]:
+                info = infos[i].copy()
+                ret = self.eprets[i]
+                eplen = self.eplens[i]
+                epinfo = {'r': ret, 'l': eplen, 't': round(time.time() - self.tstart, 6)}
+                info['episode'] = epinfo
+                self.epcount += 1
+                self.eprets[i] = 0
+                self.eplens[i] = 0
+                newinfos[i] = info
+        return obs, rews, dones, newinfos
 
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -250,28 +171,11 @@ random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
-def make_env(gym_id, seed, idx):
-    def thunk():
-        env = gym.make(gym_id, render_mode='rgb_array')
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        env = NormalizedEnv(env, ob=False)
-        if args.capture_video:
-            if idx == 0:
-                env = ProbsVisualizationWrapper(env)
-                env = Monitor(env, f'videos/{experiment_name}')
-        env = ClipRewardEnv(env)
-        env = ImageToPyTorch(env)
-        # env.seed(seed)
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
-        return env
-    return thunk
-envs = VecPyTorch(DummyVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)]), device)
-# if args.prod_mode:
-#     envs = VecPyTorch(
-#         SubprocVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)], "fork"),
-#         device
-#     )
+venv = ProcgenEnv(num_envs=args.num_envs, env_name=args.gym_id, num_levels=0, start_level=0, distribution_mode='easy')
+venv = VecExtractDictObs(venv, "rgb")
+venv = VecMonitor(venv=venv)
+envs = VecNormalize(venv=venv, norm_obs=False)
+envs = VecPyTorch(envs, device)
 assert isinstance(envs.action_space, Discrete), "only discrete action space is supported"
 
 # ALGO LOGIC: initialize agent here:
@@ -307,7 +211,7 @@ class Agent(nn.Module):
         self.critic = layer_init(nn.Linear(512, 1), std=1)
 
     def forward(self, x):
-        return self.network(x)
+        return self.network(x.transpose(1,3))
 
     def get_action(self, x, action=None):
         logits = self.actor(self.forward(x))
@@ -335,6 +239,7 @@ values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 
 # TRY NOT TO MODIFY: start the game
 global_step = 0
+start_time = time.time()
 # Note how `next_obs` and `next_done` are used; their usage is equivalent to
 # https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/84a7582477fb0d5c82ad6d850fe476829dddd2e1/a2c_ppo_acktr/storage.py#L60
 next_obs = envs.reset()
@@ -357,12 +262,6 @@ for update in range(1, num_updates+1):
         with torch.no_grad():
             values[step] = agent.get_value(obs[step]).flatten()
             action, logproba, _ = agent.get_action(obs[step])
-
-            # visualization
-            if args.capture_video:
-                probs_list = np.array(Categorical(
-                    logits=agent.actor(agent.forward(obs[step]))).probs[0:1].tolist())
-                envs.env_method("set_probs", probs_list, indices=0)
 
         actions[step] = action
         logprobs[step] = logproba
@@ -472,6 +371,7 @@ for update in range(1, num_updates+1):
     writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
+    print("SPS:", int(global_step / (time.time() - start_time)))
 
 envs.close()
 writer.close()
