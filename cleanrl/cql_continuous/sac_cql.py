@@ -8,7 +8,6 @@ import numpy as np
 from distutils.util import strtobool
 
 import torch
-import torch as th # shorthand; TODO: clean up once done porting
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
@@ -86,15 +85,15 @@ if __name__ == "__main__":
     parser.add_argument('--offline-dataset-id', type=str, default="expert-v0",
                         help='the id of the offline dataset gym environment')
     parser.add_argument('--min-q-weight', type=float, default=5.0,
-                        help='coefficient of the lower-bounding term in the CQL loss')
+                        help='coefficient of the lower-bounding term in the CQL loss (hence min-Q weight / coefficient)')
     parser.add_argument('--min-q-version', type=int, default=2,
                         help='type of lower-bounding CQL component used: 2 -> CQL(H), 3 -> CQL(\rho) using current policy')
     parser.add_argument('--num-actions', type=int, default=10,
-                        help='number of actions sampled to estimate the CQL lower-bounding term')
+                        help='number of actions sampled to estimate the CQL lower-bounding term (Min Q term)')
     parser.add_argument('--lagrange-thresh', type=float, default=0.0,
                         help='Lagrange threshold for automatic tuning of the alpha_prime component')
     parser.add_argument('--with-lagrange', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                        help='automatic tuning of the entropy coefficient.')
+                        help='automatic tuning of the alpha_prime coefficient (min-q-weight) coefficient.')
     
     args = parser.parse_args()
     if not args.seed:
@@ -199,10 +198,9 @@ class SoftQNetwork(nn.Module):
 
 # Offline RL data loading
 class ExperienceReplayDataset(Dataset):
-    def __init__(self, env_name, device="cpu"):
+    def __init__(self, env_name):
         self.dataset_env = gym.make(env_name)
         self.dataset = self.dataset_env.get_dataset()
-        self.device = device # handles putting the data on the davice when sampling
     def __len__(self):
         return self.dataset['observations'].shape[0]-1
     def __getitem__(self, index):
@@ -239,7 +237,7 @@ if args.with_lagrange:
     log_alpha_prime = torch.zeros([1], requires_grad=True, device=device)
     alpha_prime_optimizer = optim.Adam([log_alpha_prime], args.alpha_lr)
 
-# Helper to evaulate the agent
+# Helper to evaulate the agent, could use some clean up.
 def test_agent(env, policy, n_eval_episodes=5):
     returns, lengths = [], []
 
@@ -249,8 +247,8 @@ def test_agent(env, policy, n_eval_episodes=5):
 
         while not done:
             # MaxEntRL Paper argues eval should not be determinsitic
-            with th.no_grad():
-                action, _, _ = policy.get_action(th.Tensor(obs).unsqueeze(0).to(device))
+            with torch.no_grad():
+                action, _, _ = policy.get_action(torch.Tensor(obs).unsqueeze(0).to(device))
                 action = action.tolist()[0]
 
             obs, rew, done, _ = env.step( action)
@@ -306,22 +304,22 @@ for epoch in range(args.n_epochs):
         q1_next_actions, q2_next_actions = qf1(s_obs_rep, next_actions).view(args.batch_size, args.num_actions), qf2(s_obs_rep, next_actions).view(args.batch_size, args.num_actions)
 
         if args.min_q_version == 2:
-            all_q1 = th.cat([q1_rand, q1_curr_actions, q1_next_actions, qf1_a_values.unsqueeze(-1)], 1)
-            all_q2 = th.cat([q2_rand, q2_curr_actions, q2_next_actions, qf2_a_values.unsqueeze(-1)], 1)
+            all_q1 = torch.cat([q1_rand, q1_curr_actions, q1_next_actions, qf1_a_values.unsqueeze(-1)], 1)
+            all_q2 = torch.cat([q2_rand, q2_curr_actions, q2_next_actions, qf2_a_values.unsqueeze(-1)], 1)
         elif args.min_q_version == 3:
             random_density = np.log(0.5 ** random_actions_tensor.shape[-1])
-            all_q1 = th.cat([q1_rand - random_density, q1_curr_actions - curr_log_pis.view(args.batch_size, args.num_actions).detach(), q1_next_actions - next_log_pis.view(args.batch_size, args.num_actions).detach()], 1)
-            all_q2 = th.cat([q2_rand - random_density, q2_curr_actions - curr_log_pis.view(args.batch_size, args.num_actions).detach(), q2_next_actions - next_log_pis.view(args.batch_size, args.num_actions).detach()], 1)
+            all_q1 = torch.cat([q1_rand - random_density, q1_curr_actions - curr_log_pis.view(args.batch_size, args.num_actions).detach(), q1_next_actions - next_log_pis.view(args.batch_size, args.num_actions).detach()], 1)
+            all_q2 = torch.cat([q2_rand - random_density, q2_curr_actions - curr_log_pis.view(args.batch_size, args.num_actions).detach(), q2_next_actions - next_log_pis.view(args.batch_size, args.num_actions).detach()], 1)
         else:
             raise NotImplementedError
 
-        min_qf1_loss, min_qf2_loss = th.logsumexp(all_q1, 1), th.logsumexp(all_q2, 1)
+        min_qf1_loss, min_qf2_loss = torch.logsumexp(all_q1, 1), torch.logsumexp(all_q2, 1)
 
         min_qf1_loss = (min_qf1_loss - qf1_a_values).mean() * args.min_q_weight
         min_qf2_loss = (min_qf2_loss - qf2_a_values).mean() * args.min_q_weight
 
         if args.with_lagrange:
-            alpha_prime = th.clamp(log_alpha_prime.exp(), min=0.0, max=10000.0)
+            alpha_prime = torch.clamp(log_alpha_prime.exp(), min=0.0, max=10000.0)
             min_qf1_loss = alpha_prime * (min_qf1_loss - args.lagrange_thresh)
             min_qf2_loss = alpha_prime * (min_qf2_loss - args.lagrange_thresh)
 
