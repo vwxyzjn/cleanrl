@@ -234,7 +234,7 @@ if args.autotune:
 else:
     alpha = args.alpha
 
-# Automatic tuming for the min Q term alpha (_prime) coefficient
+# Automatic tuming for the min Q term (alpha_prime) coefficient
 if args.with_lagrange:
     log_alpha_prime = torch.zeros([1], requires_grad=True, device=device)
     alpha_prime_optimizer = optim.Adam([log_alpha_prime], args.alpha_lr)
