@@ -1,7 +1,7 @@
 # CleanRL (Clean Implementation of RL Algorithms)
 
 [<img src="https://img.shields.io/badge/slack-cleanrl-green?logo=slack&logoColor=ffffff&labelColor=611f69&color=282828&style=flat">](https://join.slack.com/t/cleanrl/shared_invite/zt-cj64t5eq-xKZ6sD0KPGFKu1QicHEvVg)
-[![Mailing List : cleanrl](https://img.shields.io/badge/future%20meeting%20invites-cleanrl-green?logo=Google%20Hangouts%20Meet&logoColor=ffffff&labelColor=00796b&color=282828&style=flat?label=healthinesses)](https://calendar.google.com/event?action=TEMPLATE&tmeid=MjhlN29uNWoxMWhsMDZoNWlqOTl1a3VjbmRfMjAyMDEwMTZUMjEwMDAwWiBuZmw0dTBjZnZlbmVicWNiNG1vMjVpaWxqb0Bn&tmsrc=nfl4u0cfvenebqcb4mo25iiljo%40group.calendar.google.com&scp=ALL)
+[![Mailing List : cleanrl](https://img.shields.io/badge/future%20meeting%20invites-cleanrl-green?logo=Google%20Hangouts%20Meet&logoColor=ffffff&labelColor=00796b&color=282828&style=flat?label=healthinesses)](https://calendar.google.com/event?action=TEMPLATE&tmeid=bTI1azV1ZGozbDA2Z3I4ajc1dDRkOWlvaTJfMjAyMTAxMTVUMjEwMDAwWiBuZmw0dTBjZnZlbmVicWNiNG1vMjVpaWxqb0Bn&tmsrc=nfl4u0cfvenebqcb4mo25iiljo%40group.calendar.google.com&scp=ALL)
 [![Meeting Recordings : cleanrl](https://img.shields.io/badge/meeting%20recordings-cleanrl-green?logo=youtube&logoColor=ffffff&labelColor=FF0000&color=282828&style=flat?label=healthinesses)](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
 
 
