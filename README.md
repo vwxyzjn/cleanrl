@@ -153,6 +153,23 @@ Checkout the demo sites at [https://app.wandb.ai/costa-huang/cleanrltest](https:
 
 
 
+# Install optional dependencies
+
+The following instructions assume linux environements
+
+```bash
+# installing starcraft
+# enter pass word `iagreetotheeula` when prompted
+$ rm ~/StarCraftII -fR \
+wget -O ~/StarCraftII.zip http://blzdistsc2-a.akamaihd.net/Linux/SC2.4.10.zip && \
+unzip ~/StarCraftII.zip -d ~/ && \
+rm ~/StarCraftII.zip
+mv ~/StarCraftII/Libs/libstdc++.so.6 ~/StarCraftII/libstdc++.so.6
+
+
+# install microrts
+$ pip install gym-microrts
+```
 
 ## Support and get involved
 
