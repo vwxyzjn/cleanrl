@@ -266,6 +266,8 @@ logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
 rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
 dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
 values = torch.zeros((args.num_steps, args.num_envs)).to(device)
+aux_obs = torch.zeros((args.num_steps * args.num_envs * args.n_iteration,) + envs.observation_space.shape)
+aux_returns = torch.zeros((args.num_steps * args.num_envs * args.n_iteration,))
 
 # TRY NOT TO MODIFY: start the game
 global_step = 0
@@ -280,8 +282,6 @@ num_phases = int(num_updates // args.n_iteration)
 ## CRASH AND RESUME LOGIC:
 starting_phase = 1
 for phase in range(starting_phase, num_phases):
-    aux_obs = []
-    aux_returns = []
     for policy_update in range(1, args.n_iteration+1):
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
@@ -404,11 +404,10 @@ for phase in range(starting_phase, num_phases):
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
         # PPG Storage:
-        aux_obs += [b_obs.cpu().clone()]
-        aux_returns += [b_returns.cpu().clone()]
+        storage_slice = slice(args.num_steps*args.num_envs*(policy_update-1), args.num_steps*args.num_envs*policy_update)
+        aux_obs[storage_slice] = b_obs.cpu().clone()
+        aux_returns[storage_slice] = b_returns.cpu().clone()
 
-    aux_obs = torch.cat(aux_obs)
-    aux_returns = torch.cat(aux_returns)
     old_agent = Agent(envs).to(device)
     old_agent.load_state_dict(agent.state_dict())
     aux_inds = np.arange(args.aux_batch_size,)
