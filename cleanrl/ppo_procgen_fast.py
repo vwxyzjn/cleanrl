@@ -171,7 +171,7 @@ random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
-venv = ProcgenEnv(num_envs=args.num_envs, env_name=args.gym_id, num_levels=0, start_level=0, distribution_mode='easy')
+venv = ProcgenEnv(num_envs=args.num_envs, env_name=args.gym_id, num_levels=0, start_level=0, distribution_mode='hard')
 venv = VecExtractDictObs(venv, "rgb")
 venv = VecMonitor(venv=venv)
 envs = VecNormalize(venv=venv, norm_obs=False)
@@ -214,7 +214,7 @@ class Agent(nn.Module):
         self.critic = layer_init(nn.Linear(512, 1), std=1)
 
     def forward(self, x):
-        return self.network(x.transpose(1,3))
+        return self.network(x.permute((0, 3, 1, 2))) # "bhwc" -> "bchw"
 
     def get_action(self, x, action=None):
         logits = self.actor(self.forward(x))
@@ -375,6 +375,7 @@ for update in range(1, num_updates+1):
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
     print("SPS:", int(global_step / (time.time() - start_time)))
+    writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
 envs.close()
 writer.close()

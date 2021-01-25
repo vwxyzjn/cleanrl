@@ -19,8 +19,6 @@ import random
 import os
 from stable_baselines3.common.vec_env import VecEnvWrapper, VecNormalize, VecVideoRecorder
 
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
@@ -60,7 +58,6 @@ if __name__ == "__main__":
                         help='the behavior cloning coefficient')
     parser.add_argument('--n-aux-minibatch', type=int, default=16,
                         help='the number of mini batch in the auxiliary phase')
-
 
     parser.add_argument('--n-minibatch', type=int, default=8,
                         help='the number of mini batch')
@@ -102,7 +99,6 @@ args.minibatch_size = int(args.batch_size // args.n_minibatch)
 args.aux_batch_size = int(args.batch_size * args.n_iteration)
 args.aux_minibatch_size  = int(args.aux_batch_size // args.n_aux_minibatch)
 
-
 class VecPyTorch(VecEnvWrapper):
     def __init__(self, venv, device):
         super(VecPyTorch, self).__init__(venv)
@@ -135,8 +131,7 @@ class VecExtractDictObs(VecEnvWrapper):
 	def step_wait(self):
 	    obs, reward, done, info = self.venv.step_wait()
 	    return obs[self.key], reward, done, info
-	
-	
+
 class VecMonitor(VecEnvWrapper):
 	def __init__(self, venv):
 	    VecEnvWrapper.__init__(self, venv)
@@ -186,14 +181,13 @@ random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
-venv = ProcgenEnv(num_envs=args.num_envs, env_name=args.gym_id, num_levels=0, start_level=0, distribution_mode='easy')
+venv = ProcgenEnv(num_envs=args.num_envs, env_name=args.gym_id, num_levels=0, start_level=0, distribution_mode='hard')
 venv = VecExtractDictObs(venv, "rgb")
 venv = VecMonitor(venv=venv)
 envs = VecNormalize(venv=venv, norm_obs=False)
 envs = VecPyTorch(envs, device)
 if args.capture_video:
 	envs = VecVideoRecorder(envs, f'videos/{experiment_name}', record_video_trigger=lambda x: x % 1000000== 0, video_length=100)
-	
 assert isinstance(envs.action_space, Discrete), "only discrete action space is supported"
 
 # ALGO LOGIC: initialize agent here:
@@ -286,7 +280,6 @@ num_phases = num_updates // args.n_iteration
 
 ## CRASH AND RESUME LOGIC:
 starting_phase = 1
-
 for phase in range(starting_phase, num_phases):
     aux_obs = []
     aux_returns = []
@@ -307,8 +300,6 @@ for phase in range(starting_phase, num_phases):
             with torch.no_grad():
                 values[step] = agent.get_value(obs[step]).flatten()
                 action, logproba, _ = agent.get_action(obs[step])
-    
-               
             actions[step] = action
             logprobs[step] = logproba
     
@@ -411,11 +402,11 @@ for phase in range(starting_phase, num_phases):
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         if args.kle_stop:
             writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
-        print("SPS:", int(global_step / (time.time() - start_time)))  
+        print("SPS:", int(global_step / (time.time() - start_time)))
+        writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
         # PPG Storage:
         aux_obs += [b_obs.cpu().clone()]
         aux_returns += [b_returns.cpu().clone()]
-        
 
     aux_obs = torch.cat(aux_obs)
     aux_returns = torch.cat(aux_returns)
@@ -448,7 +439,7 @@ for phase in range(starting_phase, num_phases):
     writer.add_scalar("losses/aux/kl_loss", kl_loss.mean().item(), global_step)
     writer.add_scalar("losses/aux/aux_value_loss", aux_value_loss.item(), global_step)
     writer.add_scalar("losses/aux/real_value_loss", real_value_loss.item(), global_step)
-    writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)  
-            
+    writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
+
 envs.close()
 writer.close()
