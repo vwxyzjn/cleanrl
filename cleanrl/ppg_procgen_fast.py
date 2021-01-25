@@ -12,7 +12,6 @@ import numpy as np
 import gym
 from procgen import ProcgenEnv
 from gym.wrappers import TimeLimit, Monitor
-import pybullet_envs
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
@@ -275,8 +274,8 @@ start_time = time.time()
 # https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/84a7582477fb0d5c82ad6d850fe476829dddd2e1/a2c_ppo_acktr/storage.py#L60
 next_obs = envs.reset()
 next_done = torch.zeros(args.num_envs).to(device)
-num_updates = args.total_timesteps // args.batch_size
-num_phases = num_updates // args.n_iteration
+num_updates = int(args.total_timesteps // args.batch_size)
+num_phases = int(num_updates // args.n_iteration)
 
 ## CRASH AND RESUME LOGIC:
 starting_phase = 1
