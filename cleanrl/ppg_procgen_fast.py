@@ -57,6 +57,8 @@ if __name__ == "__main__":
                         help='the behavior cloning coefficient')
     parser.add_argument('--n-aux-minibatch', type=int, default=16,
                         help='the number of mini batch in the auxiliary phase')
+    parser.add_argument('--n-aux-grad-accum', type=int, default=10,
+                        help='the number of gradient accumulation in mini batch')
 
     parser.add_argument('--n-minibatch', type=int, default=8,
                         help='the number of mini batch')
@@ -96,7 +98,7 @@ if __name__ == "__main__":
 args.batch_size = int(args.num_envs * args.num_steps)
 args.minibatch_size = int(args.batch_size // args.n_minibatch)
 args.aux_batch_size = int(args.batch_size * args.n_iteration)
-args.aux_minibatch_size  = int(args.aux_batch_size // args.n_aux_minibatch)
+args.aux_minibatch_size  = int(args.aux_batch_size // (args.n_aux_minibatch * args.n_aux_grad_accum))
 
 class VecPyTorch(VecEnvWrapper):
     def __init__(self, venv, device):
@@ -414,7 +416,7 @@ for phase in range(starting_phase, num_phases):
     print("aux phase starts")
     for auxiliary_update in range(1, args.e_auxiliary+1):
         np.random.shuffle(aux_inds)
-        for start in range(0, args.aux_batch_size, args.aux_minibatch_size):
+        for i, start in enumerate(range(0, args.aux_batch_size, args.aux_minibatch_size)):
             end = start + args.aux_minibatch_size
             aux_minibatch_ind = aux_inds[start:end]
             m_aux_obs = aux_obs[aux_minibatch_ind].to(device)
@@ -429,9 +431,11 @@ for phase in range(starting_phase, num_phases):
             joint_loss = aux_value_loss + args.beta_clone * kl_loss
             
             optimizer.zero_grad()
-            (joint_loss+real_value_loss).backward()
-            nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
-            optimizer.step()
+            loss = (joint_loss+real_value_loss) / args.n_aux_grad_accum
+            loss.backward()
+            if (i+1) % args.n_aux_grad_accum == 0:
+                nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
+                optimizer.step()
             
             del m_aux_obs, m_aux_returns
     writer.add_scalar("losses/aux/kl_loss", kl_loss.mean().item(), global_step)
