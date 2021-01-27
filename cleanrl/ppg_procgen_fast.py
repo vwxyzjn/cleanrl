@@ -419,23 +419,26 @@ for phase in range(starting_phase, num_phases):
         for i, start in enumerate(range(0, args.aux_batch_size, args.aux_minibatch_size)):
             end = start + args.aux_minibatch_size
             aux_minibatch_ind = aux_inds[start:end]
-            m_aux_obs = aux_obs[aux_minibatch_ind].to(device)
-            m_aux_returns = aux_returns[aux_minibatch_ind].to(device)
-            
-            new_values = agent.get_value(m_aux_obs).view(-1)
-            new_aux_values = agent.get_aux_value(m_aux_obs).view(-1)
-            kl_loss = td.kl_divergence(agent.get_pi(m_aux_obs), old_agent.get_pi(m_aux_obs)).mean()
-            
-            real_value_loss = 0.5 * ((new_values - m_aux_returns) ** 2).mean()
-            aux_value_loss = 0.5 * ((new_aux_values - m_aux_returns) ** 2).mean()
-            joint_loss = aux_value_loss + args.beta_clone * kl_loss
-            
-            optimizer.zero_grad()
-            loss = (joint_loss+real_value_loss) / args.n_aux_grad_accum
-            loss.backward()
-            if (i+1) % args.n_aux_grad_accum == 0:
-                nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
-                optimizer.step()
+            try:
+                m_aux_obs = aux_obs[aux_minibatch_ind].to(device)
+                m_aux_returns = aux_returns[aux_minibatch_ind].to(device)
+                
+                new_values = agent.get_value(m_aux_obs).view(-1)
+                new_aux_values = agent.get_aux_value(m_aux_obs).view(-1)
+                kl_loss = td.kl_divergence(agent.get_pi(m_aux_obs), old_agent.get_pi(m_aux_obs)).mean()
+                
+                real_value_loss = 0.5 * ((new_values - m_aux_returns) ** 2).mean()
+                aux_value_loss = 0.5 * ((new_aux_values - m_aux_returns) ** 2).mean()
+                joint_loss = aux_value_loss + args.beta_clone * kl_loss
+                
+                optimizer.zero_grad()
+                loss = (joint_loss+real_value_loss) / args.n_aux_grad_accum
+                loss.backward()
+                if (i+1) % args.n_aux_grad_accum == 0:
+                    nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
+                    optimizer.step()
+            except RuntimeError:
+                raise Exception ("if running out of CUDA memory, try a higher --n-aux-grad-accum, which trades more time for less gpu memory")
             
             del m_aux_obs, m_aux_returns
     writer.add_scalar("losses/aux/kl_loss", kl_loss.mean().item(), global_step)
