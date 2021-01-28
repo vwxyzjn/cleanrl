@@ -122,8 +122,8 @@ assert isinstance(env.action_space, Box), "only continuous action space is suppo
 if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
-# Helper for testing the policy
-def test_agent(env, vae_policy, n_eval_episodes=5):
+# Helper for testing an agent in determinstic mode
+def test_agent(env, vae_policy, perturb_net=None, n_eval_episodes=5):
     # TODO: verify if the models are evaluated with the perturb network input too.
     returns, lengths = [], []
 
@@ -134,9 +134,13 @@ def test_agent(env, vae_policy, n_eval_episodes=5):
         while not done:
             # MaxEntRL Paper argues eval should not be determinsitic
             with torch.no_grad():
-                action = vae_policy.get_actions(torch.Tensor(obs).unsqueeze(0).to(device))
-                action = action.tolist()[0]
-
+                obs_tensor = torch.Tensor(obs).unsqueeze(0).to(device)
+                action = vae_policy.get_actions(obs_tensor)
+                if perturb_net is not None:
+                    action += perturb_net(obs_tensor, action)
+                    action.clamp(-1., 1.) # TODO: adapt to env actin limits
+            action = action.tolist()[0]
+            
             obs, rew, done, _ = env.step(action)
             obs = np.array( obs)
             ret += rew
@@ -145,7 +149,6 @@ def test_agent(env, vae_policy, n_eval_episodes=5):
         returns.append(ret)
         lengths.append(t)
 
-    # TODO: clean up the unsused stats.
     eval_stats = {
         "test_mean_return": np.mean(returns),
         "test_mean_length": np.mean(lengths),
@@ -301,6 +304,7 @@ for epoch in range(args.n_epochs):
         rec_loss = F.mse_loss(reconstructed_actions, s_actions) # Eq 28
         kl_loss = th.distributions.kl.kl_divergence(latent_dist, vae_policy.latent_prior).sum(-1).mean() # Eq 29
         vae_loss = rec_loss + args.lmbda * kl_loss # Eq 30
+        # NOTE: Original implementation uses 0.5 instead of lambda: https://github.com/sfujim/BCQ/blob/9690927c86b9eade8b50f0e69d46a146c4454851/continuous_BCQ/BCQ.py#L143
         
         vae_optimizer.zero_grad()
         vae_loss.backward()
@@ -309,8 +313,10 @@ for epoch in range(args.n_epochs):
         # Q Function updates
         with th.no_grad():
             # Eq (27)
+            # TODO: repeat interleave
             next_actions = vae_policy.get_actions(s_next_obses)
             next_actions += perturb_net_target(s_next_obses, next_actions)
+            next_actions.clamp_(-1.,1.) # TODO: adapt to env's action space min,max
             
             next_obs_qf1_target = qf1_target(s_next_obses, next_actions).view(-1)
             next_obs_qf2_target = qf2_target(s_next_obses, next_actions).view(-1)
@@ -336,6 +342,7 @@ for epoch in range(args.n_epochs):
         with th.no_grad():
             raw_actions = vae_policy.get_actions(s_obs) # in [-1,1]
         actions = raw_actions + perturb_net(s_obs, raw_actions)
+        actions.clamp_(-1., 1.) # TODO: adapt to env's action space min,max
         qf1_pi = qf1(s_obs, actions).view(-1)
         qf2_pi = qf2(s_obs, actions).view(-1)
         min_qf_pi = th.min(qf1_pi,qf2_pi) # TODO: compare with one network version.
@@ -358,11 +365,13 @@ for epoch in range(args.n_epochs):
         # Evaluated the agent and log results
         if global_step % args.log_interval == 0:
             eval_stats = test_agent(env, vae_policy)
-            print("[E%04d|I%08d] PertNetLoss: %.3f -- QLoss: %.3f -- VAELoss: %.3f -- Train Mean Ret: %.3f" %
-                    (epoch, global_step, perturb_net_loss.item(), qf_loss.item(), vae_loss.item(), eval_stats["test_mean_return"]))
+            eval_stats_perturbed = test_agent(env, vae_policy, perturb_net) # passing the perturb net enables "noisy" evaluation
+            print("[E%04d|I%08d] PertNetLoss: %.3f -- QLoss: %.3f -- VAELoss: %.3f -- Determ. Mean Ret: %.3f -- Noisy Mean Ret.: %.3f" %
+            (epoch, global_step, perturb_net_loss.item(), qf_loss.item(), vae_loss.item(), eval_stats["test_mean_return"], eval_stats_perturbed["test_mean_return"]))
             
             writer.add_scalar("global_step", global_step, global_step)
             writer.add_scalar("charts/episode_reward", eval_stats["test_mean_return"], global_step)
+            writer.add_scalar("charts/episode_reward_perturbed", eval_stats_perturbed["test_mean_return"], global_step)
             writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
             writer.add_scalar("losses/vae_loss", vae_loss.item(), global_step)
             writer.add_scalar("losses/perturb_net_loss", perturb_net_loss.item(), global_step)
