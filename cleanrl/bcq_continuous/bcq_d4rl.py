@@ -53,7 +53,7 @@ parser.add_argument('--n-epochs', type=int, default=1000,
 parser.add_argument('--epoch-length', type=int, default=1000,
                     help='number of training steps in an epoch')
 
-# Algorithm specific arguments
+# Algorithm specific argumen1ts
 parser.add_argument('--gamma', type=float, default=0.99,
                     help='the discount factor gamma')
 parser.add_argument('--lr', type=float, default=1e-3,
@@ -76,6 +76,8 @@ parser.add_argument('--phi', type=float, default=0.05,
                     help='maximum perturbation applied over the actions sampled from the VAE Policy')
 parser.add_argument('--lmbda', type=float, default=0.75,
                     help='coefficient of the min Q term in the Q-network update')
+parser.add_argument('--num-actions', type=int, default=10,
+                    help="how many actions sampled from the VAE to get the maximum value / best action")
 
 # NN Parameterization
 parser.add_argument('--weights-init', default='xavier', const='xavier', nargs='?', choices=['xavier', "orthogonal", 'uniform'],
@@ -123,7 +125,7 @@ if args.capture_video:
     env = Monitor(env, f'videos/{experiment_name}')
 
 # Helper for testing an agent in determinstic mode
-def test_agent(env, vae_policy, perturb_net=None, n_eval_episodes=5):
+def test_agent(env, vae_policy, qf1, perturb_net=None, n_eval_episodes=5):
     # TODO: verify if the models are evaluated with the perturb network input too.
     returns, lengths = [], []
 
@@ -134,12 +136,13 @@ def test_agent(env, vae_policy, perturb_net=None, n_eval_episodes=5):
         while not done:
             # MaxEntRL Paper argues eval should not be determinsitic
             with torch.no_grad():
-                obs_tensor = torch.Tensor(obs).unsqueeze(0).to(device)
+                obs_tensor = torch.Tensor(obs).unsqueeze(0).repeat_interleave(args.num_actions, dim=0).to(device)
                 action = vae_policy.get_actions(obs_tensor)
                 if perturb_net is not None:
                     action += perturb_net(obs_tensor, action)
                     action.clamp(-1., 1.) # TODO: adapt to env actin limits
-            action = action.tolist()[0]
+                qf1_values = qf1(obs_tensor, action).view(-1)
+            action = action[th.argmax(qf1_values)].cpu().numpy()
             
             obs, rew, done, _ = env.step(action)
             obs = np.array( obs)
@@ -148,7 +151,7 @@ def test_agent(env, vae_policy, perturb_net=None, n_eval_episodes=5):
         
         returns.append(ret)
         lengths.append(t)
-
+    
     eval_stats = {
         "test_mean_return": np.mean(returns),
         "test_mean_length": np.mean(lengths),
@@ -313,16 +316,17 @@ for epoch in range(args.n_epochs):
         # Q Function updates
         with th.no_grad():
             # Eq (27)
-            # TODO: repeat interleave
-            next_actions = vae_policy.get_actions(s_next_obses)
-            next_actions += perturb_net_target(s_next_obses, next_actions)
+            s_next_obses_repeat = s_next_obses.repeat_interleave(args.num_actions,dim=0)
+            next_actions = vae_policy.get_actions(s_next_obses_repeat)
+            next_actions += perturb_net_target(s_next_obses_repeat, next_actions)
             next_actions.clamp_(-1.,1.) # TODO: adapt to env's action space min,max
             
-            next_obs_qf1_target = qf1_target(s_next_obses, next_actions).view(-1)
-            next_obs_qf2_target = qf2_target(s_next_obses, next_actions).view(-1)
+            next_obs_qf1_target = qf1_target(s_next_obses_repeat, next_actions).view(-1)
+            next_obs_qf2_target = qf2_target(s_next_obses_repeat, next_actions).view(-1)
+
             min_qf_target = args.lmbda * th.min(next_obs_qf1_target, next_obs_qf2_target)
             max_qf_target = (1. - args.lmbda) * th.max(next_obs_qf1_target, next_obs_qf2_target)
-            qf_target = min_qf_target + max_qf_target
+            qf_target = th.max((min_qf_target + max_qf_target).view(args.batch_size, args.num_actions), -1)[0]
 
             q_backup = s_rewards + (1. - s_dones) * args.gamma * qf_target # Eq 13
         
@@ -364,8 +368,8 @@ for epoch in range(args.n_epochs):
         
         # Evaluated the agent and log results
         if global_step % args.log_interval == 0:
-            eval_stats = test_agent(env, vae_policy)
-            eval_stats_perturbed = test_agent(env, vae_policy, perturb_net) # passing the perturb net enables "noisy" evaluation
+            eval_stats = test_agent(env, vae_policy, qf1)
+            eval_stats_perturbed = test_agent(env, vae_policy, qf1, perturb_net) # passing the perturb net enables "noisy" evaluation
             print("[E%04d|I%08d] PertNetLoss: %.3f -- QLoss: %.3f -- VAELoss: %.3f -- Determ. Mean Ret: %.3f -- Noisy Mean Ret.: %.3f" %
             (epoch, global_step, perturb_net_loss.item(), qf_loss.item(), vae_loss.item(), eval_stats["test_mean_return"], eval_stats_perturbed["test_mean_return"]))
             
