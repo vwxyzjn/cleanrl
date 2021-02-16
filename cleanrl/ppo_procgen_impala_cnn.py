@@ -11,7 +11,6 @@ import numpy as np
 import gym
 from procgen import ProcgenEnv
 from gym.wrappers import TimeLimit, Monitor
-import pybullet_envs
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
@@ -195,23 +194,62 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
+# taken from https://github.com/AIcrowd/neurips2020-procgen-starter-kit/blob/142d09586d2272a17f44481a115c4bd817cf6a94/models/impala_cnn_torch.py
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv0 = nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, padding=1)
+
+    def forward(self, x):
+        inputs = x
+        x = nn.functional.relu(x)
+        x = self.conv0(x)
+        x = nn.functional.relu(x)
+        x = self.conv1(x)
+        return x + inputs
+
+class ConvSequence(nn.Module):
+    def __init__(self, input_shape, out_channels):
+        super().__init__()
+        self._input_shape = input_shape
+        self._out_channels = out_channels
+        self.conv = nn.Conv2d(in_channels=self._input_shape[0], out_channels=self._out_channels, kernel_size=3,
+                              padding=1)
+        self.res_block0 = ResidualBlock(self._out_channels)
+        self.res_block1 = ResidualBlock(self._out_channels)
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = nn.functional.max_pool2d(x, kernel_size=3, stride=2, padding=1)
+        x = self.res_block0(x)
+        x = self.res_block1(x)
+        assert x.shape[1:] == self.get_output_shape()
+        return x
+
+    def get_output_shape(self):
+        _c, h, w = self._input_shape
+        return (self._out_channels, (h + 1) // 2, (w + 1) // 2)
+
 class Agent(nn.Module):
     def __init__(self, envs, channels=3):
         super(Agent, self).__init__()
-        self.network = nn.Sequential(
-            Scale(1/255),
-            layer_init(nn.Conv2d(channels, 32, 4, stride=3)),
-            nn.ReLU(),
-            layer_init(nn.Conv2d(32, 64, 3, stride=2)),
-            nn.ReLU(),
-            layer_init(nn.Conv2d(64, 32, 3, stride=1)),
-            nn.ReLU(),
+        h, w, c = envs.observation_space.shape
+        shape = (c, h, w)
+        conv_seqs = [Scale(1/255)]
+        for out_channels in [16, 32, 32]:
+            conv_seq = ConvSequence(shape, out_channels)
+            shape = conv_seq.get_output_shape()
+            conv_seqs.append(conv_seq)
+        conv_seqs += [
             nn.Flatten(),
-            layer_init(nn.Linear(8*8*32, 512)),
-            nn.ReLU()
-        )
-        self.actor = layer_init(nn.Linear(512, envs.action_space.n), std=0.01)
-        self.critic = layer_init(nn.Linear(512, 1), std=1)
+            nn.ReLU(),
+            nn.Linear(in_features=shape[0] * shape[1] * shape[2], out_features=256),
+            nn.ReLU(),
+        ]
+        self.network = nn.Sequential(*conv_seqs)
+        self.actor = nn.Linear(in_features=256, out_features=envs.action_space.n)
+        self.critic = nn.Linear(in_features=256, out_features=1)
 
     def forward(self, x):
         return self.network(x.permute((0, 3, 1, 2))) # "bhwc" -> "bchw"
