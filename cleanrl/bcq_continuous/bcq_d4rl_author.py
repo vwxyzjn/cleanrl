@@ -86,7 +86,7 @@ parser.add_argument('--bias-init', default='zeros', const='xavier', nargs='?', c
                     help='weight initialization scheme for the neural networks.')
 
 # Logging
-parser.add_argument('--log-interval', type=int, default=200,
+parser.add_argument('--log-interval', type=int, default=1000,
                     help='determines how many iter the models train before logging the training stats. Also determines how often the agent is evaluated in the env. (time consuming).')
 
 args = parser.parse_args()
@@ -136,7 +136,7 @@ def test_agent(env, vae_policy, qf1, perturb_net=None, n_eval_episodes=5):
         while not done:
             # MaxEntRL Paper argues eval should not be determinsitic
             with torch.no_grad():
-                obs_tensor = torch.Tensor(obs).unsqueeze(0).repeat_interleave(args.num_actions, dim=0).to(device)
+                obs_tensor = torch.Tensor(obs).unsqueeze(0).repeat_interleave(100, dim=0).to(device)
                 action = vae_policy.get_actions(obs_tensor)
                 if perturb_net is not None:
                     action += perturb_net(obs_tensor, action)
