@@ -48,6 +48,7 @@ parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                     help="the wandb's project name")
 parser.add_argument('--wandb-entity', type=str, default=None,
                     help="the entity (team) of wandb's project")
+# TODO: match with sac_cql_continuous training loop instead.
 parser.add_argument('--n-epochs', type=int, default=1000,
                     help='number of epochs (total training iters = n-epochs * epoch-length')
 parser.add_argument('--epoch-length', type=int, default=1000,
@@ -58,8 +59,6 @@ parser.add_argument('--gamma', type=float, default=0.99,
                     help='the discount factor gamma')
 parser.add_argument('--lr', type=float, default=1e-3,
                     help='the learning rate of the optimizer for the policy weights')
-parser.add_argument('--q-lr', type=float, default=1e-3,
-                    help='the learning rate of the optimizer for the Q netowrks weights')
 parser.add_argument('--target-network-frequency', type=int, default=1, # Denis Yarats' implementation delays this by 2.
                     help="the timesteps it takes to update the target network")
 parser.add_argument('--max-grad-norm', type=float, default=0.5,
@@ -70,7 +69,7 @@ parser.add_argument('--tau', type=float, default=0.005,
                     help="target smoothing coefficient (default: 0.005)")
 
 # BQC specific parameters
-parser.add_argument('--offline-dataset-id', type=str, default="expert-v0",
+parser.add_argument('--offline-dataset-id', type=str, default="medium-v0",
                     help='the id of the offline dataset gym environment')
 parser.add_argument('--phi', type=float, default=0.05,
                     help='maximum perturbation applied over the actions sampled from the VAE Policy')
