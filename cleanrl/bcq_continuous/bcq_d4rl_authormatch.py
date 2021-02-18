@@ -20,7 +20,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.distributions import Normal, Uniform
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data.dataset import IterableDataset
+from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from gym.wrappers import TimeLimit, Monitor
@@ -28,14 +29,14 @@ from gym.spaces import Box
 
 parser = argparse.ArgumentParser(description='Batch Constrained Q-Learning for Continuous Domains; Uses D4RL datasets')
 # Common arguments
-# parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
-#                     help='the name of this experiment')
 parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                     help='the name of this experiment')
 parser.add_argument('--gym-id', type=str, default="Hopper-v2",
                     help='the id of the gym environment')
 parser.add_argument('--seed', type=int, default=2,
                     help='seed of the experiment')
+parser.add_argument('--total-timesteps', type=int, default=1000000,
+                    help='total timesteps of the experiments')
 parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                     help='if toggled, `torch.backends.cudnn.deterministic=False`')
 parser.add_argument('--cuda', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
@@ -48,10 +49,8 @@ parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
                     help="the wandb's project name")
 parser.add_argument('--wandb-entity', type=str, default=None,
                     help="the entity (team) of wandb's project")
-parser.add_argument('--n-epochs', type=int, default=1000,
-                    help='number of epochs (total training iters = n-epochs * epoch-length')
-parser.add_argument('--epoch-length', type=int, default=1000,
-                    help='number of training steps in an epoch')
+parser.add_argument('--eval-frequency', type=int, default=1000,
+                    help='after how many gradient step is the model evaluated')
 
 # Algorithm specific argumen1ts
 parser.add_argument('--gamma', type=float, default=0.99,
@@ -85,10 +84,6 @@ parser.add_argument('--weights-init', default='xavier', const='xavier', nargs='?
 parser.add_argument('--bias-init', default='zeros', const='xavier', nargs='?', choices=['zeros', 'uniform'],
                     help='weight initialization scheme for the neural networks.')
 
-# Logging
-parser.add_argument('--log-interval', type=int, default=1000,
-                    help='determines how many iter the models train before logging the training stats. Also determines how often the agent is evaluated in the env. (time consuming).')
-
 args = parser.parse_args()
 if not args.seed:
     args.seed = int(time.time())
@@ -119,6 +114,8 @@ env.action_space.seed(args.seed)
 env.observation_space.seed(args.seed)
 input_shape = env.observation_space.shape[0]
 output_shape = env.action_space.shape[0]
+max_action = float(env.action_space.high[0])
+
 # respect the default timelimit
 assert isinstance(env.action_space, Box), "only continuous action space is supported"
 if args.capture_video:
@@ -140,7 +137,7 @@ def test_agent(env, vae_policy, qf1, perturb_net=None, n_eval_episodes=5):
                 action = vae_policy.get_actions(obs_tensor)
                 if perturb_net is not None:
                     action += perturb_net(obs_tensor, action)
-                    action.clamp(-1., 1.) # TODO: adapt to env actin limits
+                    action.clamp(-max_action, max_action) # TODO: adapt to env actin limits
                 qf1_values = qf1(obs_tensor, action).view(-1)
             action = action[th.argmax(qf1_values)].cpu().numpy()
             
@@ -165,24 +162,21 @@ def test_agent(env, vae_policy, qf1, perturb_net=None, n_eval_episodes=5):
 
     return eval_stats
 
-# Dataset tool and loading methods
-from torch.utils.data import Dataset, DataLoader
-
-class ExperienceReplayDataset(Dataset):
-    def __init__(self, env_name, device="cpu"):
+# Offline RL data loading
+class ExperienceReplayDataset(IterableDataset):
+    def __init__(self, env_name):
         self.dataset_env = gym.make(env_name)
         self.dataset = self.dataset_env.get_dataset()
-        self.device = device # handles putting the data on the davice when sampling
-    def __len__(self):
-        return self.dataset['observations'].shape[0]-1
-    def __getitem__(self, index):
-        return self.dataset['observations'][:-1][index].astype(np.float32), \
-               self.dataset['actions'][:-1][index].astype(np.float32), \
-               self.dataset['rewards'][:-1][index].astype(np.float32), \
-               self.dataset['observations'][1:][index].astype(np.float32), \
-               self.dataset['terminals'][:-1][index].astype(np.float32)
+    def __iter__(self):
+        while True:
+            idx = np.random.choice(len(self.dataset['observations'])-1)
+            yield self.dataset['observations'][:-1][idx].astype(np.float32), \
+                self.dataset['actions'][:-1][idx].astype(np.float32), \
+                self.dataset['rewards'][:-1][idx].astype(np.float32), \
+                self.dataset['observations'][1:][idx].astype(np.float32), \
+                self.dataset['terminals'][:-1][idx].astype(np.float32)
 
-data_loader = DataLoader(ExperienceReplayDataset(args.offline_gym_id), batch_size=args.batch_size, num_workers=2)
+data_loader = iter(DataLoader(ExperienceReplayDataset(args.offline_gym_id), batch_size=args.batch_size, num_workers=2))
 
 # VAE, Perturbation Network and QFunction definition
 # Weight init scheme
@@ -217,9 +211,10 @@ class VAEPolicy(nn.Module):
         self.encoder = nn.Sequential(*[
             nn.Linear(obs_shape + act_shape, 750), nn.ReLU(),
             nn.Linear(750, 750), nn.ReLU(),
-            nn.Linear(750, latent_shape * 2)
         ])
-        
+        self.encoder_mean = nn.Linear(750, latent_shape)
+        self.encoder_log_scale = nn.Linear(750, latent_shape)
+
         self.decoder = nn.Sequential(*[
             nn.Linear(obs_shape + latent_shape, 750), nn.ReLU(),
             nn.Linear(750, 750), nn.ReLU(),
@@ -234,10 +229,11 @@ class VAEPolicy(nn.Module):
         return self
     
     def forward(self, obs_batch, act_batch):
-        batch_size = obs_batch.shape[0]
         
         obs_act = th.cat([obs_batch, act_batch],1)
-        latent_mean, latent_log_scale = th.chunk(self.encoder(obs_act), 2, 1)
+        feat = self.encoder(obs_act)
+        latent_mean, latent_log_scale = self.encoder_mean(feat), self.encoder_log_scale(feat)
+
         # clamping
         latent_log_scale.clamp_(-4.,15.)
         latent_scale = latent_log_scale.exp()
@@ -254,9 +250,9 @@ class VAEPolicy(nn.Module):
         return self.decoder(th.cat([obs, latent],1))
 
 class PerturbationNetwork(nn.Module):
-    def __init__(self, obs_shape, act_shape, max_perturbation=0.05):
+    def __init__(self, obs_shape, act_shape, max_action, phi=0.05):
         super().__init__()
-        self.obs_shape, self.act_shape, self.max_perturb = obs_shape, act_shape, max_perturbation
+        self.obs_shape, self.act_shape, self.max_action, self.phi = obs_shape, act_shape, max_action, phi
         self.network = nn.Sequential(*[
             nn.Linear(obs_shape+act_shape, 400), nn.ReLU(),
             nn.Linear(400,300), nn.ReLU(),
@@ -264,12 +260,12 @@ class PerturbationNetwork(nn.Module):
         ])
     
     def forward(self, obs_batch, act_batch):
-        return self.network(th.cat([obs_batch, act_batch],1)) * self.max_perturb
+        return self.network(th.cat([obs_batch, act_batch],1)) * self.phi * self.max_action
 
 # Network instantiations
 vae_policy = VAEPolicy(input_shape, output_shape, output_shape * 2).to(device) # TODO: try alternative dim for: (obs_shape + act_shape) // 2
-perturb_net = PerturbationNetwork(input_shape, output_shape, args.phi).to(device)
-perturb_net_target = PerturbationNetwork(input_shape, output_shape, args.phi).to(device).requires_grad_(False)
+perturb_net = PerturbationNetwork(input_shape, output_shape, max_action, args.phi).to(device)
+perturb_net_target = PerturbationNetwork(input_shape, output_shape, max_action, args.phi).to(device).requires_grad_(False)
 perturb_net_target.load_state_dict(perturb_net.state_dict())
 
 q_kwargs = {"obs_shape": input_shape, "act_shape": output_shape, "layer_init": layer_init}
@@ -282,99 +278,93 @@ qf1_target.load_state_dict(qf1.state_dict())
 qf2_target.load_state_dict(qf2.state_dict())
 
 # Optimizers
-vae_optimizer = optim.Adam(vae_policy.parameters(), lr=args.lr)
+vae_optimizer = optim.Adam(vae_policy.parameters()) # default lr: 1e-3
 perturb_optimizer = optim.Adam(perturb_net.parameters(), lr=args.lr)
 q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.lr)
 
 # Training Loop
-global_step = 0 # Tracks the Gradient updates
-for epoch in range(args.n_epochs):
-    for k, train_batch in enumerate(data_loader):
-        global_step += 1
+for global_step in range(args.total_timesteps): 
+    # tenosrize, place and the correct device
+    s_obs, s_actions, s_rewards, s_next_obses, s_dones = [i.to(device) for i in next(data_loader)]
         
-        # tenosrize, place and the correct device
-        s_obs, s_actions, s_rewards, s_next_obses, s_dones = [i.to(device) for i in train_batch]
+    # VAE loss: constrain the actions toward the action dist of the dataset:
+    reconstructed_actions, latent_mean, latent_scale = vae_policy(s_obs, s_actions)
+    rec_loss = F.mse_loss(reconstructed_actions, s_actions) # Eq 28
+    # kl_loss = th.distributions.kl.kl_divergence(latent_dist, vae_policy.latent_prior).sum(-1).mean() # Eq 29
+    kl_loss = -.5 * (1 + latent_scale.pow(2).log() - latent_mean.pow(2) - latent_scale.pow(2)).mean()
+    vae_loss = rec_loss + .5 * kl_loss # Eq 30, lambda = .5
+    
+    vae_optimizer.zero_grad()
+    vae_loss.backward()
+    vae_optimizer.step()
+    
+    # Q Function updates
+    with th.no_grad():
+        # Eq (27)
+        s_next_obses_repeat = s_next_obses.repeat_interleave(args.num_actions,dim=0)
+        next_actions = vae_policy.get_actions(s_next_obses_repeat)
+        next_actions += perturb_net_target(s_next_obses_repeat, next_actions)
+        next_actions.clamp_(-max_action,max_action)
         
-        # VAE loss: constrain the actions toward the action dist of the dataset:
-        reconstructed_actions, latent_mean, latent_scale = vae_policy(s_obs, s_actions)
-        rec_loss = F.mse_loss(reconstructed_actions, s_actions) # Eq 28
-        # kl_loss = th.distributions.kl.kl_divergence(latent_dist, vae_policy.latent_prior).sum(-1).mean() # Eq 29
-        kl_loss = -.5 * (1 + latent_scale.pow(2).log() - latent_mean.pow(2) - latent_scale.pow(2)).sum(-1).mean()
-        vae_loss = rec_loss + .5 * kl_loss # Eq 30
-        
-        vae_optimizer.zero_grad()
-        vae_loss.backward()
-        vae_optimizer.step()
-        
-        # Q Function updates
-        with th.no_grad():
-            # Eq (27)
-            s_next_obses_repeat = s_next_obses.repeat_interleave(args.num_actions,dim=0)
-            next_actions = vae_policy.get_actions(s_next_obses_repeat)
-            next_actions += perturb_net_target(s_next_obses_repeat, next_actions)
-            next_actions.clamp_(-1.,1.) # TODO: adapt to env's action space min,max
-            
-            next_obs_qf1_target = qf1_target(s_next_obses_repeat, next_actions).view(-1)
-            next_obs_qf2_target = qf2_target(s_next_obses_repeat, next_actions).view(-1)
+        next_obs_qf1_target = qf1_target(s_next_obses_repeat, next_actions).view(-1)
+        next_obs_qf2_target = qf2_target(s_next_obses_repeat, next_actions).view(-1)
 
-            min_qf_target = args.lmbda * th.min(next_obs_qf1_target, next_obs_qf2_target)
-            max_qf_target = (1. - args.lmbda) * th.max(next_obs_qf1_target, next_obs_qf2_target)
-            qf_target = th.max((min_qf_target + max_qf_target).view(args.batch_size, args.num_actions), -1)[0]
+        min_qf_target = args.lmbda * th.min(next_obs_qf1_target, next_obs_qf2_target)
+        max_qf_target = (1. - args.lmbda) * th.max(next_obs_qf1_target, next_obs_qf2_target)
+        qf_target = th.max((min_qf_target + max_qf_target).view(args.batch_size, args.num_actions), 1)[0]
 
-            q_backup = s_rewards + (1. - s_dones) * args.gamma * qf_target # Eq 13
+        q_backup = s_rewards + (1. - s_dones) * args.gamma * qf_target # Eq 13
+    
+    qf1_values = qf1(s_obs, s_actions).view(-1)
+    qf2_values = qf2(s_obs, s_actions).view(-1)
+
+    qf1_loss = F.mse_loss(qf1_values, q_backup)
+    qf2_loss = F.mse_loss(qf2_values, q_backup)
+    qf_loss = (qf1_loss + qf2_loss ) / 2. # for logging purpose mainly
+
+    q_optimizer.zero_grad()
+    qf_loss.backward()
+    q_optimizer.step()
+
+    # Perturbation network loss
+    # TODO: version with "max over 10 actions"
+    with th.no_grad():
+        raw_actions = vae_policy.get_actions(s_obs) # in [-1,1]
+    actions = raw_actions + perturb_net(s_obs, raw_actions)
+    actions.clamp_(-max_action, max_action) # TODO: adapt to env's action space min,max
+    qf1_pi = qf1(s_obs, actions).view(-1)
+    # qf2_pi = qf2(s_obs, actions).view(-1)
+    # min_qf_pi = th.min(qf1_pi,qf2_pi) # TODO: compare with one network version.
+    perturb_net_loss = - qf1_pi.mean()
+    
+    perturb_optimizer.zero_grad()
+    perturb_net_loss.backward()
+    perturb_optimizer.step()
+    
+    # update the target networks
+    if global_step % args.target_network_frequency == 0:
+        # TODO: consider refactor as a single function ?
+        for param, target_param in zip(qf1.parameters(), qf1_target.parameters()):
+            target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
+        for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
+            target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
+        for param, target_param in zip(perturb_net.parameters(), perturb_net_target.parameters()):
+            target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
+    
+    # Evaluated the agent and log results
+    if global_step % args.eval_frequency == 0:
+        # TODO: clean up the eval section
+        eval_stats = test_agent(env, vae_policy, qf1)
+        eval_stats_perturbed = test_agent(env, vae_policy, qf1, perturb_net) # passing the perturb net enables "noisy" evaluation
+        # TODO: match logging to other scripts
+        print("[I%08d] PertNetLoss: %.3f -- QLoss: %.3f -- VAELoss: %.3f -- Determ. Mean Ret: %.3f -- Noisy Mean Ret.: %.3f" %
+            (global_step, perturb_net_loss.item(), qf_loss.item(), vae_loss.item(), eval_stats["test_mean_return"], eval_stats_perturbed["test_mean_return"]))
         
-        qf1_values = qf1(s_obs, s_actions).view(-1)
-        qf2_values = qf2(s_obs, s_actions).view(-1)
-
-        qf1_loss = F.mse_loss(qf1_values, q_backup)
-        qf2_loss = F.mse_loss(qf2_values, q_backup)
-        qf_loss = (qf1_loss + qf2_loss ) / 2. # for logging purpose mainly
-
-        q_optimizer.zero_grad()
-        qf_loss.backward()
-        q_optimizer.step()
-
-        # Perturbation network loss
-        # TODO: version with "max over 10 actions"
-        with th.no_grad():
-            raw_actions = vae_policy.get_actions(s_obs) # in [-1,1]
-        actions = raw_actions + perturb_net(s_obs, raw_actions)
-        actions.clamp_(-1., 1.) # TODO: adapt to env's action space min,max
-        qf1_pi = qf1(s_obs, actions).view(-1)
-        qf2_pi = qf2(s_obs, actions).view(-1)
-        min_qf_pi = th.min(qf1_pi,qf2_pi) # TODO: compare with one network version.
-        perturb_net_loss = - min_qf_pi.mean()
-        
-        perturb_optimizer.zero_grad()
-        perturb_net_loss.backward()
-        perturb_optimizer.step()
-        
-        # update the target networks
-        if global_step % args.target_network_frequency == 0:
-            # TODO: consider refactor as a single function ?
-            for param, target_param in zip(qf1.parameters(), qf1_target.parameters()):
-                target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
-            for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
-                target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
-            for param, target_param in zip(perturb_net.parameters(), perturb_net_target.parameters()):
-                target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
-        
-        # Evaluated the agent and log results
-        if global_step % args.log_interval == 0:
-            eval_stats = test_agent(env, vae_policy, qf1)
-            eval_stats_perturbed = test_agent(env, vae_policy, qf1, perturb_net) # passing the perturb net enables "noisy" evaluation
-            print("[E%04d|I%08d] PertNetLoss: %.3f -- QLoss: %.3f -- VAELoss: %.3f -- Determ. Mean Ret: %.3f -- Noisy Mean Ret.: %.3f" %
-            (epoch, global_step, perturb_net_loss.item(), qf_loss.item(), vae_loss.item(), eval_stats["test_mean_return"], eval_stats_perturbed["test_mean_return"]))
-            
-            writer.add_scalar("global_step", global_step, global_step)
-            writer.add_scalar("charts/episode_reward", eval_stats["test_mean_return"], global_step)
-            writer.add_scalar("charts/episode_reward_perturbed", eval_stats_perturbed["test_mean_return"], global_step)
-            writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
-            writer.add_scalar("losses/vae_loss", vae_loss.item(), global_step)
-            writer.add_scalar("losses/perturb_net_loss", perturb_net_loss.item(), global_step)
-            writer.add_scalar("losses/vae_raw_kl_loss", kl_loss.item(), global_step)
-            writer.add_scalar("losses/vae_rec_loss", rec_loss.item(), global_step)
-
-        # Stop iteration over the dataset
-        if k >= args.epoch_length-1:
-            break
+        writer.add_scalar("global_step", global_step, global_step)
+        writer.add_scalar("charts/episode_reward", eval_stats["test_mean_return"], global_step)
+        writer.add_scalar("charts/episode_reward_perturbed", eval_stats_perturbed["test_mean_return"], global_step)
+        writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
+        writer.add_scalar("losses/vae_loss", vae_loss.item(), global_step)
+        writer.add_scalar("losses/perturb_net_loss", perturb_net_loss.item(), global_step)
+        writer.add_scalar("losses/vae_raw_kl_loss", kl_loss.item(), global_step)
+        writer.add_scalar("losses/vae_rec_loss", rec_loss.item(), global_step)
