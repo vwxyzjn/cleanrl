@@ -59,7 +59,7 @@ parser.add_argument('--lr', type=float, default=1e-3,
                     help='the learning rate of the optimizer for the policy weights')
 parser.add_argument('--q-lr', type=float, default=1e-3,
                     help='the learning rate of the optimizer for the Q netowrks weights')
-parser.add_argument('--target-network-frequency', type=int, default=1, # Denis Yarats' implementation delays this by 2.
+parser.add_argument('--target-network-frequency', type=int, default=1,
                     help="the timesteps it takes to update the target network")
 parser.add_argument('--max-grad-norm', type=float, default=0.5,
                     help='the maximum norm for the gradient clipping')
@@ -131,16 +131,15 @@ def test_agent(env, vae_policy, qf1, perturb_net=None, n_eval_episodes=5):
         obs = np.array( env.reset())
 
         while not done:
-            # MaxEntRL Paper argues eval should not be determinsitic
             with torch.no_grad():
-                obs_tensor = torch.Tensor(obs).unsqueeze(0).repeat_interleave(100, dim=0).to(device)
+                obs_tensor = torch.Tensor(obs).unsqueeze(0).repeat(100, 1).to(device)
                 action = vae_policy.get_actions(obs_tensor)
                 if perturb_net is not None:
                     action += perturb_net(obs_tensor, action)
-                    action.clamp(-max_action, max_action) # TODO: adapt to env actin limits
+                    action.clamp_(-max_action, max_action) # TODO: adapt to env actin limits
                 qf1_values = qf1(obs_tensor, action).view(-1)
-            action = action[th.argmax(qf1_values)].cpu().numpy()
-            
+            action = action[qf1_values.argmax(0)].cpu().numpy()
+
             obs, rew, done, _ = env.step(action)
             obs = np.array( obs)
             ret += rew
@@ -197,7 +196,7 @@ class QNetwork(nn.Module):
             nn.Linear(400, 300), nn.ReLU(),
             nn.Linear(300, 1)
         ])
-        self.apply(layer_init)
+        # self.apply(layer_init)
 
     def forward(self, x, a):
         return self.network(th.cat([x,a],1))
@@ -221,7 +220,7 @@ class VAEPolicy(nn.Module):
             nn.Linear(750, act_shape), nn.Tanh()
         ])
         
-        self.apply(layer_init)
+        # self.apply(layer_init)
     
     def to(self, device, *args, **kwargs):
         super().to(device)
@@ -232,10 +231,7 @@ class VAEPolicy(nn.Module):
         
         obs_act = th.cat([obs_batch, act_batch],1)
         feat = self.encoder(obs_act)
-        latent_mean, latent_log_scale = self.encoder_mean(feat), self.encoder_log_scale(feat)
-
-        # clamping
-        latent_log_scale.clamp_(-4.,15.)
+        latent_mean, latent_log_scale = self.encoder_mean(feat), self.encoder_log_scale(feat).clamp(-4,15)
         latent_scale = latent_log_scale.exp()
         
         latent = latent_mean + latent_scale * th.randn_like(latent_scale)
@@ -245,7 +241,7 @@ class VAEPolicy(nn.Module):
         return action, latent_mean, latent_scale
     
     def get_actions(self, obs):
-        latent = th.randn([obs.shape[0], self.latent_shape]).to(self.device).clamp(-.5,.5)
+        latent = th.randn([obs.shape[0], self.latent_shape]).to(self.device).clamp(-0.5,0.5)
         
         return self.decoder(th.cat([obs, latent],1))
 
@@ -291,8 +287,8 @@ for global_step in range(args.total_timesteps):
     reconstructed_actions, latent_mean, latent_scale = vae_policy(s_obs, s_actions)
     rec_loss = F.mse_loss(reconstructed_actions, s_actions) # Eq 28
     # kl_loss = th.distributions.kl.kl_divergence(latent_dist, vae_policy.latent_prior).sum(-1).mean() # Eq 29
-    kl_loss = -.5 * (1 + latent_scale.pow(2).log() - latent_mean.pow(2) - latent_scale.pow(2)).mean()
-    vae_loss = rec_loss + .5 * kl_loss # Eq 30, lambda = .5
+    kl_loss = -0.5 * (1 + latent_scale.pow(2).log() - latent_mean.pow(2) - latent_scale.pow(2)).mean()
+    vae_loss = rec_loss + 0.5 * kl_loss # Eq 30, lambda = .5
     
     vae_optimizer.zero_grad()
     vae_loss.backward()
@@ -309,9 +305,10 @@ for global_step in range(args.total_timesteps):
         next_obs_qf1_target = qf1_target(s_next_obses_repeat, next_actions).view(-1)
         next_obs_qf2_target = qf2_target(s_next_obses_repeat, next_actions).view(-1)
 
-        min_qf_target = args.lmbda * th.min(next_obs_qf1_target, next_obs_qf2_target)
-        max_qf_target = (1. - args.lmbda) * th.max(next_obs_qf1_target, next_obs_qf2_target)
-        qf_target = th.max((min_qf_target + max_qf_target).view(args.batch_size, args.num_actions), 1)[0]
+        qf_target = args.lmbda * th.min(next_obs_qf1_target, next_obs_qf2_target) + \
+            (1. - args.lmbda) * th.max(next_obs_qf1_target, next_obs_qf2_target)
+        qf_target = qf_target.view(args.batch_size, -1).max(1)[0]
+        # qf_target = th.max((min_qf_target + max_qf_target).view(args.batch_size, args.num_actions), 1)[0] # old version
 
         q_backup = s_rewards + (1. - s_dones) * args.gamma * qf_target # Eq 13
     
@@ -354,17 +351,19 @@ for global_step in range(args.total_timesteps):
     # Evaluated the agent and log results
     if global_step % args.eval_frequency == 0:
         # TODO: clean up the eval section
-        eval_stats = test_agent(env, vae_policy, qf1)
-        eval_stats_perturbed = test_agent(env, vae_policy, qf1, perturb_net) # passing the perturb net enables "noisy" evaluation
+        eval_stats_non_perturbed = test_agent(env, vae_policy, qf1)
+        eval_stats_perturbed = test_agent(env, vae_policy, qf1, perturb_net)
         # TODO: match logging to other scripts
         print("[I%08d] PertNetLoss: %.3f -- QLoss: %.3f -- VAELoss: %.3f -- Determ. Mean Ret: %.3f -- Noisy Mean Ret.: %.3f" %
-            (global_step, perturb_net_loss.item(), qf_loss.item(), vae_loss.item(), eval_stats["test_mean_return"], eval_stats_perturbed["test_mean_return"]))
+            (global_step, perturb_net_loss.item(), qf_loss.item(), vae_loss.item(),
+             eval_stats_non_perturbed["test_mean_return"], eval_stats_perturbed["test_mean_return"]))
         
         writer.add_scalar("global_step", global_step, global_step)
-        writer.add_scalar("charts/episode_reward", eval_stats["test_mean_return"], global_step)
-        writer.add_scalar("charts/episode_reward_perturbed", eval_stats_perturbed["test_mean_return"], global_step)
+        writer.add_scalar("charts/episode_reward", eval_stats_perturbed["test_mean_return"], global_step)
+        writer.add_scalar("charts/episode_reward_perturbed", eval_stats_non_perturbed["test_mean_return"], global_step)
         writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
         writer.add_scalar("losses/vae_loss", vae_loss.item(), global_step)
         writer.add_scalar("losses/perturb_net_loss", perturb_net_loss.item(), global_step)
         writer.add_scalar("losses/vae_raw_kl_loss", kl_loss.item(), global_step)
         writer.add_scalar("losses/vae_rec_loss", rec_loss.item(), global_step)
+
