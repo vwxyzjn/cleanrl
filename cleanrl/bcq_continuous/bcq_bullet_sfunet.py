@@ -8,7 +8,9 @@ import numpy as np
 from distutils.util import strtobool
 
 import gym
-import d4rl
+import pybullet_envs
+import d4rl_pybullet
+# import d4rl
 # import mujoco_py
 
 import torch
@@ -28,7 +30,7 @@ parser = argparse.ArgumentParser(description='Batch Constrained Q-Learning for C
 # Common arguments
 parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                     help='the name of this experiment')
-parser.add_argument('--gym-id', type=str, default="Hopper-v2",
+parser.add_argument('--gym-id', type=str, default="hopper-bullet-medium-v0",
                     help='the id of the gym environment')
 parser.add_argument('--seed', type=int, default=2,
                     help='seed of the experiment')
@@ -54,8 +56,6 @@ parser.add_argument('--gamma', type=float, default=0.99,
                     help='the discount factor gamma')
 parser.add_argument('--lr', type=float, default=1e-3,
                     help='the learning rate of the optimizer for the policy weights')
-parser.add_argument('--q-lr', type=float, default=1e-3,
-                    help='the learning rate of the optimizer for the Q netowrks weights')
 parser.add_argument('--target-network-frequency', type=int, default=1,
                     help="the timesteps it takes to update the target network")
 parser.add_argument('--max-grad-norm', type=float, default=0.5,
@@ -86,8 +86,8 @@ if not args.seed:
     args.seed = int(time.time())
 
 # create offline gym id: 'BeamRiderNoFrameskip-v4' -> 'beam-rider-expert-v0'
-args.offline_gym_id = re.sub(r'(?<!^)(?=[A-Z])', '-', args.gym_id).lower().replace(
-    "v2", "") + args.offline_dataset_id
+# args.offline_gym_id = re.sub(r'(?<!^)(?=[A-Z])', '-', args.gym_id).lower().replace(
+#     "v2", "") + args.offline_dataset_id
 
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -101,6 +101,7 @@ if args.prod_mode:
 
 # TRY NOT TO MODIFY: seeding
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
+## DBG: evn override
 env = gym.make(args.gym_id)
 random.seed(args.seed)
 np.random.seed(args.seed)
@@ -167,7 +168,8 @@ class ExperienceReplayDataset(IterableDataset):
                 self.dataset['observations'][1:][idx].astype(np.float32), \
                 self.dataset['terminals'][:-1][idx].astype(np.float32)
 
-data_loader = iter(DataLoader(ExperienceReplayDataset(args.offline_gym_id), batch_size=args.batch_size, num_workers=2))
+# data_loader = iter(DataLoader(ExperienceReplayDataset(args.offline_gym_id), batch_size=args.batch_size, num_workers=2))
+data_loader = iter(DataLoader(ExperienceReplayDataset(args.gym_id), batch_size=args.batch_size, num_workers=2))
 
 # VAE, Perturbation Network and QFunction definition
 # Weight init scheme
@@ -181,47 +183,48 @@ def layer_init(layer, weight_gain=1, bias_const=0):
             torch.nn.init.constant_(layer.bias, bias_const)
 
 class Actor(nn.Module):
-    def __init__(self, state_dim, action_dim, max_action, phi=0.05):
-        super().__init__()
-        self.max_action, self.phi = max_action, phi
-        self.network = nn.Sequential(*[
-            nn.Linear(state_dim + action_dim, 400), nn.ReLU(),
-            nn.Linear(400, 300), nn.ReLU(),
-            nn.Linear(300, action_dim), nn.Tanh()
-        ])
-    
-    def forward(self,state, action):
-        a = self.phi * self.max_action * self.network(th.cat([state,action], 1))
-        return (a + action).clamp(-self.max_action, self.max_action)
+	def __init__(self, state_dim, action_dim, max_action, phi=0.05):
+		super(Actor, self).__init__()
+		self.l1 = nn.Linear(state_dim + action_dim, 400)
+		self.l2 = nn.Linear(400, 300)
+		self.l3 = nn.Linear(300, action_dim)
+		
+		self.max_action = max_action
+		self.phi = phi
+
+	def forward(self, state, action):
+		a = F.relu(self.l1(torch.cat([state, action], 1)))
+		a = F.relu(self.l2(a))
+		a = self.phi * self.max_action * torch.tanh(self.l3(a))
+		return (a + action).clamp(-self.max_action, self.max_action)
 
 class Critic(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()
-        self.network = nn.Sequential(*[
-            nn.Linear(state_dim + action_dim, 400), nn.ReLU(),
-            nn.Linear(400, 300), nn.ReLU(),
-            nn.Linear(300,1)
-        ])
-    
+        self.l1 = nn.Linear(state_dim + action_dim, 400)
+        self.l2 = nn.Linear(400, 300)
+        self.l3 = nn.Linear(300, 1)
+
     def forward(self, state, action):
-        return self.network(th.cat([state, action], 1))
+        q1 = F.relu(self.l1(torch.cat([state, action], 1)))
+        q1 = F.relu(self.l2(q1))
+        q1 = self.l3(q1)
+
+        return q1
 
 class VAE(nn.Module):
     def __init__(self, state_dim, action_dim, latent_dim, max_action):
         super().__init__()
         self.max_action, self.latent_dim, self.device = max_action, latent_dim, "cpu"
-        self.encoder = nn.Sequential(*[
-            nn.Linear(state_dim + action_dim, 750), nn.ReLU(),
-            nn.Linear(750, 750), nn.ReLU()
-        ])
-        self.encoder_mean = nn.Linear(750, latent_dim)
-        self.encoder_log_scale = nn.Linear(750, latent_dim)
-        
-        self.decoder = nn.Sequential(*[
-            nn.Linear(state_dim + latent_dim, 750), nn.ReLU(),
-            nn.Linear(750, 750), nn.ReLU(),
-            nn.Linear(750, action_dim), nn.Tanh()
-        ])
+        self.e1 = nn.Linear(state_dim + action_dim, 750)
+        self.e2 = nn.Linear(750, 750)
+
+        self.mean = nn.Linear(750, latent_dim)
+        self.log_std = nn.Linear(750, latent_dim)
+
+        self.d1 = nn.Linear(state_dim + latent_dim, 750)
+        self.d2 = nn.Linear(750, 750)
+        self.d3 = nn.Linear(750, action_dim)
     
     def to(self, device, *args, **kwargs):
         super().to(device)
@@ -229,21 +232,30 @@ class VAE(nn.Module):
         return self
     
     def forward(self, state, action):
-        feat = self.encoder(th.cat([state, action], 1))
+        z = F.relu(self.e1(torch.cat([state, action], 1)))
+        z = F.relu(self.e2(z))
+
+        mean = self.mean(z)
+        # Clamped for numerical stability 
+        log_std = self.log_std(z).clamp(-4, 15)
+        std = torch.exp(log_std)
+        z = mean + std * torch.randn_like(std)
+		
+        u = self.decode(state, z)
         
-        mean, log_scale = self.encoder_mean(feat), self.encoder_log_scale(feat).clamp(-4,15)
-        scale = log_scale.exp()
-        
-        z = mean + scale * th.randn_like(scale)
-        
-        u = self.decoder(th.cat([state, z], 1)) * self.max_action
-        
-        return u, mean, scale
+        return u, mean, std
     
+    def decode(self, state, z=None):
+        # When sampling from the VAE, the latent vector is clipped to [-0.5, 0.5]
+        if z is None:
+            z = torch.randn((state.shape[0], self.latent_dim)).to(self.device).clamp(-0.5,0.5)
+
+        a = F.relu(self.d1(torch.cat([state, z], 1)))
+        a = F.relu(self.d2(a))
+        return self.max_action * torch.tanh(self.d3(a))
+
     def get_actions(self, obs):
-        z = th.randn([obs.shape[0], self.latent_dim]).to(self.device).clamp(-0.5,0.5)
-        
-        return self.decoder(th.cat([obs, z],1)) * self.max_action
+        return self.decode(obs)
 
 # Network instantiations
 vae = VAE(input_shape, output_shape, output_shape * 2, max_action).to(device) # TODO: try alternative dim for: (obs_shape + act_shape) // 2
@@ -334,7 +346,8 @@ for global_step in range(args.total_timesteps):
         # TODO: match logging to other scripts
         print("[I%08d] PertNetLoss: %.3f -- QLoss: %.3f -- VAELoss: %.3f -- Ep.Mean Ret: %.3f" %
             (global_step, actor_loss.item(), qf_loss.item(), vae_loss.item(), eval_stats["test_mean_return"]))
-        
+
+        # TODO: change the names to match the network names.
         writer.add_scalar("global_step", global_step, global_step)
         writer.add_scalar("charts/episode_reward", eval_stats["test_mean_return"], global_step)
         writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
@@ -343,3 +356,5 @@ for global_step in range(args.total_timesteps):
         writer.add_scalar("losses/vae_raw_kl_loss", kl_loss.item(), global_step)
         writer.add_scalar("losses/vae_rec_loss", rec_loss.item(), global_step)
 
+# TODO: add writer close too
+env.close()
