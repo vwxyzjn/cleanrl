@@ -29,9 +29,7 @@ from gym.spaces import Box
 
 parser = argparse.ArgumentParser(description='Batch Constrained Q-Learning for Continuous Domains')
 # Common arguments
-# parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
-#                     help='the name of this experiment')
-parser.add_argument('--exp-name', type=str, default="bcq_sfujim.ipynb",
+parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                     help='the name of this experiment')
 parser.add_argument('--gym-id', type=str, default="Hopper-v2",
                     help='the id of the gym environment')

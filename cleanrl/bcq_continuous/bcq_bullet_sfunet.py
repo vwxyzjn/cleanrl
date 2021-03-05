@@ -261,7 +261,7 @@ class VAE(nn.Module):
 vae = VAE(input_shape, output_shape, output_shape * 2, max_action).to(device) # TODO: try alternative dim for: (obs_shape + act_shape) // 2
 actor = Actor(input_shape, output_shape, max_action, args.phi).to(device)
 actor_target = Actor(input_shape, output_shape, max_action, args.phi).to(device).requires_grad_(False)
-actor_target.load_state_dict(actor_target.state_dict())
+actor_target.load_state_dict(actor.state_dict())
 
 q_kwargs = {"state_dim": input_shape, "action_dim": output_shape}
 qf1, qf1_target = Critic(**q_kwargs).to(device), Critic(**q_kwargs).to(device).requires_grad_(False)
@@ -295,12 +295,12 @@ for global_step in range(args.total_timesteps):
         s_next_obses_repeat = s_next_obses.repeat_interleave(args.num_actions,dim=0)
         next_actions = actor_target(s_next_obses_repeat, vae.get_actions(s_next_obses_repeat))
         
-        next_obs_qf1_target = qf1_target(s_next_obses_repeat, next_actions).squeeze(-1).view(args.batch_size, args.num_actions)
-        next_obs_qf2_target = qf2_target(s_next_obses_repeat, next_actions).squeeze(-1).view(args.batch_size, args.num_actions)
+        next_obs_qf1_target = qf1_target(s_next_obses_repeat, next_actions).squeeze(-1)
+        next_obs_qf2_target = qf2_target(s_next_obses_repeat, next_actions).squeeze(-1)
         
         qf_target = args.lmbda * th.min(next_obs_qf1_target, next_obs_qf2_target) + \
             (1. - args.lmbda) * th.max(next_obs_qf1_target, next_obs_qf2_target)
-        qf_target = qf_target.view(args.batch_size, -1).max(1)[0]
+        qf_target = qf_target.view(args.batch_size, args.num_actions).max(1)[0]
 
         q_backup = s_rewards + (1. - s_dones) * args.gamma * qf_target # Eq 13
     

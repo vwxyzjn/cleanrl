@@ -249,7 +249,7 @@ class VAE(nn.Module):
 vae = VAE(input_shape, output_shape, output_shape * 2, max_action).to(device) # TODO: try alternative dim for: (obs_shape + act_shape) // 2
 actor = Actor(input_shape, output_shape, max_action, args.phi).to(device)
 actor_target = Actor(input_shape, output_shape, max_action, args.phi).to(device).requires_grad_(False)
-actor_target.load_state_dict(actor_target.state_dict())
+actor_target.load_state_dict(actor.state_dict())
 
 q_kwargs = {"state_dim": input_shape, "action_dim": output_shape}
 qf1, qf1_target = Critic(**q_kwargs).to(device), Critic(**q_kwargs).to(device).requires_grad_(False)
