@@ -9,17 +9,12 @@ import numpy as np
 from distutils.util import strtobool
 
 import gym
-import pybullet_envs
 import d4rl
 
 import torch
-import torch as th # TODO: clean up later
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from torch.distributions import Normal, Uniform
-from torch.utils.data.dataset import IterableDataset
-from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
 from gym.wrappers import TimeLimit, Monitor
@@ -74,12 +69,6 @@ parser.add_argument('--lmbda', type=float, default=0.75,
 parser.add_argument('--num-actions', type=int, default=10,
                     help="how many actions sampled from the VAE to get the maximum value / best action")
 
-# NN Parameterization
-parser.add_argument('--weights-init', default='xavier', const='xavier', nargs='?', choices=['xavier', "orthogonal", 'uniform'],
-                    help='weight initialization scheme for the neural networks.')
-parser.add_argument('--bias-init', default='zeros', const='xavier', nargs='?', choices=['zeros', 'uniform'],
-                    help='weight initialization scheme for the neural networks.')
-
 args = parser.parse_args()
 if not args.seed:
     args.seed = int(time.time())
@@ -102,7 +91,7 @@ if args.prod_mode:
 device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
 torch.backends.cudnn.deterministic = args.torch_deterministic
 torch.manual_seed(args.seed)
-th.cuda.manual_seed_all(args.seed)
+torch.cuda.manual_seed_all(args.seed)
 
 random.seed(args.seed)
 np.random.seed(args.seed)
@@ -132,7 +121,7 @@ class Actor(nn.Module):
         ])
     
     def forward(self,state, action):
-        a = self.phi * self.max_action * self.network(th.cat([state,action], 1))
+        a = self.phi * self.max_action * self.network(torch.cat([state,action], 1))
         return (a + action).clamp(-self.max_action, self.max_action)
 
 class Critic(nn.Module):
@@ -145,7 +134,7 @@ class Critic(nn.Module):
         ])
     
     def forward(self, state, action):
-        return self.network(th.cat([state, action], 1))
+        return self.network(torch.cat([state, action], 1))
 
 class VAE(nn.Module):
     def __init__(self, state_dim, action_dim, latent_dim, max_action):
@@ -170,23 +159,23 @@ class VAE(nn.Module):
         return self
     
     def forward(self, state, action):
-        feat = self.encoder(th.cat([state, action], 1))
+        feat = self.encoder(torch.cat([state, action], 1))
         
         mean, log_scale = self.encoder_mean(feat), self.encoder_log_scale(feat).clamp(-4,15)
         scale = log_scale.exp()
         
-        z = mean + scale * th.randn_like(scale)
+        z = mean + scale * torch.randn_like(scale)
         
-        u = self.decoder(th.cat([state, z], 1)) * self.max_action
+        u = self.decoder(torch.cat([state, z], 1)) * self.max_action
         
         return u, mean, scale
     
     def get_actions(self, obs):
-        z = th.randn([obs.shape[0], self.latent_dim]).to(self.device).clamp(-0.5,0.5)
+        z = torch.randn([obs.shape[0], self.latent_dim]).to(self.device).clamp(-0.5,0.5)
         
-        return self.decoder(th.cat([obs, z],1)) * self.max_action
+        return self.decoder(torch.cat([obs, z],1)) * self.max_action
 
-# ReplayBuffer from original implementation,
+# ReplayBuffer from original implementation, with data loading and sampling only
 class ReplayBuffer(object):
 	def __init__(self, state_dim, action_dim, device, max_size=int(1e6)):
 		self.max_size = max_size
@@ -226,26 +215,22 @@ actor = Actor(input_shape, output_shape, max_action, args.phi).to(device)
 actor_target = copy.deepcopy(actor)
 
 q_kwargs = {"state_dim": input_shape, "action_dim": output_shape}
-qf1 = Critic(**q_kwargs).to(device)
-qf2 = Critic(**q_kwargs).to(device)
+qf1, qf2 = Critic(**q_kwargs).to(device), Critic(**q_kwargs).to(device)
 qf1_target, qf2_target = copy.deepcopy(qf1), copy.deepcopy(qf2)
 
-vae = VAE(input_shape, output_shape, output_shape * 2, max_action).to(device) # TODO: try alternative dim for: (obs_shape + act_shape) // 2
+vae = VAE(input_shape, output_shape, output_shape * 2, max_action).to(device)
 
 # Optimizers
-vae_optimizer = optim.Adam(vae.parameters()) # default lr: 1e-3
+vae_optimizer = optim.Adam(vae.parameters(), lr=args.lr)
 actor_optimizer = optim.Adam(actor.parameters(), lr=args.lr)
 q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.lr)
 
-# loading dataset
+# loading dataset into buffer
 dataset = env.get_dataset()
-
-# Load buffer
 replay_buffer = ReplayBuffer(input_shape, output_shape, device)
 replay_buffer.load_d4rl(dataset)
 
 for global_step in range(1,args.total_timesteps+1): 
-	# tenosrize, place and the correct device
 	s_obs, s_actions, s_next_obses, s_rewards, s_dones = replay_buffer.sample(args.batch_size)
 	
 	# VAE loss: constrain the actions toward the action dist of the dataset:
@@ -259,15 +244,15 @@ for global_step in range(1,args.total_timesteps+1):
 	vae_optimizer.step()
 	
 	# Q Function updates
-	with th.no_grad():
+	with torch.no_grad():
 		# Eq (27)
 		s_next_obses_repeat = s_next_obses.repeat_interleave(args.num_actions,dim=0)
 		next_actions = actor_target(s_next_obses_repeat, vae.get_actions(s_next_obses_repeat))
 		next_obs_qf1_target = qf1_target(s_next_obses_repeat, next_actions).squeeze(-1)
 		next_obs_qf2_target = qf2_target(s_next_obses_repeat, next_actions).squeeze(-1)
 		
-		qf_target = args.lmbda * th.min(next_obs_qf1_target, next_obs_qf2_target) + \
-			(1. - args.lmbda) * th.max(next_obs_qf1_target, next_obs_qf2_target)
+		qf_target = args.lmbda * torch.min(next_obs_qf1_target, next_obs_qf2_target) + \
+			(1. - args.lmbda) * torch.max(next_obs_qf1_target, next_obs_qf2_target)
 		qf_target = qf_target.view(args.batch_size, -1).max(1)[0]
 		q_backup = s_rewards + (1. - s_dones) * args.gamma * qf_target # Eq 13
 	
@@ -283,7 +268,7 @@ for global_step in range(1,args.total_timesteps+1):
 	q_optimizer.step()
 	
 	# Perturbation network loss
-	with th.no_grad():
+	with torch.no_grad():
 		raw_actions = vae.get_actions(s_obs)
 	actions = actor(s_obs, raw_actions)
 	qf1_pi = qf1(s_obs, actions).view(-1)
@@ -330,7 +315,7 @@ for global_step in range(1,args.total_timesteps+1):
 
 		writer.add_scalar("global_step", global_step, global_step)
 		writer.add_scalar("charts/episode_reward", avg_return, global_step)
-		writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
+		writer.add_scalar("losses/qf_loss", qf_loss.item() / 2., global_step)
 		writer.add_scalar("losses/vae_loss", vae_loss.item(), global_step)
 		writer.add_scalar("losses/perturb_net_loss", actor_loss.item(), global_step)
 		writer.add_scalar("losses/vae_raw_kl_loss", kl_loss.item(), global_step)
