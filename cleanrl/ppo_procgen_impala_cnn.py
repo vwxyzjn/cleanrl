@@ -247,18 +247,13 @@ class Agent(nn.Module):
         self.actor = nn.Linear(in_features=256, out_features=envs.action_space.n)
         self.critic = nn.Linear(in_features=256, out_features=1)
 
-    def forward(self, x):
-        return self.network(x.permute((0, 3, 1, 2))) # "bhwc" -> "bchw"
-
-    def get_action(self, x, action=None):
-        logits = self.actor(self.forward(x))
+    def get_action_and_value(self, x, action=None):
+        hidden = self.network(x.permute((0, 3, 1, 2))) # "bhwc" -> "bchw"
+        logits = self.actor(hidden)
         probs = Categorical(logits=logits)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action), probs.entropy()
-
-    def get_value(self, x):
-        return self.critic(self.forward(x))
+        return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
 
 agent = Agent(envs).to(device)
 optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
@@ -297,8 +292,8 @@ for update in range(1, num_updates+1):
 
         # ALGO LOGIC: put action logic here
         with torch.no_grad():
-            values[step] = agent.get_value(obs[step]).flatten()
-            action, logproba, _ = agent.get_action(obs[step])
+            action, logproba, _, vs = agent.get_action_and_value(next_obs)
+            values[step] = vs.flatten()
 
         actions[step] = action
         logprobs[step] = logproba
@@ -315,7 +310,8 @@ for update in range(1, num_updates+1):
 
     # bootstrap reward if not done. reached the batch limit
     with torch.no_grad():
-        last_value = agent.get_value(next_obs.to(device)).reshape(1, -1)
+        _, _, _, last_value = agent.get_action_and_value(next_obs.to(device))
+        last_value = last_value.reshape(1, -1)
         if args.gae:
             advantages = torch.zeros_like(rewards).to(device)
             lastgaelam = 0
@@ -360,7 +356,7 @@ for update in range(1, num_updates+1):
             if args.norm_adv:
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
-            _, newlogproba, entropy = agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind])
+            _, newlogproba, entropy, new_values = agent.get_action_and_value(b_obs[minibatch_ind], b_actions.long()[minibatch_ind].to(device))
             ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
 
             # Stats
@@ -373,7 +369,7 @@ for update in range(1, num_updates+1):
             entropy_loss = entropy.mean()
 
             # Value loss
-            new_values = agent.get_value(b_obs[minibatch_ind]).view(-1)
+            new_values = new_values.view(-1)
             if args.clip_vloss:
                 v_loss_unclipped = ((new_values - b_returns[minibatch_ind]) ** 2)
                 v_clipped = b_values[minibatch_ind] + torch.clamp(new_values - b_values[minibatch_ind], -args.clip_coef, args.clip_coef)
@@ -396,8 +392,6 @@ for update in range(1, num_updates+1):
     writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
     writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
     writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
-    if args.kle_stop or args.kle_rollback:
-        writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
     print("SPS:", int(global_step / (time.time() - start_time)))
     writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
