@@ -64,10 +64,6 @@ if __name__ == "__main__":
                         help="the surrogate clipping coefficient")
     parser.add_argument('--update-epochs', type=int, default=3,
                          help="the K epochs to update the policy")
-    parser.add_argument('--kle-stop', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                         help='If toggled, the policy updates will be early stopped w.r.t target-kl')
-    parser.add_argument('--kle-rollback', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                         help='If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl')
     parser.add_argument('--target-kl', type=float, default=0.03,
                          help='the target-kl variable that is referred by --kl')
     parser.add_argument('--gae', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
