@@ -2,34 +2,36 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from torch.distributions.categorical import Categorical
+from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
 import argparse
 from distutils.util import strtobool
 import numpy as np
 import gym
-from procgen import ProcgenEnv
 from gym.wrappers import TimeLimit, Monitor
 import pybullet_envs
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
 import os
-from stable_baselines3.common.vec_env import VecEnvWrapper, VecNormalize, VecVideoRecorder
+from stable_baselines3.common.vec_env import VecEnvWrapper, VecVideoRecorder
+
+from pettingzoo.butterfly import pistonball_v4
+import supersuit as ss
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="starpilot",
+    parser.add_argument('--gym-id', type=str, default="pistonball_v4-v0",
                         help='the id of the gym environment')
-    parser.add_argument('--learning-rate', type=float, default=2.5e-4,
+    parser.add_argument('--learning-rate', type=float, default=3e-4,
                         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
                         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=int(1e8),
+    parser.add_argument('--total-timesteps', type=int, default=2000000,
                         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -45,17 +47,17 @@ if __name__ == "__main__":
                         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument('--n-minibatch', type=int, default=8,
+    parser.add_argument('--n-minibatch', type=int, default=32,
                         help='the number of mini batch')
-    parser.add_argument('--num-envs', type=int, default=64,
+    parser.add_argument('--num-envs', type=int, default=8,
                         help='the number of parallel game environment')
-    parser.add_argument('--num-steps', type=int, default=256,
+    parser.add_argument('--num-steps', type=int, default=128,
                         help='the number of steps per game environment')
-    parser.add_argument('--gamma', type=float, default=0.999,
+    parser.add_argument('--gamma', type=float, default=0.99,
                         help='the discount factor gamma')
     parser.add_argument('--gae-lambda', type=float, default=0.95,
                         help='the lambda for the general advantage estimation')
-    parser.add_argument('--ent-coef', type=float, default=0.01,
+    parser.add_argument('--ent-coef', type=float, default=0.0,
                         help="coefficient of the entropy")
     parser.add_argument('--vf-coef', type=float, default=0.5,
                         help="coefficient of the value function")
@@ -63,9 +65,9 @@ if __name__ == "__main__":
                         help='the maximum norm for the gradient clipping')
     parser.add_argument('--clip-coef', type=float, default=0.2,
                         help="the surrogate clipping coefficient")
-    parser.add_argument('--update-epochs', type=int, default=3,
+    parser.add_argument('--update-epochs', type=int, default=10,
                          help="the K epochs to update the policy")
-    parser.add_argument('--kle-stop', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+    parser.add_argument('--kle-stop', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                          help='If toggled, the policy updates will be early stopped w.r.t target-kl')
     parser.add_argument('--kle-rollback', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                          help='If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl')
@@ -83,9 +85,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
-
-args.batch_size = int(args.num_envs * args.num_steps)
-args.minibatch_size = int(args.batch_size // args.n_minibatch)
 
 class VecPyTorch(VecEnvWrapper):
     def __init__(self, venv, device):
@@ -106,21 +105,6 @@ class VecPyTorch(VecEnvWrapper):
         obs = torch.from_numpy(obs).float().to(self.device)
         reward = torch.from_numpy(reward).unsqueeze(dim=1).float()
         return obs, reward, done, info
-
-class VecExtractDictObs(VecEnvWrapper):
-    def __init__(self, venv, key):
-        self.key = key
-        super().__init__(venv=venv,
-            observation_space=venv.observation_space.spaces[self.key])
-
-    def reset(self):
-        obs = self.venv.reset()
-        return obs[self.key]
-
-    def step_wait(self):
-        obs, reward, done, info = self.venv.step_wait()
-        return obs[self.key], reward, done, info
-
 
 class VecMonitor(VecEnvWrapper):
     def __init__(self, venv):
@@ -155,6 +139,7 @@ class VecMonitor(VecEnvWrapper):
                 newinfos[i] = info
         return obs, rews, dones, newinfos
 
+
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
@@ -171,15 +156,23 @@ random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
-venv = ProcgenEnv(num_envs=args.num_envs, env_name=args.gym_id, num_levels=0, start_level=0, distribution_mode='hard')
-venv = VecExtractDictObs(venv, "rgb")
-venv = VecMonitor(venv=venv)
-envs = VecNormalize(venv=venv, norm_obs=False)
-envs = VecPyTorch(envs, device)
+
+# petting zoo
+env = pistonball_v4.parallel_env()
+env = ss.color_reduction_v0(env, mode='B')
+env = ss.resize_v0(env, x_size=84, y_size=84)
+env = ss.frame_stack_v1(env, 3)
+env = ss.pettingzoo_env_to_vec_env_v0(env)
+envs = ss.concat_vec_envs_v0(env, args.num_envs, num_cpus=0, base_class='stable_baselines3')
+envs = VecMonitor(envs)
 if args.capture_video:
-    envs = VecVideoRecorder(envs, f'videos/{experiment_name}', 
-                            record_video_trigger=lambda x: x % 1000000== 0, video_length=100)
-assert isinstance(envs.action_space, Discrete), "only discrete action space is supported"
+    envs = VecVideoRecorder(envs, f'videos/{experiment_name}',
+                            record_video_trigger=lambda x: x % 150000 == 0, video_length=400)
+envs = VecPyTorch(envs, device)
+args.num_envs = envs.num_envs
+args.batch_size = int(args.num_envs * args.num_steps)
+args.minibatch_size = int(args.batch_size // args.n_minibatch)
+assert isinstance(envs.action_space, Box), "only continuous action space is supported"
 
 # ALGO LOGIC: initialize agent here:
 class Scale(nn.Module):
@@ -190,43 +183,53 @@ class Scale(nn.Module):
     def forward(self, x):
         return x * self.scale
 
+class Transpose(nn.Module):
+    def __init__(self, permutation):
+        super().__init__()
+        self.permutation = permutation
+
+    def forward(self, x):
+        return x.permute(self.permutation)
+
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
 class Agent(nn.Module):
-    def __init__(self, envs, channels=3):
+    def __init__(self, channels=3):
         super(Agent, self).__init__()
         self.network = nn.Sequential(
+            Transpose((0, 3, 1, 2)),  # "bhwc" -> "bchw"
             Scale(1/255),
-            layer_init(nn.Conv2d(channels, 32, 4, stride=3)),
+            layer_init(nn.Conv2d(channels, 32, 8, stride=4)),
             nn.ReLU(),
-            layer_init(nn.Conv2d(32, 64, 3, stride=2)),
+            layer_init(nn.Conv2d(32, 64, 4, stride=2)),
             nn.ReLU(),
-            layer_init(nn.Conv2d(64, 32, 3, stride=1)),
+            layer_init(nn.Conv2d(64, 64, 3, stride=1)),
             nn.ReLU(),
             nn.Flatten(),
-            layer_init(nn.Linear(8*8*32, 512)),
+            layer_init(nn.Linear(64*7*7, 512)),
             nn.ReLU()
         )
-        self.actor = layer_init(nn.Linear(512, envs.action_space.n), std=0.01)
+        self.actor_mean = layer_init(nn.Linear(512, np.prod(envs.action_space.shape)), std=0.01)
+        self.actor_logstd = nn.Parameter(torch.zeros(1, np.prod(envs.action_space.shape)))
         self.critic = layer_init(nn.Linear(512, 1), std=1)
 
-    def forward(self, x):
-        return self.network(x.permute((0, 3, 1, 2))) # "bhwc" -> "bchw"
-
     def get_action(self, x, action=None):
-        logits = self.actor(self.forward(x))
-        probs = Categorical(logits=logits)
+        
+        action_mean = self.actor_mean(self.network(x))
+        action_logstd = self.actor_logstd.expand_as(action_mean)
+        action_std = torch.exp(action_logstd)
+        probs = Normal(action_mean, action_std)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action), probs.entropy()
+        return action, probs.log_prob(action).sum(1), probs.entropy().sum(1)
 
     def get_value(self, x):
-        return self.critic(self.forward(x))
+        return self.critic(self.network(x))
 
-agent = Agent(envs).to(device)
+agent = Agent().to(device)
 optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 if args.anneal_lr:
     # https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/defaults.py#L20
@@ -270,7 +273,8 @@ for update in range(1, num_updates+1):
         logprobs[step] = logproba
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rs, ds, infos = envs.step(action)
+        next_obs, rs, ds, infos = envs.step(torch.clamp(
+            action, envs.action_space.low.mean(), envs.action_space.high.mean()))
         rewards[step], next_done = rs.view(-1), torch.Tensor(ds).to(device)
 
         for info in infos:
@@ -316,7 +320,7 @@ for update in range(1, num_updates+1):
     b_values = values.reshape(-1)
 
     # Optimizaing the policy and value network
-    target_agent = Agent(envs).to(device)
+    target_agent = Agent().to(device)
     inds = np.arange(args.batch_size,)
     for i_epoch_pi in range(args.update_epochs):
         np.random.shuffle(inds)
@@ -328,7 +332,7 @@ for update in range(1, num_updates+1):
             if args.norm_adv:
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
-            _, newlogproba, entropy = agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind])
+            _, newlogproba, entropy = agent.get_action(b_obs[minibatch_ind], b_actions[minibatch_ind])
             ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
 
             # Stats
@@ -362,7 +366,7 @@ for update in range(1, num_updates+1):
             if approx_kl > args.target_kl:
                 break
         if args.kle_rollback:
-            if (b_logprobs[minibatch_ind] - agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind])[1]).mean() > args.target_kl:
+            if (b_logprobs[minibatch_ind] - agent.get_action(b_obs[minibatch_ind], b_actions[minibatch_ind])[1]).mean() > args.target_kl:
                 agent.load_state_dict(target_agent.state_dict())
                 break
 
@@ -374,8 +378,8 @@ for update in range(1, num_updates+1):
     writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
+    writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
     print("SPS:", int(global_step / (time.time() - start_time)))
-    writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
 envs.close()
 writer.close()

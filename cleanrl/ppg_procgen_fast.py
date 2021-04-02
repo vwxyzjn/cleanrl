@@ -12,14 +12,11 @@ import numpy as np
 import gym
 from procgen import ProcgenEnv
 from gym.wrappers import TimeLimit, Monitor
-import pybullet_envs
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
 import os
 from stable_baselines3.common.vec_env import VecEnvWrapper, VecNormalize, VecVideoRecorder
-
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PPO agent')
@@ -60,7 +57,8 @@ if __name__ == "__main__":
                         help='the behavior cloning coefficient')
     parser.add_argument('--n-aux-minibatch', type=int, default=16,
                         help='the number of mini batch in the auxiliary phase')
-
+    parser.add_argument('--n-aux-grad-accum', type=int, default=10,
+                        help='the number of gradient accumulation in mini batch')
 
     parser.add_argument('--n-minibatch', type=int, default=8,
                         help='the number of mini batch')
@@ -100,8 +98,7 @@ if __name__ == "__main__":
 args.batch_size = int(args.num_envs * args.num_steps)
 args.minibatch_size = int(args.batch_size // args.n_minibatch)
 args.aux_batch_size = int(args.batch_size * args.n_iteration)
-args.aux_minibatch_size  = int(args.aux_batch_size // args.n_aux_minibatch)
-
+args.aux_minibatch_size  = int(args.aux_batch_size // (args.n_aux_minibatch * args.n_aux_grad_accum))
 
 class VecPyTorch(VecEnvWrapper):
     def __init__(self, venv, device):
@@ -135,8 +132,7 @@ class VecExtractDictObs(VecEnvWrapper):
 	def step_wait(self):
 	    obs, reward, done, info = self.venv.step_wait()
 	    return obs[self.key], reward, done, info
-	
-	
+
 class VecMonitor(VecEnvWrapper):
 	def __init__(self, venv):
 	    VecEnvWrapper.__init__(self, venv)
@@ -186,14 +182,13 @@ random.seed(args.seed)
 np.random.seed(args.seed)
 torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
-venv = ProcgenEnv(num_envs=args.num_envs, env_name=args.gym_id, num_levels=0, start_level=0, distribution_mode='easy')
+venv = ProcgenEnv(num_envs=args.num_envs, env_name=args.gym_id, num_levels=0, start_level=0, distribution_mode='hard')
 venv = VecExtractDictObs(venv, "rgb")
 venv = VecMonitor(venv=venv)
 envs = VecNormalize(venv=venv, norm_obs=False)
 envs = VecPyTorch(envs, device)
 if args.capture_video:
 	envs = VecVideoRecorder(envs, f'videos/{experiment_name}', record_video_trigger=lambda x: x % 1000000== 0, video_length=100)
-	
 assert isinstance(envs.action_space, Discrete), "only discrete action space is supported"
 
 # ALGO LOGIC: initialize agent here:
@@ -273,6 +268,8 @@ logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
 rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
 dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
 values = torch.zeros((args.num_steps, args.num_envs)).to(device)
+aux_obs = torch.zeros((args.num_steps * args.num_envs * args.n_iteration,) + envs.observation_space.shape)
+aux_returns = torch.zeros((args.num_steps * args.num_envs * args.n_iteration,))
 
 # TRY NOT TO MODIFY: start the game
 global_step = 0
@@ -281,15 +278,12 @@ start_time = time.time()
 # https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/84a7582477fb0d5c82ad6d850fe476829dddd2e1/a2c_ppo_acktr/storage.py#L60
 next_obs = envs.reset()
 next_done = torch.zeros(args.num_envs).to(device)
-num_updates = args.total_timesteps // args.batch_size
-num_phases = num_updates // args.n_iteration
+num_updates = int(args.total_timesteps // args.batch_size)
+num_phases = int(num_updates // args.n_iteration)
 
 ## CRASH AND RESUME LOGIC:
 starting_phase = 1
-
 for phase in range(starting_phase, num_phases):
-    aux_obs = []
-    aux_returns = []
     for policy_update in range(1, args.n_iteration+1):
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
@@ -307,8 +301,6 @@ for phase in range(starting_phase, num_phases):
             with torch.no_grad():
                 values[step] = agent.get_value(obs[step]).flatten()
                 action, logproba, _ = agent.get_action(obs[step])
-    
-               
             actions[step] = action
             logprobs[step] = logproba
     
@@ -411,44 +403,48 @@ for phase in range(starting_phase, num_phases):
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         if args.kle_stop:
             writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
-        print("SPS:", int(global_step / (time.time() - start_time)))  
+        print("SPS:", int(global_step / (time.time() - start_time)))
+        writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
         # PPG Storage:
-        aux_obs += [b_obs.cpu().clone()]
-        aux_returns += [b_returns.cpu().clone()]
-        
+        storage_slice = slice(args.num_steps*args.num_envs*(policy_update-1), args.num_steps*args.num_envs*policy_update)
+        aux_obs[storage_slice] = b_obs.cpu().clone()
+        aux_returns[storage_slice] = b_returns.cpu().clone()
 
-    aux_obs = torch.cat(aux_obs)
-    aux_returns = torch.cat(aux_returns)
     old_agent = Agent(envs).to(device)
     old_agent.load_state_dict(agent.state_dict())
     aux_inds = np.arange(args.aux_batch_size,)
     print("aux phase starts")
     for auxiliary_update in range(1, args.e_auxiliary+1):
         np.random.shuffle(aux_inds)
-        for start in range(0, args.aux_batch_size, args.aux_minibatch_size):
+        for i, start in enumerate(range(0, args.aux_batch_size, args.aux_minibatch_size)):
             end = start + args.aux_minibatch_size
             aux_minibatch_ind = aux_inds[start:end]
-            m_aux_obs = aux_obs[aux_minibatch_ind].to(device)
-            m_aux_returns = aux_returns[aux_minibatch_ind].to(device)
-            
-            new_values = agent.get_value(m_aux_obs).view(-1)
-            new_aux_values = agent.get_aux_value(m_aux_obs).view(-1)
-            kl_loss = td.kl_divergence(agent.get_pi(m_aux_obs), old_agent.get_pi(m_aux_obs)).mean()
-            
-            real_value_loss = 0.5 * ((new_values - m_aux_returns) ** 2).mean()
-            aux_value_loss = 0.5 * ((new_aux_values - m_aux_returns) ** 2).mean()
-            joint_loss = aux_value_loss + args.beta_clone * kl_loss
-            
-            optimizer.zero_grad()
-            (joint_loss+real_value_loss).backward()
-            nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
-            optimizer.step()
+            try:
+                m_aux_obs = aux_obs[aux_minibatch_ind].to(device)
+                m_aux_returns = aux_returns[aux_minibatch_ind].to(device)
+                
+                new_values = agent.get_value(m_aux_obs).view(-1)
+                new_aux_values = agent.get_aux_value(m_aux_obs).view(-1)
+                kl_loss = td.kl_divergence(agent.get_pi(m_aux_obs), old_agent.get_pi(m_aux_obs)).mean()
+                
+                real_value_loss = 0.5 * ((new_values - m_aux_returns) ** 2).mean()
+                aux_value_loss = 0.5 * ((new_aux_values - m_aux_returns) ** 2).mean()
+                joint_loss = aux_value_loss + args.beta_clone * kl_loss
+                
+                optimizer.zero_grad()
+                loss = (joint_loss+real_value_loss) / args.n_aux_grad_accum
+                loss.backward()
+                if (i+1) % args.n_aux_grad_accum == 0:
+                    nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
+                    optimizer.step()
+            except RuntimeError:
+                raise Exception ("if running out of CUDA memory, try a higher --n-aux-grad-accum, which trades more time for less gpu memory")
             
             del m_aux_obs, m_aux_returns
     writer.add_scalar("losses/aux/kl_loss", kl_loss.mean().item(), global_step)
     writer.add_scalar("losses/aux/aux_value_loss", aux_value_loss.item(), global_step)
     writer.add_scalar("losses/aux/real_value_loss", real_value_loss.item(), global_step)
-    writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)  
-            
+    writer.add_scalar("charts/sps", int(global_step / (time.time() - start_time)), global_step)
+
 envs.close()
 writer.close()
