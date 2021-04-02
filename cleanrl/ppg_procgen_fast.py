@@ -245,7 +245,7 @@ class Agent(nn.Module):
         return action, probs.log_prob(action), probs.entropy()
 
     def get_value(self, x):
-        return self.critic(x.transpose(1,3)) 
+        return self.critic(x.permute((0, 3, 1, 2)))
 
     # PPG logic:
     def get_pi(self, x):
@@ -425,7 +425,7 @@ for phase in range(starting_phase, num_phases):
                 
                 new_values = agent.get_value(m_aux_obs).view(-1)
                 new_aux_values = agent.get_aux_value(m_aux_obs).view(-1)
-                kl_loss = td.kl_divergence(agent.get_pi(m_aux_obs), old_agent.get_pi(m_aux_obs)).mean()
+                kl_loss = td.kl_divergence(old_agent.get_pi(m_aux_obs), agent.get_pi(m_aux_obs)).mean()
                 
                 real_value_loss = 0.5 * ((new_values - m_aux_returns) ** 2).mean()
                 aux_value_loss = 0.5 * ((new_aux_values - m_aux_returns) ** 2).mean()
