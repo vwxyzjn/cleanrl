@@ -11,7 +11,6 @@ import numpy as np
 import gym
 from procgen import ProcgenEnv
 from gym.wrappers import TimeLimit, Monitor
-import pybullet_envs
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
 import random
@@ -178,7 +177,7 @@ envs = VecNormalize(venv=venv, norm_obs=False)
 envs = VecPyTorch(envs, device)
 if args.capture_video:
     envs = VecVideoRecorder(envs, f'videos/{experiment_name}', 
-                            record_video_trigger=lambda x: x % 1000000== 0, video_length=100)
+                            record_video_trigger=lambda x: x % 1000000== 0, video_length=600)
 assert isinstance(envs.action_space, Discrete), "only discrete action space is supported"
 
 # ALGO LOGIC: initialize agent here:
