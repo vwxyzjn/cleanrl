@@ -255,6 +255,9 @@ class Agent(nn.Module):
             action = probs.sample()
         return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
 
+    def get_value(self, x):
+        return self.critic(self.network(x.permute((0, 3, 1, 2)))) # "bhwc" -> "bchw"
+
 agent = Agent(envs).to(device)
 optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 if args.anneal_lr:
@@ -310,8 +313,7 @@ for update in range(1, num_updates+1):
 
     # bootstrap reward if not done. reached the batch limit
     with torch.no_grad():
-        _, _, _, last_value = agent.get_action_and_value(next_obs.to(device))
-        last_value = last_value.reshape(1, -1)
+        last_value = agent.get_value(next_obs.to(device)).reshape(1, -1)
         if args.gae:
             advantages = torch.zeros_like(rewards).to(device)
             lastgaelam = 0

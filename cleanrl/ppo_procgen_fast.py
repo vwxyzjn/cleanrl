@@ -212,18 +212,16 @@ class Agent(nn.Module):
         self.actor = layer_init(nn.Linear(512, envs.action_space.n), std=0.01)
         self.critic = layer_init(nn.Linear(512, 1), std=1)
 
-    def forward(self, x):
-        return self.network(x.permute((0, 3, 1, 2))) # "bhwc" -> "bchw"
-
-    def get_action(self, x, action=None):
-        logits = self.actor(self.forward(x))
+    def get_action_and_value(self, x, action=None):
+        hidden = self.network(x.permute((0, 3, 1, 2))) # "bhwc" -> "bchw"
+        logits = self.actor(hidden)
         probs = Categorical(logits=logits)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action), probs.entropy()
+        return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
 
     def get_value(self, x):
-        return self.critic(self.forward(x))
+        return self.critic(self.network(x.permute((0, 3, 1, 2)))) # "bhwc" -> "bchw"
 
 agent = Agent(envs).to(device)
 optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
@@ -262,8 +260,8 @@ for update in range(1, num_updates+1):
 
         # ALGO LOGIC: put action logic here
         with torch.no_grad():
-            values[step] = agent.get_value(obs[step]).flatten()
-            action, logproba, _ = agent.get_action(obs[step])
+            action, logproba, _, vs = agent.get_action_and_value(next_obs)
+            values[step] = vs.flatten()
 
         actions[step] = action
         logprobs[step] = logproba
@@ -315,11 +313,9 @@ for update in range(1, num_updates+1):
     b_values = values.reshape(-1)
 
     # Optimizaing the policy and value network
-    target_agent = Agent(envs).to(device)
     inds = np.arange(args.batch_size,)
     for i_epoch_pi in range(args.update_epochs):
         np.random.shuffle(inds)
-        target_agent.load_state_dict(agent.state_dict())
         for start in range(0, args.batch_size, args.minibatch_size):
             end = start + args.minibatch_size
             minibatch_ind = inds[start:end]
@@ -327,7 +323,7 @@ for update in range(1, num_updates+1):
             if args.norm_adv:
                 mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
-            _, newlogproba, entropy = agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind])
+            _, newlogproba, entropy, new_values = agent.get_action_and_value(b_obs[minibatch_ind], b_actions.long()[minibatch_ind].to(device))
             ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
 
             # Stats
@@ -340,7 +336,7 @@ for update in range(1, num_updates+1):
             entropy_loss = entropy.mean()
 
             # Value loss
-            new_values = agent.get_value(b_obs[minibatch_ind]).view(-1)
+            new_values = new_values.view(-1)
             if args.clip_vloss:
                 v_loss_unclipped = ((new_values - b_returns[minibatch_ind]) ** 2)
                 v_clipped = b_values[minibatch_ind] + torch.clamp(new_values - b_values[minibatch_ind], -args.clip_coef, args.clip_coef)
@@ -357,24 +353,15 @@ for update in range(1, num_updates+1):
             nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
             optimizer.step()
 
-        if args.kle_stop:
-            if approx_kl > args.target_kl:
-                break
-        if args.kle_rollback:
-            if (b_logprobs[minibatch_ind] - agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind])[1]).mean() > args.target_kl:
-                agent.load_state_dict(target_agent.state_dict())
-                break
-
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]['lr'], global_step)
     writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
     writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
     writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
     writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
-    if args.kle_stop or args.kle_rollback:
-        writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
     print("SPS:", int(global_step / (time.time() - start_time)))
     writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
 envs.close()
 writer.close()
+
