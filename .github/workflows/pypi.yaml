@@ -21,7 +21,8 @@ jobs:
         python-version: 3.8
     - name: Build a source tarball
       run: python setup.py sdist
-    - name: Publish distribution 📦 to PyPI
-      uses: pypa/gh-action-pypi-publish@master
+    - name: Publish a Python distribution to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        password: ${{ secrets.pypi_password }}
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
