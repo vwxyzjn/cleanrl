@@ -1,4 +1,5 @@
 from setuptools import setup, find_packages
+import versioneer
 
 extras = {
   'gym_all': ['gym[all]', 'opencv-python'],
