@@ -87,8 +87,6 @@ python cleanrl/ppo.py \
 tensorboard --logdir runs
 ```
 
-![demo.gif](demo.gif)
-
 To use wandb integration, sign up an account at https://wandb.com and copy the API key. Then run
 
 ```bash
@@ -101,8 +99,6 @@ python cleanrl/ppo.py \
     --prod-mode \
     --wandb-project-name cleanrltest
 ```
-
-![demo2.gif](demo2.gif)
 
 
 # Run RL experiments in various game environments
