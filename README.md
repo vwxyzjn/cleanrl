@@ -68,114 +68,117 @@ Good luck have fun :rocket:
     * [apex_dqn_atari_visual.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/apex_dqn_atari_visual.py)
         * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
 
-
-## Open RL Benchmark
-
-Open RL Benchmark (https://benchmark.cleanrl.dev) is our project to create a comprehensive benchmark of popular DRL algorithms in a variety of games, **where everything about the benchmark is open**. That is, you can check the following information for each experiment:
-
-* hyper-parameters (check it at the [Overview](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/overview?workspace=user-costa-huang) tab of a run)
-* training metrics (e.g. episode reward, training losses. Check it at the [Charts](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg?workspace=user-costa-huang) tab of a run)
-* videos of the agents playing the game (check it at the [Charts](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg?workspace=user-costa-huang) tab of a run)
-* system metrics (e.g. CPU utilization, memory utilization. Check it at the [Systems](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/system?workspace=user-costa-huang) tab of a run)
-* `stdout, stderr` of the script (check it at the [Logs](
-https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/logs?workspace=user-costa-huang) tab of a run)
-* all dependencies (check `requirements.txt` at the [Files](
-https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/files/requirements.txt) tab of a run))
-* source code (this is especially helpful since we have *single file implementation*, so we know exactly all of the code that is responsible for the run. Check it at the [Code](
-https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/code?workspace=user-costa-huang) tab of a run))
-* (Currently not working. Public access is blocked by https://github.com/wandb/client/issues/1177) the exact commands to reproduce it (check it at the [Overview](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/overview?workspace=user-costa-huang) tab of a run.
-
-We hope it could bring a new level of transparency, openness, and reproducibility. Our plan is to 
-benchmark as many algorithms and games as possible. If you are interested, please join us and contribute
-more algorithms and games. To get started, check out our [contribution guide](https://github.com/vwxyzjn/cleanrl/blob/master/CONTRIBUTING.md) and our [roadmap for the Open RL Benchmark](https://github.com/vwxyzjn/cleanrl/projects/1)
-
-We currently support  34+ games and our implmentation performs competitively against published results. See the table below for selected examples
-
-|                       | c51_atari_visual.py   | dqn_atari_visual.py   | ppo_atari_visual.py   |
-|:----------------------------|:-------------------|:-------------------|:-------------------|
-| BeamRiderNoFrameskip-v4     | 9128.00 ± 0.00     | 6156.13 ± 461.47   | 1881.11 ± 166.89   |
-| QbertNoFrameskip-v4         | 13814.24 ± 3357.99 | 15241.67 ± 0.00    | 18755.36 ± 205.36  |
-| SpaceInvadersNoFrameskip-v4 | 2140.00 ± 0.00     | 1616.11 ± 226.67   | 871.56 ± 133.44    |
-| PongNoFrameskip-v4          | 16.33 ± 0.00       | 19.33 ± 0.33       | 20.89 ± 0.00       |
-| BreakoutNoFrameskip-v4      | 404.11 ± 0.00      | 354.78 ± 9.22      | 413.73 ± 15.39     |
-
-|                    | ddpg_continuous_action.py   | td3_continuous_action.py   | ppo_continuous_action.py   |
-|:-------------------------|:-------------------------|:------------------------|:------------------------|
-| Ant-v2                   | 503.32 ± 18.70           | 5368.18 ± 771.11        | 3368.17 ± 759.13        |
-| Humanoid-v2              | 942.16 ± 436.22          | 6334.40 ± 140.05        | 918.19 ± 102.71         |
-| Walker2DBulletEnv-v0     | 708.51 ± 240.64          | 2168.87 ± 65.78         | 906.10 ± 51.96          |
-| HalfCheetahBulletEnv-v0  | 2821.87 ± 266.03         | 2542.99 ± 318.23        | 2189.66 ± 141.61        |
-| HopperBulletEnv-v0       | 1540.77 ± 821.54         | 2302.09 ± 24.46         | 2300.96 ± 47.46         |
-| BipedalWalker-v3         | 140.20 ± 52.05           | 164.06 ± 147.22         | 219.96 ± 47.49          |
-| LunarLanderContinuous-v2 | 210.01 ± 0.00            | 290.73 ± 4.44           | 161.28 ± 37.48          |
-| Pendulum-v0              | -186.83 ± 12.35          | -246.53 ± 6.73          | -1280.11 ± 39.22        |
-| MountainCarContinuous-v0 | -0.98 ± 0.02             | -1.11 ± 0.10            | 93.84 ± 0.00            |
-
-
-
 ## Get started
 
 To run experiments locally, give the following a try:
 
 ```bash
-$ git clone https://github.com/vwxyzjn/cleanrl.git && cd cleanrl
-$ pip install -e .
-$ cd cleanrl
-$ python ppo.py \
+git clone https://github.com/vwxyzjn/cleanrl.git && cd cleanrl
+# we strongly recommend to use `venv` to manage dependencies
+# this will make the experiment much more reproducible!
+python -m venv venv
+source venv/bin/activate
+pip install cleanrl
+python cleanrl/ppo.py \
     --seed 1 \
     --gym-id CartPole-v0 \
     --total-timesteps 50000 \
 # open another temrminal and enter `cd cleanrl/cleanrl`
-$ tensorboard --logdir runs
+tensorboard --logdir runs
 ```
 
 ![demo.gif](demo.gif)
 
-To use wandb integration, sign up an account at https://wandb.com and copy the API key.
-Then run
+To use wandb integration, sign up an account at https://wandb.com and copy the API key. Then run
 
 ```bash
-$ cd cleanrl
-$ pip install wandb
-$ wandb login ${WANBD_API_KEY}
-$ python ppo.py \
+source venv/bin/activate
+wandb login # only required for the first time
+python cleanrl/ppo.py \
     --seed 1 \
     --gym-id CartPole-v0 \
     --total-timesteps 50000 \
     --prod-mode \
-    --wandb-project-name cleanrltest 
-# Then go to https://app.wandb.ai/${WANDB_USERNAME}/cleanrltest/
+    --wandb-project-name cleanrltest
 ```
-
-Checkout the demo sites at [https://app.wandb.ai/costa-huang/cleanrltest](https://app.wandb.ai/costa-huang/cleanrltest)
 
 ![demo2.gif](demo2.gif)
 
 
+# Run RL experiments in various game environments
 
-# Install optional dependencies
-
-The following instructions assume linux environements
+The following instructions assume linux environements. We first install the dependencies:
 
 ```bash
-# installing starcraft
-# enter pass word `iagreetotheeula` when prompted
-$ rm ~/StarCraftII -fR \
-wget -O ~/StarCraftII.zip http://blzdistsc2-a.akamaihd.net/Linux/SC2.4.10.zip && \
-unzip ~/StarCraftII.zip -d ~/ && \
-rm ~/StarCraftII.zip
-mv ~/StarCraftII/Libs/libstdc++.so.6 ~/StarCraftII/libstdc++.so.6
+# install atari, pybullet, procgen, box2d, pettingzoo
+source venv/bin/activate
+pip install cleanrl[all]
+# if you are using zsh, you will need to do 
+# `pip install cleanrl\[all\]`
 
 
-# install microrts
-$ pip install gym-microrts
+# install mujoco
+curl -OL https://www.roboti.us/download/mujoco200_linux.zip
+unzip mujoco200_linux.zip -d ~/mujoco/
+mv ~/mujoco/mujoco200_linux ~/mujoco/mujoco200
+unzip mujoco200_linux.zip -d ~/mujoco/
+rm mujoco200_linux.zip
+pip install gym[mujoco]
 ```
+
+Now we can run the experiments:
+```
+source venv/bin/activate
+cd cleanrl
+# atari
+python dqn_atari_visual.py --gym-id BeamRiderNoFrameskip-v4 
+# pybullet
+python td3_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
+# procgen
+python ppo_procgen_fast.py --gym-id starpilot
+# box2d
+python experiments/ppo_car_racing.py
+# pettingzoo
+python ppo_pettingzoo.py
+```
+
+
+## Open RL Benchmark
+
+[Open RL Benchmark](https://wandb.ai/cleanrl/cleanrl.benchmark/reports/Open-RL-Benchmark-0-5-0---Vmlldzo0MDcxOA) by [CleanRL](https://github.com/vwxyzjn/cleanrl) is a comprehensive, interactive and reproducible benchmark of deep Reinforcement Learning (RL) algorithms. It uses Weights and Biases to keep track of the experiment data of popular deep RL algorithms (e.g. DQN, PPO, DDPG, TD3) in a variety of games (e.g. Atari, Mujoco, PyBullet, Procgen, Griddly, MicroRTS). The experiment data includes:
+
+- reproducibility info:
+    - [source code](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/code?workspace=user-costa-huang) and [requirements.txt](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/files/requirements.txt)
+    - [](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/code?workspace=user-costa-huang)﻿[hyper-parameters](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/overview?workspace=user-costa-huang) and [the exact command to reproduce results](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/overview?workspace=user-costa-huang)
+- metrics:
+    - [training metrics and videos of the agents playing the game](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg?workspace=user-costa-huang)
+    - [system metrics](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/system?workspace=user-costa-huang) and [logs](https://app.wandb.ai/cleanrl/cleanrl.benchmark/runs/2jrqfugg/logs?workspace=user-costa-huang)
+
+[Open RL Benchmark](https://wandb.ai/cleanrl/cleanrl.benchmark/reports/Open-RL-Benchmark-0-5-0---Vmlldzo0MDcxOA) has over 1000+ experiments including runs from other projects, which is overwhelming to present in a single report. Instead, we present the results in separate reports. Please click on the links below to access them.
+
+- [Atari results](https://wandb.ai/cleanrl/cleanrl.benchmark/reports/Atari--VmlldzoxMTExNTI)
+- [Mujoco results](https://wandb.ai/cleanrl/cleanrl.benchmark/reports/Mujoco--VmlldzoxODE0NjE)
+- [PyBullet results](https://wandb.ai/cleanrl/cleanrl.benchmark/reports/PyBullet-and-Other-Continuous-Action-Tasks--VmlldzoxODE0NzY)
+- [Procgen results](https://wandb.ai/cleanrl/cleanrl.benchmark/reports/Procgen-New--Vmlldzo0NDUyMTg)
+- [Griddly results](https://wandb.ai/griddly/griddly-paper-generalize?workspace=user-costa-huang)
+- [Gym-μRTS results](https://wandb.ai/vwxyzjn/gym-microrts-paper/reports/Gym-RTS-Toward-Affordable-Deep-Reinforcement-Learning-Research-in-Real-time-Strategy-Games--Vmlldzo2MDIzMTg)
+- [Slimevolleygym results](https://wandb.ai/cleanrl/cleanrl.benchmark/reports/Slimevolleygym--Vmlldzo0ODA1MjA)
+- [PySC2 results](https://wandb.ai/cleanrl/cleanrl.benchmark/reports/Gym-pysc2-Benchmark--VmlldzoyNTEyMTc)
+- [CarRacing-v0](https://wandb.ai/cleanrl/cleanrl.benchmark/reports/CarRacing-v0--VmlldzoyNDUwMzU)
+- [Montezuma Revenge results](https://wandb.ai/cleanrl/cleanrl.benchmark/reports/Montezuma-Revenge--Vmlldzo1MDYxNTk)
+
+
+We hope it could bring a new level of transparency, openness, and reproducibility. Our plan is to 
+benchmark as many algorithms and games as possible. If you are interested, please join us and contribute
+more algorithms and games. To get started, check out our [contribution guide](https://github.com/vwxyzjn/cleanrl/blob/master/CONTRIBUTING.md) and our [roadmap for the Open RL Benchmark](https://github.com/vwxyzjn/cleanrl/projects/1)
+
+
 
 ## Support and get involved
 
-We have a [Slack Community](https://join.slack.com/t/cleanrl/shared_invite/zt-cj64t5eq-xKZ6sD0KPGFKu1QicHEvVg) for support. Feel free to ask questions. Posting in [Github Issues](https://github.com/vwxyzjn/cleanrl/issues) and PRs are also welcome. 
+We have a [Discord Community](https://discord.gg/D6RCjA6sVT) for support. Feel free to ask questions. Posting in [Github Issues](https://github.com/vwxyzjn/cleanrl/issues) and PRs are also welcome. Also our past video recordings are available at [YouTube](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
 
-In addition, we also have a monthly development cycle to implement new RL algorithms. Feel free to participate or ask questions there, too. You can sign up for our mailing list at our [Google Groups](https://groups.google.com/forum/#!forum/rlimplementation/join) to receive event RVSP which contains the Hangout video call address every week. Our past video recordings are available at [YouTube](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
+<!-- In addition, we also have a monthly development cycle to implement new RL algorithms. Feel free to participate or ask questions there, too. You can sign up for our mailing list at our [Google Groups](https://groups.google.com/forum/#!forum/rlimplementation/join) to receive event RVSP which contains the Hangout video call address every week.  -->
 
 ## Contribution
 
