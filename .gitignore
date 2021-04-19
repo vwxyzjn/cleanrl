@@ -1,6 +1,7 @@
 *.tfevents.*
 wandb
 openaigym.*
+videos/*
 cleanrl/videos/*
 benchmark/**/*.svg
 benchmark/**/*.pkl
