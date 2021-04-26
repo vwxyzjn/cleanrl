@@ -196,7 +196,7 @@ Please consider using the following Bibtex entry:
 
 ```
 @misc{cleanrl,
-  author = {Shengyi Huang, Rousslan Dossa, and Chang Ye},
+  author = {Shengyi Huang and Rousslan Dossa and Chang Ye},
   title = {CleanRL: High-quality Single-file Implementation of Deep Reinforcement Learning algorithms},
   year = {2020},
   publisher = {GitHub},
@@ -204,7 +204,6 @@ Please consider using the following Bibtex entry:
   howpublished = {\url{https://github.com/vwxyzjn/cleanrl/}},
 }
 ```
-
 
 ## References
 
