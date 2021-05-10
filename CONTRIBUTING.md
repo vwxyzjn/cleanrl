@@ -4,7 +4,7 @@ Thank you for being interested in contributing to our project. All kinds of cont
 
 Below are some steps to help you get started:
 
-1. 👋 Join our slack channel at https://join.slack.com/t/cleanrl/shared_invite/zt-cj64t5eq-xKZ6sD0KPGFKu1QicHEvVg
+1. 👋 Join our discord channel at https://discord.gg/D6RCjA6sVT
 to say hi!!
 2. 🔨 Pick something you want to work at and let us know on slack. You could
     * Tackle issues with the [`help wanted`](https://github.com/vwxyzjn/cleanrl/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22) flag 

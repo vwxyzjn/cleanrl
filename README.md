@@ -1,18 +1,24 @@
 # CleanRL (Clean Implementation of RL Algorithms)
 
-[<img src="https://img.shields.io/badge/slack-cleanrl-green?logo=slack&logoColor=ffffff&labelColor=611f69&color=282828&style=flat">](https://join.slack.com/t/cleanrl/shared_invite/zt-cj64t5eq-xKZ6sD0KPGFKu1QicHEvVg)
-[![Mailing List : cleanrl](https://img.shields.io/badge/future%20meeting%20invites-cleanrl-green?logo=Google%20Hangouts%20Meet&logoColor=ffffff&labelColor=00796b&color=282828&style=flat?label=healthinesses)](https://calendar.google.com/event?action=TEMPLATE&tmeid=bTI1azV1ZGozbDA2Z3I4ajc1dDRkOWlvaTJfMjAyMTAxMTVUMjEwMDAwWiBuZmw0dTBjZnZlbmVicWNiNG1vMjVpaWxqb0Bn&tmsrc=nfl4u0cfvenebqcb4mo25iiljo%40group.calendar.google.com&scp=ALL)
+[<img src="https://img.shields.io/badge/discord-cleanrl-green?label=Discord&logo=discord&logoColor=ffffff&labelColor=7289DA&color=2c2f33">](https://discord.gg/D6RCjA6sVT)
 [![Meeting Recordings : cleanrl](https://img.shields.io/badge/meeting%20recordings-cleanrl-green?logo=youtube&logoColor=ffffff&labelColor=FF0000&color=282828&style=flat?label=healthinesses)](https://www.youtube.com/watch?v=dm4HdGujpPs&list=PLQpKd36nzSuMynZLU2soIpNSMeXMplnKP&index=2)
+[<img src="https://github.com/vwxyzjn/cleanrl/workflows/build/badge.svg">](
+https://github.com/vwxyzjn/cleanrl/actions)
+[<img src="https://badge.fury.io/py/cleanrl.svg">](
+https://pypi.org/project/cleanrl/)
 
 
-CleanRL is a Deep Reinforcement Learning library that provides high-quality single-file implementation with research-friendly features. The implementation is clean and simple, yet we can scale it to run thousands of experiments at scale using AWS Batch. The highlight features of CleanRL are:
+
+
+
+CleanRL is a Deep Reinforcement Learning library that provides high-quality single-file implementation with research-friendly features. The implementation is clean and simple, yet we can scale it to run thousands of experiments using AWS Batch. The highlight features of CleanRL are:
 
 <!-- At the same time, CleanRL tries to supply many research-friendly features such as cloud experiment management, support for continuous and discrete observation and action spaces, video recording of the game play, etc. These features will be very helpful for doing research, especially the video recording feature that *allows you to visually inspect the agents' behavior at various stages of the training*. -->
 
 
 
 * 📜 Single-file implementation
-   * *Every detail about an algorithm is put into the algorithm's own file.* It is therefore easier to fully understand an algortihm and do research with.
+   * *Every detail about an algorithm is put into the algorithm's own file.* It is therefore easier to fully understand an algorithm and do research with.
 * 📊 Benchmarked Implementation (7+ algorithms and 34+ games at https://benchmark.cleanrl.dev)
 * 📈 Tensorboard Logging
 * 🪛 Local Reproducibility via Seeding
@@ -190,7 +196,7 @@ Please consider using the following Bibtex entry:
 
 ```
 @misc{cleanrl,
-  author = {Shengyi Huang, Rousslan Dossa, and Chang Ye},
+  author = {Shengyi Huang and Rousslan Dossa and Chang Ye},
   title = {CleanRL: High-quality Single-file Implementation of Deep Reinforcement Learning algorithms},
   year = {2020},
   publisher = {GitHub},
@@ -198,7 +204,6 @@ Please consider using the following Bibtex entry:
   howpublished = {\url{https://github.com/vwxyzjn/cleanrl/}},
 }
 ```
-
 
 ## References
 
