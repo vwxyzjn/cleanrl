@@ -19,7 +19,7 @@ cd cleanrl/cloud
 wandb login
 python -m awscli configure
 terraform init
-terraform apply
+terraform apply # IMPORTANT: Enter the same region as you did during `python -m awscli configure`
 
 # dry run to inspect the generated docker command
 python -m cleanrl.utils.submit_exp --algo ppo.py \
