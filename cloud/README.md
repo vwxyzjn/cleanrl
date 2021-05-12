@@ -7,8 +7,8 @@ easy to manage and reproducible, we use Terraform to spin up services.
 # Get Started
 
 ```bash
-wandb login
 pip install cleanrl --upgrade
+wandb login
 git clone https://github.com/vwxyzjn/cleanrl
 cd cleanrl/cloud
 terraform init
