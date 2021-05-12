@@ -20,7 +20,7 @@ resource "aws_batch_compute_environment" "gpu_on_demand" {
   compute_resources {
     instance_role = aws_iam_instance_profile.ecs_instance_role.arn
     instance_type = [
-      "g4dn", "g4ad",
+      "g4dn",
     ]
     max_vcpus = var.max_vcpus
     min_vcpus = 0
@@ -50,7 +50,7 @@ resource "aws_batch_compute_environment" "cpu_on_demand" {
   compute_resources {
     instance_role = aws_iam_instance_profile.ecs_instance_role.arn
     instance_type = [
-      "r5ad", "c5ad",
+      "r5ad",
     ]
     max_vcpus = var.max_vcpus
     min_vcpus = 0
@@ -84,7 +84,7 @@ resource "aws_batch_compute_environment" "gpu_spot" {
   compute_resources {
     instance_role = aws_iam_instance_profile.ecs_instance_role.arn
     instance_type = [
-      "g4dn", "g4ad",
+      "g4dn",
     ]
     max_vcpus = var.max_vcpus
     min_vcpus = 0
@@ -116,7 +116,7 @@ resource "aws_batch_compute_environment" "cpu_spot" {
   compute_resources {
     instance_role = aws_iam_instance_profile.ecs_instance_role.arn
     instance_type = [
-      "r5ad"
+      "r5ad",
     ]
     max_vcpus = var.max_vcpus
     min_vcpus = 0
