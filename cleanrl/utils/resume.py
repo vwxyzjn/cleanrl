@@ -5,32 +5,26 @@ import time
 import os
 import requests
 import json
-import wandb
 import argparse
+import wandb
+import requests
 from distutils.util import strtobool
 client = boto3.client('batch')
 
 parser = argparse.ArgumentParser(description='CleanRL Experiment Submission')
-# experiment generation
-parser.add_argument('--exp-script', type=str, default="debug.sh",
-                    help='the file name of this experiment')
-parser.add_argument('--algo', type=str, default="ppo.py",
-                    help='the algorithm that will be used')
-parser.add_argument('--gym-ids', nargs='+', 
-                    help='the ids of the gym environment')
-parser.add_argument('--total-timesteps', type=int, default=int(1e9),
-                    help='total timesteps of the experiments')
-parser.add_argument('--other-args', type=str, default="",
-                    help="the entity (team) of wandb's project")
+# Common arguments
+parser.add_argument('--wandb-project', type=str, default="vwxyzjn/gym-microrts",
+                   help='the name of wandb project (e.g. cleanrl/cleanrl)')
+parser.add_argument('--run-state', type=str, default="crashed",
+                   help='the name of this experiment')
 
-# experiment submission
 parser.add_argument('--job-queue', type=str, default="cleanrl",
                    help='the name of the job queue')
 parser.add_argument('--wandb-key', type=str, default="",
                    help='the wandb key. If not provided, the script will try to read from `~/.netrc`')
-parser.add_argument('--docker-repo', type=str, default="vwxyzjn/cleanrl:latest",
+parser.add_argument('--docker-repo', type=str, default="vwxyzjn/gym-microrts:latest",
                    help='the name of the job queue')
-parser.add_argument('--job-definition', type=str, default="cleanrl",
+parser.add_argument('--job-definition', type=str, default="gym-microrts",
                    help='the name of the job definition')
 parser.add_argument('--num-seed', type=int, default=2,
                    help='number of random seeds for experiments')
@@ -42,64 +36,40 @@ parser.add_argument('--num-gpu', type=int, default=0,
                    help='number of gpu per experiment')
 parser.add_argument('--num-hours', type=float, default=16.0,
                    help='number of hours allocated experiment')
-parser.add_argument('--auto-resume-attempts', type=int, default=1,
-                   help='the name of the job queue')
 parser.add_argument('--upload-files-baseurl', type=str, default="",
                    help='the baseurl of your website if you decide to upload files')
 parser.add_argument('--submit-aws', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                     help='if toggled, script will need to be uploaded')
-
 args = parser.parse_args()
 
-final_str = f'''
-for seed in {{1..{args.num_seed}}}
-do
-    (sleep 0.3 && nohup xvfb-run -a python {args.algo} \\
-    {args.other_args} \\
-    --seed $seed
-    --prod-mode \\
-    --capture-video \\
-    ) >& /dev/null &
-done
-'''
+api = wandb.Api()
 
-with open(f"{args.exp_script}", "w+") as f:
-    f.write(final_str)
-
-if not args.wandb_key:
-    args.wandb_key = requests.utils.get_netrc_auth("https://api.wandb.ai")[-1]
-assert len(args.wandb_key) > 0, "set the environment variable `WANDB_KEY` to your WANDB API key, something like `export WANDB_KEY=fdsfdsfdsfads` "
-
-# extract runs from bash scripts
+# Project is specified by <entity/project-name>
+runs = api.runs(args.wandb_project)
+run_ids = []
 final_run_cmds = []
-with open(args.exp_script) as f:
-    strings = f.read()
-runs_match = re.findall('(python)(.+)((?:\n.+)+)(seed)',strings)
-for run_match in runs_match:
-    run_match_str = "".join(run_match).replace("\\\n", "")
-    # print(run_match_str)
-    for seed in range(1,1+args.num_seed):
-        final_run_cmds += [run_match_str.replace("$seed", str(seed)).split()]
+for run in runs:
+    if run.state == args.run_state:
+        run_ids += [run.path[-1]]
+        metadata = requests.get(url=run.file(name="wandb-metadata.json").url).json()
+        final_run_cmds += [["python", metadata["program"]] + metadata["args"]]
         if args.upload_files_baseurl:
             file_name = final_run_cmds[-1][1]
             link = args.upload_files_baseurl + '/' + file_name
             final_run_cmds[-1] = ['curl', '-O', link, ';'] + final_run_cmds[-1]
 
+if not args.wandb_key:
+    args.wandb_key = requests.utils.get_netrc_auth("https://api.wandb.ai")[-1]
+assert len(args.wandb_key) > 0, "set the environment variable `WANDB_KEY` to your WANDB API key, something like `export WANDB_KEY=fdsfdsfdsfads` "
 
-run_ids = [wandb.util.generate_id() for _ in range (args.num_seed)]
-
-final_str = ""
-cores = 40
-current_core = 0
-for run_id, final_run_cmd in zip(run_ids, final_run_cmds):
-    run_command = (f'docker run -d --cpuset-cpus="{current_core}" -e WANDB={args.wandb_key} -e WANDB_RESUME=allow -e WANDB_RUN_ID={run_id} {args.docker_repo} ' + 
-        '/bin/bash -c "' + " ".join(final_run_cmd) + '"' + "\n")
-    print(run_command)
-    final_str += run_command
-    current_core = (current_core + 1) % cores
-
-with open(f"{args.exp_script}.docker.sh", "w+") as f:
-    f.write(final_str)
+# use docker directly
+if not args.submit_aws:
+    cores = 40
+    current_core = 0
+    for run_id, final_run_cmd in zip(run_ids, final_run_cmds):
+        print(f'docker run -d --cpuset-cpus="{current_core}" -e WANDB={wandb_key} -e WANDB_RESUME=must -e WANDB_RUN_ID={run_id} {args.docker_repo} ' + 
+            '/bin/bash -c "' + " ".join(final_run_cmd) + '"')
+        current_core = (current_core + 1) % cores
 
 # submit jobs
 if args.submit_aws:
@@ -124,14 +94,14 @@ if args.submit_aws:
                 'memory': args.num_memory,
                 'command': ["/bin/bash", "-c", " ".join(final_run_cmd)],
                 'environment': [
-                    {'name': 'WANDB', 'value': args.wandb_key},
-                    {'name': 'WANDB_RESUME', 'value': 'allow'},
+                    {'name': 'WANDB', 'value': wandb_key},
+                    {'name': 'WANDB_RESUME', 'value': 'must'},
                     {'name': 'WANDB_RUN_ID', 'value': run_id},
                 ],
                 'resourceRequirements': resources_requirements,
             },
             retryStrategy={
-                'attempts': args.auto_resume_attempts
+                'attempts': 1
             },
             timeout={
                 'attemptDurationSeconds': int(args.num_hours*60*60)
@@ -140,3 +110,4 @@ if args.submit_aws:
         if response['ResponseMetadata']['HTTPStatusCode'] != 200:
             print(response)
             raise Exception("jobs submit failure")
+
