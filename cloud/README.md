@@ -7,14 +7,14 @@ easy to manage and reproducible, we use Terraform to spin up services.
 # Get Started
 
 ```bash
+pip install cleanrl[cloud] --upgrade
+# if you using zsh, this needs to be pip install cleanrl\[cloud\] --upgrade
 wandb login
-pip install cleanrl --upgrade
 git clone https://github.com/vwxyzjn/cleanrl
 cd cleanrl/cloud
+python -m awscli configure
 terraform init
 terraform apply
-pip install awscli
-python -m awscli authenticate
 
 # dry run to inspect the generated docker command
 python -m cleanrl.utils.submit_exp --algo ppo.py \
