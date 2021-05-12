@@ -7,7 +7,8 @@ easy to manage and reproducible, we use Terraform to spin up services.
 # Get Started
 
 ```bash
-pip install cleanrl --upgrade
+pip install cleanrl[cloud] --upgrade
+# if you using zsh, this needs to be pip install cleanrl\[cloud\] --upgrade
 wandb login
 git clone https://github.com/vwxyzjn/cleanrl
 cd cleanrl/cloud
