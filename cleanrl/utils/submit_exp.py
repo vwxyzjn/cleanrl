@@ -12,7 +12,7 @@ client = boto3.client('batch')
 
 parser = argparse.ArgumentParser(description='CleanRL Experiment Submission')
 # experiment generation
-parser.add_argument('--exp-script', type=str, default="exp.sh",
+parser.add_argument('--exp-script', type=str, default="debug.sh",
                     help='the file name of this experiment')
 parser.add_argument('--algo', type=str, default="ppo.py",
                     help='the algorithm that will be used')
@@ -22,15 +22,13 @@ parser.add_argument('--total-timesteps', type=int, default=int(1e9),
                     help='total timesteps of the experiments')
 parser.add_argument('--other-args', type=str, default="",
                     help="the entity (team) of wandb's project")
-parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
-                    help="the wandb's project name")
 
 # experiment submission
 parser.add_argument('--job-queue', type=str, default="cleanrl",
                    help='the name of the job queue')
 parser.add_argument('--wandb-key', type=str, default="",
                    help='the wandb key. If not provided, the script will try to read the env variable `WANDB_KEY`')
-parser.add_argument('--docker-repo', type=str, default="vwxyzjn/gym-microrts:latest",
+parser.add_argument('--docker-repo', type=str, default="vwxyzjn/cleanrl:latest",
                    help='the name of the job queue')
 parser.add_argument('--job-definition', type=str, default="cleanrl",
                    help='the name of the job definition')
@@ -53,28 +51,20 @@ parser.add_argument('--submit-aws', type=lambda x:bool(strtobool(x)), default=Fa
 
 args = parser.parse_args()
 
-template = '''
-for seed in {{1..2}}
+final_str = f'''
+for seed in {{1..{args.num_seed}}}
 do
-    (sleep 0.3 && nohup xvfb-run -a python {} \\
-    --gym-id {} \\
-    --total-timesteps {} \\
-    --wandb-project-name {} \\
-    --prod-mode \\
-    {} \\
-    --capture-video \\
+    (sleep 0.3 && nohup xvfb-run -a python {args.algo} \\
+    {args.other_args} \\
     --seed $seed
+    --prod-mode \\
+    --capture-video \\
     ) >& /dev/null &
 done
 '''
 
-final_str = ""
-for env in args.gym_ids:
-    final_str += template.format(args.algo, env, args.total_timesteps, args.wandb_project_name, args.other_args)
-
 with open(f"{args.exp_script}", "w+") as f:
     f.write(final_str)
-
 
 # get env variable values
 if not args.wandb_key:
@@ -96,7 +86,7 @@ for run_match in runs_match:
             final_run_cmds[-1] = ['curl', '-O', link, ';'] + final_run_cmds[-1]
 
 
-run_ids = [wandb.util.generate_id() for _ in range (len(args.gym_ids)*args.num_seed)]
+run_ids = [wandb.util.generate_id() for _ in range (args.num_seed)]
 
 final_str = ""
 cores = 40
