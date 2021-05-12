@@ -2,14 +2,12 @@ from setuptools import setup, find_packages
 import versioneer
 
 extras = {
-  'gym_all': ['gym[atari]', 'gym[box2d]', 'opencv-python'],
   'atari': ['gym[atari]'],
   'box2d': ['gym[box2d]', 'opencv-python'],
   'pybullet': ['pybullet'],
-  'pysc2': ['pysc2'],
   'procgen': ['procgen'],
-  'cloud': ['boto3'],
-  'gym_microrts': ['gym_microrts'],
+  'cloud': ['boto3', 'awscli'],
+  'pettingzoo': ['supersuit'],
 }
 
 extras['all'] = [item for group in extras.values() for item in group]
