@@ -12,7 +12,7 @@ pip install cleanrl[cloud] --upgrade
 wandb login
 git clone https://github.com/vwxyzjn/cleanrl
 cd cleanrl/cloud
-python -m awscli authenticate
+python -m awscli configure
 terraform init
 terraform apply
 
