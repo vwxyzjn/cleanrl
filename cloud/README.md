@@ -12,10 +12,10 @@ pip install cleanrl[cloud] --upgrade
 wandb login
 git clone https://github.com/vwxyzjn/cleanrl
 cd cleanrl/cloud
-terraform init
-terraform apply
 pip install awscli
 python -m awscli authenticate
+terraform init
+terraform apply
 
 # dry run to inspect the generated docker command
 python -m cleanrl.utils.submit_exp --algo ppo.py \
