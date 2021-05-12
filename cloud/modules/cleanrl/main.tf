@@ -79,8 +79,8 @@ resource "aws_batch_job_queue" "cpu_on_demand" {
 # Spot resources
 ############
 
-resource "aws_batch_compute_environment" "gpu" {
-  compute_environment_name = "gpu"
+resource "aws_batch_compute_environment" "gpu_spot" {
+  compute_environment_name = "gpu_spot"
   compute_resources {
     instance_role = aws_iam_instance_profile.ecs_instance_role.arn
     instance_type = [
@@ -102,17 +102,17 @@ resource "aws_batch_compute_environment" "gpu" {
   depends_on   = [aws_iam_role_policy_attachment.aws_batch_service_role]
 }
 
-resource "aws_batch_job_queue" "gpu" {
-  name     = "gpu"
+resource "aws_batch_job_queue" "gpu_spot" {
+  name     = "gpu_spot"
   state    = "ENABLED"
   priority = 100
   compute_environments = [
-    aws_batch_compute_environment.cpu.arn,
+    aws_batch_compute_environment.gpu_spot.arn,
   ]
 }
 
-resource "aws_batch_compute_environment" "cpu" {
-  compute_environment_name = "cpu"
+resource "aws_batch_compute_environment" "cpu_spot" {
+  compute_environment_name = "cpu_spot"
   compute_resources {
     instance_role = aws_iam_instance_profile.ecs_instance_role.arn
     instance_type = [
@@ -134,11 +134,11 @@ resource "aws_batch_compute_environment" "cpu" {
   depends_on   = [aws_iam_role_policy_attachment.aws_batch_service_role]
 }
 
-resource "aws_batch_job_queue" "cpu" {
-  name     = "cpu"
+resource "aws_batch_job_queue" "cpu_spot" {
+  name     = "cpu_spot"
   state    = "ENABLED"
   priority = 100
   compute_environments = [
-    aws_batch_compute_environment.cpu.arn,
+    aws_batch_compute_environment.cpu_spot.arn,
   ]
 }
