@@ -23,7 +23,7 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 * 📈 Tensorboard Logging
 * 🪛 Local Reproducibility via Seeding
 * 🎮 Videos of Gameplay Capturing
-* 🧫 Experiment Management with [Weights and Biases](wandb.com)
+* 🧫 Experiment Management with [Weights and Biases](https://wandb.ai/site)
 * 💸 Cloud Integration with docker and AWS 
 
 Good luck have fun :rocket:
