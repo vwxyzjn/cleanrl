@@ -116,7 +116,7 @@ resource "aws_batch_compute_environment" "cpu_spot" {
   compute_resources {
     instance_role = aws_iam_instance_profile.ecs_instance_role.arn
     instance_type = [
-      "r5ad", "c5ad",
+      "r5ad"
     ]
     max_vcpus = var.max_vcpus
     min_vcpus = 0
