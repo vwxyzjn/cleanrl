@@ -12,14 +12,14 @@ pip install cleanrl[cloud] --upgrade # # if you using zsh, this needs to be pip 
 curl -OL https://releases.hashicorp.com/terraform/0.15.3/terraform_0.15.3_linux_amd64.zip
 unzip terraform_0.15.3_linux_amd64.zip && rm terraform_0.15.3_linux_amd64.zip
 mv terraform /usr/local/bin/
-
-# setup
 git clone https://github.com/vwxyzjn/cleanrl
 cd cleanrl/cloud
+
+# setup: these command probably need to be run separately
 wandb login
 python -m awscli configure
 terraform init
-terraform apply
+terraform apply # IMPORTANT: Enter the same region as you did during `python -m awscli configure`
 
 # dry run to inspect the generated docker command
 python -m cleanrl.utils.submit_exp --algo ppo.py \
