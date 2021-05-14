@@ -175,6 +175,10 @@ benchmark as many algorithms and games as possible. If you are interested, pleas
 more algorithms and games. To get started, check out our [contribution guide](https://github.com/vwxyzjn/cleanrl/blob/master/CONTRIBUTING.md) and our [roadmap for the Open RL Benchmark](https://github.com/vwxyzjn/cleanrl/projects/1)
 
 
+## Cloud integration
+
+Check out the documentation [here](https://github.com/vwxyzjn/cleanrl/tree/master/cloud)
+
 
 ## Support and get involved
 
