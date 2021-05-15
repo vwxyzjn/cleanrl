@@ -57,8 +57,6 @@ do
     (sleep 0.3 && nohup xvfb-run -a python {args.algo} \\
     {args.other_args} \\
     --seed $seed
-    --prod-mode \\
-    --capture-video \\
     ) >& /dev/null &
 done
 '''
