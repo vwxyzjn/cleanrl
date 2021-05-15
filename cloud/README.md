@@ -23,7 +23,7 @@ terraform apply # IMPORTANT: Enter the same region as you did during `python -m 
 
 # dry run to inspect the generated docker command
 python -m cleanrl.utils.submit_exp --algo ppo.py \
-    --other-args "--gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --cuda True" \
+    --other-args "--gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --prod-mode --capture-video --cuda True" \
     --job-queue cpu_spot \
     --job-definition cleanrl \
     --num-seed 1 \
@@ -33,13 +33,13 @@ python -m cleanrl.utils.submit_exp --algo ppo.py \
 ```
 The generated docker command should look like
 ```
-docker run -d --cpuset-cpus="0" -e WANDB=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx -e WANDB_RESUME=allow -e WANDB_RUN_ID=2avt9i7l vwxyzjn/cleanrl:latest /bin/bash -c "python ppo.py --gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --cuda True --seed 1"
+docker run -d --cpuset-cpus="0" -e WANDB=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx -e WANDB_RESUME=allow -e WANDB_RUN_ID=34l7niav vwxyzjn/cleanrl:latest /bin/bash -c "python ppo.py --gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --prod-mode --capture-video --cuda True --seed 1"
 ```
 
 Submit a job using AWS's compute-optimized spot instances 
 ```
 python -m cleanrl.utils.submit_exp --algo ppo.py \
-    --other-args "--gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --cuda True" \
+    --other-args "--gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --prod-mode --capture-video --cuda True" \
     --job-queue cpu_spot \
     --job-definition cleanrl \
     --num-seed 1 \
@@ -52,7 +52,7 @@ python -m cleanrl.utils.submit_exp --algo ppo.py \
 Submit a job using AWS's accelerated-computing spot instances 
 ```
 python -m cleanrl.utils.submit_exp --algo ppo_atari_visual.py \
-    --other-args "--gym-id BreakoutNoFrameskip-v4 --wandb-project-name cleanrl --cuda True" \
+    --other-args "--gym-id BreakoutNoFrameskip-v4 --wandb-project-name cleanrl --prod-mode --capture-video --cuda True" \
     --job-queue gpu_spot \
     --job-definition cleanrl \
     --num-seed 1 \
@@ -66,7 +66,7 @@ python -m cleanrl.utils.submit_exp --algo ppo_atari_visual.py \
 Submit a job using AWS's compute-optimized on-demand instances 
 ```
 python -m cleanrl.utils.submit_exp --algo ppo.py \
-    --other-args "--gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --cuda True" \
+    --other-args "--gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --prod-mode --capture-video --cuda True" \
     --job-queue cpu_on_demand \
     --job-definition cleanrl \
     --num-seed 1 \
@@ -79,7 +79,7 @@ python -m cleanrl.utils.submit_exp --algo ppo.py \
 Submit a job using AWS's accelerated-computing on-demand instances 
 ```
 python -m cleanrl.utils.submit_exp --algo ppo_atari_visual.py \
-    --other-args "--gym-id BreakoutNoFrameskip-v4 --wandb-project-name cleanrl --cuda True" \
+    --other-args "--gym-id BreakoutNoFrameskip-v4 --wandb-project-name cleanrl --prod-mode --capture-video --cuda True" \
     --job-queue gpu_on_demand \
     --job-definition cleanrl \
     --num-seed 1 \
