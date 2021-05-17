@@ -19,7 +19,8 @@ cd cleanrl/cloud
 wandb login
 python -m awscli configure
 terraform init
-terraform apply # IMPORTANT: Enter the same region as you did during `python -m awscli configure`
+export AWS_DEFAULT_REGION=$(aws configure get region --profile default)
+terraform apply
 
 # dry run to inspect the generated docker command
 python -m cleanrl.utils.submit_exp --algo ppo.py \
@@ -88,4 +89,10 @@ python -m cleanrl.utils.submit_exp --algo ppo_atari_visual.py \
     --num-memory 4000 \
     --num-hours 48.0 \
     --submit-aws
+```
+
+Uninstalling/Deleting the infrastructure that has been set up.
+```
+export AWS_DEFAULT_REGION=$(aws configure get region --profile default)
+terraform destroy
 ```
