@@ -19,9 +19,12 @@ cd cleanrl/cloud
 wandb login
 python -m awscli configure
 terraform init
-terraform apply # IMPORTANT: Enter the same region as you did during `python -m awscli configure`
+export AWS_DEFAULT_REGION=$(aws configure get region --profile default)
+terraform apply
+```
 
-# dry run to inspect the generated docker command
+Dry run to inspect the generated docker command
+```
 python -m cleanrl.utils.submit_exp --algo ppo.py \
     --other-args "--gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --prod-mode --capture-video --cuda True" \
     --job-queue cpu_spot \
@@ -31,6 +34,7 @@ python -m cleanrl.utils.submit_exp --algo ppo.py \
     --num-memory 2000 \
     --num-hours 48.0
 ```
+
 The generated docker command should look like
 ```
 docker run -d --cpuset-cpus="0" -e WANDB=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx -e WANDB_RESUME=allow -e WANDB_RUN_ID=34l7niav vwxyzjn/cleanrl:latest /bin/bash -c "python ppo.py --gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --prod-mode --capture-video --cuda True --seed 1"
@@ -88,4 +92,10 @@ python -m cleanrl.utils.submit_exp --algo ppo_atari_visual.py \
     --num-memory 4000 \
     --num-hours 48.0 \
     --submit-aws
+```
+
+Uninstalling/Deleting the infrastructure that has been set up.
+```
+export AWS_DEFAULT_REGION=$(aws configure get region --profile default)
+terraform destroy
 ```
