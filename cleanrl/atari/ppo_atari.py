@@ -1,30 +1,33 @@
+import argparse
+import os
+import random
+import time
+from distutils.util import strtobool
+
+import gym
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
+from gym.spaces import Discrete
+from gym.wrappers import Monitor
+from stable_baselines3.common.atari_wrappers import (
+    ClipRewardEnv,
+    EpisodicLifeEnv,
+    FireResetEnv,
+    MaxAndSkipEnv,
+    NoopResetEnv,
+    WarpFrame,
+)
+from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
-import argparse
-from distutils.util import strtobool
-import numpy as np
-import gym
-from gym.wrappers import TimeLimit, Monitor
-import pybullet_envs
-from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
-import time
-import random
-import os
-from stable_baselines3.common.atari_wrappers import (
-    NoopResetEnv, MaxAndSkipEnv, EpisodicLifeEnv, FireResetEnv, WarpFrame, ClipRewardEnv)
-from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecEnvWrapper
-from stable_baselines3.common.vec_env import VecFrameStack
 
 def parse_args():
     # Common arguments
     # fmt: off
     parser = argparse.ArgumentParser(description='PPO agent')
-
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
         help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="BreakoutNoFrameskip-v4",
@@ -71,8 +74,6 @@ def parse_args():
         help="the K epochs to update the policy")
     parser.add_argument('--kle-stop', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
         help='If toggled, the policy updates will be early stopped w.r.t target-kl')
-    parser.add_argument('--kle-rollback', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-        help='If toggled, the policy updates will roll back to previous policy if KL exceeds target-kl')
     parser.add_argument('--target-kl', type=float, default=0.03,
         help='the target-kl variable that is referred by --kl')
     parser.add_argument('--gae', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
@@ -91,6 +92,7 @@ def parse_args():
     # fmt: on
     return args
 
+
 def make_env(gym_id, seed, idx):
     def thunk():
         env = gym.make(gym_id)
@@ -99,7 +101,7 @@ def make_env(gym_id, seed, idx):
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if args.capture_video:
             if idx == 0:
-                env = Monitor(env, f'videos/{experiment_name}')
+                env = Monitor(env, f"videos/{experiment_name}")
         env = EpisodicLifeEnv(env)
         if "FIRE" in env.unwrapped.get_action_meanings():
             env = FireResetEnv(env)
@@ -109,9 +111,10 @@ def make_env(gym_id, seed, idx):
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
+
     return thunk
 
-# ALGO LOGIC: initialize agent here:
+
 class Scale(nn.Module):
     def __init__(self, scale):
         super().__init__()
@@ -120,16 +123,18 @@ class Scale(nn.Module):
     def forward(self, x):
         return x * self.scale
 
+
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
+
 class Agent(nn.Module):
     def __init__(self, envs, frames=4):
         super(Agent, self).__init__()
         self.network = nn.Sequential(
-            Scale(1/255),
+            Scale(1 / 255),
             layer_init(nn.Conv2d(frames, 32, 8, stride=4)),
             nn.ReLU(),
             layer_init(nn.Conv2d(32, 64, 4, stride=2)),
@@ -138,13 +143,13 @@ class Agent(nn.Module):
             nn.ReLU(),
             nn.Flatten(),
             layer_init(nn.Linear(3136, 512)),
-            nn.ReLU()
+            nn.ReLU(),
         )
         self.actor = layer_init(nn.Linear(512, envs.action_space.n), std=0.01)
         self.critic = layer_init(nn.Linear(512, 1), std=1)
 
     def get_action_and_value(self, x, action=None):
-        hidden = self.network(x.permute((0, 3, 1, 2))) # "bhwc" -> "bchw"
+        hidden = self.network(x.permute((0, 3, 1, 2)))  # "bhwc" -> "bchw"
         logits = self.actor(hidden)
         probs = Categorical(logits=logits)
         if action is None:
@@ -152,31 +157,42 @@ class Agent(nn.Module):
         return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
 
     def get_value(self, x):
-        return self.critic(self.network(x.permute((0, 3, 1, 2)))) # "bhwc" -> "bchw"
+        return self.critic(self.network(x.permute((0, 3, 1, 2))))  # "bhwc" -> "bchw"
+
 
 if __name__ == "__main__":
     args = parse_args()
-    # TRY NOT TO MODIFY: setup the environment
     experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    writer = SummaryWriter(f"runs/{experiment_name}")
-    writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
-            '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
     if args.prod_mode:
         import wandb
-        wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, sync_tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True, save_code=True)
-        writer = SummaryWriter(f"/tmp/{experiment_name}")
-    
+
+        wandb.init(
+            project=args.wandb_project_name,
+            entity=args.wandb_entity,
+            sync_tensorboard=True,
+            config=vars(args),
+            name=experiment_name,
+            monitor_gym=True,
+            save_code=True,
+        )
+    writer = SummaryWriter(f"runs/{experiment_name}")
+    writer.add_text(
+        "hyperparameters",
+        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
+    )
+    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+
     # TRY NOT TO MODIFY: seeding
-    device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
-    
+
     # env setup
     envs = VecFrameStack(
-        DummyVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)]),
-    4)
+        DummyVecEnv([make_env(args.gym_id, args.seed + i, i) for i in range(args.num_envs)]),
+        4,
+    )
     assert isinstance(envs.action_space, Discrete), "only discrete action space is supported"
 
     agent = Agent(envs).to(device)
@@ -184,7 +200,7 @@ if __name__ == "__main__":
     if args.anneal_lr:
         # https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/defaults.py#L20
         lr = lambda f: f * args.learning_rate
-    
+
     # ALGO Logic: Storage for epoch data
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.action_space.shape).to(device)
@@ -192,7 +208,7 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    
+
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
@@ -201,38 +217,38 @@ if __name__ == "__main__":
     next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
-    for update in range(1, num_updates+1):
+    for update in range(1, num_updates + 1):
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
             lrnow = lr(frac)
-            optimizer.param_groups[0]['lr'] = lrnow
-    
+            optimizer.param_groups[0]["lr"] = lrnow
+
         # TRY NOT TO MODIFY: prepare the execution of the game.
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
             obs[step] = next_obs
             dones[step] = next_done
-    
+
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
                 action, logproba, _, vs = agent.get_action_and_value(next_obs)
                 values[step] = vs.flatten()
-    
+
             actions[step] = action
             logprobs[step] = logproba
-    
+
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, rs, ds, infos = envs.step(action)
             next_obs = torch.Tensor(next_obs).to(device)
             rewards[step], next_done = torch.tensor(rs).to(device).view(-1), torch.Tensor(ds).to(device)
-    
+
             for info in infos:
-                if 'episode' in info.keys():
+                if "episode" in info.keys():
                     print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-                    writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
+                    writer.add_scalar("charts/episode_reward", info["episode"]["r"], global_step)
                     break
-    
+
         # bootstrap reward if not done. reached the batch limit
         with torch.no_grad():
             last_value = agent.get_value(next_obs.to(device)).reshape(1, -1)
@@ -244,8 +260,8 @@ if __name__ == "__main__":
                         nextnonterminal = 1.0 - next_done
                         nextvalues = last_value
                     else:
-                        nextnonterminal = 1.0 - dones[t+1]
-                        nextvalues = values[t+1]
+                        nextnonterminal = 1.0 - dones[t + 1]
+                        nextvalues = values[t + 1]
                     delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
                     advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
                 returns = advantages + values
@@ -256,21 +272,23 @@ if __name__ == "__main__":
                         nextnonterminal = 1.0 - next_done
                         next_return = last_value
                     else:
-                        nextnonterminal = 1.0 - dones[t+1]
-                        next_return = returns[t+1]
+                        nextnonterminal = 1.0 - dones[t + 1]
+                        next_return = returns[t + 1]
                     returns[t] = rewards[t] + args.gamma * nextnonterminal * next_return
                 advantages = returns - values
-    
+
         # flatten the batch
-        b_obs = obs.reshape((-1,)+envs.observation_space.shape)
+        b_obs = obs.reshape((-1,) + envs.observation_space.shape)
         b_logprobs = logprobs.reshape(-1)
-        b_actions = actions.reshape((-1,)+envs.action_space.shape)
+        b_actions = actions.reshape((-1,) + envs.action_space.shape)
         b_advantages = advantages.reshape(-1)
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
-    
+
         # Optimizaing the policy and value network
-        inds = np.arange(args.batch_size,)
+        inds = np.arange(
+            args.batch_size,
+        )
         for i_epoch_pi in range(args.update_epochs):
             np.random.shuffle(inds)
             for start in range(0, args.batch_size, args.minibatch_size):
@@ -279,53 +297,55 @@ if __name__ == "__main__":
                 mb_advantages = b_advantages[minibatch_ind]
                 if args.norm_adv:
                     mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
-    
-                _, newlogproba, entropy, new_values = agent.get_action_and_value(b_obs[minibatch_ind], b_actions.long()[minibatch_ind].to(device))
+
+                _, newlogproba, entropy, new_values = agent.get_action_and_value(
+                    b_obs[minibatch_ind], b_actions.long()[minibatch_ind].to(device)
+                )
                 ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
-    
+
                 # Stats
                 approx_kl = (b_logprobs[minibatch_ind] - newlogproba).mean()
-    
+
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
-                pg_loss2 = -mb_advantages * torch.clamp(ratio, 1-args.clip_coef, 1+args.clip_coef)
+                pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
                 pg_loss = torch.max(pg_loss1, pg_loss2).mean()
                 entropy_loss = entropy.mean()
-    
+
                 # Value loss
                 new_values = new_values.view(-1)
                 if args.clip_vloss:
-                    v_loss_unclipped = ((new_values - b_returns[minibatch_ind]) ** 2)
-                    v_clipped = b_values[minibatch_ind] + torch.clamp(new_values - b_values[minibatch_ind], -args.clip_coef, args.clip_coef)
-                    v_loss_clipped = (v_clipped - b_returns[minibatch_ind])**2
+                    v_loss_unclipped = (new_values - b_returns[minibatch_ind]) ** 2
+                    v_clipped = b_values[minibatch_ind] + torch.clamp(
+                        new_values - b_values[minibatch_ind],
+                        -args.clip_coef,
+                        args.clip_coef,
+                    )
+                    v_loss_clipped = (v_clipped - b_returns[minibatch_ind]) ** 2
                     v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
                     v_loss = 0.5 * v_loss_max.mean()
                 else:
                     v_loss = 0.5 * ((new_values - b_returns[minibatch_ind]) ** 2).mean()
-    
+
                 loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
-    
+
                 optimizer.zero_grad()
                 loss.backward()
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
-    
+
             if args.kle_stop:
                 if approx_kl > args.target_kl:
                     break
-            if args.kle_rollback:
-                if (b_logprobs[minibatch_ind] - agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind])[1]).mean() > args.target_kl:
-                    agent.load_state_dict(target_agent.state_dict())
-                    break
-    
+
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]['lr'], global_step)
+        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
         writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
-    
+
     envs.close()
     writer.close()

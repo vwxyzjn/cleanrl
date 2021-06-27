@@ -109,6 +109,7 @@ class Linear0(nn.Linear):
         if self.bias is not None:
             nn.init.constant_(self.bias, 0.0)
 
+
 class Scale(nn.Module):
     def __init__(self, scale):
         super().__init__()
