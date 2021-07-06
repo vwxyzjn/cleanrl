@@ -9,6 +9,7 @@ RUN apt-get -y install python-opengl
 RUN pip install opencv-python
 RUN pip install seaborn pandas
 RUN pip install stable-baselines3
+RUN pip install git+https://github.com/takuseno/d4rl-atari
 WORKDIR /workspace/cleanrl/cleanrl
 
 COPY entrypoint.sh /usr/local/bin/
