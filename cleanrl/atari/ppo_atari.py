@@ -303,7 +303,9 @@ if __name__ == "__main__":
                 ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
 
                 # calculate approx_kl http://joschu.net/blog/kl-approx.html
-                approx_kl = (b_logprobs[minibatch_ind] - newlogproba).mean()
+                with torch.no_grad():
+                    log_ratio = newlogproba - b_logprobs[minibatch_ind]
+                    approx_kl = ((log_ratio.exp() - 1) - log_ratio).mean()
 
                 # Policy loss
                 pg_loss1 = -mb_advantages * ratio
