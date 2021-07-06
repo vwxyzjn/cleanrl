@@ -25,7 +25,6 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 def parse_args():
-    # Common arguments
     # fmt: off
     parser = argparse.ArgumentParser(description='PPO agent')
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
@@ -303,7 +302,7 @@ if __name__ == "__main__":
                 )
                 ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
 
-                # Stats
+                # calculate approx_kl http://joschu.net/blog/kl-approx.html
                 approx_kl = (b_logprobs[minibatch_ind] - newlogproba).mean()
 
                 # Policy loss
