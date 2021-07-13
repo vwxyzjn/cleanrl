@@ -221,39 +221,26 @@ class Agent(nn.Module):
             nn.ReLU()
         )
         self.actor = layer_init(nn.Linear(512, envs.action_space.n), std=0.01)
-        self.aux_critic = layer_init(nn.Linear(512, 1), std=1)
+        self.critic = layer_init(nn.Linear(512, 1), std=1)
 
-        self.critic = nn.Sequential(
-            Scale(1/255),
-            layer_init(nn.Conv2d(channels, 32, 4, stride=3)),
-            nn.ReLU(),
-            layer_init(nn.Conv2d(32, 64, 3, stride=2)),
-            nn.ReLU(),
-            layer_init(nn.Conv2d(64, 32, 3, stride=1)),
-            nn.ReLU(),
-            nn.Flatten(),
-            layer_init(nn.Linear(8*8*32, 512)),
-            nn.ReLU(),
-            layer_init(nn.Linear(512, 1), std=1)
-        )
-
-    def get_action(self, x, action=None):
-        logits = self.actor(self.network(x.permute((0, 3, 1, 2)))) # "bhwc" -> "bchw" # "bhwc" -> "bchw"
+    def get_action_and_value(self, x, action=None):
+        hidden = self.network(x.permute((0, 3, 1, 2))) # "bhwc" -> "bchw"
+        logits = self.actor(hidden)
         probs = Categorical(logits=logits)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action), probs.entropy()
+        return action, probs.log_prob(action), probs.entropy(), self.critic(hidden.detach())
 
     def get_value(self, x):
-        return self.critic(x.permute((0, 3, 1, 2)))
+        return self.critic(self.network(x.permute((0, 3, 1, 2))))
 
     # PPG logic:
-    def get_pi(self, x):
-        logits = self.actor(self.network(x.permute((0, 3, 1, 2))))
-        return Categorical(logits=logits)
+    def get_pi_and_aux_value(self, x):    
+        hidden = self.network(x.permute((0, 3, 1, 2)))
+        return Categorical(logits=self.actor(hidden)), self.critic(hidden)
 
-    def get_aux_value(self, x):
-        return self.aux_critic(self.network(x.permute((0, 3, 1, 2))))
+    def get_pi(self, x):
+        return Categorical(logits=self.actor(self.network(x.permute((0, 3, 1, 2)))))
 
 agent = Agent(envs).to(device)
 optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
@@ -299,8 +286,8 @@ for phase in range(starting_phase, num_phases):
     
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
-                values[step] = agent.get_value(obs[step]).flatten()
-                action, logproba, _ = agent.get_action(obs[step])
+                action, logproba, _, vs = agent.get_action_and_value(next_obs)
+                values[step] = vs.flatten()
             actions[step] = action
             logprobs[step] = logproba
     
@@ -313,7 +300,7 @@ for phase in range(starting_phase, num_phases):
                     print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
                     writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
                     break
-    
+
         # bootstrap reward if not done. reached the batch limit
         with torch.no_grad():
             last_value = agent.get_value(next_obs.to(device)).reshape(1, -1)
@@ -361,7 +348,7 @@ for phase in range(starting_phase, num_phases):
                 if args.norm_adv:
                     mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
     
-                _, newlogproba, entropy = agent.get_action(b_obs[minibatch_ind], b_actions.long()[minibatch_ind])
+                _, newlogproba, entropy, new_values = agent.get_action_and_value(b_obs[minibatch_ind], b_actions.long()[minibatch_ind].to(device))
                 ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
     
                 # Stats
@@ -374,7 +361,7 @@ for phase in range(starting_phase, num_phases):
                 entropy_loss = entropy.mean()
     
                 # Value loss
-                new_values = agent.get_value(b_obs[minibatch_ind]).view(-1)
+                new_values = new_values.view(-1)
                 if args.clip_vloss:
                     v_loss_unclipped = ((new_values - b_returns[minibatch_ind]) ** 2)
                     v_clipped = b_values[minibatch_ind] + torch.clamp(new_values - b_values[minibatch_ind], -args.clip_coef, args.clip_coef)
@@ -391,20 +378,15 @@ for phase in range(starting_phase, num_phases):
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
     
-            if args.kle_stop:
-                if approx_kl > args.target_kl:
-                    break
-
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]['lr'], global_step)
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
         writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
-        if args.kle_stop:
-            writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+
         # PPG Storage:
         storage_slice = slice(args.num_steps*args.num_envs*(policy_update-1), args.num_steps*args.num_envs*policy_update)
         aux_obs[storage_slice] = b_obs.cpu().clone()
@@ -424,8 +406,9 @@ for phase in range(starting_phase, num_phases):
                 m_aux_returns = aux_returns[aux_minibatch_ind].to(device)
                 
                 new_values = agent.get_value(m_aux_obs).view(-1)
-                new_aux_values = agent.get_aux_value(m_aux_obs).view(-1)
-                kl_loss = td.kl_divergence(old_agent.get_pi(m_aux_obs), agent.get_pi(m_aux_obs)).mean()
+                new_pi, new_aux_values = agent.get_pi_and_aux_value(m_aux_obs)
+                new_aux_values = new_aux_values.view(-1)
+                kl_loss = td.kl_divergence(old_agent.get_pi(m_aux_obs), new_pi).mean()
                 
                 real_value_loss = 0.5 * ((new_values - m_aux_returns) ** 2).mean()
                 aux_value_loss = 0.5 * ((new_aux_values - m_aux_returns) ** 2).mean()
