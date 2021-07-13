@@ -9,7 +9,8 @@ import argparse
 from distutils.util import strtobool
 import numpy as np
 import gym
-from procgen import ProcgenEnv
+import gym3
+from procgen import ProcgenGym3Env
 from gym.wrappers import TimeLimit, Monitor
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
@@ -85,6 +86,23 @@ if __name__ == "__main__":
 
 args.batch_size = int(args.num_envs * args.num_steps)
 args.minibatch_size = int(args.batch_size // args.n_minibatch)
+
+class ToBaselinesVecEnv(gym3.ToBaselinesVecEnv):
+    metadata = {
+        'render.modes': ['human', 'rgb_array'],
+        'video.frames_per_second' : 24
+    }
+    def render(self, mode="human"):
+        info = self.env.get_info()[0]
+        _, ob, _ = self.env.observe()
+        if mode == "rgb_array":
+            if "rgb" in info:
+                return info["rgb"]
+            else:
+                return ob['rgb'][0]
+
+def ProcgenEnv(num_envs, env_name, **kwargs):
+    return ToBaselinesVecEnv(ProcgenGym3Env(num=num_envs, env_name=env_name, **kwargs))
 
 class VecPyTorch(VecEnvWrapper):
     def __init__(self, venv, device):
