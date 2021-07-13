@@ -301,316 +301,6 @@ def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, 
         env = FrameStack(env, 4)
     return env
 
-# https://github.com/openai/baselines/blob/master/baselines/deepq/replay_buffer.py
-import operator
-class SegmentTree(object):
-    def __init__(self, capacity, operation, neutral_element):
-        """Build a Segment Tree data structure.
-        https://en.wikipedia.org/wiki/Segment_tree
-        Can be used as regular array, but with two
-        important differences:
-            a) setting item's value is slightly slower.
-               It is O(lg capacity) instead of O(1).
-            b) user has access to an efficient ( O(log segment size) )
-               `reduce` operation which reduces `operation` over
-               a contiguous subsequence of items in the array.
-        Paramters
-        ---------
-        capacity: int
-            Total size of the array - must be a power of two.
-        operation: lambda obj, obj -> obj
-            and operation for combining elements (eg. sum, max)
-            must form a mathematical group together with the set of
-            possible values for array elements (i.e. be associative)
-        neutral_element: obj
-            neutral element for the operation above. eg. float('-inf')
-            for max and 0 for sum.
-        """
-        assert capacity > 0 and capacity & (capacity - 1) == 0, "capacity must be positive and a power of 2."
-        self._capacity = capacity
-        self._value = [neutral_element for _ in range(2 * capacity)]
-        self._operation = operation
-
-    def _reduce_helper(self, start, end, node, node_start, node_end):
-        if start == node_start and end == node_end:
-            return self._value[node]
-        mid = (node_start + node_end) // 2
-        if end <= mid:
-            return self._reduce_helper(start, end, 2 * node, node_start, mid)
-        else:
-            if mid + 1 <= start:
-                return self._reduce_helper(start, end, 2 * node + 1, mid + 1, node_end)
-            else:
-                return self._operation(
-                    self._reduce_helper(start, mid, 2 * node, node_start, mid),
-                    self._reduce_helper(mid + 1, end, 2 * node + 1, mid + 1, node_end)
-                )
-
-    def reduce(self, start=0, end=None):
-        """Returns result of applying `self.operation`
-        to a contiguous subsequence of the array.
-            self.operation(arr[start], operation(arr[start+1], operation(... arr[end])))
-        Parameters
-        ----------
-        start: int
-            beginning of the subsequence
-        end: int
-            end of the subsequences
-        Returns
-        -------
-        reduced: obj
-            result of reducing self.operation over the specified range of array elements.
-        """
-        if end is None:
-            end = self._capacity
-        if end < 0:
-            end += self._capacity
-        end -= 1
-        return self._reduce_helper(start, end, 1, 0, self._capacity - 1)
-
-    def __setitem__(self, idx, val):
-        # index of the leaf
-        idx += self._capacity
-        self._value[idx] = val
-        idx //= 2
-        while idx >= 1:
-            self._value[idx] = self._operation(
-                self._value[2 * idx],
-                self._value[2 * idx + 1]
-            )
-            idx //= 2
-
-    def __getitem__(self, idx):
-        assert 0 <= idx < self._capacity
-        return self._value[self._capacity + idx]
-
-
-class SumSegmentTree(SegmentTree):
-    def __init__(self, capacity):
-        super(SumSegmentTree, self).__init__(
-            capacity=capacity,
-            operation=operator.add,
-            neutral_element=0.0
-        )
-
-    def sum(self, start=0, end=None):
-        """Returns arr[start] + ... + arr[end]"""
-        return super(SumSegmentTree, self).reduce(start, end)
-
-    def find_prefixsum_idx(self, prefixsum):
-        """Find the highest index `i` in the array such that
-            sum(arr[0] + arr[1] + ... + arr[i - i]) <= prefixsum
-        if array values are probabilities, this function
-        allows to sample indexes according to the discrete
-        probability efficiently.
-        Parameters
-        ----------
-        perfixsum: float
-            upperbound on the sum of array prefix
-        Returns
-        -------
-        idx: int
-            highest index satisfying the prefixsum constraint
-        """
-        assert 0 <= prefixsum <= self.sum() + 1e-5
-        idx = 1
-        while idx < self._capacity:  # while non-leaf
-            if self._value[2 * idx] > prefixsum:
-                idx = 2 * idx
-            else:
-                prefixsum -= self._value[2 * idx]
-                idx = 2 * idx + 1
-        return idx - self._capacity
-
-
-class MinSegmentTree(SegmentTree):
-    def __init__(self, capacity):
-        super(MinSegmentTree, self).__init__(
-            capacity=capacity,
-            operation=min,
-            neutral_element=float('inf')
-        )
-
-    def min(self, start=0, end=None):
-        """Returns min(arr[start], ...,  arr[end])"""
-
-        return super(MinSegmentTree, self).reduce(start, end)
-
-class ReplayBuffer(object):
-    def __init__(self, size):
-        """Create Replay buffer.
-        Parameters
-        ----------
-        size: int
-            Max number of transitions to store in the buffer. When the buffer
-            overflows the old memories are dropped.
-        """
-        self._storage = []
-        self._maxsize = size
-        self._next_idx = 0
-
-    def __len__(self):
-        return len(self._storage)
-
-    def add(self, obs_t, action, reward, obs_tp1, done):
-        data = (obs_t, action, reward, obs_tp1, done)
-
-        if self._next_idx >= len(self._storage):
-            self._storage.append(data)
-        else:
-            self._storage[self._next_idx] = data
-        self._next_idx = (self._next_idx + 1) % self._maxsize
-
-    def _encode_sample(self, idxes):
-        obses_t, actions, rewards, obses_tp1, dones = [], [], [], [], []
-        for i in idxes:
-            data = self._storage[i]
-            obs_t, action, reward, obs_tp1, done = data
-            obses_t.append(np.array(obs_t, copy=False))
-            actions.append(np.array(action, copy=False))
-            rewards.append(reward)
-            obses_tp1.append(np.array(obs_tp1, copy=False))
-            dones.append(done)
-        return np.array(obses_t), np.array(actions), np.array(rewards), np.array(obses_tp1), np.array(dones)
-
-    def sample(self, batch_size):
-        """Sample a batch of experiences.
-        Parameters
-        ----------
-        batch_size: int
-            How many transitions to sample.
-        Returns
-        -------
-        obs_batch: np.array
-            batch of observations
-        act_batch: np.array
-            batch of actions executed given obs_batch
-        rew_batch: np.array
-            rewards received as results of executing act_batch
-        next_obs_batch: np.array
-            next set of observations seen after executing act_batch
-        done_mask: np.array
-            done_mask[i] = 1 if executing act_batch[i] resulted in
-            the end of an episode and 0 otherwise.
-        """
-        idxes = [random.randint(0, len(self._storage) - 1) for _ in range(batch_size)]
-        return self._encode_sample(idxes)
-
-
-class PrioritizedReplayBuffer(ReplayBuffer):
-    def __init__(self, size, alpha):
-        """Create Prioritized Replay buffer.
-        Parameters
-        ----------
-        size: int
-            Max number of transitions to store in the buffer. When the buffer
-            overflows the old memories are dropped.
-        alpha: float
-            how much prioritization is used
-            (0 - no prioritization, 1 - full prioritization)
-        See Also
-        --------
-        ReplayBuffer.__init__
-        """
-        super(PrioritizedReplayBuffer, self).__init__(size)
-        assert alpha >= 0
-        self._alpha = alpha
-
-        it_capacity = 1
-        while it_capacity < size:
-            it_capacity *= 2
-
-        self._it_sum = SumSegmentTree(it_capacity)
-        self._it_min = MinSegmentTree(it_capacity)
-        self._max_priority = 1.0
-
-    def add(self, *args, **kwargs):
-        """See ReplayBuffer.store_effect"""
-        idx = self._next_idx
-        super().add(*args, **kwargs)
-        self._it_sum[idx] = self._max_priority ** self._alpha
-        self._it_min[idx] = self._max_priority ** self._alpha
-
-    def _sample_proportional(self, batch_size):
-        res = []
-        p_total = self._it_sum.sum(0, len(self._storage) - 1)
-        every_range_len = p_total / batch_size
-        for i in range(batch_size):
-            mass = random.random() * every_range_len + i * every_range_len
-            idx = self._it_sum.find_prefixsum_idx(mass)
-            res.append(idx)
-        return res
-
-    def sample(self, batch_size, beta):
-        """Sample a batch of experiences.
-        compared to ReplayBuffer.sample
-        it also returns importance weights and idxes
-        of sampled experiences.
-        Parameters
-        ----------
-        batch_size: int
-            How many transitions to sample.
-        beta: float
-            To what degree to use importance weights
-            (0 - no corrections, 1 - full correction)
-        Returns
-        -------
-        obs_batch: np.array
-            batch of observations
-        act_batch: np.array
-            batch of actions executed given obs_batch
-        rew_batch: np.array
-            rewards received as results of executing act_batch
-        next_obs_batch: np.array
-            next set of observations seen after executing act_batch
-        done_mask: np.array
-            done_mask[i] = 1 if executing act_batch[i] resulted in
-            the end of an episode and 0 otherwise.
-        weights: np.array
-            Array of shape (batch_size,) and dtype np.float32
-            denoting importance weight of each sampled transition
-        idxes: np.array
-            Array of shape (batch_size,) and dtype np.int32
-            idexes in buffer of sampled experiences
-        """
-        assert beta > 0
-
-        idxes = self._sample_proportional(batch_size)
-
-        weights = []
-        p_min = self._it_min.min() / self._it_sum.sum()
-        max_weight = (p_min * len(self._storage)) ** (-beta)
-
-        for idx in idxes:
-            p_sample = self._it_sum[idx] / self._it_sum.sum()
-            weight = (p_sample * len(self._storage)) ** (-beta)
-            weights.append(weight / max_weight)
-        weights = np.array(weights)
-        encoded_sample = self._encode_sample(idxes)
-        return tuple(list(encoded_sample) + [weights, idxes])
-
-    def update_priorities(self, idxes, priorities):
-        """Update priorities of sampled transitions.
-        sets priority of transition at index idxes[i] in buffer
-        to priorities[i].
-        Parameters
-        ----------
-        idxes: [int]
-            List of idxes of sampled transitions
-        priorities: [float]
-            List of updated priorities corresponding to
-            transitions at the sampled idxes denoted by
-            variable `idxes`.
-        """
-        assert len(idxes) == len(priorities)
-        for idx, priority in zip(idxes, priorities):
-            assert priority > 0
-            assert 0 <= idx < len(self._storage)
-            self._it_sum[idx] = priority ** self._alpha
-            self._it_min[idx] = priority ** self._alpha
-
-            self._max_priority = max(self._max_priority, priority)
-
 # Reference: https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf
 
 import torch
@@ -618,12 +308,15 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data.dataset import IterableDataset
+from torch import multiprocessing as mp
 
 import argparse
 from distutils.util import strtobool
 import collections
 import numpy as np
 import gym
+import d4rl_atari
 from gym.wrappers import TimeLimit, Monitor
 from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
 import time
@@ -638,7 +331,7 @@ import pandas as pd
 from PIL import Image
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Double DQN Agent with prioritized experience replay')
+    parser = argparse.ArgumentParser(description='DQN agent')
     # Common arguments
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
                         help='the name of this experiment')
@@ -664,14 +357,12 @@ if __name__ == "__main__":
                         help="the entity (team) of wandb's project")
     
     # Algorithm specific arguments
+    parser.add_argument('--offline-gym-id', type=str, default="breakout-expert-v0",
+                        help='the id of the offline dataset gym environment')
+    parser.add_argument('--min-q-weight', type=float, default=10.0,
+                        help="the scale of the CQL's objective to minimize the q values")
     parser.add_argument('--buffer-size', type=int, default=1000000,
-                        help='the replay memory buffer size')
-    parser.add_argument('--pr-alpha', type=float, default=0.6,
-                        help='alpha parameter for prioritized replay buffer')
-    parser.add_argument('--pr-beta0', type=float, default=0.4,
-                        help='initial value of beta for prioritized replay buffer')
-    parser.add_argument('--pr-eps', type=float, default=1e-6,
-                        help='epsilon to add to the TD errors when updating priorities.')
+                         help='the replay memory buffer size')
     parser.add_argument('--gamma', type=float, default=0.99,
                         help='the discount factor gamma')
     parser.add_argument('--target-network-frequency', type=int, default=1000,
@@ -680,7 +371,7 @@ if __name__ == "__main__":
                         help='the maximum norm for the gradient clipping')
     parser.add_argument('--batch-size', type=int, default=32,
                         help="the batch size of sample from the reply memory")
-    parser.add_argument('--start-e', type=float, default=1.,
+    parser.add_argument('--start-e', type=float, default=0.02,
                         help="the starting epsilon for exploration")
     parser.add_argument('--end-e', type=float, default=0.02,
                         help="the ending epsilon for exploration")
@@ -693,6 +384,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
+
 
 class QValueVisualizationWrapper(gym.Wrapper):
     def __init__(self, env):
@@ -722,6 +414,7 @@ class QValueVisualizationWrapper(gym.Wrapper):
             return np.append(env_rgb_array, q_value_rgb_array, axis=1)
         else:
             super().render(mode)
+
 
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -757,7 +450,6 @@ env.observation_space.seed(args.seed)
 # respect the default timelimit
 assert isinstance(env.action_space, Discrete), "only discrete action space is supported"
 
-# modified from https://github.com/openai/baselines/blob/master/baselines/deepq/replay_buffer.py
 
 # ALGO LOGIC: initialize agent here:
 # tricks taken from https://github.com/cpnota/autonomous-learning-library/blob/6d1111afce0d1582de463326f7d078a86e850551/all/presets/atari/models/__init__.py#L16
@@ -776,7 +468,7 @@ class Scale(nn.Module):
     def forward(self, x):
         return x * self.scale
 class QNetwork(nn.Module):
-    def __init__(self, frames=4):
+    def __init__(self, env, frames=4):
         super(QNetwork, self).__init__()
         self.network = nn.Sequential(
             Scale(1/255),
@@ -792,92 +484,110 @@ class QNetwork(nn.Module):
             Linear0(512, env.action_space.n)
         )
 
-    def forward(self, x):
+    def forward(self, x, device):
         x = torch.Tensor(x).to(device)
         return self.network(x)
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope =  (end_e - start_e) / duration
-    if end_e < start_e:
-        return max(slope * t + start_e, end_e)
-    else:
-        return min(slope * t + start_e, end_e)
+    return max(slope * t + start_e, end_e)
 
-rb = PrioritizedReplayBuffer(args.buffer_size, args.pr_alpha)
-q_network = QNetwork().to(device)
-target_network = QNetwork().to(device)
+class ExperienceReplayDataset(IterableDataset):
+    def __init__(self):
+        self.dataset_env = gym.make(args.offline_gym_id)
+        self.dataset = self.dataset_env.get_dataset()
+    def __iter__(self):
+        while True:
+            idx = np.random.choice(len(self.dataset['observations'])-1)
+            yield self.dataset['observations'][idx],self.dataset['actions'][idx],self.dataset['rewards'][idx],self.dataset['observations'][idx+1],self.dataset['terminals'][idx]
+
+
+q_network = QNetwork(env).to(device)
+target_network = QNetwork(env).to(device)
 target_network.load_state_dict(q_network.state_dict())
 optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
+data_loader = iter(torch.utils.data.DataLoader(
+    ExperienceReplayDataset(), batch_size=args.batch_size, num_workers=2))
 print(device.__repr__())
 print(q_network)
 
-# TRY NOT TO MODIFY: start the game
-obs = env.reset()
-episode_reward = 0
-for global_step in range(args.total_timesteps):
-    # ALGO LOGIC: put action logic here
-    epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
-    beta = linear_schedule(args.pr_beta0, 1.0, args.total_timesteps, global_step)
-    obs = np.array(obs)
-    logits = q_network.forward(obs.reshape((1,)+obs.shape))
-    if args.capture_video:
-        env.set_q_values(logits.tolist())
-    if random.random() < epsilon:
-        action = env.action_space.sample()
-    else:
-        action = torch.argmax(logits, dim=1).tolist()[0]
-
-    # TRY NOT TO MODIFY: execute the game and log data.
-    next_obs, reward, done, info = env.step(action)
-    episode_reward += reward
-    
-    # TRY NOT TO MODIFY: record rewards for plotting purposes
-    if 'episode' in info.keys():
-        print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-        writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
-        writer.add_scalar("charts/epsilon", epsilon, global_step)
-
-    # ALGO LOGIC: training.
-    rb.add(obs, action, reward, next_obs, float(done))
-    if global_step > args.learning_starts and global_step % args.train_frequency == 0:
-        experience = rb.sample(args.batch_size, beta=beta)
-        (s_obs, s_actions, s_rewards, s_next_obses, s_dones, s_weights, s_batch_idxes) = experience
-        # s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
-        with torch.no_grad():
-            # target_max = torch.max(target_network.forward(s_next_obses), dim=1)[0]
-            current_value = q_network.forward(s_next_obses)
-            target_value = target_network.forward(s_next_obses)
-            target_max = target_value.gather(1, torch.max(current_value, 1)[1].unsqueeze(1)).squeeze(1)
-            td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
-
-        old_val = q_network.forward(s_obs).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
-        td_errors = td_target - old_val
+class Evaluator:
+    def __init__(self, args, env, q_network):
+        self.args = args
+        self.env = env
+        self.q_network = q_network
+        self.global_step = 0
+        self.stats_queue = mp.Queue(10)
+        self.process = mp.Process(target=self.run,)
+        self.process.daemon = True
+        self.process.start()
         
-        loss = (td_errors ** 2).mean()
-        writer.add_scalar("losses/td_loss", loss, global_step)
+    def run(self):
+        args, env, q_network = self.args, self.env, QNetwork(self.env)
+        # eval q_network
+        q_network = QNetwork(self.env)
+        obs = env.reset()
+        episode_reward = 0
+        for global_step in range(args.total_timesteps):
+            self.global_step = global_step
+            # ALGO LOGIC: put action logic here
+            epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
+            obs = np.array(obs)
+            logits = q_network.forward(obs.reshape((1,)+obs.shape), "cpu")
+            if args.capture_video:
+                env.set_q_values(logits.tolist())
+            if random.random() < epsilon:
+                action = env.action_space.sample()
+            else:
+                action = torch.argmax(logits, dim=1).tolist()[0]
         
-        # update the weights in the prioritized replay
-        new_priorities = np.abs(td_errors.tolist()) + args.pr_eps
-        rb.update_priorities(s_batch_idxes, new_priorities)
+            # TRY NOT TO MODIFY: execute the game and log data.
+            next_obs, reward, done, info = env.step(action)
+            episode_reward += reward
+            
+            # TRY NOT TO MODIFY: record rewards for plotting purposes
+            if 'episode' in info.keys():
+                print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
+                # writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
+                # writer.add_scalar("charts/epsilon", epsilon, global_step)
+        
+            # TRY NOT TO MODIFY: CRUCIAL step easy to overlook 
+            obs = next_obs
+            if done:
+                obs, episode_reward = env.reset(), 0
 
-        # optimize the midel
-        optimizer.zero_grad()
-        loss.backward()
-        nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
-        optimizer.step()
+e = Evaluator(args, env, q_network)
 
-        # update the target network
-        if global_step % args.target_network_frequency == 0:
-            target_network.load_state_dict(q_network.state_dict())
+while True:
+    global_step = e.global_step
+    # s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
+    s_obs, s_actions, s_rewards, s_next_obses, s_dones = next(data_loader)
+    s_obs, s_actions, s_rewards, s_next_obses, s_dones = s_obs.to(device), s_actions.to(device), s_rewards.to(device), s_next_obses.to(device), s_dones.to(device)
+    with torch.no_grad():
+        target_max = torch.max(target_network.network(s_next_obses), dim=1)[0]
+        td_target = s_rewards + args.gamma * target_max * (1 - s_dones)
+    old_qs = q_network.network(s_obs)
+    old_val = old_qs.gather(1, s_actions.long().view(-1,1)).squeeze()
+    loss = loss_fn(td_target, old_val)
+    writer.add_scalar("losses/td_loss", loss, global_step)
 
-    # TRY NOT TO MODIFY: CRUCIAL step easy to overlook 
-    obs = next_obs
-    if done:
-        # important to note that because `EpisodicLifeEnv` wrapper is applied,
-        # the real episode reward is actually the sum of episode reward of 5 lives
-        # which we record through `info['episode']['r']` provided by gym.wrappers.RecordEpisodeStatistics
-        obs, episode_reward = env.reset(), 0
+    # CQL losses
+    dataset_expec = old_val.mean()
+    negative_sampling = torch.logsumexp(old_qs, 1).mean()
+    min_q_loss = (negative_sampling - dataset_expec) * args.min_q_weight
+    writer.add_scalar("losses/min_q_loss", min_q_loss, global_step)
+    writer.add_scalar("losses/average_q_values", dataset_expec.item(), global_step)
+
+    # optimize the midel
+    optimizer.zero_grad()
+    (loss+min_q_loss).backward()
+    nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
+    optimizer.step()
+
+    # update the target network
+    if global_step % args.target_network_frequency == 0:
+        target_network.load_state_dict(q_network.state_dict())
 
 env.close()
 writer.close()
