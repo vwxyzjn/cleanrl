@@ -69,13 +69,11 @@ if not path.exists(f"{feature_name}/all_df_cache.pkl"):
             # else:
             ls = run.history(keys=[args.feature_of_interest, 'global_step'], pandas=False, samples=args.samples)
             metrics_dataframe = pd.DataFrame(ls[0])
-            exp_name = run.config['exp_name']
             for param in args.hyper_params_tuned:
                 if param in run.config:
-                    exp_name += "-" + param + "-" + str(run.config[param]) + "-"
-            
-            metrics_dataframe.insert(len(metrics_dataframe.columns), "algo", exp_name)
-            exp_names += [exp_name]
+                    run.config['exp_name'] += "-" + param + "-" + str(run.config[param]) + "-"
+
+            metrics_dataframe.insert(len(metrics_dataframe.columns), "algo", run.config['exp_name'])
             metrics_dataframe.insert(len(metrics_dataframe.columns), "seed", run.config['seed'])
             
             data += [metrics_dataframe]
@@ -84,8 +82,7 @@ if not path.exists(f"{feature_name}/all_df_cache.pkl"):
                 envs[run.config["gym_id"]+"total_timesteps"] = run.config["total_timesteps"]
             else:
                 envs[run.config["gym_id"]] += [metrics_dataframe]
-        
-            
+
             # run.summary are the output key/values like accuracy.  We call ._json_dict to omit large files 
             summary_list.append(run.summary._json_dict) 
         
@@ -94,7 +91,6 @@ if not path.exists(f"{feature_name}/all_df_cache.pkl"):
         
             # run.name is the name of the run.
             name_list.append(run.name)       
-    
     
     summary_df = pd.DataFrame.from_records(summary_list) 
     config_df = pd.DataFrame.from_records(config_list) 
@@ -280,3 +276,14 @@ print("===============Mujoco and Pybullet===========")
 print(final_df[["ddpg_continuous_action", "td3_continuous_action", "ppo_continuous_action"]].loc[[
     "Ant-v2", "Humanoid-v2", "Walker2DBulletEnv-v0", "HalfCheetahBulletEnv-v0", "HopperBulletEnv-v0", "BipedalWalker-v3", "LunarLanderContinuous-v2", "Pendulum-v0", "MountainCarContinuous-v0"
 ]].to_markdown())
+
+# print run time
+runtime_df = all_df[['gym_id','exp_name', '_runtime']].copy()
+for i in range(len(runtime_df)):
+    runtime_df.iloc[i, runtime_df.columns.get_loc('exp_name')] = exp_convert_dict[runtime_df.iloc[i]['exp_name']]
+
+runtime_df.groupby(
+    ['gym_id','exp_name']
+).agg(
+    lambda x: f"{np.mean(x/3600):.2f} ± {np.std(x/3600):.2f}"
+).reset_index().pivot('exp_name', 'gym_id' , '_runtime')
