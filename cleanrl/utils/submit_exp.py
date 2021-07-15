@@ -66,7 +66,7 @@ with open(f"{args.exp_script}", "w+") as f:
 
 if not args.wandb_key:
     args.wandb_key = requests.utils.get_netrc_auth("https://api.wandb.ai")[-1]
-assert len(args.wandb_key) > 0, "set the environment variable `WANDB_KEY` to your WANDB API key, something like `export WANDB_KEY=fdsfdsfdsfads` "
+assert len(args.wandb_key) > 0, "you have not logged into W&B; try do `wandb login`"
 
 # extract runs from bash scripts
 final_run_cmds = []
