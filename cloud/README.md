@@ -8,7 +8,8 @@ easy to manage and reproducible, we use Terraform to spin up services.
 
 ```bash
 # install dependencies
-pip install cleanrl[cloud] --upgrade # # if you using zsh, this needs to be pip install cleanrl\[cloud\] --upgrade
+# if you using zsh, this needs to be pip install cleanrl\[cloud\] --upgrade
+pip install cleanrl[cloud] --upgrade #
 curl -OL https://releases.hashicorp.com/terraform/0.15.3/terraform_0.15.3_linux_amd64.zip
 unzip terraform_0.15.3_linux_amd64.zip && rm terraform_0.15.3_linux_amd64.zip
 mv terraform /usr/local/bin/
