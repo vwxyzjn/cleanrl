@@ -555,6 +555,7 @@ values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 
 # TRY NOT TO MODIFY: start the game
 global_step = 0
+start_time = time.time()
 # Note how `next_obs` and `next_done` are used; their usage is equivalent to
 # https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail/blob/84a7582477fb0d5c82ad6d850fe476829dddd2e1/a2c_ppo_acktr/storage.py#L60
 next_obs = envs.reset()
@@ -690,6 +691,7 @@ for update in range(1, num_updates+1):
     writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
     writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
     writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
+    print("SPS:", int(global_step / (time.time() - start_time)))
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
 
