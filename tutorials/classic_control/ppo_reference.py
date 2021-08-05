@@ -203,14 +203,11 @@ if __name__ == "__main__":
 
             # ALGO LOGIC: put action logic here
             with torch.no_grad():
-                action, logproba, _, vs = agent.get_action_and_value(next_obs)
+                actions[step], logprobs[step], _, vs = agent.get_action_and_value(next_obs)
                 values[step] = vs.flatten()
 
-            actions[step] = action
-            logprobs[step] = logproba
-
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, rs, ds, infos = envs.step(action.cpu().numpy())
+            next_obs, rs, ds, infos = envs.step(actions[step].cpu().numpy())
             next_obs = torch.Tensor(next_obs).to(device)
             rewards[step], next_done = torch.tensor(rs).to(device).view(-1), torch.Tensor(ds).to(device)
 
