@@ -1,21 +1,20 @@
+import argparse
+import os
+import random
+import time
+from distutils.util import strtobool
+
+import gym
+import numpy as np
+import pybullet_envs  # fmt: off
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
+from gym.spaces import Box
+from gym.wrappers import Monitor
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
-import argparse
-from distutils.util import strtobool
-import numpy as np
-import gym
-from gym.wrappers import TimeLimit, Monitor
-import pybullet_envs # fmt: off
-from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
-import time
-import random
-import os
-from stable_baselines3.common.vec_env import DummyVecEnv
 
 def parse_args():
     # fmt: off
@@ -88,8 +87,8 @@ def parse_args():
 # taken from https://github.com/openai/baselines/blob/master/baselines/common/vec_env/vec_normalize.py
 class RunningMeanStd(object):
     def __init__(self, epsilon=1e-4, shape=()):
-        self.mean = np.zeros(shape, 'float64')
-        self.var = np.ones(shape, 'float64')
+        self.mean = np.zeros(shape, "float64")
+        self.var = np.ones(shape, "float64")
         self.count = epsilon
 
     def update(self, x):
@@ -100,7 +99,9 @@ class RunningMeanStd(object):
 
     def update_from_moments(self, batch_mean, batch_var, batch_count):
         self.mean, self.var, self.count = update_mean_var_count_from_moments(
-            self.mean, self.var, self.count, batch_mean, batch_var, batch_count)
+            self.mean, self.var, self.count, batch_mean, batch_var, batch_count
+        )
+
 
 def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, batch_count):
     delta = batch_mean - mean
@@ -115,8 +116,9 @@ def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, 
 
     return new_mean, new_var, new_count
 
+
 class NormalizedEnv(gym.core.Wrapper):
-    def __init__(self, env, ob=True, ret=True, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8):
+    def __init__(self, env, ob=True, ret=True, clipob=10.0, cliprew=10.0, gamma=0.99, epsilon=1e-8):
         super(NormalizedEnv, self).__init__(env)
         self.ob_rms = RunningMeanStd(shape=self.observation_space.shape) if ob else None
         self.ret_rms = RunningMeanStd(shape=(1,)) if ret else None
@@ -133,7 +135,7 @@ class NormalizedEnv(gym.core.Wrapper):
         if self.ret_rms:
             self.ret_rms.update(np.array([self.ret].copy()))
             rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
-        self.ret = self.ret * (1-float(dones))
+        self.ret = self.ret * (1 - float(dones))
         return obs, rews, dones, infos
 
     def _obfilt(self, obs):
@@ -149,9 +151,11 @@ class NormalizedEnv(gym.core.Wrapper):
         obs = self.env.reset()
         return self._obfilt(obs)
 
+
 class ClipActionsWrapper(gym.Wrapper):
     def step(self, action):
         import numpy as np
+
         action = np.nan_to_num(action)
         action = np.clip(action, self.action_space.low, self.action_space.high)
         return self.env.step(action)
@@ -164,12 +168,13 @@ def make_env(gym_id, seed, idx, capture_video, run_name):
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if args.capture_video:
             if idx == 0:
-                env = Monitor(env, f'videos/{run_name}')
+                env = Monitor(env, f"videos/{run_name}")
         env = NormalizedEnv(env)
         env.seed(seed)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
+
     return thunk
 
 
@@ -187,7 +192,7 @@ class Agent(nn.Module):
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
-            layer_init(nn.Linear(64, 1), std=1.),
+            layer_init(nn.Linear(64, 1), std=1.0),
         )
         self.actor_mean = nn.Sequential(
             layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
@@ -240,7 +245,9 @@ if __name__ == "__main__":
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     # env setup
-    envs = gym.vector.SyncVectorEnv([make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)])
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
+    )
     assert isinstance(envs.single_action_space, Box), "only continuous action space is supported"
 
     agent = Agent(envs).to(device)
