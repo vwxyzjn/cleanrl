@@ -22,13 +22,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description='PPO agent')
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="HopperBulletEnv-v0",
+    parser.add_argument('--gym-id', type=str, default="HalfCheetahBulletEnv-v0",
         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=3e-4,
         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=10000000,
+    parser.add_argument('--total-timesteps', type=int, default=2000000,
         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -93,9 +93,9 @@ class RunningMeanStd(object):
         self.count = epsilon
 
     def update(self, x):
-        batch_mean = np.mean(x, axis=0)
-        batch_var = np.var(x, axis=0)
-        batch_count = x.shape[0]
+        batch_mean = np.mean([x], axis=0)
+        batch_var = np.var([x], axis=0)
+        batch_count = 1
         self.update_from_moments(batch_mean, batch_var, batch_count)
 
     def update_from_moments(self, batch_mean, batch_var, batch_count):
@@ -118,28 +118,22 @@ def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, 
 class NormalizedEnv(gym.core.Wrapper):
     def __init__(self, env, ob=True, ret=True, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8):
         super(NormalizedEnv, self).__init__(env)
-        self.num_envs = getattr(env, "num_envs", 1)
-        self.is_vector_env = getattr(env, "is_vector_env", False)
         self.ob_rms = RunningMeanStd(shape=self.observation_space.shape) if ob else None
-        self.ret_rms = RunningMeanStd(shape=()) if ret else None
+        self.ret_rms = RunningMeanStd(shape=(1,)) if ret else None
         self.clipob = clipob
         self.cliprew = cliprew
-        self.ret = np.zeros(self.num_envs)
+        self.ret = np.zeros(())
         self.gamma = gamma
         self.epsilon = epsilon
 
     def step(self, action):
         obs, rews, dones, infos = self.env.step(action)
-        if not self.is_vector_env:
-            obs, rews, dones = np.array([obs]), np.array([rews]), np.array([dones])
         self.ret = self.ret * self.gamma + rews
         obs = self._obfilt(obs)
         if self.ret_rms:
-            self.ret_rms.update(self.ret)
+            self.ret_rms.update(np.array([self.ret].copy()))
             rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
-        self.ret[dones] = 0.
-        if not self.is_vector_env:
-            return obs[0], rews[0], dones[0], infos
+        self.ret = self.ret * (1-float(dones))
         return obs, rews, dones, infos
 
     def _obfilt(self, obs):
@@ -151,14 +145,9 @@ class NormalizedEnv(gym.core.Wrapper):
             return obs
 
     def reset(self):
-        self.ret = np.zeros(self.num_envs)
+        self.ret = np.zeros(())
         obs = self.env.reset()
-        if not self.is_vector_env:
-            obs = np.array([obs])
-        obs = self._obfilt(obs)
-        if not self.is_vector_env:
-            return obs[0]
-        return obs
+        return self._obfilt(obs)
 
 class ClipActionsWrapper(gym.Wrapper):
     def step(self, action):
@@ -176,7 +165,7 @@ def make_env(gym_id, seed, idx, capture_video, run_name):
         if args.capture_video:
             if idx == 0:
                 env = Monitor(env, f'videos/{run_name}')
-        # env = NormalizedEnv(env)
+        env = NormalizedEnv(env)
         env.seed(seed)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
@@ -252,7 +241,6 @@ if __name__ == "__main__":
 
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)])
-    # envs = NormalizedEnv(envs)
     assert isinstance(envs.single_action_space, Box), "only continuous action space is supported"
 
     agent = Agent(envs).to(device)
