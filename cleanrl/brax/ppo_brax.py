@@ -294,7 +294,7 @@ def make_env(gym_id, seed, idx, capture_video, run_name):
 if __name__ == "__main__":
     args = parse_args()
     run_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    if args.prod_mode:
+    if args.track:
         import wandb
 
         wandb.init(

@@ -152,7 +152,7 @@ if __name__ == "__main__":
     writer.add_text(
         "hyperparameters", "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()]))
     )
-    if args.prod_mode:
+    if args.track:
         import wandb
 
         wandb.init(
