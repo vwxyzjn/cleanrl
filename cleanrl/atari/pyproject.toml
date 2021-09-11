@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "atari"
+version = "0.1.0"
+description = ""
+authors = ["Costa Huang <costa.huang@outlook.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+gym = {extras = ["atari"], version = "^0.18.3"}
+torch = "^1.9.0"
+stable-baselines3 = "^1.0"
+tensorboard = "^2.5.0"
+atari-py = "0.2.6"
+opencv-python = "^4.5.2"
+cpprb = "^10.1.1"
+graphql-core = {git = "ssh://git@github.com/wandb/client.git", rev = "sb3-integration"}
+
+[tool.poetry.dev-dependencies]
+spyder = "^5.0.4"
+seaborn = "^0.11.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

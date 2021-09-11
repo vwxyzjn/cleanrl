@@ -11,15 +11,7 @@ import torch.nn as nn
 import torch.optim as optim
 from gym.spaces import Discrete
 from gym.wrappers import Monitor
-from stable_baselines3.common.atari_wrappers import (
-    ClipRewardEnv,
-    EpisodicLifeEnv,
-    FireResetEnv,
-    MaxAndSkipEnv,
-    NoopResetEnv,
-    WarpFrame,
-)
-from stable_baselines3.common.vec_env import DummyVecEnv, VecFrameStack
+from gym.vector import SyncVectorEnv
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
@@ -29,13 +21,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description='PPO agent')
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="BreakoutNoFrameskip-v4",
+    parser.add_argument('--gym-id', type=str, default="CartPole-v1",
         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=10000000,
+    parser.add_argument('--total-timesteps', type=int, default=25000,
         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -53,7 +45,7 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument('--n-minibatch', type=int, default=4,
         help='the number of mini batch')
-    parser.add_argument('--num-envs', type=int, default=8,
+    parser.add_argument('--num-envs', type=int, default=4,
         help='the number of parallel game environment')
     parser.add_argument('--num-steps', type=int, default=128,
         help='the number of steps per game environment')
@@ -67,7 +59,7 @@ def parse_args():
         help="coefficient of the value function")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
         help='the maximum norm for the gradient clipping')
-    parser.add_argument('--clip-coef', type=float, default=0.1,
+    parser.add_argument('--clip-coef', type=float, default=0.2,
         help="the surrogate clipping coefficient")
     parser.add_argument('--update-epochs', type=int, default=4,
         help="the K epochs to update the policy")
@@ -92,35 +84,18 @@ def parse_args():
     return args
 
 
-def make_env(gym_id, seed, idx, capture_video, experiment_name):
+def make_env(gym_id, seed, idx, capture_video, run_name):
     def thunk():
         env = gym.make(gym_id)
-        env = NoopResetEnv(env, noop_max=30)
-        env = MaxAndSkipEnv(env, skip=4)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
-                env = Monitor(env, f"videos/{experiment_name}")
-        env = EpisodicLifeEnv(env)
-        if "FIRE" in env.unwrapped.get_action_meanings():
-            env = FireResetEnv(env)
-        env = WarpFrame(env, width=84, height=84)
-        env = ClipRewardEnv(env)
+                env = Monitor(env, f'videos/{run_name}')
         env.seed(seed)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
     return thunk
-
-
-class Scale(nn.Module):
-    def __init__(self, scale):
-        super().__init__()
-        self.scale = scale
-
-    def forward(self, x):
-        return x * self.scale
-
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
@@ -131,36 +106,35 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 class Agent(nn.Module):
     def __init__(self, envs, frames=4):
         super(Agent, self).__init__()
-        self.network = nn.Sequential(
-            Scale(1 / 255),
-            layer_init(nn.Conv2d(frames, 32, 8, stride=4)),
-            nn.ReLU(),
-            layer_init(nn.Conv2d(32, 64, 4, stride=2)),
-            nn.ReLU(),
-            layer_init(nn.Conv2d(64, 64, 3, stride=1)),
-            nn.ReLU(),
-            nn.Flatten(),
-            layer_init(nn.Linear(3136, 512)),
-            nn.ReLU(),
+        self.critic = nn.Sequential(
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
+            nn.Tanh(),
+            layer_init(nn.Linear(64, 64)),
+            nn.Tanh(),
+            layer_init(nn.Linear(64, 1), std=1.),
         )
-        self.actor = layer_init(nn.Linear(512, envs.action_space.n), std=0.01)
-        self.critic = layer_init(nn.Linear(512, 1), std=1)
+        self.actor = nn.Sequential(
+            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
+            nn.Tanh(),
+            layer_init(nn.Linear(64, 64)),
+            nn.Tanh(),
+            layer_init(nn.Linear(64,  envs.single_action_space.n), std=0.01),
+        )
 
     def get_action_and_value(self, x, action=None):
-        hidden = self.network(x.permute((0, 3, 1, 2)))  # "bhwc" -> "bchw"
-        logits = self.actor(hidden)
+        logits = self.actor(x)
         probs = Categorical(logits=logits)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
+        return action, probs.log_prob(action), probs.entropy(), self.critic(x)
 
     def get_value(self, x):
-        return self.critic(self.network(x.permute((0, 3, 1, 2))))  # "bhwc" -> "bchw"
+        return self.critic(x)
 
 
 if __name__ == "__main__":
     args = parse_args()
-    experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    run_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.prod_mode:
         import wandb
 
@@ -169,11 +143,11 @@ if __name__ == "__main__":
             entity=args.wandb_entity,
             sync_tensorboard=True,
             config=vars(args),
-            name=experiment_name,
+            name=run_name,
             monitor_gym=True,
             save_code=True,
         )
-    writer = SummaryWriter(f"runs/{experiment_name}")
+    writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
@@ -187,11 +161,10 @@ if __name__ == "__main__":
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     # env setup
-    envs = VecFrameStack(
-        DummyVecEnv([make_env(args.gym_id, args.seed + i, i, args.capture_video, experiment_name) for i in range(args.num_envs)]),
-        4,
-    )
-    assert isinstance(envs.action_space, Discrete), "only discrete action space is supported"
+    envs = SyncVectorEnv(
+        [make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name) 
+    for i in range(args.num_envs)])
+    assert isinstance(envs.single_action_space, Discrete), "only discrete action space is supported"
 
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
@@ -200,8 +173,8 @@ if __name__ == "__main__":
         lr = lambda f: f * args.learning_rate
 
     # ALGO Logic: Storage for epoch data
-    obs = torch.zeros((args.num_steps, args.num_envs) + envs.observation_space.shape).to(device)
-    actions = torch.zeros((args.num_steps, args.num_envs) + envs.action_space.shape).to(device)
+    obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
+    actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
@@ -276,9 +249,9 @@ if __name__ == "__main__":
                 advantages = returns - values
 
         # flatten the batch
-        b_obs = obs.reshape((-1,) + envs.observation_space.shape)
+        b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
         b_logprobs = logprobs.reshape(-1)
-        b_actions = actions.reshape((-1,) + envs.action_space.shape)
+        b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
@@ -300,7 +273,8 @@ if __name__ == "__main__":
                     b_obs[minibatch_ind], b_actions.long()[minibatch_ind].to(device)
                 )
                 ratio = (newlogproba - b_logprobs[minibatch_ind]).exp()
-
+                print(ratio)
+                raise
                 # calculate approx_kl http://joschu.net/blog/kl-approx.html
                 with torch.no_grad():
                     log_ratio = newlogproba - b_logprobs[minibatch_ind]
