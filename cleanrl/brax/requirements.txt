@@ -48,7 +48,7 @@ optax==0.0.9
 packaging==21.0
 pandas==1.3.2
 pathtools==0.1.2
-Pillow==8.3.1
+Pillow==8.3.2
 promise==2.3
 protobuf==3.17.3
 psutil==5.8.0
