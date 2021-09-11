@@ -76,19 +76,23 @@ Good luck have fun :rocket:
 
 ## Get started
 
+Prerequisites:
+* Python 3.8+
+* [Poetry](https://python-poetry.org)
+
 To run experiments locally, give the following a try:
 
 ```bash
 git clone https://github.com/vwxyzjn/cleanrl.git && cd cleanrl
-# we strongly recommend to use `venv` to manage dependencies
-# this will make the experiment much more reproducible!
-python -m venv venv
-source venv/bin/activate
-pip install cleanrl
-python cleanrl/ppo.py \
+poetry install
+
+# alternatively, you could use `poetry shell` and do
+# `python run cleanrl/ppo.py`
+poetry run python cleanrl/ppo.py \
     --seed 1 \
     --gym-id CartPole-v0 \
-    --total-timesteps 50000 \
+    --total-timesteps 50000
+
 # open another temrminal and enter `cd cleanrl/cleanrl`
 tensorboard --logdir runs
 ```
@@ -96,52 +100,37 @@ tensorboard --logdir runs
 To use wandb integration, sign up an account at https://wandb.com and copy the API key. Then run
 
 ```bash
-source venv/bin/activate
 wandb login # only required for the first time
-python cleanrl/ppo.py \
+poetry run python cleanrl/ppo.py \
     --seed 1 \
     --gym-id CartPole-v0 \
     --total-timesteps 50000 \
-    --prod-mode \
+    --track \
     --wandb-project-name cleanrltest
 ```
 
 
 # Run RL experiments in various game environments
 
-The following instructions assume linux environements. We first install the dependencies:
-
-```bash
-# install atari, pybullet, procgen, box2d, pettingzoo
-source venv/bin/activate
-pip install cleanrl[all]
-# if you are using zsh, you will need to do 
-# `pip install cleanrl\[all\]`
-
-
-# install mujoco
-curl -OL https://www.roboti.us/download/mujoco200_linux.zip
-unzip mujoco200_linux.zip -d ~/mujoco/
-mv ~/mujoco/mujoco200_linux ~/mujoco/mujoco200
-unzip mujoco200_linux.zip -d ~/mujoco/
-rm mujoco200_linux.zip
-pip install gym[mujoco]
+The following instructions assume linux environements.
 ```
-
-Now we can run the experiments:
-```
-source venv/bin/activate
-cd cleanrl
 # atari
-python dqn_atari_visual.py --gym-id BeamRiderNoFrameskip-v4 
+poetry shell
+poetry install -E atari
+AutoROM
+python cleanrl/dqn_atari.py --gym-id BeamRiderNoFrameskip-v4
+python cleanrl/c51_atari.py --gym-id BeamRiderNoFrameskip-v4
+python cleanrl/ppo_atari.py --gym-id BeamRiderNoFrameskip-v4
 # pybullet
-python td3_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
+poetry install -E pybullet
+python cleanrl/td3_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
+python cleanrl/ddpg_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
 # procgen
-python ppo_procgen_fast.py --gym-id starpilot
-# box2d
-python experiments/ppo_car_racing.py
-# pettingzoo
-python ppo_pettingzoo.py
+poetry install -E procgen
+python cleanrl/ppo_procgen.py --gym-id starpilot
+<!-- # pettingzoo
+poetry install -E pettingzoo
+python cleanrl/ppo_pettingzoo.py -->
 ```
 
 
