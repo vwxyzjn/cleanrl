@@ -348,7 +348,7 @@ if __name__ == "__main__":
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
     parser.add_argument('--cuda', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, cuda will not be enabled by default')
-    parser.add_argument('--prod-mode', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+    parser.add_argument('--track', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--capture-video', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='weather to capture videos of the agent performances (check out `videos` folder)')
@@ -634,7 +634,7 @@ for phase in range(starting_phase, num_phases):
             for info in infos:
                 if 'episode' in info.keys():
                     print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-                    writer.add_scalar("charts/episode_reward", info['episode']['r'], global_step)
+                    writer.add_scalar("charts/episodic_return", info['episode']['r'], global_step)
                     break
     
         # bootstrap reward if not done. reached the batch limit

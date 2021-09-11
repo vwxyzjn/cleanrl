@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description='CleanRL Plots')
 # Common arguments
 parser.add_argument('--wandb-project', type=str, default="anonymous-rl-code/action-guidance",
                    help='the name of wandb project (e.g. cleanrl/cleanrl)')
-parser.add_argument('--feature-of-interest', type=str, default='charts/episode_reward/ProduceCombatUnitRewardFunction',
+parser.add_argument('--feature-of-interest', type=str, default='charts/episodic_return/ProduceCombatUnitRewardFunction',
                    help='which feature to be plotted on the y-axis')
 parser.add_argument('--hyper-params-tuned', nargs='+', default= ['shift', 'adaptation'],
                     help='the hyper parameters tuned')
@@ -62,7 +62,7 @@ exp_convert_dict = {
     'pposhaped': 'shaped reward',
 }
 
-# args.feature_of_interest = 'charts/episode_reward'
+# args.feature_of_interest = 'charts/episodic_return'
 feature_name = args.feature_of_interest.replace("/", "_")
 if not os.path.exists(feature_name):
     os.makedirs(feature_name)

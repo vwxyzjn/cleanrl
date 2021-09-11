@@ -25,7 +25,7 @@ do
     --gym-id {} \\
     --total-timesteps {} \\
     --wandb-project-name {} \\
-    --prod-mode \\
+    --track \\
     {} \\
     --capture-video \\
     --seed $seed

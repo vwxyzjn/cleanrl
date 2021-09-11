@@ -10,5 +10,5 @@ black -l 127 --exclude wandb .
 
 pyenv shell $(cat .python-version)-prod
 
-python dqn_atari_cpprb.py --prod-mode
+python dqn_atari_cpprb.py --track
 ```

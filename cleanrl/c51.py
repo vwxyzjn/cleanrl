@@ -35,7 +35,7 @@ if __name__ == "__main__":
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
     parser.add_argument('--cuda', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, cuda will not be enabled by default')
-    parser.add_argument('--prod-mode', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+    parser.add_argument('--track', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--capture-video', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='weather to capture videos of the agent performances (check out `videos` folder)')
@@ -250,7 +250,7 @@ for global_step in range(args.total_timesteps):
     if done:
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         print(f"global_step={global_step}, episode_reward={episode_reward}")
-        writer.add_scalar("charts/episode_reward", episode_reward, global_step)
+        writer.add_scalar("charts/episodic_return", episode_reward, global_step)
         writer.add_scalar("charts/epsilon", epsilon, global_step)
         obs, episode_reward = env.reset(), 0
 

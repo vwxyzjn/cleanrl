@@ -777,7 +777,7 @@ def act(args, experiment_name, i, q_network, target_network, lock, rollouts_queu
         with lock:
             global_step += 1
         if 'episode' in info.keys():
-            stats_queue.put(("charts/episode_reward", info['episode']['r'], info['episode']['l']))
+            stats_queue.put(("charts/episodic_return", info['episode']['r'], info['episode']['l']))
         
         if len(storage) == args.actor_buffer_size:
             obses_t, actions, rewards, obses_tp1, dones = [], [], [], [], []
@@ -883,7 +883,7 @@ if __name__ == "__main__":
                         help='if toggled, `torch.backends.cudnn.deterministic=False`')
     parser.add_argument('--cuda', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
                         help='if toggled, cuda will not be enabled by default')
-    parser.add_argument('--prod-mode', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+    parser.add_argument('--track', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='run the script in production mode and use wandb to log outputs')
     parser.add_argument('--capture-video', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
                         help='weather to capture videos of the agent performances (check out `videos` folder)')
@@ -1041,10 +1041,10 @@ if __name__ == "__main__":
             start_global_step = global_step.item()
             start_time = timer()
             m = stats_queue.get()
-            if m[0] == "charts/episode_reward":
+            if m[0] == "charts/episodic_return":
                 r, l = m[1], m[2]
                 print(f"global_step={global_step}, episode_reward={r}")
-                writer.add_scalar("charts/episode_reward", r, global_step)
+                writer.add_scalar("charts/episodic_return", r, global_step)
                 writer.add_scalar("charts/stats_queue_size", stats_queue.qsize(), global_step)
                 writer.add_scalar("charts/rollouts_queue_size", rollouts_queue.qsize(), global_step)
                 writer.add_scalar("charts/data_process_queue_size", data_process_queue.qsize(), global_step)

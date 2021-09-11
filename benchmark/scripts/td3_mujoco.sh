@@ -5,7 +5,7 @@ do
     --gym-id Reacher-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --prod-mode \
+    --track \
     --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
@@ -18,7 +18,7 @@ do
     --gym-id Pusher-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --prod-mode \
+    --track \
     --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
@@ -31,7 +31,7 @@ do
     --gym-id Thrower-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --prod-mode \
+    --track \
     --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
@@ -44,7 +44,7 @@ do
     --gym-id Striker-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --prod-mode \
+    --track \
     --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
@@ -57,7 +57,7 @@ do
     --gym-id InvertedPendulum-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --prod-mode \
+    --track \
     --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
@@ -70,7 +70,7 @@ do
     --gym-id HalfCheetah-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --prod-mode \
+    --track \
     --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
@@ -83,7 +83,7 @@ do
     --gym-id Hopper-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --prod-mode \
+    --track \
     --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
@@ -96,7 +96,7 @@ do
     --gym-id Swimmer-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --prod-mode \
+    --track \
     --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
@@ -109,7 +109,7 @@ do
     --gym-id Walker2d-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --prod-mode \
+    --track \
     --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
@@ -122,7 +122,7 @@ do
     --gym-id Ant-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --prod-mode \
+    --track \
     --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
@@ -135,7 +135,7 @@ do
     --gym-id Humanoid-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
-    --prod-mode \
+    --track \
     --wandb-entity cleanrl --cuda True \
     --capture-video \
     --seed $seed
