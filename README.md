@@ -28,6 +28,62 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 
 Good luck have fun :rocket:
 
+## Get started
+
+Prerequisites:
+* Python 3.8+
+* [Poetry](https://python-poetry.org)
+
+To run experiments locally, give the following a try:
+
+```bash
+git clone https://github.com/vwxyzjn/cleanrl.git && cd cleanrl
+poetry install
+
+# alternatively, you could use `poetry shell` and do
+# `python run cleanrl/ppo.py`
+poetry run python cleanrl/ppo.py \
+    --seed 1 \
+    --gym-id CartPole-v0 \
+    --total-timesteps 50000
+
+# open another temrminal and enter `cd cleanrl/cleanrl`
+tensorboard --logdir runs
+```
+
+To use experiment tracking with wandb, run
+```bash
+wandb login # only required for the first time
+poetry run python cleanrl/ppo.py \
+    --seed 1 \
+    --gym-id CartPole-v0 \
+    --total-timesteps 50000 \
+    --track \
+    --wandb-project-name cleanrltest
+```
+
+To run training scripts in other games:
+```
+# atari
+poetry shell
+poetry install -E atari
+AutoROM
+python cleanrl/dqn_atari.py --gym-id BeamRiderNoFrameskip-v4
+python cleanrl/c51_atari.py --gym-id BeamRiderNoFrameskip-v4
+python cleanrl/ppo_atari.py --gym-id BeamRiderNoFrameskip-v4
+# pybullet
+poetry install -E pybullet
+python cleanrl/td3_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
+python cleanrl/ddpg_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
+# procgen
+poetry install -E procgen
+python cleanrl/ppo_procgen.py --gym-id starpilot
+<!-- # pettingzoo
+poetry install -E pettingzoo
+python cleanrl/ppo_pettingzoo.py -->
+```
+
+
 ## Algorithms Implemented
 - [x] Deep Q-Learning (DQN)
     * [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py)
@@ -73,66 +129,6 @@ Good luck have fun :rocket:
 - [x] Apex Deep Q-Learning (Apex-DQN)
     * [apex_dqn_atari_visual.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/apex_dqn_atari_visual.py)
         * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
-
-## Get started
-
-Prerequisites:
-* Python 3.8+
-* [Poetry](https://python-poetry.org)
-
-To run experiments locally, give the following a try:
-
-```bash
-git clone https://github.com/vwxyzjn/cleanrl.git && cd cleanrl
-poetry install
-
-# alternatively, you could use `poetry shell` and do
-# `python run cleanrl/ppo.py`
-poetry run python cleanrl/ppo.py \
-    --seed 1 \
-    --gym-id CartPole-v0 \
-    --total-timesteps 50000
-
-# open another temrminal and enter `cd cleanrl/cleanrl`
-tensorboard --logdir runs
-```
-
-To use wandb integration, sign up an account at https://wandb.com and copy the API key. Then run
-
-```bash
-wandb login # only required for the first time
-poetry run python cleanrl/ppo.py \
-    --seed 1 \
-    --gym-id CartPole-v0 \
-    --total-timesteps 50000 \
-    --track \
-    --wandb-project-name cleanrltest
-```
-
-
-# Run RL experiments in various game environments
-
-The following instructions assume linux environements.
-```
-# atari
-poetry shell
-poetry install -E atari
-AutoROM
-python cleanrl/dqn_atari.py --gym-id BeamRiderNoFrameskip-v4
-python cleanrl/c51_atari.py --gym-id BeamRiderNoFrameskip-v4
-python cleanrl/ppo_atari.py --gym-id BeamRiderNoFrameskip-v4
-# pybullet
-poetry install -E pybullet
-python cleanrl/td3_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
-python cleanrl/ddpg_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
-# procgen
-poetry install -E procgen
-python cleanrl/ppo_procgen.py --gym-id starpilot
-<!-- # pettingzoo
-poetry install -E pettingzoo
-python cleanrl/ppo_pettingzoo.py -->
-```
-
 
 ## Open RL Benchmark
 
