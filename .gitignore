@@ -1,3 +1,5 @@
+tutorials
+.DC_Store
 *.tfevents.*
 wandb
 openaigym.*
