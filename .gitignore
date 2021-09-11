@@ -1,3 +1,6 @@
+.DS_Store
+*.mov
+*.mp4
 *.tfevents.*
 wandb
 openaigym.*
