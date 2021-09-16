@@ -90,8 +90,6 @@ python cleanrl/ppo_pettingzoo.py -->
         * For discrete action space.
     * [dqn_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py)
         * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
-    * [dqn_atari_visual.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari_visual.py)
-        * Adds q-values visulization for `dqn_atari.py`.
 - [x] Categorical DQN (C51)
     * [c51.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/c51.py)
         * For discrete action space.
@@ -107,16 +105,6 @@ python cleanrl/ppo_pettingzoo.py -->
         * For continuous action space. Also implemented Mujoco-specific code-level optimizations
     * [ppo_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py)
         * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
-    * [ppo_atari_visual.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_visual.py)
-        * Adds action probability visulization for `ppo_atari.py`.
-    * [experiments/ppo_self_play.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experiments/ppo_self_play.py)
-        * Implements a self-play agent for https://github.com/hardmaru/slimevolleygym
-    * [experiments/ppo_microrts.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experiments/ppo_microrts.py)
-        * Implements invalid action masking and handling of `MultiDiscrete` action space for https://github.com/vwxyzjn/gym-microrts
-    * [experiments/ppo_simple.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experiments/ppo_simple.py)
-        * (Not recommended for using) Naive implementation for discrete action space. I keep it here for educational purposes because I feel this is what most people would implement if they had just read the paper, usually unaware of the amount of implementation details that come with the well-tuned PPO implmentation.
-    * [experiments/ppo_simple_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experiments/ppo_simple_continuous_action.py)
-        * (Not recommended for using) Naive implementation for continuous action space. 
 - [x] Soft Actor Critic (SAC)
     * [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py)
         * For continuous action space.
