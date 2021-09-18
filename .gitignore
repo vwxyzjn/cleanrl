@@ -1,5 +1,5 @@
 tutorials
-.DC_Store
+.DS_Store
 *.tfevents.*
 wandb
 openaigym.*
