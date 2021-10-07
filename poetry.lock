@@ -19,7 +19,7 @@ python-versions = "*"
 
 [[package]]
 name = "ale-py"
-version = "0.7.1"
+version = "0.7.2"
 description = "The Arcade Learning Environment (ALE) - a platform for AI research."
 category = "main"
 optional = true
@@ -123,6 +123,22 @@ requests = "*"
 tqdm = "*"
 
 [[package]]
+name = "awscli"
+version = "1.20.57"
+description = "Universal Command Line Environment for AWS."
+category = "main"
+optional = true
+python-versions = ">= 3.6"
+
+[package.dependencies]
+botocore = "1.21.57"
+colorama = ">=0.2.5,<0.4.4"
+docutils = ">=0.10,<0.16"
+PyYAML = ">=3.10,<5.5"
+rsa = ">=3.1.2,<4.8"
+s3transfer = ">=0.5.0,<0.6.0"
+
+[[package]]
 name = "babel"
 version = "2.9.1"
 description = "Internationalization utilities"
@@ -206,6 +222,38 @@ six = ">=1.9.0"
 webencodings = "*"
 
 [[package]]
+name = "boto3"
+version = "1.18.57"
+description = "The AWS SDK for Python"
+category = "main"
+optional = true
+python-versions = ">= 3.6"
+
+[package.dependencies]
+botocore = ">=1.21.57,<1.22.0"
+jmespath = ">=0.7.1,<1.0.0"
+s3transfer = ">=0.5.0,<0.6.0"
+
+[package.extras]
+crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
+
+[[package]]
+name = "botocore"
+version = "1.21.57"
+description = "Low-level, data-driven core of boto 3."
+category = "main"
+optional = true
+python-versions = ">= 3.6"
+
+[package.dependencies]
+jmespath = ">=0.7.1,<1.0.0"
+python-dateutil = ">=2.1,<3.0.0"
+urllib3 = ">=1.25.4,<1.27"
+
+[package.extras]
+crt = ["awscrt (==0.11.24)"]
+
+[[package]]
 name = "cachetools"
 version = "4.2.4"
 description = "Extensible memoizing collections and decorators"
@@ -272,7 +320,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "colorama"
-version = "0.4.4"
+version = "0.4.3"
 description = "Cross-platform colored terminal text."
 category = "main"
 optional = false
@@ -383,11 +431,11 @@ six = ">=1.4.0"
 
 [[package]]
 name = "docutils"
-version = "0.17.1"
+version = "0.15.2"
 description = "Docutils -- Python Documentation Utilities"
-category = "dev"
+category = "main"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
 name = "entrypoints"
@@ -771,6 +819,14 @@ python-versions = "*"
 [package.dependencies]
 arrow = "*"
 jinja2 = "*"
+
+[[package]]
+name = "jmespath"
+version = "0.10.0"
+description = "JSON Matching Expressions"
+category = "main"
+optional = true
+python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
 name = "jsonschema"
@@ -3556,6 +3612,20 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "s3transfer"
+version = "0.5.0"
+description = "An Amazon S3 Transfer Manager"
+category = "main"
+optional = true
+python-versions = ">= 3.6"
+
+[package.dependencies]
+botocore = ">=1.12.36,<2.0a.0"
+
+[package.extras]
+crt = ["botocore[crt] (>=1.20.29,<2.0a.0)"]
+
+[[package]]
 name = "scipy"
 version = "1.7.1"
 description = "SciPy: Scientific Library for Python"
@@ -4190,6 +4260,7 @@ testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytes
 
 [extras]
 atari = ["ale-py", "AutoROM", "stable-baselines3"]
+cloud = ["boto3", "awscli"]
 pettingzoo = ["pettingzoo", "stable-baselines3", "pygame", "pymunk"]
 plot = ["pandas", "seaborn"]
 procgen = ["procgen", "stable-baselines3"]
@@ -4198,7 +4269,7 @@ pybullet = ["pybullet"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8.0,<3.10"
-content-hash = "66872771705c45540fa3772570a809980c457d04b43cd698dcdbf90d5d6a9112"
+content-hash = "b4b34d0e4f2706b7a78ebfdbb36f921ccbf27cc480ceed78764d1b25b3e75e4d"
 
 [metadata.files]
 absl-py = [
@@ -4210,20 +4281,21 @@ alabaster = [
     {file = "alabaster-0.7.12.tar.gz", hash = "sha256:a661d72d58e6ea8a57f7a86e37d86716863ee5e92788398526d58b26a4e4dc02"},
 ]
 ale-py = [
-    {file = "ale_py-0.7.1-cp36-cp36m-macosx_10_15_x86_64.whl", hash = "sha256:87ef9c69f9f733ff6a963a8ddfdd30a137001acea0e589862845d99a952bccc5"},
-    {file = "ale_py-0.7.1-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e9ef4ec31a279168fc582353dbd29381ba4ecb34ea88d30ada3881393800f041"},
-    {file = "ale_py-0.7.1-cp36-cp36m-win_amd64.whl", hash = "sha256:a3c5c1383ed96cbc088fa4265989b64669f30e1133da641f0e82bbba569bec91"},
-    {file = "ale_py-0.7.1-cp37-cp37m-macosx_10_15_x86_64.whl", hash = "sha256:d86e279905d1a49cd479c9d226fb54350508dd57f715e1e1fe25c9260f3beda6"},
-    {file = "ale_py-0.7.1-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d6e0b3da7086a96980df8a5a223e093d7a3494ba67b0f30f261c1a5c3fea9b0f"},
-    {file = "ale_py-0.7.1-cp37-cp37m-win_amd64.whl", hash = "sha256:6a68fd28f1d4638e8c4efb3744e666fd2e93660f94cb8b6be68673c16c61fc73"},
-    {file = "ale_py-0.7.1-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:23832e8ffef7e4bfcf5ee0d11f70e238463669b7d07c9bc597a6c80f8f84a77e"},
-    {file = "ale_py-0.7.1-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:b22109420e714508f1d540d2785ebb8763a6790d32f2ca34080812c9ddb15286"},
-    {file = "ale_py-0.7.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6e467872ef5a3bded5f0c0f7d1224068bd5909f71ebc0b5edc5ef38727edde22"},
-    {file = "ale_py-0.7.1-cp38-cp38-win_amd64.whl", hash = "sha256:e9de91b7d368e46c953a1b9c82eb78cc58f253a2ff37ad1df46cf1ee4f96b587"},
-    {file = "ale_py-0.7.1-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:e14dcf385cdba26092353d1bc8256044dd5b3a6c659a8c097b6d279b5249b806"},
-    {file = "ale_py-0.7.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:82d1475e167665851b07eadafc910424c2387bdb48a3175d443dae6aed0baeec"},
-    {file = "ale_py-0.7.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5aed028f8de3a851e8738dfa9ef69036f41de4b15040ffef6b4b0e788c2d3899"},
-    {file = "ale_py-0.7.1-cp39-cp39-win_amd64.whl", hash = "sha256:60882e3f3ec08f4de0999d9a5c02495a943d3609299fa1833dc2eb98c21005fb"},
+    {file = "ale_py-0.7.2-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:9524cbe1573f516711a5a30771d1923401cb13123ab265a30b2fcd76531bc082"},
+    {file = "ale_py-0.7.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:cf92de07a384c5ffbd2b3468793f8ef5061d7e27ff9b1731c2b4406349ca889c"},
+    {file = "ale_py-0.7.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:72157fa88ef9d364ac7a3c75c489768c705e43e38da8c2ba3c2336f29d2927c7"},
+    {file = "ale_py-0.7.2-cp310-cp310-win_amd64.whl", hash = "sha256:948929b0cea4d50b85a82230596b40cfa05117f18a21ae006a34748856bcb1ea"},
+    {file = "ale_py-0.7.2-cp37-cp37m-macosx_10_15_x86_64.whl", hash = "sha256:a6a229eccd8f8dacc8ff0e8e5baba66a0b228c33971529f49c87a6cbbea6b81f"},
+    {file = "ale_py-0.7.2-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8ce4d2be56273e3fa4dcdcf6c74f6ff6b61b8a6bf5ec4f13d98b349088cad71f"},
+    {file = "ale_py-0.7.2-cp37-cp37m-win_amd64.whl", hash = "sha256:e8ce7c19a5be84d3c98df082dd5a67adba9bda49a700cd8cc64c1f7ec8b7732f"},
+    {file = "ale_py-0.7.2-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:df12e4d194c8a0bb748c75f68b6d88f8e36677aa37ddf108560e53d3bb2d70ed"},
+    {file = "ale_py-0.7.2-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:0fb7d5d7b0245facd5c9294ecdabee401d41294311f5232d900e6849795fffe0"},
+    {file = "ale_py-0.7.2-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:dfc116d66661b0ba034d41f8857146bb65f0b15aa1a2615c0a0df126ec53f00d"},
+    {file = "ale_py-0.7.2-cp38-cp38-win_amd64.whl", hash = "sha256:9ca02a7f60beb80d4496ec810e742de456904f79d5b25f3d583b2c9ba12b1317"},
+    {file = "ale_py-0.7.2-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:542d56b6ec02420ed417ec212a15ffb5c1e7044d165202f3b5f892357242b359"},
+    {file = "ale_py-0.7.2-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:bc08b02708d2378aaaf4eb4f6e45b4e5cec707475b002113f99d15ac073afb5b"},
+    {file = "ale_py-0.7.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3262306c2ba92fe8b10e2ed0720b9b5fae907884c319128fa587a0a00bb818c2"},
+    {file = "ale_py-0.7.2-cp39-cp39-win_amd64.whl", hash = "sha256:9a6ddb684ca86fa4501de11d600f9c6ea2a97634f9a761ac1a90dcd2f48489a1"},
 ]
 applaunchservices = [
     {file = "applaunchservices-0.2.1-py3-none-any.whl", hash = "sha256:a3f942e3063f7e80beec06cc9d5a2b2b3a223484def7f9eb5c6da20a0cbc5b72"},
@@ -4256,6 +4328,10 @@ autopep8 = [
 autorom = [
     {file = "AutoROM-0.3.1.tar.gz", hash = "sha256:a4b1d7f0aa81e7a3c262d2af5b97be97c2002368b159d0193236c298c94bd8a3"},
 ]
+awscli = [
+    {file = "awscli-1.20.57-py3-none-any.whl", hash = "sha256:a1829a4b23e2303dd35ebaeb8faed95377c32085ff1c4a8866424ac8e9e5b52c"},
+    {file = "awscli-1.20.57.tar.gz", hash = "sha256:613435598f68e4075648a2464d84924e5bd0ccb68b7ddbfa1cb3e1e823a62fc7"},
+]
 babel = [
     {file = "Babel-2.9.1-py2.py3-none-any.whl", hash = "sha256:ab49e12b91d937cd11f0b67cb259a57ab4ad2b59ac7a3b41d6c06c0ac5b0def9"},
     {file = "Babel-2.9.1.tar.gz", hash = "sha256:bc0c176f9f6a994582230df350aa6e05ba2ebe4b3ac317eab29d9be5d2768da0"},
@@ -4284,6 +4360,14 @@ black = [
 bleach = [
     {file = "bleach-4.1.0-py2.py3-none-any.whl", hash = "sha256:4d2651ab93271d1129ac9cbc679f524565cc8a1b791909c4a51eac4446a15994"},
     {file = "bleach-4.1.0.tar.gz", hash = "sha256:0900d8b37eba61a802ee40ac0061f8c2b5dee29c1927dd1d233e075ebf5a71da"},
+]
+boto3 = [
+    {file = "boto3-1.18.57-py3-none-any.whl", hash = "sha256:3e6176b3ccdd039427f63365bdf25c312ec9e88cc72ba907beea006ccf32116b"},
+    {file = "boto3-1.18.57.tar.gz", hash = "sha256:56a4c68a4ee131527e8bd65ab71270b06d985e6687ef27e9dfa992250fcc4c15"},
+]
+botocore = [
+    {file = "botocore-1.21.57-py3-none-any.whl", hash = "sha256:2a00acb822b148abf6a452c10c5f0b85d245e4bde7a0465ca2a5f8c990c07fc1"},
+    {file = "botocore-1.21.57.tar.gz", hash = "sha256:4fd374e2dad91b2375db08e0c8a0bbd03b5e741b7dc4c5e730a544993cc46850"},
 ]
 cachetools = [
     {file = "cachetools-4.2.4-py3-none-any.whl", hash = "sha256:92971d3cb7d2a97efff7c7bb1657f21a8f5fb309a37530537c71b1774189f2d1"},
@@ -4357,8 +4441,8 @@ cloudpickle = [
     {file = "cloudpickle-2.0.0.tar.gz", hash = "sha256:5cd02f3b417a783ba84a4ec3e290ff7929009fe51f6405423cfccfadd43ba4a4"},
 ]
 colorama = [
-    {file = "colorama-0.4.4-py2.py3-none-any.whl", hash = "sha256:9f47eda37229f68eee03b24b9748937c7dc3868f906e8ba69fbcbdd3bc5dc3e2"},
-    {file = "colorama-0.4.4.tar.gz", hash = "sha256:5941b2b48a20143d2267e95b1c2a7603ce057ee39fd88e7329b0c292aa16869b"},
+    {file = "colorama-0.4.3-py2.py3-none-any.whl", hash = "sha256:7d73d2a99753107a36ac6b455ee49046802e59d9d076ef8e47b61499fa29afff"},
+    {file = "colorama-0.4.3.tar.gz", hash = "sha256:e96da0d330793e2cb9485e9ddfd918d456036c7149416295932478192f4436a1"},
 ]
 configparser = [
     {file = "configparser-5.0.2-py3-none-any.whl", hash = "sha256:af59f2cdd7efbdd5d111c1976ecd0b82db9066653362f0962d7bf1d3ab89a1fa"},
@@ -4434,8 +4518,9 @@ docker-pycreds = [
     {file = "docker_pycreds-0.4.0-py2.py3-none-any.whl", hash = "sha256:7266112468627868005106ec19cd0d722702d2b7d5912a28e19b826c3d37af49"},
 ]
 docutils = [
-    {file = "docutils-0.17.1-py2.py3-none-any.whl", hash = "sha256:cf316c8370a737a022b72b56874f6602acf974a37a9fba42ec2876387549fc61"},
-    {file = "docutils-0.17.1.tar.gz", hash = "sha256:686577d2e4c32380bb50cbb22f575ed742d58168cee37e99117a854bcd88f125"},
+    {file = "docutils-0.15.2-py2-none-any.whl", hash = "sha256:9e4d7ecfc600058e07ba661411a2b7de2fd0fafa17d1a7f7361cd47b1175c827"},
+    {file = "docutils-0.15.2-py3-none-any.whl", hash = "sha256:6c4f696463b79f1fb8ba0c594b63840ebd41f059e92b31957c46b74a4599b6d0"},
+    {file = "docutils-0.15.2.tar.gz", hash = "sha256:a2aeea129088da402665e92e0b25b04b073c04b2dce4ab65caaa38b7ce2e1a99"},
 ]
 entrypoints = [
     {file = "entrypoints-0.3-py2.py3-none-any.whl", hash = "sha256:589f874b313739ad35be6e0cd7efde2a4e9b6fea91edcc34e58ecbb8dbe56d19"},
@@ -4610,6 +4695,10 @@ jinja2 = [
 jinja2-time = [
     {file = "jinja2-time-0.2.0.tar.gz", hash = "sha256:d14eaa4d315e7688daa4969f616f226614350c48730bfa1692d2caebd8c90d40"},
     {file = "jinja2_time-0.2.0-py2.py3-none-any.whl", hash = "sha256:d3eab6605e3ec8b7a0863df09cc1d23714908fa61aa6986a845c20ba488b4efa"},
+]
+jmespath = [
+    {file = "jmespath-0.10.0-py2.py3-none-any.whl", hash = "sha256:cdf6525904cc597730141d61b36f2e4b8ecc257c420fa2f4549bac2c2d0cb72f"},
+    {file = "jmespath-0.10.0.tar.gz", hash = "sha256:b85d0567b8666149a93172712e68920734333c0ce7e89b78b3e987f71e5ed4f9"},
 ]
 jsonschema = [
     {file = "jsonschema-4.0.1-py3-none-any.whl", hash = "sha256:9938802041347f2c62cad2aef59e9a0826cd34584f3609db950efacb4dbf6518"},
@@ -6179,6 +6268,10 @@ rtree = [
     {file = "Rtree-0.9.7-cp39-cp39-manylinux2010_x86_64.whl", hash = "sha256:a935e7a2d25d146b5129d127fc4eedded76e3a4feff989fcedc8e72cbcf2c555"},
     {file = "Rtree-0.9.7-cp39-cp39-win_amd64.whl", hash = "sha256:824a7e4639665a32ffdfd28aa8b090a1dee60fa254f81317634362740be0b2d1"},
     {file = "Rtree-0.9.7.tar.gz", hash = "sha256:be8772ca34699a9ad3fb4cfe2cfb6629854e453c10b3328039301bbfc128ca3e"},
+]
+s3transfer = [
+    {file = "s3transfer-0.5.0-py3-none-any.whl", hash = "sha256:9c1dc369814391a6bda20ebbf4b70a0f34630592c9aa520856bf384916af2803"},
+    {file = "s3transfer-0.5.0.tar.gz", hash = "sha256:50ed823e1dc5868ad40c8dc92072f757aa0e653a192845c94a3b676f4a62da4c"},
 ]
 scipy = [
     {file = "scipy-1.7.1-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:2a0eeaab01258e0870c4022a6cd329aef3b7c6c2b606bd7cf7bb2ba9820ae561"},
