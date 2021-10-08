@@ -11,7 +11,7 @@ from distutils.util import strtobool
 import matplotlib as mpl
 sns.set_style("whitegrid")
 mpl.rcParams['text.usetex'] = True
-mpl.rcParams['text.latex.preamble'] = [r'\usepackage{amsmath}'] #for \text command
+mpl.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}' #for \text command
 
 parser = argparse.ArgumentParser(description='CleanRL Plots')
 # Common arguments
