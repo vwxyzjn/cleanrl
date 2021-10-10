@@ -102,7 +102,7 @@ class QNetwork(nn.Module):
         )
 
     def forward(self, x):
-        return self.network(x / 255.0)
+        return self.network(x)
 
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
