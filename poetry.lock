@@ -511,7 +511,7 @@ protobuf = ["grpcio-tools (>=1.41.0)"]
 
 [[package]]
 name = "gym"
-version = "0.20.0"
+version = "0.21.0"
 description = "Gym: A universal API for reinforcement learning environments."
 category = "main"
 optional = false
@@ -522,12 +522,13 @@ cloudpickle = ">=1.2.0"
 numpy = ">=1.18.0"
 
 [package.extras]
-all = ["ale-py (>=0.7,<1.0)", "mujoco_py (>=1.50,<2.0)", "box2d-py (==2.3.5)", "scipy (>=1.4.1)", "pyglet (>=1.4.0)", "opencv-python (>=3)", "lz4 (>=3.1.0)"]
-atari = ["ale-py (>=0.7,<1.0)"]
+accept-rom-license = ["autorom[accept-rom-license] (>=0.4.2,<0.5.0)"]
+all = ["mujoco_py (>=1.50,<2.0)", "lz4 (>=3.1.0)", "opencv-python (>=3)", "ale-py (>=0.7.1,<0.8.0)", "pyglet (>=1.4.0)", "scipy (>=1.4.1)", "box2d-py (==2.3.5)", "pyglet (>=1.4.0)", "ale-py (>=0.7.1,<0.8.0)", "lz4 (>=3.1.0)", "opencv-python (>=3)", "pyglet (>=1.4.0)", "box2d-py (==2.3.5)", "pyglet (>=1.4.0)", "scipy (>=1.4.1)", "mujoco_py (>=1.50,<2.0)"]
+atari = ["ale-py (>=0.7.1,<0.8.0)"]
 box2d = ["box2d-py (==2.3.5)", "pyglet (>=1.4.0)"]
 classic_control = ["pyglet (>=1.4.0)"]
 mujoco = ["mujoco_py (>=1.50,<2.0)"]
-nomujoco = ["ale-py (>=0.7,<1.0)", "box2d-py (==2.3.5)", "scipy (>=1.4.1)", "pyglet (>=1.4.0)", "opencv-python (>=3)", "lz4 (>=3.1.0)"]
+nomujoco = ["lz4 (>=3.1.0)", "opencv-python (>=3)", "ale-py (>=0.7.1,<0.8.0)", "pyglet (>=1.4.0)", "scipy (>=1.4.1)", "box2d-py (==2.3.5)", "pyglet (>=1.4.0)"]
 other = ["lz4 (>=3.1.0)", "opencv-python (>=3)"]
 robotics = ["mujoco_py (>=1.50,<2.0)"]
 toy_text = ["scipy (>=1.4.1)"]
@@ -4198,7 +4199,7 @@ pybullet = ["pybullet"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8.0,<3.10"
-content-hash = "66872771705c45540fa3772570a809980c457d04b43cd698dcdbf90d5d6a9112"
+content-hash = "969d58d0fd8fa9381e0d98a6b314d299a447350734313ae88fccfd0f674a117b"
 
 [metadata.files]
 absl-py = [
@@ -4458,6 +4459,11 @@ gitpython = [
     {file = "GitPython-3.1.24.tar.gz", hash = "sha256:df83fdf5e684fef7c6ee2c02fc68a5ceb7e7e759d08b694088d0cacb4eba59e5"},
 ]
 glcontext = [
+    {file = "glcontext-2.3.4-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:e558960888be5a4aa8e2f6f43b5320a227c8519bc3517bf7202cb40925114a6d"},
+    {file = "glcontext-2.3.4-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8983f0eae99c4ec04ece197537d3914a2c9e21f074bd518f21ce3c4be6d300cb"},
+    {file = "glcontext-2.3.4-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_24_x86_64.whl", hash = "sha256:5e9289db306a4255328128cea0d250e078c9546678659499f5d1e819924e2225"},
+    {file = "glcontext-2.3.4-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_27_x86_64.whl", hash = "sha256:1ca421ca610b4c3da6e41be28585839af48fd961a0f2f4c8f3377a445e9b016a"},
+    {file = "glcontext-2.3.4-cp310-cp310-win_amd64.whl", hash = "sha256:821f354c60ea82e73d3d5f788c22c31e60af578b0d4fd6aa9329a770ca966257"},
     {file = "glcontext-2.3.4-cp36-cp36m-macosx_10_14_x86_64.whl", hash = "sha256:1af3314f20c97fa2a8fc6d2b68d597463066416a7cc3c1ea4f05b4ecb0fc3e9c"},
     {file = "glcontext-2.3.4-cp36-cp36m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:3e1ef7e93a6a0f8b89a76fb41c58af4d9e69686504785883b628f0eeee29b153"},
     {file = "glcontext-2.3.4-cp36-cp36m-win32.whl", hash = "sha256:448bafceaad2716a260fce53f171f168546691dddd18c1d4532c8d0e6f305a50"},
@@ -4540,7 +4546,7 @@ grpcio = [
     {file = "grpcio-1.41.0.tar.gz", hash = "sha256:15c04d695833c739dbb25c88eaf6abd9a461ec0dbd32f44bc8769335a495cf5a"},
 ]
 gym = [
-    {file = "gym-0.20.0.tar.gz", hash = "sha256:ca963d003cf8b7db8205865de6f3fed605e17e8e488f55ed9118b7768ea21100"},
+    {file = "gym-0.21.0.tar.gz", hash = "sha256:0fd1ce165c754b4017e37a617b097c032b8c3feb8a0394ccc8777c7c50dddff3"},
 ]
 gym3 = [
     {file = "gym3-0.3.3-py3-none-any.whl", hash = "sha256:bacc0e124f8ce5e1d8a9dceb85725123332954f13ef4e226133506597548838a"},
@@ -4777,6 +4783,9 @@ mistune = [
     {file = "mistune-0.8.4.tar.gz", hash = "sha256:59a3429db53c50b5c6bcc8a07f8848cb00d7dc8bdb431a4ab41920d201d4756e"},
 ]
 moderngl = [
+    {file = "moderngl-5.6.4-cp310-cp310-manylinux_2_24_x86_64.manylinux_2_27_x86_64.whl", hash = "sha256:792ffe1ec233ed5fcfb0c14955a7f944d64c0d49713ff8b9c5fa3176d96f05c3"},
+    {file = "moderngl-5.6.4-cp310-cp310-manylinux_2_24_x86_64.whl", hash = "sha256:1f9ed0bc0d706124a01be2ad59b5774bb3b023e61dcf39faf7c4c7ef4b9f4f75"},
+    {file = "moderngl-5.6.4-cp310-cp310-win_amd64.whl", hash = "sha256:28b517fc56c9ab9eb1f5833f7d7b1274d3719b962f95f55ccd8a0f6db884a92b"},
     {file = "moderngl-5.6.4-cp35-cp35m-macosx_10_9_x86_64.whl", hash = "sha256:bc3764d67f037b67051871345a1d0b7a3d2c19cb5c0c0af0a84c532e802d6642"},
     {file = "moderngl-5.6.4-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:90006d9dfd5333da604a7d26b2a5e70e1a570f291cd745b8bf80e4833d8821b6"},
     {file = "moderngl-5.6.4-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:af44437545380a840dafd09658eb56592831dbd4fb481d320249d0d42c591bae"},
