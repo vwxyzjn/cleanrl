@@ -5,8 +5,8 @@ import os
 import random
 import time
 from distutils.util import strtobool
-
 import gym
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -24,9 +24,9 @@ def parse_args():
         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
         help='the learning rate of the optimizer')
-    parser.add_argument('--seed', type=int, default=1,
+    parser.add_argument('--seed', type=int, default=2,
         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=100000,
+    parser.add_argument('--total-timesteps', type=int, default=300000,
         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -42,17 +42,17 @@ def parse_args():
         help='weather to capture videos of the agent performances (check out `videos` folder)')
 
     # Algorithm specific arguments
-    parser.add_argument('--num-envs', type=int, default=1,
+    parser.add_argument('--num-envs', type=int, default=8,
         help='the number of parallel game environments')
     parser.add_argument('--num-steps', type=int, default=128,
         help='the number of steps to run in each environment per policy rollout')
-    parser.add_argument('--num-minibatches', type=int, default=4,
+    parser.add_argument('--num-minibatches', type=int, default=27,
         help='the number of mini-batches')
-    parser.add_argument('--update-epochs', type=int, default=4,
+    parser.add_argument('--update-epochs', type=int, default=30,
         help="the K epochs to update the policy")
     parser.add_argument('--gamma', type=float, default=0.99,
         help='the discount factor gamma')
-    parser.add_argument('--target-network-frequency', type=int, default=500,
+    parser.add_argument('--target-network-frequency', type=int, default=1000,
         help="the timesteps it takes to update the target network")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
         help='the maximum norm for the gradient clipping')
@@ -95,9 +95,9 @@ class QNetwork(nn.Module):
         super(QNetwork, self).__init__()
         self.network = nn.Sequential(
             layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
-            nn.Tanh(),
+            nn.ReLU(),
             layer_init(nn.Linear(64, 64)),
-            nn.Tanh(),
+            nn.ReLU(),
             layer_init(nn.Linear(64, envs.single_action_space.n), std=0.01),
         )
 
@@ -164,7 +164,7 @@ if __name__ == "__main__":
     next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
-    total_update = 0
+    num_gradient_updates = 0
 
     for update in range(1, num_updates + 1):
         # ROLLOUTS
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         for epoch in range(args.update_epochs):
             np.random.shuffle(b_inds)
             for start in range(0, args.batch_size, args.minibatch_size):
-                total_update += 1
+                num_gradient_updates += 1
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
 
@@ -229,14 +229,14 @@ if __name__ == "__main__":
                 nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
                 optimizer.step()
         
-        # update the target network
-        if update % args.target_network_frequency == 0:
-            print("target_network")
-            target_network.load_state_dict(q_network.state_dict())
+                # update the target network
+                if num_gradient_updates % args.target_network_frequency == 0:
+                    print("target_network")
+                    target_network.load_state_dict(q_network.state_dict())
 
         writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
     
-    print(total_update)
+    print(num_gradient_updates)
 
     envs.close()
     writer.close()
