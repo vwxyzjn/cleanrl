@@ -67,7 +67,7 @@ def parse_args():
         help="the starting epsilon for exploration")
     parser.add_argument('--end-e', type=float, default=0.05,
         help="the ending epsilon for exploration")
-    parser.add_argument('--exploration-fraction', type=float, default=0.8,
+    parser.add_argument('--exploration-fraction', type=float, default=0.1,
         help="the fraction of `total-timesteps` it takes from start-e to go end-e")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
