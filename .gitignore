@@ -1,3 +1,5 @@
+rl-video-*.mp4
+rl-video-*.json
 cleanrl_utils/charts_episode_reward
 tutorials
 .DS_Store
