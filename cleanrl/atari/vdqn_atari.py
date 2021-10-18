@@ -53,9 +53,9 @@ def parse_args():
         help='the number of parallel game environments')
     parser.add_argument('--num-steps', type=int, default=128,
         help='the number of steps to run in each environment per policy rollout')
-    parser.add_argument('--num-minibatches', type=int, default=27,
+    parser.add_argument('--num-minibatches', type=int, default=4,
         help='the number of mini-batches')
-    parser.add_argument('--update-epochs', type=int, default=30,
+    parser.add_argument('--update-epochs', type=int, default=16,
         help="the K epochs to update the policy")
     parser.add_argument('--gamma', type=float, default=0.99,
         help='the discount factor gamma')
