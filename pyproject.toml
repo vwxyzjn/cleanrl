@@ -44,4 +44,3 @@ plot = ["pandas", "seaborn"]
 cloud = ["boto3", "awscli"]
 spyder = ["spyder"]
 pytest = ["pytest"]
-

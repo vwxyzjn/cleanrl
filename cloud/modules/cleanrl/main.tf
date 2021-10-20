@@ -1,16 +1,3 @@
-resource "aws_batch_job_definition" "cleanrl" {
-  name = "cleanrl"
-  type = "container"
-  container_properties = <<CONTAINER_PROPERTIES
-{
-    "image": "vwxyzjn/cleanrl:latest",
-    "memory": 1024,
-    "vcpus": 1
-}
-CONTAINER_PROPERTIES
-}
-
-
 ############
 # On-demand resources
 ############
