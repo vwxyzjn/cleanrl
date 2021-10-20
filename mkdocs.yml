@@ -1,6 +1,14 @@
-site_name: CleanRL Documentation
+site_name: CleanRL
 theme:
   name: material
+  palette:
+    - media: "(prefers-color-scheme: dark)" 
+      scheme: slate
+      primary: red
+      # toggle:
+      #   icon: material/toggle-switch
+      #   name: Switch to light mode
+
 repo_url: https://github.com/vwxyzjn/cleanrl
 repo_name: vwxyzjn/cleanrl
 markdown_extensions:
@@ -8,8 +16,25 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.superfences
   - pymdownx.snippets
-
-
+  # - toc:
+  #     permalink: true
+  # - markdown.extensions.codehilite:
+  #     guess_lang: false
+  # - admonition
+  # - codehilite
+  # - extra
+  # - pymdownx.superfences:
+  #     custom_fences:
+  #     - name: mermaid
+  #       class: mermaid
+  #       format: !!python/name:pymdownx.superfences.fence_code_format ''
+  # - pymdownx.tabbed
+extra_css:
+- css/termynal.css
+- css/custom.css
+extra_javascript:
+- js/termynal.js
+- js/custom.js
 # nav:
 # - Tutorial - User Guide:
 #   - tutorial/index.md
