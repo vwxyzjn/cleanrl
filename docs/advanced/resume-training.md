@@ -1,4 +1,4 @@
-# Setup checkpoints and resume training
+# Resume Training
 
 
 A common question we get asked is how to set up model checkpoints to 

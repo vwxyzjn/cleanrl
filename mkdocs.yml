@@ -54,6 +54,10 @@ nav:
   - CleanRL: index.md
   - Get Started:
     - get-started/installation.md
-  - Advanced Guide:
-    - training-checkpoints.md
+  - Cloud Integration: cloud.md
+  - Advanced:
+    - advanced/resume-training.md
   - RL Algorithms: rl-algorithms.md
+  - Open RL Benchmark: open-rl-benchmark.md
+  - Community: community.md
+  - Contribution: contribution.md
