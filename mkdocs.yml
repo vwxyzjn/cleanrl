@@ -4,10 +4,19 @@ theme:
   palette:
     - media: "(prefers-color-scheme: dark)" 
       scheme: slate
-      primary: red
-      # toggle:
-      #   icon: material/toggle-switch
-      #   name: Switch to light mode
+      primary: teal
+      accent: light green
+      toggle:
+        icon: material/lightbulb
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)" 
+      scheme: default
+      primary: green
+      accent: deep orange
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to dark mode
+
 
 repo_url: https://github.com/vwxyzjn/cleanrl
 repo_name: vwxyzjn/cleanrl
