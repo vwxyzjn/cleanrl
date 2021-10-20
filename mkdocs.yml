@@ -1,6 +1,8 @@
 site_name: CleanRL
 theme:
   name: material
+  features:
+    - navigation.instant
   palette:
     - media: "(prefers-color-scheme: dark)" 
       scheme: slate
@@ -44,6 +46,10 @@ extra_css:
 extra_javascript:
 - js/termynal.js
 - js/custom.js
-# nav:
-# - Tutorial - User Guide:
-#   - tutorial/index.md
+nav:
+  - CleanRL: index.md
+  - Get Started:
+    - get-started/installation.md
+  - Advanced Guide:
+    - training-checkpoints.md
+  - RL Algorithms: rl-algorithms.md
