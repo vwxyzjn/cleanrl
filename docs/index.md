@@ -30,9 +30,7 @@ Prerequisites:
 * Python 3.8+
 * [Poetry](https://python-poetry.org)
 
-To run experiments locally, give the following a try:
-
-
+## Installation
 
 <div class="termy">
 
@@ -44,6 +42,10 @@ $ poetry install
 ```
 
 </div>
+
+## Run it 
+
+To run experiments locally, give the following a try:
 
 
 
