@@ -38,7 +38,7 @@ poetry install
 poetry run python cleanrl/ppo.py \
     --seed 1 \
     --gym-id CartPole-v0 \
-    --total-timesteps 50000
+    --total-timesteps 50000 \
     --capture-video
 
 # open another temrminal and enter `cd cleanrl/cleanrl`
@@ -46,16 +46,17 @@ tensorboard --logdir runs
 # check out the videos of the agent's gameplay in the `videos` folder
 ```
 
-To use experiment tracking with wandb, run
+<script id="asciicast-443622" src="https://asciinema.org/a/443622.js" async></script>
+
+To use experiment tracking with wandb, run with the `--track` flag, which will
+upload the videos recorded by the `--capture-video` flag.
 ```bash
+poetry shell
 wandb login # only required for the first time
-poetry run python cleanrl/ppo.py \
-    --seed 1 \
-    --gym-id CartPole-v0 \
-    --total-timesteps 50000 \
-    --track \
-    --wandb-project-name cleanrltest
+python cleanrl/ppo.py --track --capture-video
 ```
+
+<script id="asciicast-443626" src="https://asciinema.org/a/443626.js" async></script>
 
 To run training scripts in other games:
 ```
@@ -87,6 +88,7 @@ python cleanrl/ppg_procgen.py --gym-id starpilot
 python cleanrl/ppg_procgen_impala_cnn.py --gym-id starpilot
 ```
 
+<script id="asciicast-443625" src="https://asciinema.org/a/443625.js" async></script>
 
 
 

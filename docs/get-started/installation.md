@@ -10,15 +10,10 @@ Prerequisites:
 
 Clone the repository
 
-<div class="termy">
 
-
-```console
-$ git clone https://github.com/vwxyzjn/cleanrl.git && cd cleanrl
-$ poetry install
-
----> 100%
-
+```bash
+git clone https://github.com/vwxyzjn/cleanrl.git && cd cleanrl
+poetry install
 ```
 
-</div>
+<script id="asciicast-443622" src="https://asciinema.org/a/443622.js" async></script>
