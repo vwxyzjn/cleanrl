@@ -4290,11 +4290,12 @@ pettingzoo = ["pettingzoo", "stable-baselines3", "pygame", "pymunk"]
 plot = ["pandas", "seaborn"]
 procgen = ["procgen", "stable-baselines3"]
 pybullet = ["pybullet"]
+spyder = ["spyder"]
 
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8.0,<3.10"
-content-hash = "3119d7bfccc82da0484ac7b43de72ded712b419d5b050d118553c6d2e4e53085"
+content-hash = "790c1ddfe358949cfdcc982ed880bc91f1bed18cfcc165e5aa01ab1fbb9c34f8"
 
 [metadata.files]
 absl-py = [
