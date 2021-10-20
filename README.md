@@ -64,23 +64,32 @@ poetry run python cleanrl/ppo.py \
 
 To run training scripts in other games:
 ```
-# atari
 poetry shell
+
+# classic control
+python cleanrl/dqn.py --gym-id CartPole-v1
+python cleanrl/ppo.py --gym-id CartPole-v1
+python cleanrl/c51.py --gym-id CartPole-v1
+
+# atari
 poetry install -E atari
-AutoROM
-python cleanrl/dqn_atari.py --gym-id BeamRiderNoFrameskip-v4
-python cleanrl/c51_atari.py --gym-id BeamRiderNoFrameskip-v4
-python cleanrl/ppo_atari.py --gym-id BeamRiderNoFrameskip-v4
+python cleanrl/dqn_atari.py --gym-id BreakoutNoFrameskip-v4
+python cleanrl/c51_atari.py --gym-id BreakoutNoFrameskip-v4
+python cleanrl/ppo_atari.py --gym-id BreakoutNoFrameskip-v4
+python cleanrl/apex_dqn_atari.py --gym-id BreakoutNoFrameskip-v4
+
 # pybullet
 poetry install -E pybullet
 python cleanrl/td3_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
 python cleanrl/ddpg_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
+python cleanrl/sac_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
+
 # procgen
 poetry install -E procgen
 python cleanrl/ppo_procgen.py --gym-id starpilot
-<!-- # pettingzoo
-poetry install -E pettingzoo
-python cleanrl/ppo_pettingzoo.py -->
+python cleanrl/ppo_procgen_impala_cnn.py --gym-id starpilot
+python cleanrl/ppg_procgen.py --gym-id starpilot
+python cleanrl/ppg_procgen_impala_cnn.py --gym-id starpilot
 ```
 
 
