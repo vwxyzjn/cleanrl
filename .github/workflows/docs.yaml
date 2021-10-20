@@ -4,6 +4,7 @@ on:
     branches: 
       - master
       - main
+      - documentation-site
 jobs:
   deploy:
     runs-on: ubuntu-latest
