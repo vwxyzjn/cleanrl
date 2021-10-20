@@ -3,6 +3,10 @@ theme:
   name: material
   features:
     - navigation.instant
+    - navigation.tabs
+    - navigation.top
+    - search.suggest
+    - search.highlight
   palette:
     - media: "(prefers-color-scheme: dark)" 
       scheme: slate
