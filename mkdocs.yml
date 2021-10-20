@@ -1,0 +1,15 @@
+site_name: CleanRL Documentation
+theme:
+  name: material
+repo_url: https://github.com/vwxyzjn/cleanrl
+repo_name: vwxyzjn/cleanrl
+markdown_extensions:
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.snippets
+
+
+# nav:
+# - Tutorial - User Guide:
+#   - tutorial/index.md
