@@ -31,6 +31,7 @@ repo_url: https://github.com/vwxyzjn/cleanrl
 repo_name: vwxyzjn/cleanrl
 #markdown_extensions 
 markdown_extensions:
+  - abbr
   - pymdownx.highlight
   - pymdownx.inlinehilite
   - pymdownx.superfences
@@ -70,7 +71,7 @@ nav:
   - Open RL Benchmark: open-rl-benchmark.md
   - Community: community.md
   - Contribution: contribution.md
-  #footer
+#footer
 extra:
   social:
     - icon: fontawesome/solid/envelope

@@ -1,5 +1,4 @@
-## Example
-
+# Examples
 
 To run training scripts in other games:
 ```

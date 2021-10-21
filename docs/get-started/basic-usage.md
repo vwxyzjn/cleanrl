@@ -1,5 +1,6 @@
-## Basic Usage
+# Basic Usage
 
+## Two Ways to Run
 After the dependencies have been installed, there are two ways to run 
 the CleanRL script under the poetry virtual environments.
 
@@ -12,6 +13,7 @@ the CleanRL script under the poetry virtual environments.
         --total-timesteps 50000
     ```
     <script id="asciicast-443649" src="https://asciinema.org/a/443649.js" async></script>
+
 
 2. Using `poetry shell`:
 
@@ -47,8 +49,6 @@ into the `runs` folder. So, after running the training script above, feel free t
 ```bash
 tensorboard --logdir runs
 ```
-
-
 
 ![Tensorboard](tensorboard.png)
 

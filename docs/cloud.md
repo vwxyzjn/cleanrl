@@ -4,7 +4,7 @@ We package our code into a docker container and use AWS Batch to
 run thousands of experiments concurrently. To make the infrastructure
 easy to manage and reproducible, we use Terraform to spin up services.
 
-# Get Started
+## Get Started
 
 ```bash
 # install dependencies
