@@ -4,6 +4,7 @@ theme:
   features:
     - navigation.instant
     # - navigation.tabs
+    - navigation.expand
     - navigation.top
     - search.suggest
     - search.highlight
@@ -23,9 +24,12 @@ theme:
         icon: material/lightbulb-outline
         name: Switch to dark mode
 
-
+plugins:
+  - search
+#adding git repo
 repo_url: https://github.com/vwxyzjn/cleanrl
 repo_name: vwxyzjn/cleanrl
+#markdown_extensions 
 markdown_extensions:
   - pymdownx.highlight
   - pymdownx.inlinehilite
@@ -66,3 +70,14 @@ nav:
   - Open RL Benchmark: open-rl-benchmark.md
   - Community: community.md
   - Contribution: contribution.md
+  #footer
+extra:
+  social:
+    - icon: fontawesome/solid/envelope
+      link: mailto:costa.huang@live.com
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/vwxyzjn
+    - icon: fontawesome/brands/github
+      link: https://github.com/vwxyzjn/cleanrl
+copyright: Copyright &copy; 2021, CleanRL. All rights reserved.
+
