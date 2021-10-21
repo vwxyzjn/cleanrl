@@ -3,7 +3,7 @@ theme:
   name: material
   features:
     - navigation.instant
-    - navigation.tabs
+    # - navigation.tabs
     - navigation.top
     - search.suggest
     - search.highlight
@@ -48,13 +48,12 @@ markdown_extensions:
   #       format: !!python/name:pymdownx.superfences.fence_code_format ''
   # - pymdownx.tabbed
 extra_css:
-- css/termynal.css
-- css/custom.css
-extra_javascript:
-- js/termynal.js
-- js/custom.js
+  - stylesheets/extra.css
+# extra_javascript:
+#   - js/termynal.js
+#   - js/custom.js
 nav:
-  - CleanRL: index.md
+  - Overview: index.md
   - Get Started:
     - get-started/installation.md
     - get-started/basic-usage.md
