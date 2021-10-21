@@ -31,6 +31,9 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - pymdownx.superfences
   - pymdownx.snippets
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
   # - toc:
   #     permalink: true
   # - markdown.extensions.codehilite:
@@ -54,6 +57,7 @@ nav:
   - CleanRL: index.md
   - Get Started:
     - get-started/installation.md
+    - get-started/basic-usage.md
     - get-started/experiment-tracking.md
     - get-started/examples.md
   - Cloud Integration: cloud.md
