@@ -1,4 +1,4 @@
-# Experiment Tracking
+## Experiment Tracking
 
 To use experiment tracking with wandb, run with the `--track` flag, which will
 upload the videos recorded by the `--capture-video` flag.

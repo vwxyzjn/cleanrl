@@ -1,4 +1,4 @@
-# Basic Usage
+## Basic Usage
 
 After the dependencies have been installed, there are two ways to run 
 the CleanRL script under the poetry virtual environments.
@@ -39,7 +39,7 @@ the CleanRL script under the poetry virtual environments.
     **We will assume to run other commands (e.g. `tensorboard`) in the documentation within the poetry's shell.**
 
 
-### Visualize Training Metrics
+## Visualize Training Metrics
 
 By default, the CleanRL scripts record all the training metrics via Tensorboard
 into the `runs` folder. So, after running the training script above, feel free to run
@@ -53,7 +53,7 @@ tensorboard --logdir runs
 ![Tensorboard](tensorboard.png)
 
 
-### Visualize the Agent's Gameplay Videos
+## Visualize the Agent's Gameplay Videos
 
 CleanRL helps record the agent's gameplay videos with a `--capture-video` flag,
 which will save the videos in the `videos/{$run_name}` folder.
