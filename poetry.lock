@@ -4334,8 +4334,8 @@ spyder = ["spyder"]
 
 [metadata]
 lock-version = "1.1"
-python-versions = ">=3.7.9,<3.10"
-content-hash = "d82c6c69076bd8b01ffe684c49cc258248aedb02a304749a47d3ba6211ed8b15"
+python-versions = ">=3.7.1,<3.10"
+content-hash = "16e94acc583bb8ff464165b230afd17264ce2415f5d43f87d4dc8498544288b2"
 
 [metadata.files]
 absl-py = [
