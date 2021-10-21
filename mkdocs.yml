@@ -51,9 +51,11 @@ extra_javascript:
 - js/termynal.js
 - js/custom.js
 nav:
-  - CleanRL: index.md
   - Get Started:
+    - CleanRL: index.md
     - get-started/installation.md
+    - get-started/experiment-tracking.md
+    - get-started/examples.md
   - Cloud Integration: cloud.md
   - Advanced:
     - advanced/resume-training.md
