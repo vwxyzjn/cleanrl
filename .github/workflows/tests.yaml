@@ -26,10 +26,12 @@ jobs:
       - name: Run tests
         run: poetry run pytest tests/test_classic_control.py 
 
-      # classic control tests
+      # atari tests
       - name: Remove Existing Poetry Environment
         run: poetry env remove python
+      - name: Install dependencies
+        run: poetry install -E pytest
       - name: Install Atari dependencies
-        run: poetry install -E pytest atari
+        run: poetry install -E atari
       - name: Run tests
         run: poetry run pytest tests/test_atari.py 
