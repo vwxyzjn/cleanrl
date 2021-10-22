@@ -21,17 +21,27 @@ jobs:
           poetry-version: ${{ matrix.poetry-version }}
 
       # classic control tests
-      - name: Install dependencies
+      - name: Install core dependencies
         run: poetry install -E pytest
-      - name: Run tests
-        run: poetry run pytest tests/test_classic_control.py 
+      - name: Run core tests
+        run: poetry run pytest tests/test_classic_control.py
 
       # atari tests
-      - name: Remove Existing Poetry Environment
+      - name: Remove existing poetry environment
         run: poetry env remove python
-      - name: Install dependencies
+      - name: Install core dependencies
         run: poetry install -E pytest
-      - name: Install Atari dependencies
+      - name: Install atari dependencies
         run: poetry install -E atari
-      - name: Run tests
-        run: poetry run pytest tests/test_atari.py 
+      - name: Run atari tests
+        run: poetry run pytest tests/test_atari.py
+
+      # pybullet tests
+      - name: Remove existing poetry environment
+        run: poetry env remove python
+      - name: Install core dependencies
+        run: poetry install -E pytest
+      - name: Install pybullet dependencies
+        run: poetry install -E pybullet
+      - name: Run pybullet tests
+        run: poetry run pytest tests/test_pybullet.py
