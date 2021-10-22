@@ -22,4 +22,4 @@ jobs:
       - name: Install dependencies
         run: poetry install -E atari
       - name: Run tests
-        run: poetry run pytest tests/test_classic_control.py 
+        run: poetry run python tests/test_classic_control.py 
