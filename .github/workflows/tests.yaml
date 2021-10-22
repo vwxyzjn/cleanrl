@@ -6,7 +6,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8]
+        python-version: [3.8]
         poetry-version: [1.1.11]
         os: [ubuntu-18.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
@@ -20,6 +20,6 @@ jobs:
         with:
           poetry-version: ${{ matrix.poetry-version }}
       - name: Install dependencies
-        run: poetry install
+        run: poetry install -E atari
       - name: Run tests
         run: poetry run pytest tests/test_classic_control.py 
