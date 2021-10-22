@@ -19,7 +19,17 @@ jobs:
         uses: abatilo/actions-poetry@v2.0.0
         with:
           poetry-version: ${{ matrix.poetry-version }}
+
+      # classic control tests
       - name: Install dependencies
         run: poetry install -E pytest
       - name: Run tests
         run: poetry run pytest tests/test_classic_control.py 
+
+      # classic control tests
+      - name: Remove Existing Poetry Environment
+        run: poetry env remove python
+      - name: Install Atari dependencies
+        run: poetry install -E pytest atari
+      - name: Run tests
+        run: poetry run pytest tests/test_atari.py 
