@@ -20,6 +20,6 @@ jobs:
         with:
           poetry-version: ${{ matrix.poetry-version }}
       - name: Install dependencies
-        run: poetry install -E atari
+        run: poetry install -E pytest
       - name: Run tests
-        run: poetry run python tests/test_classic_control.py 
+        run: poetry run pytest tests/test_classic_control.py 
