@@ -195,6 +195,8 @@ for global_step in range(args.total_timesteps):
     # ALGO LOGIC: training.
     rb.put((obs, action, reward, next_obs, done))
     if global_step > args.learning_starts:
+
+        print(f"hello")
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         with torch.no_grad():
             next_state_actions = (

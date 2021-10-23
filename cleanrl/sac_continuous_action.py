@@ -256,6 +256,7 @@ for global_step in range(1, args.total_timesteps+1):
 
     # ALGO LOGIC: training.
     if len(rb.buffer) > args.batch_size: # starts update as soon as there is enough data.
+        print(f"hello")
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         with torch.no_grad():
             next_state_actions, next_state_log_pi, _ = pg.get_action(s_next_obses, device)
