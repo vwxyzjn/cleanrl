@@ -7,6 +7,8 @@ import requests
 import json
 import wandb
 import argparse
+import subprocess
+import multiprocessing
 from distutils.util import strtobool
 client = boto3.client('batch')
 
@@ -51,18 +53,11 @@ parser.add_argument('--submit-aws', type=lambda x:bool(strtobool(x)), default=Fa
 
 args = parser.parse_args()
 
-final_str = f'''
-for seed in {{1..{args.num_seed}}}
-do
-    (sleep 0.3 && nohup xvfb-run -a python {args.algo} \\
-    {args.other_args} \\
-    --seed $seed
-    ) >& /dev/null &
-done
-'''
-
-with open(f"{args.exp_script}", "w+") as f:
-    f.write(final_str)
+subprocess.run(
+    f"docker build -t {args.docker_repo} .",
+    shell=True,
+    check=True,
+)
 
 if not args.wandb_key:
     args.wandb_key = requests.utils.get_netrc_auth("https://api.wandb.ai")[-1]
@@ -70,24 +65,18 @@ assert len(args.wandb_key) > 0, "you have not logged into W&B; try do `wandb log
 
 # extract runs from bash scripts
 final_run_cmds = []
-with open(args.exp_script) as f:
-    strings = f.read()
-runs_match = re.findall('(python)(.+)((?:\n.+)+)(seed)',strings)
-for run_match in runs_match:
-    run_match_str = "".join(run_match).replace("\\\n", "")
-    # print(run_match_str)
-    for seed in range(1,1+args.num_seed):
-        final_run_cmds += [run_match_str.replace("$seed", str(seed)).split()]
-        if args.upload_files_baseurl:
-            file_name = final_run_cmds[-1][1]
-            link = args.upload_files_baseurl + '/' + file_name
-            final_run_cmds[-1] = ['curl', '-O', link, ';'] + final_run_cmds[-1]
+for seed in range(1,1+args.num_seed):
+    final_run_cmds += [["python", args.algo, args.other_args, "--seed", str(seed)]]
+    if args.upload_files_baseurl:
+        file_name = final_run_cmds[-1][1]
+        link = args.upload_files_baseurl + '/' + file_name
+        final_run_cmds[-1] = ['curl', '-O', link, ';'] + final_run_cmds[-1]
 
 
 run_ids = [wandb.util.generate_id() for _ in range (args.num_seed)]
 
 final_str = ""
-cores = 40
+cores = multiprocessing.cpu_count()
 current_core = 0
 for run_id, final_run_cmd in zip(run_ids, final_run_cmds):
     run_command = (f'docker run -d --cpuset-cpus="{current_core}" -e WANDB={args.wandb_key} -e WANDB_RESUME=allow -e WANDB_RUN_ID={run_id} {args.docker_repo} ' + 

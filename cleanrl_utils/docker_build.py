@@ -1,8 +1,14 @@
-import docker
-client = docker.from_env()
+import subprocess
+import argparse
 
-client.images.build(
-    path = './project/src/app/target/',
-    dockerfile = '../../../Dockerfile/Dockerfile.name',
-    tag='image:version',
+parser = argparse.ArgumentParser()
+parser.add_argument('--tag', type=str, default="cleanrl:latest",
+    help='the name of this experiment')
+args = parser.parse_args()
+
+subprocess.run(
+    f"docker build -t {args.tag} .",
+    shell=True,
+    check=True,
 )
+
