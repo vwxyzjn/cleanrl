@@ -16,4 +16,14 @@ provider "aws" {
 
 module "cleanrl" {
   source = "./modules/cleanrl"
+  spot_bid_percentage = "50"
+  instance_types = [
+    "g4dn.4xlarge", # 16 vCPU, 64GB, $1.204, GPU
+    "g4dn.xlarge",  # 4 vCPU, 16GB, $0.526, GPU
+    "r5ad.large",   # 2 vCPU, 16GB, $0.131
+    "c6g.medium",   # 1 vCPU, 2GB, $0.034
+    # ARM-based
+    "a1.medium",   # 1 vCPU, 2GB, $0.0255
+    "m6gd.medium", # 1 vCPU, 4GB, $0.0452
+  ]
 }
