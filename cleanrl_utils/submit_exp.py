@@ -1,11 +1,6 @@
-# pip install boto3
 import boto3
-import re
 import time
-import os
 import requests
-import json
-import wandb
 import argparse
 import subprocess
 import multiprocessing
@@ -55,18 +50,18 @@ args = parser.parse_args()
 if args.build_n_push:
     if args.multi_archs:
         subprocess.run(
-            f"docker buildx build --push --platform linux/arm64,linux/amd64 -t {args.docker_repo} .",
+            f"docker buildx build --push --platform linux/arm64,linux/amd64 -t {args.docker_tag} .",
             shell=True,
             check=True,
         )
     else:
         subprocess.run(
-            f"docker build -t {args.docker_repo} .",
+            f"docker build -t {args.docker_tag} .",
             shell=True,
             check=True,
         )
         subprocess.run(
-            f"docker push {args.docker_repo}",
+            f"docker push {args.docker_tag}",
             shell=True,
             check=True,
         )
@@ -84,7 +79,7 @@ final_str = ""
 cores = multiprocessing.cpu_count()
 current_core = 0
 for final_run_cmd in final_run_cmds:
-    run_command = (f'docker run -d --cpuset-cpus="{current_core}" -e WANDB={args.wandb_key} {args.docker_repo} ' + 
+    run_command = (f'docker run -d --cpuset-cpus="{current_core}" -e WANDB={args.wandb_key} {args.docker_tag} ' + 
         '/bin/bash -c "' + " ".join(final_run_cmd) + '"' + "\n")
     print(run_command)
     final_str += run_command
@@ -106,12 +101,12 @@ if args.provider == "aws":
                 },
             ]
         try:
-            job_def_name = args.docker_repo.replace(":", "_").replace("/", "_")
+            job_def_name = args.docker_tag.replace(":", "_").replace("/", "_")
             job_def = client.register_job_definition(
                 jobDefinitionName=job_def_name,
                 type='container',
                 containerProperties={
-                    'image': args.docker_repo,
+                    'image': args.docker_tag,
                     'vcpus': args.num_vcpu,
                     'memory': args.num_memory,
                     'command': [
