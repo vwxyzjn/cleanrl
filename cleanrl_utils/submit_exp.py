@@ -27,14 +27,12 @@ parser.add_argument('--other-args', type=str, default="",
     help="the other arguments of the script")
 
 # experiment submission
-parser.add_argument('--job-queue', type=str, default="",
-    help='the name of the job queue')
-parser.add_argument('--instance', type=str, default="a1.medium",
+parser.add_argument('--job-queue', type=str, default="a1-medium",
     help='the name of the job queue')
 parser.add_argument('--wandb-key', type=str, default="",
     help='the wandb key. If not provided, the script will try to read from `~/.netrc`')
-parser.add_argument('--docker-repo', type=str, default="vwxyzjn/cleanrl:latest",
-    help='the name of the job queue')
+parser.add_argument('--docker-tag', type=str, default="vwxyzjn/cleanrl:latest",
+    help='the name of the docker tag')
 parser.add_argument('--num-seed', type=int, default=2,
     help='number of random seeds for experiments')
 parser.add_argument('--num-vcpu', type=int, default=1,
