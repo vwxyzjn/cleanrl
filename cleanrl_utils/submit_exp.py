@@ -12,24 +12,20 @@ parser = argparse.ArgumentParser(description='CleanRL Experiment Submission')
 # experiment generation
 parser.add_argument('--exp-script', type=str, default="debug.sh",
     help='the file name of this experiment')
-parser.add_argument('--algo', type=str, default="ppo.py",
-    help='the algorithm that will be used')
-parser.add_argument('--gym-ids', nargs='+', 
-    help='the ids of the gym environment')
-parser.add_argument('--total-timesteps', type=int, default=int(1e9),
-    help='total timesteps of the experiments')
-parser.add_argument('--other-args', type=str, default="",
-    help="the other arguments of the script")
+parser.add_argument('--command', type=str, default="poetry run ppo.py",
+    help='the docker command')
+
+# CleanRL specific args
+parser.add_argument('--wandb-key', type=str, default="",
+    help='the wandb key. If not provided, the script will try to read from `netrc`')
+parser.add_argument('--num-seed', type=int, default=2,
+    help='number of random seeds for experiments')
 
 # experiment submission
 parser.add_argument('--job-queue', type=str, default="a1-medium",
     help='the name of the job queue')
-parser.add_argument('--wandb-key', type=str, default="",
-    help='the wandb key. If not provided, the script will try to read from `~/.netrc`')
 parser.add_argument('--docker-tag', type=str, default="vwxyzjn/cleanrl:latest",
     help='the name of the docker tag')
-parser.add_argument('--num-seed', type=int, default=2,
-    help='number of random seeds for experiments')
 parser.add_argument('--num-vcpu', type=int, default=1,
     help='number of vcpu per experiment')
 parser.add_argument('--num-memory', type=int, default=2000,
@@ -50,7 +46,7 @@ args = parser.parse_args()
 if args.build_n_push:
     if args.multi_archs:
         subprocess.run(
-            f"docker buildx build --push --cache-to type=local,mode=max,dest=~/.cleanrl_cache --cache-from type=local,src=~/.cleanrl_cache --platform linux/arm64,linux/amd64 -t {args.docker_tag} .",
+            f"docker buildx build --push --cache-to type=local,mode=max,dest=docker_cache --cache-from type=local,src=docker_cache --platform linux/arm64,linux/amd64 -t {args.docker_tag} .",
             shell=True,
             check=True,
         )
@@ -73,14 +69,14 @@ assert len(args.wandb_key) > 0, "you have not logged into W&B; try do `wandb log
 # extract runs from bash scripts
 final_run_cmds = []
 for seed in range(1,1+args.num_seed):
-    final_run_cmds += [["python", args.algo, args.other_args, "--seed", str(seed)]]
+    final_run_cmds += [args.command + " --seed " + str(seed)]
 
 final_str = ""
 cores = multiprocessing.cpu_count()
 current_core = 0
 for final_run_cmd in final_run_cmds:
     run_command = (f'docker run -d --cpuset-cpus="{current_core}" -e WANDB={args.wandb_key} {args.docker_tag} ' + 
-        '/bin/bash -c "' + " ".join(final_run_cmd) + '"' + "\n")
+        '/bin/bash -c "' + final_run_cmd + '"' + "\n")
     print(run_command)
     final_str += run_command
     current_core = (current_core + 1) % cores
@@ -91,7 +87,7 @@ with open(f"{args.exp_script}.docker.sh", "w+") as f:
 # submit jobs
 if args.provider == "aws":
     for final_run_cmd in final_run_cmds:
-        job_name = args.algo.replace(".py", "").replace("/", "_") + str(int(time.time()))
+        job_name = args.command.replace(".py", "").replace("/", "_").replace(" ", "").replace("-", "_") + str(int(time.time()))
         resources_requirements = []
         if args.num_gpu:
             resources_requirements = [
@@ -121,7 +117,7 @@ if args.provider == "aws":
                 containerOverrides={
                     'vcpus': args.num_vcpu,
                     'memory': args.num_memory,
-                    'command': ["/bin/bash", "-c", " ".join(final_run_cmd)],
+                    'command': ["/bin/bash", "-c", final_run_cmd],
                     'environment': [
                         {'name': 'WANDB', 'value': args.wandb_key},
                     ],
