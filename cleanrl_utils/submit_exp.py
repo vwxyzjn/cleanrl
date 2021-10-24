@@ -38,9 +38,9 @@ parser.add_argument('--num-gpu', type=int, default=0,
     help='number of gpu per experiment')
 parser.add_argument('--num-hours', type=float, default=16.0,
     help='number of hours allocated experiment')
-parser.add_argument('--build-n-push', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
+parser.add_argument('-b', '--build-n-push', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
     help='if toggled, the script will build a container and push using `Dockerfile`')
-parser.add_argument('--multi-archs', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+parser.add_argument('-m', '--multi-archs', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
     help='if toggled, the script will build a container for both ARMs and AMD64')
 parser.add_argument('--provider', type=str, default="", choices=["aws"],
     help='the cloud provider of choice (currently only `aws` is supported)')
@@ -50,7 +50,7 @@ args = parser.parse_args()
 if args.build_n_push:
     if args.multi_archs:
         subprocess.run(
-            f"docker buildx build --push --platform linux/arm64,linux/amd64 -t {args.docker_tag} .",
+            f"docker buildx build --push --cache-to type=local,mode=max,dest=~/.cleanrl_cache --cache-from type=local,src=~/.cleanrl_cache --platform linux/arm64,linux/amd64 -t {args.docker_tag} .",
             shell=True,
             check=True,
         )
@@ -91,7 +91,7 @@ with open(f"{args.exp_script}.docker.sh", "w+") as f:
 # submit jobs
 if args.provider == "aws":
     for final_run_cmd in final_run_cmds:
-        job_name = args.algo.replace(".py", "") + str(int(time.time()))
+        job_name = args.algo.replace(".py", "").replace("/", "_") + str(int(time.time()))
         resources_requirements = []
         if args.num_gpu:
             resources_requirements = [
