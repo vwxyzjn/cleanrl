@@ -46,7 +46,7 @@ args = parser.parse_args()
 if args.build_n_push:
     if args.multi_archs:
         subprocess.run(
-            f"docker buildx build --push --cache-to type=local,mode=max,dest=docker_cache --cache-from type=local,src=docker_cache --platform linux/arm64,linux/amd64 -t {args.docker_tag} .",
+            f"docker buildx build --push --cache-to type=local,mode=max,dest=docker_cache/cleanrl --cache-from type=local,src=docker_cache/cleanrl --platform linux/arm64,linux/amd64 -t {args.docker_tag} .",
             shell=True,
             check=True,
         )
