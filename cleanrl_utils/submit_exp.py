@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description='CleanRL Experiment Submission')
 # experiment generation
 parser.add_argument('--exp-script', type=str, default="debug.sh",
     help='the file name of this experiment')
-parser.add_argument('--command', type=str, default="poetry run ppo.py",
+parser.add_argument('--command', type=str, default="poetry run python cleanrl/ppo.py",
     help='the docker command')
 
 # CleanRL specific args
@@ -22,7 +22,7 @@ parser.add_argument('--num-seed', type=int, default=2,
     help='number of random seeds for experiments')
 
 # experiment submission
-parser.add_argument('--job-queue', type=str, default="a1-medium",
+parser.add_argument('--job-queue', type=str, default="m6gd-medium",
     help='the name of the job queue')
 parser.add_argument('--docker-tag', type=str, default="vwxyzjn/cleanrl:latest",
     help='the name of the docker tag')
@@ -75,7 +75,7 @@ final_str = ""
 cores = multiprocessing.cpu_count()
 current_core = 0
 for final_run_cmd in final_run_cmds:
-    run_command = (f'docker run -d --cpuset-cpus="{current_core}" -e WANDB={args.wandb_key} {args.docker_tag} ' + 
+    run_command = (f'docker run -d --cpuset-cpus="{current_core}" -e WANDB_API_KEY={args.wandb_key} {args.docker_tag} ' + 
         '/bin/bash -c "' + final_run_cmd + '"' + "\n")
     print(run_command)
     final_str += run_command
@@ -119,7 +119,7 @@ if args.provider == "aws":
                     'memory': args.num_memory,
                     'command': ["/bin/bash", "-c", final_run_cmd],
                     'environment': [
-                        {'name': 'WANDB', 'value': args.wandb_key},
+                        {'name': 'WANDB_API_KEY', 'value': args.wandb_key},
                     ],
                     'resourceRequirements': resources_requirements,
                 },
