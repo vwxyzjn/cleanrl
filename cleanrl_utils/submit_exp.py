@@ -34,33 +34,21 @@ parser.add_argument('--num-gpu', type=int, default=0,
     help='number of gpu per experiment')
 parser.add_argument('--num-hours', type=float, default=16.0,
     help='number of hours allocated experiment')
-parser.add_argument('-b', '--build-n-push', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-    help='if toggled, the script will build a container and push using `Dockerfile`')
-parser.add_argument('-m', '--multi-archs', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-    help='if toggled, the script will build a container for both ARMs and AMD64')
+parser.add_argument('-b', '--build', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+    help='if toggled, the script will build a container')
+parser.add_argument('--archs', type=str, default="linux/arm64,linux/amd64",
+    help='the archs to build the docker container for')
 parser.add_argument('--provider', type=str, default="", choices=["aws"],
     help='the cloud provider of choice (currently only `aws` is supported)')
 args = parser.parse_args()
 # fmt: on
 
-if args.build_n_push:
-    if args.multi_archs:
-        subprocess.run(
-            f"docker buildx build --push --cache-to type=local,mode=max,dest=docker_cache/cleanrl --cache-from type=local,src=docker_cache/cleanrl --platform linux/arm64,linux/amd64 -t {args.docker_tag} .",
-            shell=True,
-            check=True,
-        )
-    else:
-        subprocess.run(
-            f"docker build -t {args.docker_tag} .",
-            shell=True,
-            check=True,
-        )
-        subprocess.run(
-            f"docker push {args.docker_tag}",
-            shell=True,
-            check=True,
-        )
+if args.build:
+    subprocess.run(
+        f"docker buildx build --push --cache-to type=local,mode=max,dest=docker_cache/cleanrl --cache-from type=local,src=docker_cache/cleanrl --platform {args.archs} -t {args.docker_tag} .",
+        shell=True,
+        check=True,
+    )
 
 if not args.wandb_key:
     args.wandb_key = requests.utils.get_netrc_auth("https://api.wandb.ai")[-1]

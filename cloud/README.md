@@ -29,7 +29,6 @@ Dry run to inspect the generated docker command
 python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
     --command "poetry run python cleanrl/ppo.py --gym-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
-    --job-queue m6gd-medium \
     --num-seed 1 \
     --num-vcpu 1 \
     --num-memory 2000 \
@@ -46,7 +45,7 @@ Submit a job using AWS's compute-optimized spot instances
 python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
     --command "poetry run python cleanrl/ppo.py --gym-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
-    --job-queue m6gd-medium-spot \
+    --job-queue c6g-medium-spot \
     --num-seed 1 \
     --num-vcpu 1 \
     --num-memory 2000 \
@@ -59,7 +58,7 @@ Submit a job using AWS's accelerated-computing spot instances
 python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
     --command "poetry run python cleanrl/ppo_atari.py --gym-id BreakoutNoFrameskip-v4 --track --capture-video" \
-    --job-queue g4dn.xlarge-spot \
+    --job-queue g4dn-xlarge-spot \
     --num-seed 1 \
     --num-vcpu 1 \
     --num-gpu 1 \
@@ -73,7 +72,7 @@ Submit a job using AWS's compute-optimized on-demand instances
 python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
     --command "poetry run python cleanrl/ppo.py --gym-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
-    --job-queue m6gd-medium \
+    --job-queue c6g-medium \
     --num-seed 1 \
     --num-vcpu 1 \
     --num-memory 2000 \
@@ -86,7 +85,7 @@ Submit a job using AWS's accelerated-computing on-demand instances
 python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
     --command "poetry run python cleanrl/ppo_atari.py --gym-id BreakoutNoFrameskip-v4 --track --capture-video" \
-    --job-queue g4dn.xlarge \
+    --job-queue g4dn-xlarge \
     --num-seed 1 \
     --num-vcpu 1 \
     --num-gpu 1 \
