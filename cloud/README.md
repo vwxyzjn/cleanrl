@@ -26,10 +26,10 @@ terraform apply
 
 Dry run to inspect the generated docker command
 ```
-python -m cleanrl.utils.submit_exp --algo ppo.py \
-    --other-args "--gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --track --capture-video --cuda True" \
-    --job-queue cpu_spot \
-    --job-definition cleanrl \
+python -m cleanrl_utils.submit_exp \
+    --docker-tag vwxyzjn/cleanrl:latest \
+    --command "poetry run python cleanrl/ppo.py --gym-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
+    --job-queue m6gd-medium \
     --num-seed 1 \
     --num-vcpu 1 \
     --num-memory 2000 \
@@ -38,61 +38,61 @@ python -m cleanrl.utils.submit_exp --algo ppo.py \
 
 The generated docker command should look like
 ```
-docker run -d --cpuset-cpus="0" -e WANDB=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx -e WANDB_RESUME=allow -e WANDB_RUN_ID=34l7niav vwxyzjn/cleanrl:latest /bin/bash -c "python ppo.py --gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --track --capture-video --cuda True --seed 1"
+docker run -d --cpuset-cpus="0" -e WANDB_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx vwxyzjn/cleanrl:latest /bin/bash -c "poetry run python cleanrl/ppo.py --gym-id CartPole-v1 --total-timesteps 100000 --track --capture-video --seed 1"
 ```
 
 Submit a job using AWS's compute-optimized spot instances 
 ```
-python -m cleanrl.utils.submit_exp --algo ppo.py \
-    --other-args "--gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --track --capture-video --cuda True" \
-    --job-queue cpu_spot \
-    --job-definition cleanrl \
+python -m cleanrl_utils.submit_exp \
+    --docker-tag vwxyzjn/cleanrl:latest \
+    --command "poetry run python cleanrl/ppo.py --gym-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
+    --job-queue m6gd-medium-spot \
     --num-seed 1 \
     --num-vcpu 1 \
     --num-memory 2000 \
     --num-hours 48.0 \
-    --submit-aws
+    --provider aws
 ```
 
 Submit a job using AWS's accelerated-computing spot instances 
 ```
-python -m cleanrl.utils.submit_exp --algo ppo_atari_visual.py \
-    --other-args "--gym-id BreakoutNoFrameskip-v4 --wandb-project-name cleanrl --track --capture-video --cuda True" \
-    --job-queue gpu_spot \
-    --job-definition cleanrl \
+python -m cleanrl_utils.submit_exp \
+    --docker-tag vwxyzjn/cleanrl:latest \
+    --command "poetry run python cleanrl/ppo_atari.py --gym-id BreakoutNoFrameskip-v4 --track --capture-video" \
+    --job-queue g4dn.xlarge-spot \
     --num-seed 1 \
     --num-vcpu 1 \
     --num-gpu 1 \
     --num-memory 4000 \
     --num-hours 48.0 \
-    --submit-aws
+    --provider aws
 ```
 
 Submit a job using AWS's compute-optimized on-demand instances 
 ```
-python -m cleanrl.utils.submit_exp --algo ppo.py \
-    --other-args "--gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --track --capture-video --cuda True" \
-    --job-queue cpu_on_demand \
-    --job-definition cleanrl \
+python -m cleanrl_utils.submit_exp \
+    --docker-tag vwxyzjn/cleanrl:latest \
+    --command "poetry run python cleanrl/ppo.py --gym-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
+    --job-queue m6gd-medium \
     --num-seed 1 \
     --num-vcpu 1 \
     --num-memory 2000 \
     --num-hours 48.0 \
-    --submit-aws
+    --provider aws
 ```
 
 Submit a job using AWS's accelerated-computing on-demand instances 
 ```
-python -m cleanrl.utils.submit_exp --algo ppo_atari_visual.py \
-    --other-args "--gym-id BreakoutNoFrameskip-v4 --wandb-project-name cleanrl --track --capture-video --cuda True" \
-    --job-queue gpu_on_demand \
-    --job-definition cleanrl \
+python -m cleanrl_utils.submit_exp \
+    --docker-tag vwxyzjn/cleanrl:latest \
+    --command "poetry run python cleanrl/ppo_atari.py --gym-id BreakoutNoFrameskip-v4 --track --capture-video" \
+    --job-queue g4dn.xlarge \
     --num-seed 1 \
     --num-vcpu 1 \
     --num-gpu 1 \
     --num-memory 4000 \
     --num-hours 48.0 \
-    --submit-aws
+    --provider aws
 ```
 
 Uninstalling/Deleting the infrastructure that has been set up.
