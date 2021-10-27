@@ -69,4 +69,5 @@ python cleanrl/ppo.py \
     --capture-video
 ```
 
-![Tensorboard](videos.png)
+![videos](videos.png)
+![videos2](videos2.png)
