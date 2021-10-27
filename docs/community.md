@@ -2,10 +2,10 @@ We have a [Discord Community](https://discord.gg/D6RCjA6sVT) for support. Feel f
 
 ## Related Resources
 
-* http://inoryy.com/post/tensorflow2-deep-reinforcement-learning/
-* https://github.com/seungeunrho/minimalRL
-* https://github.com/Shmuma/Deep-Reinforcement-Learning-Hands-On
-* https://github.com/hill-a/stable-baselines
-* https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail
-* https://github.com/zhangchuheng123/Reinforcement-Implementation/blob/master/code/ppo.py
+- [Deep Reinforcement Learning With TensorFlow 2.1](http://inoryy.com/post/tensorflow2-deep-reinforcement-learning/)
+- [minimalRL - PyTorch](https://github.com/seungeunrho/minimalRL)
+- [Deep-Reinforcement-Learning-Hands-On](https://github.com/Shmuma/Deep-Reinforcement-Learning-Hands-On)
+- [Stable Baselines3](https://github.com/DLR-RM/stable-baselines3)
+- [PyTorch implementation of Advantage Actor Critic (A2C), Proximal Policy Optimization (PPO), Scalable trust-region method for deep reinforcement learning using Kronecker-factored approximation (ACKTR) and Generative Adversarial Imitation Learning (GAIL).](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail)
+- [Reinforcement-Implementation](https://github.com/zhangchuheng123/Reinforcement-Implementation/blob/master/code/ppo.py)
 
