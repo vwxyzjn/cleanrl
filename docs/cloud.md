@@ -25,7 +25,9 @@ export AWS_DEFAULT_REGION=$(aws configure get region --profile default)
 terraform apply
 ```
 
-### Dry run to inspect the generated docker command
+### Inspection
+
+Dry run to inspect the generated docker command
 ```
 python -m cleanrl.utils.submit_exp --algo ppo.py \
     --other-args "--gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --track --capture-video --cuda True" \
