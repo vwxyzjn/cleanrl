@@ -9,7 +9,7 @@ https://pypi.org/project/cleanrl/)
 
 ## Overview
 
-CleanRL is a Deep Reinforcement Learning library that provides high-quality single-file implementation with research-friendly features. The implementation is clean and simple, yet we can scale it to run thousands of experiments using [AWS Batch](cloud.md). The highlight features of CleanRL are:
+CleanRL is a Deep Reinforcement Learning library that provides high-quality single-file implementation with research-friendly features. The implementation is clean and simple, yet we can scale it to run thousands of experiments using AWS Batch. The highlight features of CleanRL are:
 
 
 * Single-file Implementation <br>
@@ -20,7 +20,7 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 * Local Reproducibility via Seeding
 * Videos of Gameplay Capturing
 * Experiment Management with [Weights and Biases](https://wandb.ai/site)
-* Cloud Integration with Docker and AWS 
+* [Cloud Integration](cloud.md) with Docker and AWS 
 
 Good luck have fun 🚀
 
