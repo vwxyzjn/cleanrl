@@ -1,4 +1,4 @@
-Thank you for being interested in contributing to our project. All kinds of contribution are welcome. 
+Thank you for being interested in contributing to our project. All kinds of contributions are welcome. 
 
 Below are some steps to help you get started:
 
@@ -9,8 +9,8 @@ to say hi!!
     * Bug fixes and various improvements on existing algorithms.
     * **Contribute to the Open RL Benchmark**
         * You could add new algorithms or new games to be featured in the Open RL Benchmark (http://benchmark.cleanrl.dev/)
-        * In this case, please contact me (Costa) directly on slack. I will add you to the CleanRL's Team at Weight and Biases (https://wandb.ai/cleanrl). 
+        * In this case, free free to contact me (Costa) directly on slack. I will add you to the CleanRL's Team at Weight and Biases (https://wandb.ai/cleanrl). 
           So if you would *like*, your experiments can be featured on the Open RL Benchmark (http://benchmark.cleanrl.dev/)
-3. 🎇 Submit an PR and get marged!
+3. 🎇 Submit a PR and get it merged!
 
 Good luck and have fun!

@@ -75,6 +75,7 @@ nav:
     - advanced/resume-training.md
   - Community: community.md
   - Contribution: contribution.md
+  - made-with-cleanrl.md
 #footer
 extra:
   social:
