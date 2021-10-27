@@ -1,8 +1,9 @@
 # Basic Usage
 
 ## Two Ways to Run
-After the dependencies have been installed, there are two ways to run 
+After the dependencies have been installed, there are **two ways** to run 
 the CleanRL script under the poetry virtual environments.
+
 
 1. Using `poetry run`:
 
@@ -17,9 +18,11 @@ the CleanRL script under the poetry virtual environments.
 
 2. Using `poetry shell`:
 
-    We can **1)** activate the virtual environment by using
-    `poetry shell`, and then **2)** run any desired CleanRL script.
-    Note that the steps **1)** and **2)** have to be executed separately.
+    1. We first activate the virtual environment by using
+    `poetry shell`
+    2. Then, run any desired CleanRL script
+   
+    Attention: Each step must be executed separately!
 
 
     ```bash
