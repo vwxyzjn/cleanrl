@@ -67,10 +67,12 @@ nav:
     - get-started/experiment-tracking.md
     - get-started/examples.md
   - Cloud Integration: cloud.md
+  - RL Algorithms: 
+    - rl-algorithms/dqn.md
+    - rl-algorithms/ppo.md
+  - Open RL Benchmark: open-rl-benchmark.md
   - Advanced:
     - advanced/resume-training.md
-  - RL Algorithms: rl-algorithms.md
-  - Open RL Benchmark: open-rl-benchmark.md
   - Community: community.md
   - Contribution: contribution.md
 #footer
