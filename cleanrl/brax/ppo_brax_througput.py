@@ -42,7 +42,7 @@ def parse_args():
         help='weather to capture videos of the agent performances (check out `videos` folder)')
 
     # Algorithm specific arguments
-    parser.add_argument('--num-envs', type=int, default=128,
+    parser.add_argument('--num-envs', type=int, default=512,
         help='the number of parallel game environments')
     parser.add_argument('--num-steps', type=int, default=10,
         help='the number of steps to run in each environment per policy rollout')

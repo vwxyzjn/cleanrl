@@ -1,7 +1,16 @@
 This folder contains experimental script for brax
 
 ```bash
-python old_ppo_that_works.py --capture-video --track --wandb-project brax --gym-id HalfCheetahBulletEnv-v0
-python ppo_continuous_action.py --capture-video --track --wandb-project brax --gym-id HalfCheetahBulletEnv-v0 --cuda False
-python ppo_brax_test.py --track --wandb-project brax --cuda False
+git clone https://github.com/vwxyzjn/cleanrl.git
+git checkout -b refactor brax
+poetry install
+poetry install -E brax
+poetry run pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_releases.html
+cd cleanrl/experiments
+XLA_PYTHON_CLIENT_PREALLOCATE=false poetry run python ppo_brax_througput.py
+```
+
+Test throughput
+```bash
+XLA_PYTHON_CLIENT_PREALLOCATE=false poetry run  python brax_test.py
 ```
