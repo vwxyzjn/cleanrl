@@ -6,6 +6,7 @@ easy to manage and reproducible, we use Terraform to spin up services.
 
 ## Get Started
 
+### Preparation
 ```bash
 # install dependencies
 # if you using zsh, this needs to be pip install cleanrl\[cloud\] --upgrade
@@ -24,7 +25,7 @@ export AWS_DEFAULT_REGION=$(aws configure get region --profile default)
 terraform apply
 ```
 
-Dry run to inspect the generated docker command
+### Dry run to inspect the generated docker command
 ```
 python -m cleanrl.utils.submit_exp --algo ppo.py \
     --other-args "--gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --track --capture-video --cuda True" \
@@ -40,6 +41,8 @@ The generated docker command should look like
 ```
 docker run -d --cpuset-cpus="0" -e WANDB=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx -e WANDB_RESUME=allow -e WANDB_RUN_ID=34l7niav vwxyzjn/cleanrl:latest /bin/bash -c "python ppo.py --gym-id CartPole-v0 --wandb-project-name cleanrl --total-timesteps 100000 --track --capture-video --cuda True --seed 1"
 ```
+
+### Run on AWS
 
 Submit a job using AWS's compute-optimized spot instances 
 ```
@@ -94,7 +97,7 @@ python -m cleanrl.utils.submit_exp --algo ppo_atari_visual.py \
     --num-hours 48.0 \
     --submit-aws
 ```
-
+### Clean Up
 Uninstalling/Deleting the infrastructure that has been set up.
 ```
 export AWS_DEFAULT_REGION=$(aws configure get region --profile default)
