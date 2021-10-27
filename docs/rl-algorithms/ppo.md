@@ -1,6 +1,6 @@
 # Proximal Policy Gradient (PPO) 
 
-As an extension of the Q-learning, DQN's main technical contribution is the use of replay buffer and target network, both of which would help improve the stability of the algorithm.
+PPO is one of the most popular DRL algorithms. It runs reasonably fast by leveraging vector (parallel) environments, and naturally works well with different action spaces, therefore supporting a variety of games. It also has good sample efficiency compared to algorithms such as DQN.
 
 
 Original paper: 
