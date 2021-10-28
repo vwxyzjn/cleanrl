@@ -1,12 +1,11 @@
 # Resume Training
 
 
-A common question we get asked is how to set up model checkpoints to continue training. In this document, we take this [PPO example](https://github.com/vwxyzjn/gym-microrts/blob/master/experiments/ppo_gridnet.py) 
-and explain it.
+A common question we get asked is how to set up model checkpoints to continue training. In this document, we take this [PPO example](https://github.com/vwxyzjn/gym-microrts/blob/master/experiments/ppo_gridnet.py) to explain that question.
 
 ## Save model checkpoints
 
-The first step is to save models periodically. By default, we save the model to `wandb` to help scale this approach.
+The first step is to save models periodically. By default, we save the model to `wandb`.
 
 ```python linenums="1" hl_lines="3 4 6 9-14"
 num_updates = args.total_timesteps // args.batch_size
