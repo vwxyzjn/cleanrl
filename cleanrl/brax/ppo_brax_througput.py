@@ -42,9 +42,9 @@ def parse_args():
         help='weather to capture videos of the agent performances (check out `videos` folder)')
 
     # Algorithm specific arguments
-    parser.add_argument('--num-envs', type=int, default=512,
+    parser.add_argument('--num-envs', type=int, default=12,
         help='the number of parallel game environments')
-    parser.add_argument('--num-steps', type=int, default=10,
+    parser.add_argument('--num-steps', type=int, default=40,
         help='the number of steps to run in each environment per policy rollout')
     parser.add_argument('--anneal-lr', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
         help="Toggle learning rate annealing for policy and value networks")
@@ -173,8 +173,8 @@ if __name__ == "__main__":
     envs = create_gym_env(args.gym_id, batch_size=args.num_envs)
     envs.is_vector_env = True
     envs = JaxToTorchWrapper(envs, device=device)
+    envs = gym.wrappers.RecordVideo(envs, f"videos/{run_name}", video_length=200)
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
- 
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
@@ -204,7 +204,6 @@ if __name__ == "__main__":
             global_step += 1 * args.num_envs
             obs[step] = next_obs
             dones[step] = next_done
-
             # ALGO LOGIC: action logic
             with torch.no_grad():
                 action, logprob, _, value = agent.get_action_and_value(next_obs)
@@ -216,6 +215,8 @@ if __name__ == "__main__":
             next_obs, reward, done, info = envs.step(action)
             rewards[step] = reward.view(-1)
             next_obs, next_done = next_obs, done
+            if next_done[0] >= 1:
+                print("done")
 
             for item in info:
                 if "episode" in item.keys():
