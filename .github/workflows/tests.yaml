@@ -1,6 +1,8 @@
 name: tests
 on:
   push:
+    paths:
+      - cleanrl/**
 jobs:
   ci:
     strategy:
