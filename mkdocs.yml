@@ -1,0 +1,91 @@
+site_name: CleanRL User Guide
+theme:
+  name: material
+  features:
+    - navigation.instant
+    # - navigation.tabs
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: dark)" 
+      scheme: slate
+      primary: teal
+      accent: light green
+      toggle:
+        icon: material/lightbulb
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)" 
+      scheme: default
+      primary: green
+      accent: deep orange
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to dark mode
+
+plugins:
+  - search
+#adding git repo
+repo_url: https://github.com/vwxyzjn/cleanrl
+repo_name: vwxyzjn/cleanrl
+#markdown_extensions 
+markdown_extensions:
+  - abbr
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.snippets
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - attr_list
+  - md_in_html
+  # - toc:
+  #     permalink: true
+  # - markdown.extensions.codehilite:
+  #     guess_lang: false
+  # - admonition
+  # - codehilite
+  # - extra
+  # - pymdownx.superfences:
+  #     custom_fences:
+  #     - name: mermaid
+  #       class: mermaid
+  #       format: !!python/name:pymdownx.superfences.fence_code_format ''
+  # - pymdownx.tabbed
+extra_css:
+  - stylesheets/extra.css
+# extra_javascript:
+#   - js/termynal.js
+#   - js/custom.js
+nav:
+  - Overview: index.md
+  - Get Started:
+    - get-started/installation.md
+    - get-started/basic-usage.md
+    - get-started/experiment-tracking.md
+    - get-started/examples.md
+  - Cloud Integration: 
+    - cloud/installation.md
+    - cloud/submit-experiments.md
+  - RL Algorithms:
+    - rl-algorithms/ppo.md
+    - rl-algorithms/dqn.md
+  - Open RL Benchmark: open-rl-benchmark.md
+  - Advanced:
+    - advanced/resume-training.md
+  - Community: community.md
+  - Contribution: contribution.md
+  - made-with-cleanrl.md
+#footer
+extra:
+  social:
+    - icon: fontawesome/solid/envelope
+      link: mailto:costa.huang@live.com
+    - icon: fontawesome/brands/twitter
+      link: https://twitter.com/vwxyzjn
+    - icon: fontawesome/brands/github
+      link: https://github.com/vwxyzjn/cleanrl
+copyright: Copyright &copy; 2021, CleanRL. All rights reserved.
+
