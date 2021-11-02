@@ -3,6 +3,9 @@
 The rough idea behind the cloud integration is to package our code into a docker container and use AWS Batch to
 run thousands of experiments concurrently. 
 
+## Prerequisites
+
+* Terraform (see installation tutorial [here](https://learn.hashicorp.com/tutorials/terraform/install-cli))
 
 We use Terraform to define our infrastructure with AWS Batch, which you can spin up as follows
 

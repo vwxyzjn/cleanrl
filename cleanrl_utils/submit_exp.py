@@ -53,7 +53,10 @@ if args.build:
     )
 
 if not args.wandb_key:
-    args.wandb_key = requests.utils.get_netrc_auth("https://api.wandb.ai")[-1]
+    try:
+        args.wandb_key = requests.utils.get_netrc_auth("https://api.wandb.ai")[-1]
+    except:
+        pass
 assert len(args.wandb_key) > 0, "you have not logged into W&B; try do `wandb login`"
 
 # extract runs from bash scripts

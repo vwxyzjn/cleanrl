@@ -7,10 +7,7 @@ Dry run to inspect the generated docker command
 poetry run python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
     --command "poetry run python cleanrl/ppo.py --gym-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
-    --num-seed 1 \
-    --num-vcpu 1 \
-    --num-memory 2000 \
-    --num-hours 48.0
+    --num-seed 1
 ```
 
 The generated docker command should look like
@@ -82,3 +79,31 @@ Then you should see:
 ![aws_batch2.png](aws_batch2.png)
 
 ![wandb.png](wandb.png)
+
+## Customize the Docker Container
+
+Set up `buildx` and login in to your preferred registry.
+
+```
+docker buildx create --use
+docker login
+```
+
+Then you could build a container using the `--build` flag based on the `Dockerfile` in the current directory.
+
+```
+poetry run python -m cleanrl_utils.submit_exp \
+    --docker-tag vwxyzjn/cleanrl:latest \
+    --command "poetry run python cleanrl/ppo.py --gym-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
+    --build
+```
+
+To build a multi-arch image using `--archs linux/arm64,linux/amd64`:
+
+```
+poetry run python -m cleanrl_utils.submit_exp \
+    --docker-tag vwxyzjn/cleanrl:latest \
+    --command "poetry run python cleanrl/ppo.py --gym-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
+    --archs linux/arm64,linux/amd64
+    --build
+```
