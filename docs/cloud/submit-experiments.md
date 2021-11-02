@@ -82,7 +82,7 @@ Then you should see:
 
 ## Customize the Docker Container
 
-Set up `buildx` and login in to your preferred registry.
+Set up docker's `buildx` and login in to your preferred registry.
 
 ```
 docker buildx create --use
@@ -107,3 +107,17 @@ poetry run python -m cleanrl_utils.submit_exp \
     --archs linux/arm64,linux/amd64
     --build
 ```
+
+!!! note
+    Building an multi-arch image is quite slow but will allow you to use ARM instances such as `m6gd.medium` that is 20-70% cheaper than X86 instances.
+    However, note there is no cloud providers that give ARM instances with Nvidia's GPU (to my knowledge), so this effort might not be worth it.
+
+    If you still wants to pursue multi-arch, you can speed things up by using a native ARM server and connect it to your `buildx` instance:
+
+    ```
+    docker -H ssh://costa@gpu info
+    docker buildx create --name remote --use
+    docker buildx create --name remote --append ssh://costa@gpu
+    docker buildx inspect --bootstrap
+    python -m cleanrl_utils.submit_exp -b --archs linux/arm64,linux/amd64
+    ```

@@ -35,7 +35,7 @@ parser.add_argument('--num-hours', type=float, default=16.0,
     help='number of hours allocated experiment')
 parser.add_argument('-b', '--build', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
     help='if toggled, the script will build a container')
-parser.add_argument('--archs', type=str, default="linux/amd64", # linux/arm64,linux/arm64,linux/amd64
+parser.add_argument('--archs', type=str, default="linux/amd64", # linux/arm64,linux/amd64
     help='the archs to build the docker container for')
 parser.add_argument('-p', '--push', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
     help='if toggled, the script will push the built container')
