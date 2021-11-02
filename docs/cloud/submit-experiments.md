@@ -89,13 +89,13 @@ docker buildx create --use
 docker login
 ```
 
-Then you could build a container using the `--build` flag based on the `Dockerfile` in the current directory.
+Then you could build a container using the `--build` flag based on the `Dockerfile` in the current directory. Also, `--push` will auto-push to the docker registry.
 
 ```
 poetry run python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
     --command "poetry run python cleanrl/ppo.py --gym-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
-    --build
+    --build --push
 ```
 
 To build a multi-arch image using `--archs linux/arm64,linux/amd64`:
@@ -105,7 +105,7 @@ poetry run python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
     --command "poetry run python cleanrl/ppo.py --gym-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
     --archs linux/arm64,linux/amd64
-    --build
+    --build --push
 ```
 
 !!! note
