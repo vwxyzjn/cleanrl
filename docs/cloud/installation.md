@@ -9,7 +9,7 @@ We use Terraform to define our infrastructure with AWS Batch, which you can spin
 ```bash
 # assuming you are at the root of the CleanRL project
 poetry install -E cloud
-cd cleanrl/cloud
+cd cloud
 python -m awscli configure
 terraform init
 export AWS_DEFAULT_REGION=$(aws configure get region --profile default)
