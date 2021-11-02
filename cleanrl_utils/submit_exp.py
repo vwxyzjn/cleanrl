@@ -5,7 +5,6 @@ import argparse
 import subprocess
 import multiprocessing
 from distutils.util import strtobool
-client = boto3.client('batch')
 
 # fmt: off
 parser = argparse.ArgumentParser(description='CleanRL Experiment Submission')
@@ -18,7 +17,7 @@ parser.add_argument('--command', type=str, default="poetry run python cleanrl/pp
 # CleanRL specific args
 parser.add_argument('--wandb-key', type=str, default="",
     help='the wandb key. If not provided, the script will try to read from `netrc`')
-parser.add_argument('--num-seed', type=int, default=2,
+parser.add_argument('--num-seed', type=int, default=1,
     help='number of random seeds for experiments')
 
 # experiment submission
@@ -36,16 +35,19 @@ parser.add_argument('--num-hours', type=float, default=16.0,
     help='number of hours allocated experiment')
 parser.add_argument('-b', '--build', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
     help='if toggled, the script will build a container')
-parser.add_argument('--archs', type=str, default="linux/arm64,linux/amd64",
+parser.add_argument('--archs', type=str, default="linux/amd64", # linux/arm64,linux/arm64,linux/amd64
     help='the archs to build the docker container for')
+parser.add_argument('-p', '--push', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
+    help='if toggled, the script will push the built container')
 parser.add_argument('--provider', type=str, default="", choices=["aws"],
     help='the cloud provider of choice (currently only `aws` is supported)')
 args = parser.parse_args()
 # fmt: on
 
 if args.build:
+    push_str = "--push" if args.push else ""
     subprocess.run(
-        f"docker buildx build --push --cache-to type=local,mode=max,dest=docker_cache/cleanrl --cache-from type=local,src=docker_cache/cleanrl --platform {args.archs} -t {args.docker_tag} .",
+        f"docker buildx build {push_str} --cache-to type=local,mode=max,dest=cloud/docker_cache/cleanrl --cache-from type=local,src=cloud/docker_cache/cleanrl --platform {args.archs} -t {args.docker_tag} .",
         shell=True,
         check=True,
     )
@@ -74,6 +76,7 @@ with open(f"{args.exp_script}.docker.sh", "w+") as f:
 
 # submit jobs
 if args.provider == "aws":
+    client = boto3.client('batch')
     for final_run_cmd in final_run_cmds:
         job_name = args.command.replace(".py", "").replace("/", "_").replace(" ", "").replace("-", "_") + str(int(time.time()))
         resources_requirements = []
