@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - cleanrl_utils/**
+      - tests/**
 jobs:
   ci:
     strategy:
