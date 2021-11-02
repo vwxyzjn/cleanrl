@@ -28,6 +28,8 @@ boto3 = {version = "^1.18.57", optional = true}
 awscli = {version = "^1.20.57", optional = true}
 spyder = {version = "^5.1.5", optional = true}
 pytest = {version = "^6.2.5", optional = true}
+free-mujoco-py = {version = "^2.1.6", optional = true}
+mkdocs-material = {version = "^7.3.4", optional = true}
 
 [tool.poetry.dev-dependencies]
 
@@ -44,3 +46,5 @@ plot = ["pandas", "seaborn"]
 cloud = ["boto3", "awscli"]
 spyder = ["spyder"]
 pytest = ["pytest"]
+mujoco = ["free-mujoco-py"]
+docs = ["mkdocs-material"]

@@ -255,7 +255,7 @@ for global_step in range(1, args.total_timesteps+1):
     obs = np.array(next_obs)
 
     # ALGO LOGIC: training.
-    if len(rb.buffer) > args.batch_size: # starts update as soon as there is enough data.
+    if len(rb.buffer) > args.learning_starts: # starts update as soon as there is enough data.
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         with torch.no_grad():
             next_state_actions, next_state_log_pi, _ = pg.get_action(s_next_obses, device)
@@ -303,7 +303,7 @@ for global_step in range(1, args.total_timesteps+1):
             for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
                 target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
-    if len(rb.buffer) > args.batch_size and global_step % 100 == 0:
+    if len(rb.buffer) > args.learning_starts and global_step % 100 == 0:
         writer.add_scalar("losses/soft_q_value_1_loss", qf1_loss.item(), global_step)
         writer.add_scalar("losses/soft_q_value_2_loss", qf2_loss.item(), global_step)
         writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
@@ -318,7 +318,7 @@ for global_step in range(1, args.total_timesteps+1):
         writer.add_scalar("charts/episode_length", episode_length, global_step)
         # Terminal verbosity
         if global_episode % 10 == 0:
-            print(f"Episode: {global_episode} Step: {global_step}, Ep. Reward: {episode_reward}")
+            print(f"global_step={global_step}, episode_reward={episode_reward}")
 
         # Reseting what need to be
         obs, done = env.reset(), False
