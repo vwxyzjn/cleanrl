@@ -48,7 +48,7 @@ args = parser.parse_args()
 if args.build:
     push_str = "--push" if args.push else ""
     subprocess.run(
-        f"docker buildx build {push_str} --cache-to type=local,mode=max,dest=cloud/docker_cache/cleanrl --cache-from type=local,src=cloud/docker_cache/cleanrl --platform {args.archs} -t {args.docker_tag} .",
+        f"docker buildx build {push_str} --load --cache-to type=local,mode=max,dest=cloud/docker_cache/cleanrl --cache-from type=local,src=cloud/docker_cache/cleanrl --platform {args.archs} -t {args.docker_tag} .",
         shell=True,
         check=True,
     )
