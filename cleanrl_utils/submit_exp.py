@@ -46,9 +46,9 @@ args = parser.parse_args()
 # fmt: on
 
 if args.build:
-    push_str = "--push" if args.push else ""
+    output_type_str = "--output=type=registry" if args.push else "--output=type=docker"
     subprocess.run(
-        f"docker buildx build {push_str} --load --platform {args.archs} -t {args.docker_tag} .",
+        f"docker buildx build {output_type_str} --platform {args.archs} -t {args.docker_tag} .",
         shell=True,
         check=True,
     )
