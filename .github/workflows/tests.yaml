@@ -3,8 +3,9 @@ on:
   push:
     paths:
       - cleanrl/**
+      - tests/**
 jobs:
-  ci:
+  test-core-envs:
     strategy:
       fail-fast: false
       matrix:
@@ -28,9 +29,25 @@ jobs:
       - name: Run core tests
         run: poetry run pytest tests/test_classic_control.py
 
+  test-atari-envs:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+        poetry-version: [1.1.11]
+        os: [ubuntu-18.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+
       # atari tests
-      - name: Remove existing poetry environment
-        run: poetry env remove python
       - name: Install core dependencies
         run: poetry install -E pytest
       - name: Install atari dependencies
@@ -38,9 +55,25 @@ jobs:
       - name: Run atari tests
         run: poetry run pytest tests/test_atari.py
 
+  test-pybullet-envs:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+        poetry-version: [1.1.11]
+        os: [ubuntu-18.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+
       # pybullet tests
-      - name: Remove existing poetry environment
-        run: poetry env remove python
       - name: Install core dependencies
         run: poetry install -E pytest
       - name: Install pybullet dependencies

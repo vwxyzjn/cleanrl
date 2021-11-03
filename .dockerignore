@@ -1,0 +1,10 @@
+*.mp4
+*.pyc
+*.pyo
+*.log
+*.json
+**/wandb
+**/runs
+**/videos
+.git
+*.tfevents.*

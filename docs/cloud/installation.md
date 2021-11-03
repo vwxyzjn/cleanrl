@@ -3,13 +3,16 @@
 The rough idea behind the cloud integration is to package our code into a docker container and use AWS Batch to
 run thousands of experiments concurrently. 
 
+## Prerequisites
+
+* Terraform (see installation tutorial [here](https://learn.hashicorp.com/tutorials/terraform/install-cli))
 
 We use Terraform to define our infrastructure with AWS Batch, which you can spin up as follows
 
 ```bash
 # assuming you are at the root of the CleanRL project
 poetry install -E cloud
-cd cleanrl/cloud
+cd cloud
 python -m awscli configure
 terraform init
 export AWS_DEFAULT_REGION=$(aws configure get region --profile default)
