@@ -74,8 +74,6 @@ jobs:
           poetry-version: ${{ matrix.poetry-version }}
 
       # pybullet tests
-      - name: Remove existing poetry environment
-        run: poetry env remove python
       - name: Install core dependencies
         run: poetry install -E pytest
       - name: Install pybullet dependencies
