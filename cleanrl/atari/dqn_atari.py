@@ -81,20 +81,22 @@ def parse_args():
     return args
 
 
-def make_env(gym_id, seed, idx):
+def make_env(gym_id, seed, idx, capture_video, run_name):
     def thunk():
         env = gym.make(gym_id)
+        env = gym.wrappers.RecordEpisodeStatistics(env)
+        if capture_video:
+            if idx == 0:
+                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         env = NoopResetEnv(env, noop_max=30)
         env = MaxAndSkipEnv(env, skip=4)
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        if args.capture_video:
-            if idx == 0:
-                env = Monitor(env, f"videos/{experiment_name}")
         env = EpisodicLifeEnv(env)
         if "FIRE" in env.unwrapped.get_action_meanings():
             env = FireResetEnv(env)
-        env = WarpFrame(env, width=84, height=84)
         env = ClipRewardEnv(env)
+        env = gym.wrappers.ResizeObservation(env, (84, 84))
+        env = gym.wrappers.GrayScaleObservation(env)
+        env = gym.wrappers.FrameStack(env, 4)
         env.seed(seed)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
@@ -103,28 +105,11 @@ def make_env(gym_id, seed, idx):
     return thunk
 
 
-class Linear0(nn.Linear):
-    def reset_parameters(self):
-        nn.init.constant_(self.weight, 0.0)
-        if self.bias is not None:
-            nn.init.constant_(self.bias, 0.0)
-
-
-class Scale(nn.Module):
-    def __init__(self, scale):
-        super().__init__()
-        self.scale = scale
-
-    def forward(self, x):
-        return x * self.scale
-
-
 class QNetwork(nn.Module):
-    def __init__(self, env, frames=4):
+    def __init__(self, env):
         super(QNetwork, self).__init__()
         self.network = nn.Sequential(
-            Scale(1 / 255),
-            nn.Conv2d(frames, 32, 8, stride=4),
+            nn.Conv2d(4, 32, 8, stride=4),
             nn.ReLU(),
             nn.Conv2d(32, 64, 4, stride=2),
             nn.ReLU(),
@@ -133,11 +118,11 @@ class QNetwork(nn.Module):
             nn.Flatten(),
             nn.Linear(3136, 512),
             nn.ReLU(),
-            Linear0(512, env.action_space.n),
+            nn.Linear(512, env.single_action_space.n),
         )
 
     def forward(self, x):
-        return self.network(x.permute((0, 3, 1, 2)))
+        return self.network(x / 255.0)
 
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
@@ -147,11 +132,7 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
 
 if __name__ == "__main__":
     args = parse_args()
-    experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    writer = SummaryWriter(f"runs/{experiment_name}")
-    writer.add_text(
-        "hyperparameters", "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()]))
-    )
+    run_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
 
@@ -160,18 +141,15 @@ if __name__ == "__main__":
             entity=args.wandb_entity,
             sync_tensorboard=True,
             config=vars(args),
-            name=experiment_name,
+            name=run_name,
             monitor_gym=True,
             save_code=True,
         )
-        writer = SummaryWriter(f"/tmp/{experiment_name}")
-
-    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
-    envs = VecFrameStack(
-        DummyVecEnv([make_env(args.gym_id, args.seed, 0)]),
-        4,
+    writer = SummaryWriter(f"runs/{run_name}")
+    writer.add_text(
+        "hyperparameters",
+        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
-    assert isinstance(envs.action_space, Discrete), "only discrete action space is supported"
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -179,8 +157,16 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
+    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+
+    # env setup
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(args.gym_id, args.seed, 0, args.capture_video, run_name)]
+    )
+    assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
+
     # ALGO LOGIC: initialize agent here:
-    rb = ReplayBuffer(args.buffer_size, envs.observation_space, envs.action_space, device=device, optimize_memory_usage=True)
+    rb = ReplayBuffer(args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device, optimize_memory_usage=True)
     q_network = QNetwork(envs).to(device)
     target_network = QNetwork(envs).to(device)
     target_network.load_state_dict(q_network.state_dict())
@@ -192,7 +178,7 @@ if __name__ == "__main__":
     for global_step in range(args.total_timesteps):
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
         if random.random() < epsilon:
-            actions = [envs.action_space.sample()]
+            actions = envs.action_space.sample()
         else:
             logits = q_network.forward(torch.Tensor(obs).to(device))
             actions = torch.argmax(logits, dim=1).cpu().numpy()
@@ -212,7 +198,7 @@ if __name__ == "__main__":
         for idx, d in enumerate(dones):
             if d:
                 real_next_obs[idx] = infos[idx]["terminal_observation"]
-        rb.add(obs, real_next_obs, actions, rewards, dones)
+        rb.add(obs, real_next_obs, actions, rewards, dones, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
