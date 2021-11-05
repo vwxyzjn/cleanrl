@@ -19,7 +19,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="CartPoleNoVelEnv",
+    parser.add_argument('--gym-id', type=str, default="TestMemoryEnv",
         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
         help='the learning rate of the optimizer')
@@ -78,35 +78,54 @@ def parse_args():
     return args
 
 
-# taken from https://github.com/hill-a/stable-baselines/blob/master/tests/test_lstm_policy.py#L42
-class CartPoleNoVelEnv(CartPoleEnv):
-    """Variant of CartPoleEnv with velocity information removed. This task requires memory to solve."""
+class TestMemoryEnv(gym.Env):
+    """
+    final state  [0,0,0,1,0]    [0,0,0,0,1]
+                       \           /
+    second state        [0,0,1,0,0]
+                       /           \  
+    first state [1,0,0,0,0]       [0,1,0,0,0] 
+
+    The agent only gets reward if the final state aligns with the first state.
+    That is, if the agent has been in [1,0,0,0,0], it will get reward if the final state is [0,0,0,1,0] 
+    """
 
     def __init__(self):
-        super(CartPoleNoVelEnv, self).__init__()
-        high = np.array([
-            self.x_threshold * 2,
-            self.theta_threshold_radians * 2,
-        ])
-        self.observation_space = gym.spaces.Box(-high, high, dtype=np.float32)
-
-    @staticmethod
-    def _pos_obs(full_obs):
-        xpos, _xvel, thetapos, _thetavel = full_obs
-        return xpos, thetapos
+        self.action_space = gym.spaces.Discrete(2)
+        self.observation_space = gym.spaces.Box(
+            np.array([-1,]*5), np.array([1,]*5), dtype=np.float32)
 
     def reset(self):
-        full_obs = super().reset()
-        return CartPoleNoVelEnv._pos_obs(full_obs)
+        self.first_state = np.zeros(5, dtype=np.float32)
+        self.first_state[np.random.randint(2)] = 1
+        self.t = 1
+        return self.first_state
 
     def step(self, action):
-        full_obs, rew, done, info = super().step(action)
-        return CartPoleNoVelEnv._pos_obs(full_obs), rew, done, info
+        if self.t == 1:
+            second_state = np.zeros(5, dtype=np.float32)
+            second_state[2] = 1
+            self.t += 1
+            return second_state, 0, False, {}
+        else:
+            third_state = np.zeros(5, dtype=np.float32)
+            if action == 0:
+                third_state[3] = 1
+                reward = 0
+                if np.array_equal(self.first_state, np.array([1,0,0,0,0])):
+                    reward = 1
+                return third_state, reward, True, {}
+            else:
+                third_state[4] = 1
+                reward = 0
+                if np.array_equal(self.first_state, np.array([0,1,0,0,0])):
+                    reward = 1
+                return third_state, reward, True, {}
 
 
 def make_env(gym_id, seed, idx, capture_video, run_name):
     def thunk():
-        env = CartPoleNoVelEnv()
+        env = TestMemoryEnv()
         env = gym.wrappers.TimeLimit(env, max_episode_steps=500)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
