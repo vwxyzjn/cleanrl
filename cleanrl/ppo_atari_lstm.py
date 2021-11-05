@@ -132,6 +132,8 @@ class Agent(nn.Module):
         self.actor = layer_init(nn.Linear(512, envs.single_action_space.n), std=0.01)
         self.critic = layer_init(nn.Linear(512, 1), std=1)
 
+
+    # TODO fix the value function LSTM
     def get_value(self, x):
         return self.critic(self.network(x / 255.0))
 
