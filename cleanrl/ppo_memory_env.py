@@ -87,7 +87,8 @@ class TestMemoryEnv(gym.Env):
     first state [1,0,0,0,0]       [0,1,0,0,0] 
 
     The agent only gets reward if the final state aligns with the first state.
-    That is, if the agent has been in [1,0,0,0,0], it will get reward if the final state is [0,0,0,1,0] 
+    That is, if the agent has been in [1,0,0,0,0], it will get reward if the final state is [0,0,0,1,0].
+    So solving this env requires a memory mechanism.
     """
 
     def __init__(self):
