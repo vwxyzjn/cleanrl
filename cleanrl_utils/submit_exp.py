@@ -6,6 +6,7 @@ from distutils.util import strtobool
 
 import boto3
 import requests
+import wandb
 
 # fmt: off
 parser = argparse.ArgumentParser(description='CleanRL Experiment Submission')
@@ -42,6 +43,8 @@ parser.add_argument('-p', '--push', type=lambda x:bool(strtobool(x)), default=Fa
     help='if toggled, the script will push the built container')
 parser.add_argument('--provider', type=str, default="", choices=["aws"],
     help='the cloud provider of choice (currently only `aws` is supported)')
+parser.add_argument('--aws-num-retries', type=int, default=1,
+    help='the number of job retries for `provider=="aws"`')
 args = parser.parse_args()
 # fmt: on
 
@@ -119,10 +122,12 @@ if args.provider == "aws":
                     "command": ["/bin/bash", "-c", final_run_cmd],
                     "environment": [
                         {"name": "WANDB_API_KEY", "value": args.wandb_key},
+                        {'name': 'WANDB_RESUME', 'value': 'allow'},
+                        {'name': 'WANDB_RUN_ID', 'value': wandb.util.generate_id()},
                     ],
                     "resourceRequirements": resources_requirements,
                 },
-                retryStrategy={"attempts": 1},
+                retryStrategy={"attempts": args.aws_num_retries},
                 timeout={"attemptDurationSeconds": int(args.num_hours * 60 * 60)},
             )
             if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
