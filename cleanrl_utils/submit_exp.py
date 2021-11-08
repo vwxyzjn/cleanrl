@@ -90,7 +90,7 @@ with open(f"{args.exp_script}.docker.sh", "w+") as f:
 if args.provider == "aws":
     client = boto3.client("batch")
     for final_run_cmd in final_run_cmds:
-        job_name = args.command.replace(".py", "").replace("/", "_").replace(" ", "").replace("-", "_") + str(
+        job_name = args.docker_tag.replace(":", "").replace("/", "_").replace(" ", "").replace("-", "_") + str(
             int(time.time())
         )
         resources_requirements = []
