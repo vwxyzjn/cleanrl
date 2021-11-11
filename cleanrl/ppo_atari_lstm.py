@@ -128,16 +128,16 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64 * 7 * 7, 512)),
             nn.ReLU(),
         )
-        self.lstm = nn.LSTM(512, 512)
-        self.actor = layer_init(nn.Linear(512, envs.single_action_space.n), std=0.01)
-        self.critic = layer_init(nn.Linear(512, 1), std=1)
+        self.lstm = nn.LSTM(512, 128)
+        for name, param in self.lstm.named_parameters():
+            if 'bias' in name:
+                nn.init.constant_(param, 0)
+            elif 'weight' in name:
+                nn.init.orthogonal_(param, 1.0)
+        self.actor = layer_init(nn.Linear(128, envs.single_action_space.n), std=0.01)
+        self.critic = layer_init(nn.Linear(128, 1), std=1)
 
-
-    # TODO fix the value function LSTM
-    def get_value(self, x):
-        return self.critic(self.network(x / 255.0))
-
-    def get_action_and_value(self, x, lstm_state, done, action=None):
+    def get_states(self, x, lstm_state, done):
         hidden = self.network(x / 255.0)
         
         # LSTM logic
@@ -148,6 +148,14 @@ class Agent(nn.Module):
         ))
         hidden = hidden.squeeze(0) # restore the hidden's shape
         
+        return hidden
+
+    def get_value(self, x, lstm_state, done):
+        hidden = self.get_states(x, lstm_state, done)
+        return self.critic(hidden)
+
+    def get_action_and_value(self, x, lstm_state, done, action=None):
+        hidden = self.get_states(x, lstm_state, done)
         logits = self.actor(hidden)
         probs = Categorical(logits=logits)
         if action is None:
@@ -252,7 +260,12 @@ if __name__ == "__main__":
 
         # bootstrap value if not done
         with torch.no_grad():
-            next_value = agent.get_value(next_obs).reshape(1, -1)
+            next_value = agent.get_value(
+                next_obs,
+                next_lstm_state,
+                next_done,
+            ).reshape(1, -1)
+            raise
             if args.gae:
                 advantages = torch.zeros_like(rewards).to(device)
                 lastgaelam = 0
@@ -311,7 +324,6 @@ if __name__ == "__main__":
                     b_dones[mb_inds],
                     b_actions.long()[mb_inds],
                 )
-                raise
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 
