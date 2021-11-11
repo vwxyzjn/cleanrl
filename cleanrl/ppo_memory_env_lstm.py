@@ -162,8 +162,13 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64, 64)),
             nn.Tanh(),
         )
-        self.lstm = nn.LSTM(64, 64)
-        self.actor_head = layer_init(nn.Linear(64, envs.single_action_space.n), std=0.01)
+        self.lstm = nn.LSTM(64, 128)
+        for name, param in self.lstm.named_parameters():
+            if 'bias' in name:
+                nn.init.constant_(param, 0)
+            elif 'weight' in name:
+                nn.init.orthogonal_(param, 1.0)
+        self.actor_head = layer_init(nn.Linear(128, envs.single_action_space.n), std=0.01)
 
     def get_value(self, x):
         return self.critic(x)
