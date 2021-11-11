@@ -265,7 +265,6 @@ if __name__ == "__main__":
                 next_lstm_state,
                 next_done,
             ).reshape(1, -1)
-            raise
             if args.gae:
                 advantages = torch.zeros_like(rewards).to(device)
                 lastgaelam = 0
