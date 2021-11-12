@@ -3,6 +3,7 @@ name = "cleanrl"
 version = "0.5.0"
 description = "High-quality single file implementation of Deep Reinforcement Learning algorithms with research-friendly features"
 authors = ["Costa Huang <costa.huang@outlook.com>"]
+include = ["cleanrl_utils"]
 
 [tool.poetry.dependencies]
 python = ">=3.7.1,<3.10"
