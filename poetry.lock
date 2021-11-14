@@ -652,24 +652,31 @@ version = "0.21.0"
 description = "Gym: A universal API for reinforcement learning environments."
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.7"
+develop = false
 
 [package.dependencies]
 cloudpickle = ">=1.2.0"
-importlib_metadata = {version = ">=4.8.1", markers = "python_version < \"3.8\""}
+importlib-metadata = {version = ">=4.8.1", markers = "python_version < \"3.8\""}
 numpy = ">=1.18.0"
 
 [package.extras]
 accept-rom-license = ["autorom[accept-rom-license] (>=0.4.2,<0.5.0)"]
-all = ["mujoco_py (>=1.50,<2.0)", "lz4 (>=3.1.0)", "opencv-python (>=3)", "ale-py (>=0.7.1,<0.8.0)", "pyglet (>=1.4.0)", "scipy (>=1.4.1)", "box2d-py (==2.3.5)", "pyglet (>=1.4.0)", "ale-py (>=0.7.1,<0.8.0)", "lz4 (>=3.1.0)", "opencv-python (>=3)", "pyglet (>=1.4.0)", "box2d-py (==2.3.5)", "pyglet (>=1.4.0)", "scipy (>=1.4.1)", "mujoco_py (>=1.50,<2.0)"]
+all = ["mujoco-py (>=1.50,<2.0)", "box2d-py (==2.3.5)", "pyglet (>=1.4.0)", "ale-py (>=0.7.1,<0.8.0)", "scipy (>=1.4.1)", "lz4 (>=3.1.0)", "opencv-python (>=3)"]
 atari = ["ale-py (>=0.7.1,<0.8.0)"]
 box2d = ["box2d-py (==2.3.5)", "pyglet (>=1.4.0)"]
 classic_control = ["pyglet (>=1.4.0)"]
-mujoco = ["mujoco_py (>=1.50,<2.0)"]
-nomujoco = ["lz4 (>=3.1.0)", "opencv-python (>=3)", "ale-py (>=0.7.1,<0.8.0)", "pyglet (>=1.4.0)", "scipy (>=1.4.1)", "box2d-py (==2.3.5)", "pyglet (>=1.4.0)"]
+mujoco = ["mujoco-py (>=1.50,<2.0)"]
+nomujoco = ["box2d-py (==2.3.5)", "pyglet (>=1.4.0)", "ale-py (>=0.7.1,<0.8.0)", "scipy (>=1.4.1)", "lz4 (>=3.1.0)", "opencv-python (>=3)"]
 other = ["lz4 (>=3.1.0)", "opencv-python (>=3)"]
-robotics = ["mujoco_py (>=1.50,<2.0)"]
+robotics = ["mujoco-py (>=1.50,<2.0)"]
 toy_text = ["scipy (>=1.4.1)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/openai/gym.git"
+reference = "master"
+resolved_reference = "01cc8a3a1694c978a2310714faf52e41df1988b5"
 
 [[package]]
 name = "gym3"
@@ -4506,7 +4513,7 @@ spyder = ["spyder"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "f3856b5e86a8b0887e42f2979d13558020bc43ee2a9d39d93265df878bb75a86"
+content-hash = "b088ce8b15b4bb79f7655b451a31173634dca9cc84479353d6bc3f2e6fff0a51"
 
 [metadata.files]
 absl-py = [
@@ -4927,9 +4934,7 @@ grpcio = [
     {file = "grpcio-1.41.1-cp39-cp39-win_amd64.whl", hash = "sha256:c3a446b6a1f8077cc03d0d496fc1cecdd3d0b66860c0c5b65cc92d0549117840"},
     {file = "grpcio-1.41.1.tar.gz", hash = "sha256:9b751271b029432a526a4970dc9b70d93eb6f0963b6a841b574f780b72651969"},
 ]
-gym = [
-    {file = "gym-0.21.0.tar.gz", hash = "sha256:0fd1ce165c754b4017e37a617b097c032b8c3feb8a0394ccc8777c7c50dddff3"},
-]
+gym = []
 gym3 = [
     {file = "gym3-0.3.3-py3-none-any.whl", hash = "sha256:bacc0e124f8ce5e1d8a9dceb85725123332954f13ef4e226133506597548838a"},
 ]
