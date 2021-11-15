@@ -150,16 +150,17 @@ class Agent(nn.Module):
                 (1.0 - d).view(1, -1, 1) * lstm_state[0],
                 (1.0 - d).view(1, -1, 1) * lstm_state[1],
             ))
+            print(lstm_state[0].sum())
             new_hidden += [h]
         new_hidden = torch.flatten(torch.cat(new_hidden), 0, 1)
-        return new_hidden
+        return new_hidden, lstm_state
 
     def get_value(self, x, lstm_state, done):
-        hidden = self.get_states(x, lstm_state, done)
+        hidden, _ = self.get_states(x, lstm_state, done)
         return self.critic(hidden)
 
     def get_action_and_value(self, x, lstm_state, done, action=None):
-        hidden = self.get_states(x, lstm_state, done)
+        hidden, lstm_state = self.get_states(x, lstm_state, done)
         logits = self.actor(hidden)
         probs = Categorical(logits=logits)
         if action is None:
@@ -257,7 +258,8 @@ if __name__ == "__main__":
                     writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
                     writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
                     break
-
+        
+        print("============training started")
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(
@@ -303,17 +305,15 @@ if __name__ == "__main__":
         assert args.num_envs % args.num_minibatches == 0
         envsperbatch = args.num_envs // args.num_minibatches
         envinds = np.arange(args.num_envs)
-        flatinds = np.arange(args.batch_size).reshape(args.num_envs, args.num_steps)
+        flatinds = np.arange(args.batch_size).reshape(args.num_steps, args.num_envs)
         clipfracs = []
         for epoch in range(args.update_epochs):
-            # np.random.shuffle(b_inds)
             np.random.shuffle(envinds)
             for start in range(0, args.num_envs, envsperbatch):
                 end = start + envsperbatch
                 mbenvinds = envinds[start:end]
-                mb_inds = flatinds[mbenvinds].ravel()
-                
-                initial_lstm_state = (next_lstm_state[0].clone(), next_lstm_state[1].clone())
+                mb_inds = flatinds[:,mbenvinds].ravel() # be really careful about the index
+
                 _, newlogprob, entropy, newvalue, _ = agent.get_action_and_value(
                     b_obs[mb_inds],
                     (initial_lstm_state[0][:,mbenvinds], initial_lstm_state[1][:,mbenvinds]),
