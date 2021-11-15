@@ -150,7 +150,6 @@ class Agent(nn.Module):
                 (1.0 - d).view(1, -1, 1) * lstm_state[0],
                 (1.0 - d).view(1, -1, 1) * lstm_state[1],
             ))
-            print(lstm_state[0].sum())
             new_hidden += [h]
         new_hidden = torch.flatten(torch.cat(new_hidden), 0, 1)
         return new_hidden, lstm_state
@@ -258,8 +257,7 @@ if __name__ == "__main__":
                     writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
                     writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
                     break
-        
-        print("============training started")
+
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(
