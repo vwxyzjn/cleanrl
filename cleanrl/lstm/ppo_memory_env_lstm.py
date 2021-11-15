@@ -25,7 +25,7 @@ def parse_args():
         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=20000,
+    parser.add_argument('--total-timesteps', type=int, default=50000,
         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -41,9 +41,9 @@ def parse_args():
         help='weather to capture videos of the agent performances (check out `videos` folder)')
 
     # Algorithm specific arguments
-    parser.add_argument('--num-envs', type=int, default=1,
+    parser.add_argument('--num-envs', type=int, default=8,
         help='the number of parallel game environments')
-    parser.add_argument('--num-steps', type=int, default=128,
+    parser.add_argument('--num-steps', type=int, default=8,
         help='the number of steps to run in each environment per policy rollout')
     parser.add_argument('--anneal-lr', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
         help="Toggle learning rate annealing for policy and value networks")
@@ -156,7 +156,7 @@ class Agent(nn.Module):
             nn.Tanh(),
             layer_init(nn.Linear(64, 1), std=1.0),
         )
-        self.actor = nn.Sequential(
+        self.network = nn.Sequential(
             layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
             nn.Tanh(),
             layer_init(nn.Linear(64, 64)),
@@ -168,23 +168,31 @@ class Agent(nn.Module):
                 nn.init.constant_(param, 0)
             elif 'weight' in name:
                 nn.init.orthogonal_(param, 1.0)
-        self.actor_head = layer_init(nn.Linear(128, envs.single_action_space.n), std=0.01)
+        self.actor = layer_init(nn.Linear(128, envs.single_action_space.n), std=0.01)
+
+    def get_states(self, x, lstm_state, done):
+        hidden = self.network(x / 255.0)
+
+        # LSTM logic
+        batch_size = lstm_state[0].shape[1]
+        hidden = hidden.reshape((-1, batch_size, self.lstm.input_size))
+        done = done.reshape((-1, batch_size))
+        new_hidden = []
+        for h, d in zip(hidden, done):
+            h, lstm_state = self.lstm(h.unsqueeze(0), (
+                (1.0 - d).view(1, -1, 1) * lstm_state[0],
+                (1.0 - d).view(1, -1, 1) * lstm_state[1],
+            ))
+            new_hidden += [h]
+        new_hidden = torch.flatten(torch.cat(new_hidden), 0, 1)
+        return new_hidden, lstm_state
 
     def get_value(self, x):
         return self.critic(x)
 
     def get_action_and_value(self, x, lstm_state, done, action=None):
-        hidden = self.actor(x)
-
-        # LSTM logic
-        hidden = hidden.unsqueeze(0) # unsqueeze the extra L dimension of LSTM
-        hidden, lstm_state = self.lstm(hidden, (
-            (1.0 - done).view(1, -1, 1) * lstm_state[0],
-            (1.0 - done).view(1, -1, 1) * lstm_state[1],
-        ))
-        hidden = hidden.squeeze(0) # restore the hidden's shape
-
-        logits = self.actor_head(hidden)
+        hidden, lstm_state = self.get_states(x, lstm_state, done)
+        logits = self.actor(hidden)
         probs = Categorical(logits=logits)
         if action is None:
             action = probs.sample()
@@ -236,10 +244,6 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    lstm_states = (
-        torch.zeros((args.num_steps, agent.lstm.num_layers, args.num_envs, agent.lstm.hidden_size)).to(device),
-        torch.zeros((args.num_steps, agent.lstm.num_layers, args.num_envs, agent.lstm.hidden_size)).to(device),
-    )
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -253,6 +257,7 @@ if __name__ == "__main__":
     num_updates = args.total_timesteps // args.batch_size
 
     for update in range(1, num_updates + 1):
+        initial_lstm_state = (next_lstm_state[0].clone(), next_lstm_state[1].clone())
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
@@ -263,7 +268,6 @@ if __name__ == "__main__":
             global_step += 1 * args.num_envs
             obs[step] = next_obs
             dones[step] = next_done
-            lstm_states[0][step], lstm_states[1][step] = next_lstm_state[0], next_lstm_state[1]
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
@@ -323,28 +327,22 @@ if __name__ == "__main__":
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
 
-        b_lstm_states = (
-            lstm_states[0].permute((1,0,2,3)).reshape(1, -1, agent.lstm.hidden_size),
-            lstm_states[1].permute((1,0,2,3)).reshape(1, -1, agent.lstm.hidden_size)
-        )
-
         # Optimizaing the policy and value network
         assert args.num_envs % args.num_minibatches == 0
         envsperbatch = args.num_envs // args.num_minibatches
         envinds = np.arange(args.num_envs)
-        flatinds = np.arange(args.batch_size).reshape(args.num_envs, args.num_steps)
+        flatinds = np.arange(args.batch_size).reshape(args.num_steps, args.num_envs)
         clipfracs = []
         for epoch in range(args.update_epochs):
-            # np.random.shuffle(b_inds)
             np.random.shuffle(envinds)
             for start in range(0, args.num_envs, envsperbatch):
                 end = start + envsperbatch
                 mbenvinds = envinds[start:end]
-                mb_inds = flatinds[mbenvinds].ravel()
+                mb_inds = flatinds[:,mbenvinds].ravel() # be really careful about the index
 
                 _, newlogprob, entropy, newvalue, _ = agent.get_action_and_value(
                     b_obs[mb_inds],
-                    (b_lstm_states[0][:,mb_inds], b_lstm_states[1][:,mb_inds]),
+                    (initial_lstm_state[0][:,mbenvinds], initial_lstm_state[1][:,mbenvinds]),
                     b_dones[mb_inds],
                     b_actions.long()[mb_inds],
                 )
