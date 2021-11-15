@@ -25,7 +25,7 @@ def parse_args():
         help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=1,
         help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=50000,
+    parser.add_argument('--total-timesteps', type=int, default=4000,
         help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
         help='if toggled, `torch.backends.cudnn.deterministic=False`')
@@ -171,7 +171,7 @@ class Agent(nn.Module):
         self.actor = layer_init(nn.Linear(128, envs.single_action_space.n), std=0.01)
 
     def get_states(self, x, lstm_state, done):
-        hidden = self.network(x / 255.0)
+        hidden = self.network(x)
 
         # LSTM logic
         batch_size = lstm_state[0].shape[1]
