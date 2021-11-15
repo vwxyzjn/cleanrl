@@ -13,7 +13,7 @@ variable "on_demand_allocation_strategy" {
 variable "spot_allocation_strategy" {
   description = "The allocation strateg for the on-demand computing environment (e.g. `BEST_FIT`, `BEST_FIT_PROGRESSIVE`, or `SPOT_CAPACITY_OPTIMIZED`; see https://docs.aws.amazon.com/batch/latest/userguide/allocation-strategies.html)"
   type        = string
-  default     = "BEST_FIT"
+  default     = "SPOT_CAPACITY_OPTIMIZED"
 }
 
 variable "spot_bid_percentage" {
