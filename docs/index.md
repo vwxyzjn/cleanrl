@@ -29,7 +29,7 @@ Good luck have fun 🚀
 If you use CleanRL in your work, please cite our technical [paper](https://arxiv.org/abs/2111.08819):
 
 ```bibtex
-@misc{huang2021cleanrl,
+@article{huang2021cleanrl,
     title={CleanRL: High-quality Single-file Implementations of Deep Reinforcement Learning Algorithms}, 
     author={Shengyi Huang and Rousslan Fernand Julien Dossa and Chang Ye and Jeff Braga},
     year={2021},
