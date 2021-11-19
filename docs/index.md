@@ -24,17 +24,17 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 
 Good luck have fun 🚀
 
-## Citing our project
+## Citing CleanRL
 
-Please consider using the following Bibtex entry:
+If you use CleanRL in your work, please cite our technical [paper](https://arxiv.org/abs/2111.08819):
 
-```
-@misc{cleanrl,
-  author = {Shengyi Huang and Rousslan Dossa and Chang Ye},
-  title = {CleanRL: High-quality Single-file Implementation of Deep Reinforcement Learning algorithms},
-  year = {2020},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  howpublished = {\url{https://github.com/vwxyzjn/cleanrl/}},
+```bibtex
+@article{huang2021cleanrl,
+    title={CleanRL: High-quality Single-file Implementations of Deep Reinforcement Learning Algorithms}, 
+    author={Shengyi Huang and Rousslan Fernand Julien Dossa and Chang Ye and Jeff Braga},
+    year={2021},
+    eprint={2111.08819},
+    archivePrefix={arXiv},
+    primaryClass={cs.LG}
 }
 ```
