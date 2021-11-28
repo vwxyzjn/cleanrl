@@ -1,4 +1,4 @@
-FROM gitpod/workspace-full:latest
+FROM gitpod/workspace-full-vnc:latest
 USER gitpod
 
 # install ubuntu dependencies
