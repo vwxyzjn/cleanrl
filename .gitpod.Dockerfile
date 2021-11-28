@@ -1,5 +1,6 @@
 FROM gitpod/workspace-full-vnc:latest
 USER gitpod
+RUN if ! grep -q "export PIP_USER=no" "$HOME/.bashrc"; then printf '%s\n' "export PIP_USER=no" >> "$HOME/.bashrc"; fi
 
 # install ubuntu dependencies
 ENV DEBIAN_FRONTEND=noninteractive 
