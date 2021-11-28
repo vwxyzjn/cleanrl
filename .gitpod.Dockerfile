@@ -3,8 +3,8 @@ USER gitpod
 
 # install ubuntu dependencies
 ENV DEBIAN_FRONTEND=noninteractive 
-RUN apt-get update && \
-    apt-get -y install python3-pip xvfb ffmpeg git build-essential python-opengl
+RUN sudo apt-get update && \
+    sudo-get -y install python3-pip xvfb ffmpeg git build-essential python-opengl
 RUN ln -s /usr/bin/python3 /usr/bin/python
 
 # install python dependencies
@@ -17,7 +17,7 @@ RUN poetry install -E atari
 RUN poetry install -E pybullet
 
 # install mujoco
-RUN apt-get -y install wget unzip software-properties-common \
+RUN sudo apt-get -y install wget unzip software-properties-common \
     libgl1-mesa-dev \
     libgl1-mesa-glx \
     libglew-dev \
