@@ -9,6 +9,8 @@ RUN sudo apt-get update && \
 # install python dependencies
 RUN mkdir cleanrl_utils && touch cleanrl_utils/__init__.py
 RUN pip install poetry
+ENV PIP_USER=false
+RUN poetry config virtualenvs.in-project true
 
 # install mujoco
 RUN sudo apt-get -y install wget unzip software-properties-common \
