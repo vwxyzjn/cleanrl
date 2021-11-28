@@ -4,8 +4,7 @@ USER gitpod
 # install ubuntu dependencies
 ENV DEBIAN_FRONTEND=noninteractive 
 RUN sudo apt-get update && \
-    sudo apt-get -y install python3-pip xvfb ffmpeg git build-essential python-opengl
-RUN ln -s /usr/bin/python3 /usr/bin/python
+    sudo apt-get -y install xvfb ffmpeg git build-essential python-opengl
 
 # install python dependencies
 RUN mkdir cleanrl_utils && touch cleanrl_utils/__init__.py
