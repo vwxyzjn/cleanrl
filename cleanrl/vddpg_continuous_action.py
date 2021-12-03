@@ -10,6 +10,7 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
@@ -20,7 +21,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="CartPole-v1",
+    parser.add_argument('--gym-id', type=str, default="Hopper-v2",
         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
         help='the learning rate of the optimizer')
@@ -56,12 +57,12 @@ def parse_args():
         help="the timesteps it takes to update the target network")
     parser.add_argument('--max-grad-norm', type=float, default=0.5,
         help='the maximum norm for the gradient clipping')
-    parser.add_argument('--start-e', type=float, default=1.,
-        help="the starting epsilon for exploration")
-    parser.add_argument('--end-e', type=float, default=0.05,
-        help="the ending epsilon for exploration")
-    parser.add_argument('--exploration-fraction', type=float, default=0.8,
-        help="the fraction of `total-timesteps` it takes from start-e to go end-e")
+    parser.add_argument('--exploration-noise', type=float, default=0.1,
+        help='the scale of exploration noise')
+    parser.add_argument('--policy-frequency', type=int, default=2,
+        help="the frequency of training policy (delayed)")
+    parser.add_argument('--tau', type=float, default=0.005,
+        help="target smoothing coefficient (default: 0.005)")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
@@ -93,16 +94,29 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 class QNetwork(nn.Module):
     def __init__(self, envs):
         super(QNetwork, self).__init__()
-        self.network = nn.Sequential(
-            layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
-            nn.ReLU(),
-            layer_init(nn.Linear(64, 64)),
-            nn.ReLU(),
-            layer_init(nn.Linear(64, envs.single_action_space.n), std=0.01),
-        )
+        self.fc1 = nn.Linear(
+            np.array(envs.single_observation_space.shape).prod()+np.prod(envs.single_action_space.shape), 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 1)
+
+    def forward(self, x, a):
+        x = torch.cat([x, a], 1)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+class Actor(nn.Module):
+    def __init__(self, envs):
+        super(Actor, self).__init__()
+        self.fc1 = nn.Linear(np.array(envs.single_observation_space.shape).prod(), 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc_mu = nn.Linear(256, np.prod(envs.single_action_space.shape))
 
     def forward(self, x):
-        return self.network(x)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        return torch.tanh(self.fc_mu(x))
 
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
@@ -143,13 +157,18 @@ if __name__ == "__main__":
     envs = gym.vector.SyncVectorEnv(
         [make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
     )
-    assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
+    assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     # ALGO LOGIC: initialize agent here:
-    q_network = QNetwork(envs).to(device)
-    target_network = QNetwork(envs).to(device)
-    target_network.load_state_dict(q_network.state_dict())
-    optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
+    max_action = float(envs.single_action_space.high[0])
+    actor = Actor(envs).to(device)
+    qf1 = QNetwork(envs).to(device)
+    qf1_target = QNetwork(envs).to(device)
+    target_actor = Actor(envs).to(device)
+    target_actor.load_state_dict(actor.state_dict())
+    qf1_target.load_state_dict(qf1.state_dict())
+    q_optimizer = optim.Adam(list(qf1.parameters()), lr=args.learning_rate)
+    actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.learning_rate)
     loss_fn = nn.MSELoss()
 
     # ALGO Logic: Storage setup
@@ -168,8 +187,6 @@ if __name__ == "__main__":
 
     for update in range(1, num_updates + 1):
         # ROLLOUTS
-        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
-        writer.add_scalar("charts/epsilon", epsilon, global_step)
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
             obs[step] = next_obs
@@ -177,11 +194,12 @@ if __name__ == "__main__":
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                logits = q_network.forward(next_obs)
-                action = torch.argmax(logits, dim=1)
-                random_action = torch.randint(0, envs.single_action_space.n, (envs.num_envs,), device=device)
-                random_action_flag = torch.rand(envs.num_envs, device=device) > epsilon
-                action = torch.where(random_action_flag, action, random_action)
+                action = actor.forward(next_obs)
+                action = (
+                    action +
+                    torch.normal(0, max_action * args.exploration_noise, size=(envs.num_envs, envs.single_action_space.shape[0]), device=device)
+                ).clamp(-max_action, max_action)
+                action = action
             actions[step] = action
 
             # TRY NOT TO MODIFY: execute the game and log data.
@@ -198,7 +216,7 @@ if __name__ == "__main__":
         
         # TRAINING
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
-        b_actions = actions.reshape((-1, 1)).long()
+        b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_rewards = rewards.reshape((-1,))
         b_dones = dones.reshape((-1,))
         
@@ -216,25 +234,35 @@ if __name__ == "__main__":
                 mb_inds = b_inds[start:end]
 
                 with torch.no_grad():
-                    target_max, _ = target_network.forward(b_next_obs[mb_inds]).max(dim=1)
-                    td_target = b_rewards[mb_inds] + args.gamma * target_max * (1 - b_dones[mb_inds])
-                old_val = q_network.forward(b_obs[mb_inds]).gather(1, b_actions[mb_inds]).squeeze()
-                loss = loss_fn(td_target, old_val)
-        
-                writer.add_scalar("losses/td_loss", loss, global_step)
-        
-                # optimize the midel
-                optimizer.zero_grad()
-                loss.backward()
-                nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
-                optimizer.step()
-        
-                # update the target network
-                if num_gradient_updates % args.target_network_frequency == 0:
-                    print("target_network")
-                    target_network.load_state_dict(q_network.state_dict())
+                    next_state_actions = (
+                        target_actor.forward(b_next_obs[mb_inds])
+                    ).clamp(max_action, max_action)
+                    qf1_next_target = qf1_target.forward(b_next_obs[mb_inds], next_state_actions)
+                    next_q_value = b_rewards[mb_inds] + (1 - 1 - b_dones[mb_inds]) * args.gamma * (qf1_next_target).view(-1)
 
-        writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
+                qf1_a_values = qf1.forward(b_obs[mb_inds], b_actions[mb_inds]).view(-1)
+                qf1_loss = loss_fn(qf1_a_values, next_q_value)
+
+                # optimize the midel
+                q_optimizer.zero_grad()
+                qf1_loss.backward()
+                nn.utils.clip_grad_norm_(list(qf1.parameters()), args.max_grad_norm)
+                q_optimizer.step()
+                writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
+
+                if num_gradient_updates % args.policy_frequency == 0:
+                    actor_loss = -qf1.forward(b_obs[mb_inds], actor.forward(b_obs[mb_inds])).mean()
+                    actor_optimizer.zero_grad()
+                    actor_loss.backward()
+                    nn.utils.clip_grad_norm_(list(actor.parameters()), args.max_grad_norm)
+                    actor_optimizer.step()
+
+                    writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
+                    # update the target network
+                    for param, target_param in zip(actor.parameters(), target_actor.parameters()):
+                        target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
+                    for param, target_param in zip(qf1.parameters(), qf1_target.parameters()):
+                        target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
     
     print(num_gradient_updates)
 
