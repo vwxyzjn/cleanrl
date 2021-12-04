@@ -1,10 +1,9 @@
-name: ci 
+name: docs 
 on:
   push:
     branches: 
       - master
       - main
-      - documentation-site
 jobs:
   deploy:
     runs-on: ubuntu-latest
