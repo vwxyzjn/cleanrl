@@ -91,6 +91,10 @@ python cleanrl/ppg_procgen.py --gym-id starpilot
 python cleanrl/ppg_procgen_impala_cnn.py --gym-id starpilot
 ```
 
+You may also use a prebuilt development environment hosted in Gitpod:
+
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/vwxyzjn/cleanrl/tree/gitpod)
+
 ## Algorithms Implemented
 - [x] Deep Q-Learning (DQN)
 - [x] Categorical DQN (C51)
