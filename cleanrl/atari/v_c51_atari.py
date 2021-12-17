@@ -1,6 +1,6 @@
 # https://github.com/facebookresearch/torchbeast/blob/master/torchbeast/core/environment.py
 
-#Vectoried implementation od c51 based on vdqn_atari.py
+#Vectoried implementation of c51 based on vdqn_atari.py
 
 import numpy as np
 from collections import deque
@@ -15,44 +15,6 @@ from stable_baselines3.common.atari_wrappers import (
     MaxAndSkipEnv,
     NoopResetEnv,
 )
-
-def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False):
-    """Configure environment for DeepMind-style Atari.
-    """
-    if episode_life:
-        env = EpisodicLifeEnv(env)
-    if 'FIRE' in env.unwrapped.get_action_meanings():
-        env = FireResetEnv(env)
-    env = WarpFrame(env)
-    if scale:
-        env = ScaledFloatFrame(env)
-    if clip_rewards:
-        env = ClipRewardEnv(env)
-    if frame_stack:
-        env = FrameStack(env, 4)
-    return env
-
-
-class ImageToPyTorch(gym.ObservationWrapper):
-    """
-    Image shape to channels x weight x height
-    """
-
-    def __init__(self, env):
-        super(ImageToPyTorch, self).__init__(env)
-        old_shape = self.observation_space.shape
-        self.observation_space = gym.spaces.Box(
-            low=0,
-            high=255,
-            shape=(old_shape[-1], old_shape[0], old_shape[1]),
-            dtype=np.uint8,
-        )
-
-    def observation(self, observation):
-        return np.transpose(observation, axes=(2, 0, 1))
-
-def wrap_pytorch(env):
-    return ImageToPyTorch(env)
 
 # Reference: https://arxiv.org/pdf/1707.06887.pdf
 # https://github.com/ShangtongZhang/DeepRL/blob/master/deep_rl/agent/CategoricalDQN_agent.py
@@ -141,15 +103,6 @@ def parse_args():
     return args
 
 # TRY NOT TO MODIFY: setup the environment
-args = parse_args()
-run_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-writer = SummaryWriter(f"runs/{run_name}")
-writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
-        '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
-if args.track:
-    import wandb
-    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, sync_tensorboard=True, config=vars(args), name=run_name, monitor_gym=True, save_code=True)
-    writer = SummaryWriter(f"/tmp/{run_name}")
 
 # env setup
 def make_env(gym_id, seed, idx, capture_video, run_name):
@@ -175,23 +128,6 @@ def make_env(gym_id, seed, idx, capture_video, run_name):
 
     return thunk
 
-envs = gym.vector.SyncVectorEnv(
-        [make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
-    )
-assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
-
-# TRY NOT TO MODIFY: seeding
-device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
-random.seed(args.seed)
-np.random.seed(args.seed)
-torch.manual_seed(args.seed)
-torch.backends.cudnn.deterministic = args.torch_deterministic
-
-
-def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
-    torch.nn.init.orthogonal_(layer.weight, std)
-    torch.nn.init.constant_(layer.bias, bias_const)
-    return layer
 
 class QNetwork(nn.Module):
     def __init__(self, envs, device, frames=4, n_atoms=51, v_min=-10, v_max=10):
@@ -232,115 +168,137 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope =  (end_e - start_e) / duration
     return max(slope * t + start_e, end_e)
 
+if __name__ == "__main__":
+    args = parse_args()
+    run_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    writer = SummaryWriter(f"runs/{run_name}")
+    writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
+            '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
+    if args.track:
+        import wandb
+        wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, sync_tensorboard=True, config=vars(args), name=run_name, monitor_gym=True, save_code=True)
+        writer = SummaryWriter(f"/tmp/{run_name}")
 
-q_network = QNetwork(envs, device, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
-target_network = QNetwork(envs, device, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
-target_network.load_state_dict(q_network.state_dict())
-optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate, eps=0.01/args.batch_size)
-loss_fn = nn.MSELoss()
-print(device.__repr__())
-print(q_network)
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(args.gym_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
+    )
+    assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
-# ALGO Logic: Storage setup
-obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
-actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
-rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
-dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    # TRY NOT TO MODIFY: seeding
+    device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.backends.cudnn.deterministic = args.torch_deterministic
 
-# TRY NOT TO MODIFY: start the game
+    q_network = QNetwork(envs, device, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
+    target_network = QNetwork(envs, device, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
+    target_network.load_state_dict(q_network.state_dict())
+    optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate, eps=0.01/args.batch_size)
+    loss_fn = nn.MSELoss()
+    print(device.__repr__())
+    print(q_network)
 
-global_step = 0
-start_time = time.time()
-next_obs = torch.Tensor(envs.reset()).to(device)
-next_done = torch.zeros(args.num_envs).to(device)
-num_updates = args.total_timesteps // args.batch_size
-num_gradient_updates = 0
+    # ALGO Logic: Storage setup
+    obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
+    actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
+    rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
 
-for update in range(1, num_updates + 1):
-    # ROLLOUTS
-    epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
-    writer.add_scalar("charts/epsilon", epsilon, global_step)
-    for step in range(0, args.num_steps):
-        global_step += 1 * args.num_envs
-        obs[step] = next_obs
-        dones[step] = next_done
-        with torch.no_grad():
-            action, _ = q_network.get_action(envs, device, next_obs)
-        actions[step] = action
-        
-        # TRY NOT TO MODIFY: execute the game and log data.
-        #print(action.shape)
-        next_obs, reward, done, info = envs.step(action.cpu().numpy())
-        rewards[step] = torch.tensor(reward).to(device).view(-1)
-        next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
+    # TRY NOT TO MODIFY: start the game
 
-        # TRY NOT TO MODIFY: record rewards for plotting purposes
-        for item in info:
-            if 'episode' in item.keys():
-                print(f"global_step={global_step}, episode_reward={item['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", item['episode']['r'], global_step)
-                writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
-                break
+    global_step = 0
+    start_time = time.time()
+    next_obs = torch.Tensor(envs.reset()).to(device)
+    next_done = torch.zeros(args.num_envs).to(device)
+    num_updates = args.total_timesteps // args.batch_size
+    num_gradient_updates = 0
 
-    # ALGO LOGIC: training.
-    b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
-    b_actions = actions.reshape((-1, 1)).long()
-    b_rewards = rewards.reshape((-1,))
-    b_dones = dones.reshape((-1,))
-    
-    # next_obs index manipulation
-    b_next_obs = torch.zeros_like(obs).to(device)
-    b_next_obs[:-1] = obs[1:]
-    b_next_obs[-1] = next_obs
-    b_next_obs = b_next_obs.reshape((-1,) + envs.single_observation_space.shape)
-    b_inds = np.arange(args.batch_size)
-
-
-    for epoch in range(args.update_epochs):
-        np.random.shuffle(b_inds)
-        for start in range(0, args.batch_size, args.minibatch_size):
-            num_gradient_updates += 1
-            end = start + args.minibatch_size
-            mb_inds = b_inds[start:end]
-
+    for update in range(1, num_updates + 1):
+        # ROLLOUTS
+        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
+        writer.add_scalar("charts/epsilon", epsilon, global_step)
+        for step in range(0, args.num_steps):
+            global_step += 1 * args.num_envs
+            obs[step] = next_obs
+            dones[step] = next_done
             with torch.no_grad():
-                _, next_pmfs = target_network.get_action(envs, device, b_next_obs[mb_inds])
-                next_atoms = b_rewards[mb_inds].unsqueeze(-1) + args.gamma * q_network.atoms  * (1 - b_dones[mb_inds].unsqueeze(-1))
-                # projection
-                delta_z = q_network.atoms[1]-q_network.atoms[0]
-                tz = next_atoms.clamp(args.v_min, args.v_max)
-                b = (tz - args.v_min)/ delta_z
-                l = b.floor().clamp(0, args.n_atoms-1)
-                u = b.ceil().clamp(0, args.n_atoms-1)
-                # (l == u).float() handles the case where bj is exactly an integer
-                # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
-                d_m_l = (u + (l == u).float() - b) * next_pmfs
-                d_m_u = (b - l) * next_pmfs
-                target_pmfs = torch.zeros_like(next_pmfs)
+                action, _ = q_network.get_action(envs, device, next_obs)
+            actions[step] = action
+            
+            # TRY NOT TO MODIFY: execute the game and log data.
+            #print(action.shape)
+            next_obs, reward, done, info = envs.step(action.cpu().numpy())
+            rewards[step] = torch.tensor(reward).to(device).view(-1)
+            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
+
+            # TRY NOT TO MODIFY: record rewards for plotting purposes
+            for item in info:
+                if 'episode' in item.keys():
+                    print(f"global_step={global_step}, episode_reward={item['episode']['r']}")
+                    writer.add_scalar("charts/episodic_return", item['episode']['r'], global_step)
+                    writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
+                    break
+
+        # ALGO LOGIC: training.
+        b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
+        b_actions = actions.reshape((-1, 1)).long()
+        b_rewards = rewards.reshape((-1,))
+        b_dones = dones.reshape((-1,))
+        
+        # next_obs index manipulation
+        b_next_obs = torch.zeros_like(obs).to(device)
+        b_next_obs[:-1] = obs[1:]
+        b_next_obs[-1] = next_obs
+        b_next_obs = b_next_obs.reshape((-1,) + envs.single_observation_space.shape)
+        b_inds = np.arange(args.batch_size)
+
+
+        for epoch in range(args.update_epochs):
+            np.random.shuffle(b_inds)
+            for start in range(0, args.batch_size, args.minibatch_size):
+                num_gradient_updates += 1
+                end = start + args.minibatch_size
+                mb_inds = b_inds[start:end]
+
+                with torch.no_grad():
+                    _, next_pmfs = target_network.get_action(envs, device, b_next_obs[mb_inds])
+                    next_atoms = b_rewards[mb_inds].unsqueeze(-1) + args.gamma * q_network.atoms  * (1 - b_dones[mb_inds].unsqueeze(-1))
+                    # projection
+                    delta_z = q_network.atoms[1]-q_network.atoms[0]
+                    tz = next_atoms.clamp(args.v_min, args.v_max)
+                    b = (tz - args.v_min)/ delta_z
+                    l = b.floor().clamp(0, args.n_atoms-1)
+                    u = b.ceil().clamp(0, args.n_atoms-1)
+                    # (l == u).float() handles the case where bj is exactly an integer
+                    # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
+                    d_m_l = (u + (l == u).float() - b) * next_pmfs
+                    d_m_u = (b - l) * next_pmfs
+                    target_pmfs = torch.zeros_like(next_pmfs)
+                    
+                    for i in range(target_pmfs.size(0)):
+                        target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
+                        target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
                 
-                for i in range(target_pmfs.size(0)):
-                    target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
-                    target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
-            
-            _, old_pmfs = q_network.get_action(envs, device, b_obs[mb_inds], b_actions[mb_inds].squeeze())
-            loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5).log()).sum(-1)).mean()
-            
-            # loss = (target_pmfs * (target_pmfs.clamp(min=1e-5).log() - old_pmfs.clamp(min=1e-5).log())).sum(-1).mean()
-            
-            writer.add_scalar("losses/td_loss", loss, global_step)
+                _, old_pmfs = q_network.get_action(envs, device, b_obs[mb_inds], b_actions[mb_inds].squeeze())
+                loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5).log()).sum(-1)).mean()
+                
+                # loss = (target_pmfs * (target_pmfs.clamp(min=1e-5).log() - old_pmfs.clamp(min=1e-5).log())).sum(-1).mean()
+                
+                writer.add_scalar("losses/td_loss", loss, global_step)
 
-            # optimize the midel
-            optimizer.zero_grad()
-            loss.backward()
-            nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
-            optimizer.step()
+                # optimize the midel
+                optimizer.zero_grad()
+                loss.backward()
+                nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
+                optimizer.step()
 
-            # update the target network
-            if num_gradient_updates % args.target_network_frequency == 0:
-                target_network.load_state_dict(q_network.state_dict())
+                # update the target network
+                if num_gradient_updates % args.target_network_frequency == 0:
+                    target_network.load_state_dict(q_network.state_dict())
 
-    
+        
 
 
-envs.close()
-writer.close()
+    envs.close()
+    writer.close()
