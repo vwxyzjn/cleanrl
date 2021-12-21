@@ -216,13 +216,13 @@ if __name__ == "__main__":
                     writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
                     writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
                     break
-        
+
         # TRAINING
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
         b_actions = actions.reshape((-1, 1)).long()
         b_rewards = rewards.reshape((-1,))
         b_dones = dones.reshape((-1,))
-        
+
         # next_obs index manipulation
         b_next_obs = torch.zeros_like(obs).to(device)
         b_next_obs[:-1] = obs[1:]
@@ -241,22 +241,22 @@ if __name__ == "__main__":
                     td_target = b_rewards[mb_inds] + args.gamma * target_max * (1 - b_dones[mb_inds])
                 old_val = q_network.forward(b_obs[mb_inds]).gather(1, b_actions[mb_inds]).squeeze()
                 loss = loss_fn(td_target, old_val)
-        
+
                 writer.add_scalar("losses/td_loss", loss, global_step)
-        
+
                 # optimize the midel
                 optimizer.zero_grad()
                 loss.backward()
                 nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
                 optimizer.step()
-        
+
                 # update the target network
                 if num_gradient_updates % args.target_network_frequency == 0:
                     print("target_network")
                     target_network.load_state_dict(q_network.state_dict())
 
         writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
-    
+
     print(num_gradient_updates)
 
     envs.close()

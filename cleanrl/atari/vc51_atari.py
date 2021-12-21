@@ -7,43 +7,49 @@ import os
 import random
 import time
 from distutils.util import strtobool
-
 import gym
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from stable_baselines3.common.atari_wrappers import ClipRewardEnv, EpisodicLifeEnv, FireResetEnv, MaxAndSkipEnv, NoopResetEnv
+from stable_baselines3.common.atari_wrappers import (
+    ClipRewardEnv,
+    EpisodicLifeEnv,
+    FireResetEnv,
+    MaxAndSkipEnv,
+    NoopResetEnv,
+)
 from torch.utils.tensorboard import SummaryWriter
 
 
 def parse_args():
     # Common arguments
     # fmt: off
-    parser = argparse.ArgumentParser(description='Vectorized-C51 agent')
+    parser = argparse.ArgumentParser()
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
-                        help='the name of this experiment')
+        help='the name of this experiment')
     parser.add_argument('--gym-id', type=str, default="BreakoutNoFrameskip-v4",
-                        help='the id of the gym environment')
+        help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=1e-4,
-                        help='the learning rate of the optimizer')
+        help='the learning rate of the optimizer')
     parser.add_argument('--seed', type=int, default=2,
-                        help='seed of the experiment')
+        help='seed of the experiment')
     parser.add_argument('--total-timesteps', type=int, default=10000000,
-                        help='total timesteps of the experiments')
+        help='total timesteps of the experiments')
     parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                        help='if toggled, `torch.backends.cudnn.deterministic=False`')
+        help='if toggled, `torch.backends.cudnn.deterministic=False`')
     parser.add_argument('--cuda', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                        help='if toggled, cuda will not be enabled by default')
+        help='if toggled, cuda will be enabled by default')
     parser.add_argument('--track', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                        help='if toggled, this experiment will be tracked with Weights and Biases')
+        help='if toggled, this experiment will be tracked with Weights and Biases')
     parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
-                        help="the wandb's project name")
+        help="the wandb's project name")
     parser.add_argument('--wandb-entity', type=str, default=None,
-                        help="the entity (team) of wandb's project")
+        help="the entity (team) of wandb's project")
     parser.add_argument('--capture-video', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                        help='weather to capture videos of the agent performances (check out `videos` folder)')
-    
+        help='weather to capture videos of the agent performances (check out `videos` folder)')
+
     # Algorithm specific arguments
     parser.add_argument('--num-envs', type=int, default=8,
         help='the number of parallel game environments')
