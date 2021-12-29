@@ -738,9 +738,10 @@ next_ob = []
 for step in range(args.num_steps * 50):
     acs = torch.from_numpy(np.random.randint(0, envs.action_space.n, size=(args.num_envs,)))
     s, r, d, infos = envs.step(acs)
-    next_ob = s[:, 3, :, :].reshape([-1, 1, 84, 84])
+    next_ob += s.data.cpu().numpy()[:, 3, :, :].reshape([-1, 1, 84, 84]).tolist()
 
     if len(next_ob) % (args.num_steps * args.num_envs) == 0:
+        next_ob = np.stack(next_ob)
         obs_rms.update(next_ob)
         next_ob = []
 print('End to initalize...')
