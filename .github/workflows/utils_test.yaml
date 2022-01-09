@@ -27,5 +27,7 @@ jobs:
         run: poetry install -E pytest
       - name: Install cloud dependencies
         run: poetry install -E cloud
+      - name: Downgrade setuptools
+        run: poetry run pip install setuptools==59.5.0
       - name: Run utils tests
         run: poetry run pytest tests/test_utils.py

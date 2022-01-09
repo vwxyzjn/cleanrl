@@ -11,7 +11,7 @@ def test_ppo():
 
 def test_dqn():
     subprocess.run(
-        "python cleanrl/dqn_atari.py --learning-starts 200 --total-timesteps 205",
+        "python cleanrl/dqn_atari.py --learning-starts 200 --total-timesteps 204",
         shell=True,
         check=True,
     )
@@ -19,7 +19,7 @@ def test_dqn():
 
 def test_c51():
     subprocess.run(
-        "python cleanrl/c51_atari.py --learning-starts 200 --total-timesteps 205",
+        "python cleanrl/c51_atari.py --learning-starts 200 --total-timesteps 204",
         shell=True,
         check=True,
     )
