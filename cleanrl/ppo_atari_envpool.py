@@ -20,7 +20,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
         help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="Pong-v5",
+    parser.add_argument('--gym-id', type=str, default="Breakout-v5",
         help='the id of the gym environment')
     parser.add_argument('--learning-rate', type=float, default=2.5e-4,
         help='the learning rate of the optimizer')
@@ -42,7 +42,7 @@ def parse_args():
         help='weather to capture videos of the agent performances (check out `videos` folder)')
 
     # Algorithm specific arguments
-    parser.add_argument('--num-envs', type=int, default=32,
+    parser.add_argument('--num-envs', type=int, default=8,
         help='the number of parallel game environments')
     parser.add_argument('--num-steps', type=int, default=128,
         help='the number of steps to run in each environment per policy rollout')
@@ -85,12 +85,20 @@ class RecordEpisodeStatistics(gym.Wrapper):
         self.num_envs = getattr(env, "num_envs", 1)
         self.episode_returns = None
         self.episode_lengths = None
-        self.is_vector_env = True
+        # get if the env has lives
+        self.has_lives = False
+        env.reset()
+        info = env.step(np.zeros(self.num_envs, dtype=int))[-1]
+        if info["lives"].sum() > 0:
+            self.has_lives = True
+            print("env has lives")
+
 
     def reset(self, **kwargs):
         observations = super(RecordEpisodeStatistics, self).reset(**kwargs)
         self.episode_returns = np.zeros(self.num_envs, dtype=np.float32)
         self.episode_lengths = np.zeros(self.num_envs, dtype=np.int32)
+        self.lives = np.zeros(self.num_envs, dtype=np.int32)
         self.returned_episode_returns = np.zeros(self.num_envs, dtype=np.float32)
         self.returned_episode_lengths = np.zeros(self.num_envs, dtype=np.int32)
         return observations
@@ -103,8 +111,13 @@ class RecordEpisodeStatistics(gym.Wrapper):
         self.episode_lengths += 1
         self.returned_episode_returns[:] = self.episode_returns
         self.returned_episode_lengths[:] = self.episode_lengths
-        self.episode_returns *= (1 - dones)
-        self.episode_lengths *= (1 - dones)
+        all_lives_exhausted = infos["lives"] == 0
+        if self.has_lives:
+            self.episode_returns *= (1 - all_lives_exhausted)
+            self.episode_lengths *= (1 - all_lives_exhausted)
+        else:
+            self.episode_returns *= (1 - dones)
+            self.episode_lengths *= (1 - dones)
         infos["r"] = self.returned_episode_returns
         infos["l"] = self.returned_episode_lengths
         return (
@@ -180,9 +193,14 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = envpool.make(args.gym_id, env_type="gym", num_envs=args.num_envs)
+    envs = envpool.make(
+        args.gym_id,
+        env_type="gym",
+        num_envs=args.num_envs,
+        episodic_life=True,
+        reward_clip=True,
+    )
     envs.num_envs = args.num_envs
-    # envs.is_vector_env = True
     envs = RecordEpisodeStatistics(envs)
     assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
@@ -196,6 +214,7 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    avg_returns = deque(maxlen=10)
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -229,10 +248,15 @@ if __name__ == "__main__":
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
 
             for idx, d in enumerate(done):
-                if d:
+                if d and info['lives'][idx] == 0:
                     print(f"global_step={global_step}, episodic_return={info['r'][idx]}")
+                    avg_returns.append(info['r'][idx])
+                    writer.add_scalar("charts/avg_episodic_return", np.average(avg_returns), global_step)
                     writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
                     writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
+                    # if np.average(avg_returns) > 17:
+                    #     writer.add_scalar("charts/time", time.time() - start_time, global_step)
+                    #     quit()
 
         # bootstrap value if not done
         with torch.no_grad():
