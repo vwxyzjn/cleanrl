@@ -190,7 +190,8 @@ for global_step in range(args.total_timesteps):
     if global_step > args.learning_starts and global_step % args.train_frequency == 0:
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         with torch.no_grad():
-            target_max = torch.max(target_network.forward(s_next_obses, device), dim=1)[0]
+            argmax_action = q_network.forward(s_next_obses,device).argmax(dim=1).unsqueeze(-1)
+            target_max = target_network.forward(s_next_obses, device).gather(1,argmax_action).squeeze()
             td_target = torch.Tensor(s_rewards).to(device) + args.gamma * target_max * (1 - torch.Tensor(s_dones).to(device))
         old_val = q_network.forward(s_obs, device).gather(1, torch.LongTensor(s_actions).view(-1,1).to(device)).squeeze()
         loss = loss_fn(td_target, old_val)
