@@ -18,7 +18,7 @@ gym = { git = "https://github.com/openai/gym", rev = "b9e8b6c" }
 # Optinal dependencies
 ale-py = {version = "^0.7", optional = true}
 AutoROM = {version = "^0.4.2", optional = true, extras = ["accept-rom-license"]}
-pybullet = {version = "^3.1.8", optional = true}
+pybullet = {version = "3.1.8", optional = true}
 procgen = {version = "^0.10.4", optional = true}
 pettingzoo = {version = "^1.11.2", optional = true}
 pygame = {version = "^2.0.1", optional = true}

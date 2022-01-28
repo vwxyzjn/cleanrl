@@ -406,7 +406,7 @@ name = "cycler"
 version = "0.11.0"
 description = "Composable style cycles"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [[package]]
@@ -519,7 +519,7 @@ name = "fonttools"
 version = "4.29.0"
 description = "Tools to manipulate font files"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [package.extras]
@@ -668,12 +668,12 @@ numpy = ">=1.18.0"
 
 [package.extras]
 accept-rom-license = ["autorom[accept-rom-license] (>=0.4.2,<0.5.0)"]
-all = ["box2d-py (==2.3.5)", "pyglet (>=1.4.0)", "ale-py (>=0.7.1,<0.8.0)", "lz4 (>=3.1.0)", "opencv-python (>=3.0)", "pygame (==2.1.0)", "scipy (>=1.4.1)", "mujoco-py (>=1.50,<2.0)"]
+all = ["pygame (==2.1.0)", "scipy (>=1.4.1)", "lz4 (>=3.1.0)", "opencv-python (>=3.0)", "ale-py (>=0.7.1,<0.8.0)", "box2d-py (==2.3.5)", "pyglet (>=1.4.0)", "mujoco-py (>=1.50,<2.0)"]
 atari = ["ale-py (>=0.7.1,<0.8.0)"]
 box2d = ["box2d-py (==2.3.5)", "pyglet (>=1.4.0)"]
 classic_control = ["pyglet (>=1.4.0)"]
 mujoco = ["mujoco-py (>=1.50,<2.0)"]
-nomujoco = ["box2d-py (==2.3.5)", "pyglet (>=1.4.0)", "lz4 (>=3.1.0)", "opencv-python (>=3.0)", "pygame (==2.1.0)", "scipy (>=1.4.1)"]
+nomujoco = ["lz4 (>=3.1.0)", "opencv-python (>=3.0)", "box2d-py (==2.3.5)", "pyglet (>=1.4.0)", "pygame (==2.1.0)", "scipy (>=1.4.1)"]
 other = ["lz4 (>=3.1.0)", "opencv-python (>=3.0)"]
 toy_text = ["pygame (==2.1.0)", "scipy (>=1.4.1)"]
 
@@ -1031,7 +1031,7 @@ name = "kiwisolver"
 version = "1.3.2"
 description = "A fast implementation of the Cassowary constraint solver"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [[package]]
@@ -1069,7 +1069,7 @@ name = "matplotlib"
 version = "3.5.1"
 description = "Python plotting package"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [package.dependencies]
@@ -1323,7 +1323,7 @@ name = "packaging"
 version = "21.3"
 description = "Core utilities for Python packages"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -1334,7 +1334,7 @@ name = "pandas"
 version = "1.3.5"
 description = "Powerful data structures for data analysis, time series, and statistics"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7.1"
 
 [package.dependencies]
@@ -1451,7 +1451,7 @@ name = "pillow"
 version = "9.0.0"
 description = "Python Imaging Library (Fork)"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [[package]]
@@ -1587,7 +1587,7 @@ pyasn1 = ">=0.4.6,<0.5.0"
 
 [[package]]
 name = "pybullet"
-version = "3.2.1"
+version = "3.1.8"
 description = "Official Python Interface for the Bullet Physics SDK specialized for Robotics Simulation and Reinforcement Learning"
 category = "main"
 optional = true
@@ -3577,7 +3577,7 @@ name = "pyparsing"
 version = "3.0.7"
 description = "Python parsing module"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.extras]
@@ -3739,7 +3739,7 @@ name = "pytz"
 version = "2021.3"
 description = "World timezone definitions, modern and historical"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [[package]]
@@ -4025,7 +4025,7 @@ name = "setuptools-scm"
 version = "6.4.2"
 description = "the blessed package to manage your versions by scm tags"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [package.dependencies]
@@ -4254,7 +4254,7 @@ name = "stable-baselines3"
 version = "1.2.0"
 description = "Pytorch version of Stable Baselines, implementations of reinforcement learning algorithms."
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 
 [package.dependencies]
@@ -4406,7 +4406,7 @@ name = "tomli"
 version = "1.2.3"
 description = "A lil' TOML parser"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.6"
 
 [[package]]
@@ -4614,13 +4614,13 @@ docs = ["sphinx", "jaraco.packaging (>=8.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy"]
 
 [extras]
-atari = ["ale-py", "AutoROM", "stable-baselines3"]
+atari = ["ale-py", "AutoROM"]
 cloud = ["boto3", "awscli"]
 docs = ["mkdocs-material"]
 mujoco = ["free-mujoco-py"]
-pettingzoo = ["pettingzoo", "stable-baselines3", "pygame", "pymunk"]
+pettingzoo = ["pettingzoo", "pygame", "pymunk"]
 plot = ["pandas", "seaborn"]
-procgen = ["procgen", "stable-baselines3"]
+procgen = ["procgen"]
 pybullet = ["pybullet"]
 pytest = ["pytest"]
 spyder = ["spyder"]
@@ -4628,7 +4628,7 @@ spyder = ["spyder"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "340df3ea47e965ceb0a5e33b5e8c288ac91f92205eec11dc23148caaf93959b2"
+content-hash = "1a87f0fe31e2902e2fa094a2028cfd449762e23fc28bf67ef1b03832a4b02d95"
 
 [metadata.files]
 absl-py = [
@@ -5675,13 +5675,14 @@ pyasn1-modules = [
     {file = "pyasn1_modules-0.2.8-py3.7.egg", hash = "sha256:c29a5e5cc7a3f05926aff34e097e84f8589cd790ce0ed41b67aed6857b26aafd"},
 ]
 pybullet = [
-    {file = "pybullet-3.2.1-cp27-cp27m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:a7558b63c754ee13e5937d348a6a1e496bc317983b0229a0351f896bd5678ed7"},
-    {file = "pybullet-3.2.1-cp27-cp27mu-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:ed73517895eee6b238e5bc140040edab9fd6883b49fce2fed03f8fe87877e36d"},
-    {file = "pybullet-3.2.1-cp35-cp35m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:86ea0d85d538ffdbdc4684708fc81bff3371b14b5ad2207e67d653b5083879d2"},
-    {file = "pybullet-3.2.1-cp36-cp36m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:10f0b947eeea4d42f324a727be701bef1cfebf3cb532332a9c7549cf34b76475"},
-    {file = "pybullet-3.2.1-cp37-cp37m-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:8c3cfff5f2c3797891ccfdfe5893945be9545c44596034f7240a2c766b1f4d73"},
-    {file = "pybullet-3.2.1-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:ef8101bcac2f618b4b9fdd926394d5611b0c7c8df8217f98b728da254b597cb6"},
-    {file = "pybullet-3.2.1-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:6196110885debf7528f03ab9aecd5f61d5de4654a39c8cbea3ce496220ea6e4f"},
+    {file = "pybullet-3.1.8-cp27-cp27m-manylinux1_x86_64.whl", hash = "sha256:53e7ca296a9efecb33ee80be29a28a49508bfaea6624c2dd26c670d76b0bd7fb"},
+    {file = "pybullet-3.1.8-cp27-cp27mu-manylinux1_x86_64.whl", hash = "sha256:b70d560786a94bada2537f3d55a7820855d1fa3caea8de023d88f03c97d40539"},
+    {file = "pybullet-3.1.8-cp35-cp35m-manylinux1_x86_64.whl", hash = "sha256:bc3c4873d12ec9acbf46a47fac8339c0be7ce6b32ee22a5b209eda18d2dfd08e"},
+    {file = "pybullet-3.1.8-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:0ae9bef2f8ea6b30ee0f8fbc7051801d9b47e82ec8637a47e47a0675d4f03fa4"},
+    {file = "pybullet-3.1.8-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:d47ca592b2621fd05e2c234f15858293e6a53bb04cbd29df5c06d5ca7ef2c6e5"},
+    {file = "pybullet-3.1.8-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:2f4741953b56917231a44ff5767e2b5bb2e8bb2cb1ea6488f555f6754ef90751"},
+    {file = "pybullet-3.1.8-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:df0ccb74e8e307506fd6cc57e5ad7b2c3b7d23ec2a7c8fa16c02fae863ded904"},
+    {file = "pybullet-3.1.8.tar.gz", hash = "sha256:a7e6c7c77cab39e1559c98e4290c5138247b15d3a26a76a23b2737c159f3f905"},
 ]
 pycodestyle = [
     {file = "pycodestyle-2.7.0-py2.py3-none-any.whl", hash = "sha256:514f76d918fcc0b55c6680472f0a37970994e07bbb80725808c17089be302068"},
