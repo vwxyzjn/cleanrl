@@ -23,7 +23,7 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 * 🧫 Experiment Management with [Weights and Biases](https://wandb.ai/site)
 * 💸 Cloud Integration with docker and AWS 
 
-You can read more about CleanRL in our [technical paper]((https://arxiv.org/abs/2111.08819)) and [documentation](https://docs.cleanrl.dev/).
+You can read more about CleanRL in our [technical paper](https://arxiv.org/abs/2111.08819) and [documentation](https://docs.cleanrl.dev/).
 
 Good luck have fun :rocket:
 
@@ -93,7 +93,7 @@ python cleanrl/ppg_procgen_impala_cnn.py --gym-id starpilot
 
 You may also use a prebuilt development environment hosted in Gitpod:
 
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/vwxyzjn/cleanrl/tree/gitpod)
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/vwxyzjn/cleanrl)
 
 ## Algorithms Implemented
 - [x] Deep Q-Learning (DQN)
