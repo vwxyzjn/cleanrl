@@ -26,7 +26,7 @@ def parse_args():
         help="the name of this experiment")
     parser.add_argument("--gym-id", type=str, default="BreakoutNoFrameskip-v4",
         help="the id of the gym environment")
-    parser.add_argument("--learning-rate", type=float, default=1e-4,
+    parser.add_argument("--learning-rate", type=float, default=25e-4,
         help="the learning rate of the optimizer")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
@@ -56,7 +56,7 @@ def parse_args():
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
-    parser.add_argument("--target-network-frequency", type=int, default=1000,
+    parser.add_argument("--target-network-frequency", type=int, default=10000,
         help="the timesteps it takes to update the target network")
     parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
