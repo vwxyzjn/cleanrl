@@ -176,7 +176,7 @@ if __name__ == "__main__":
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(envs, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
-    optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
+    optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate, eps=0.01/args.batch_size)
     target_network = QNetwork(envs, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
     target_network.load_state_dict(q_network.state_dict())
 
@@ -239,7 +239,7 @@ if __name__ == "__main__":
                     target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
             
             _, old_pmfs = q_network.get_action(data.observations, data.actions.flatten())
-            loss = (-(target_pmfs.detach() * old_pmfs.log()).sum(-1)).mean()
+            loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5).log()).sum(-1)).mean()
 
             if global_step % 100 == 0:
                 writer.add_scalar("losses/td_loss", loss, global_step)
@@ -253,6 +253,6 @@ if __name__ == "__main__":
             # update the target network
             if global_step % args.target_network_frequency == 0:
                 target_network.load_state_dict(q_network.state_dict())
-            # raise
+
     envs.close()
     writer.close()
