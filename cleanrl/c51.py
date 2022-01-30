@@ -218,7 +218,7 @@ if __name__ == "__main__":
                     target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
             
             _, old_pmfs = q_network.get_action(data.observations, data.actions.flatten())
-            loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5).log()).sum(-1)).mean()
+            loss = (-(target_pmfs.clamp(min=1e-5) * old_pmfs.clamp(min=1e-5).log()).sum(-1)).mean()
 
             if global_step % 100 == 0:
                 writer.add_scalar("losses/td_loss", loss, global_step)
