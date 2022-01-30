@@ -91,7 +91,7 @@ class QNetwork(nn.Module):
         super(QNetwork, self).__init__()
         self.env = env
         self.n_atoms = n_atoms
-        self.atoms = torch.linspace(v_min, v_max, steps=n_atoms)
+        self.register_buffer("atoms", torch.linspace(v_min, v_max, steps=n_atoms))
         self.n = env.single_action_space.n
         self.network = nn.Sequential(
             nn.Linear(np.array(env.single_observation_space.shape).prod(), 120),
