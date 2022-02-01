@@ -223,7 +223,7 @@ if __name__ == "__main__":
             if global_step % 100 == 0:
                 writer.add_scalar("losses/td_loss", loss, global_step)
 
-            # optimize the midel
+            # optimize the model
             optimizer.zero_grad()
             loss.backward()
             nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)

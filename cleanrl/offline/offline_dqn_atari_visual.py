@@ -554,7 +554,7 @@ for global_step in range(args.total_timesteps):
         writer.add_scalar("losses/td_loss", loss, global_step)
         writer.add_scalar("losses/average_q_values", old_val.mean().item(), global_step)
 
-        # optimize the midel
+        # optimize the model
         optimizer.zero_grad()
         loss.backward()
         nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)

@@ -202,7 +202,7 @@ if __name__ == "__main__":
             qf1_a_values = qf1.forward(data.observations, data.actions).view(-1)
             qf1_loss = loss_fn(qf1_a_values, next_q_value)
 
-            # optimize the midel
+            # optimize the model
             q_optimizer.zero_grad()
             qf1_loss.backward()
             nn.utils.clip_grad_norm_(list(qf1.parameters()), args.max_grad_norm)
