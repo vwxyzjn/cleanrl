@@ -853,7 +853,7 @@ def learn(args, rb, global_step, data_process_queue, data_process_back_queues, s
         
         stats_queue.put(("losses/td_loss", loss.item(), update_step+args.learning_starts))
     
-        # optimize the midel
+        # optimize the model
         optimizer.zero_grad()
         loss.backward()
         nn.utils.clip_grad_norm_(list(learn_q_network.parameters()), args.max_grad_norm)

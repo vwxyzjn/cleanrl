@@ -12,13 +12,13 @@ tensorboard = "^2.5.0"
 wandb = "^0.12.1"
 pyglet = "^1.5.19"
 opencv-python = "^4.5.3"
-gym = "^0.21.0"
+stable-baselines3 = "^1.1.0"
+gym = { git = "https://github.com/openai/gym", rev = "b9e8b6c" }
 
 # Optinal dependencies
-stable-baselines3 = {version = "^1.1.0", optional = true}
 ale-py = {version = "^0.7", optional = true}
 AutoROM = {version = "^0.4.2", optional = true, extras = ["accept-rom-license"]}
-pybullet = {version = "^3.1.8", optional = true}
+pybullet = {version = "3.1.8", optional = true}
 procgen = {version = "^0.10.4", optional = true}
 pettingzoo = {version = "^1.11.2", optional = true}
 pygame = {version = "^2.0.1", optional = true}
@@ -39,10 +39,10 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.extras]
-atari = ["ale-py", "AutoROM", "stable-baselines3"]
+atari = ["ale-py", "AutoROM"]
 pybullet = ["pybullet"]
-procgen = ["procgen", "stable-baselines3"]
-pettingzoo = ["pettingzoo", "stable-baselines3", "pygame", "pymunk"]
+procgen = ["procgen"]
+pettingzoo = ["pettingzoo", "pygame", "pymunk"]
 plot = ["pandas", "seaborn"]
 cloud = ["boto3", "awscli"]
 spyder = ["spyder"]
