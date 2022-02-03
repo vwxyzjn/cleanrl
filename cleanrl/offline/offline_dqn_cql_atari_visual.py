@@ -1,10 +1,12 @@
 # https://github.com/facebookresearch/torchbeast/blob/master/torchbeast/core/environment.py
 
-import numpy as np
 from collections import deque
-import gym
-from gym import spaces
+
 import cv2
+import gym
+import numpy as np
+from gym import spaces
+
 cv2.ocl.setUseOpenCL(False)
 
 
@@ -17,15 +19,15 @@ class NoopResetEnv(gym.Wrapper):
         self.noop_max = noop_max
         self.override_num_noops = None
         self.noop_action = 0
-        assert env.unwrapped.get_action_meanings()[0] == 'NOOP'
+        assert env.unwrapped.get_action_meanings()[0] == "NOOP"
 
     def reset(self, **kwargs):
-        """ Do no-op action for a number of steps in [1, noop_max]."""
+        """Do no-op action for a number of steps in [1, noop_max]."""
         self.env.reset(**kwargs)
         if self.override_num_noops is not None:
             noops = self.override_num_noops
         else:
-            noops = self.unwrapped.np_random.randint(1, self.noop_max + 1) #pylint: disable=E1101
+            noops = self.unwrapped.np_random.randint(1, self.noop_max + 1)  # pylint: disable=E1101
         assert noops > 0
         obs = None
         for _ in range(noops):
@@ -37,11 +39,12 @@ class NoopResetEnv(gym.Wrapper):
     def step(self, ac):
         return self.env.step(ac)
 
+
 class FireResetEnv(gym.Wrapper):
     def __init__(self, env):
         """Take action on reset for environments that are fixed until firing."""
         gym.Wrapper.__init__(self, env)
-        assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
+        assert env.unwrapped.get_action_meanings()[1] == "FIRE"
         assert len(env.unwrapped.get_action_meanings()) >= 3
 
     def reset(self, **kwargs):
@@ -57,6 +60,7 @@ class FireResetEnv(gym.Wrapper):
     def step(self, ac):
         return self.env.step(ac)
 
+
 class EpisodicLifeEnv(gym.Wrapper):
     def __init__(self, env):
         """Make end-of-life == end-of-episode, but only reset on true game over.
@@ -64,7 +68,7 @@ class EpisodicLifeEnv(gym.Wrapper):
         """
         gym.Wrapper.__init__(self, env)
         self.lives = 0
-        self.was_real_done  = True
+        self.was_real_done = True
 
     def step(self, action):
         obs, reward, done, info = self.env.step(action)
@@ -93,13 +97,14 @@ class EpisodicLifeEnv(gym.Wrapper):
         self.lives = self.env.unwrapped.ale.lives()
         return obs
 
+
 class MaxAndSkipEnv(gym.Wrapper):
     def __init__(self, env, skip=4):
         """Return only every `skip`-th frame"""
         gym.Wrapper.__init__(self, env)
         # most recent raw observations (for max pooling across time steps)
-        self._obs_buffer = np.zeros((2,)+env.observation_space.shape, dtype=np.uint8)
-        self._skip       = skip
+        self._obs_buffer = np.zeros((2,) + env.observation_space.shape, dtype=np.uint8)
+        self._skip = skip
 
     def step(self, action):
         """Repeat action, sum reward, and max over last observations."""
@@ -107,8 +112,10 @@ class MaxAndSkipEnv(gym.Wrapper):
         done = None
         for i in range(self._skip):
             obs, reward, done, info = self.env.step(action)
-            if i == self._skip - 2: self._obs_buffer[0] = obs
-            if i == self._skip - 1: self._obs_buffer[1] = obs
+            if i == self._skip - 2:
+                self._obs_buffer[0] = obs
+            if i == self._skip - 1:
+                self._obs_buffer[1] = obs
             total_reward += reward
             if done:
                 break
@@ -120,6 +127,7 @@ class MaxAndSkipEnv(gym.Wrapper):
 
     def reset(self, **kwargs):
         return self.env.reset(**kwargs)
+
 
 class ClipRewardEnv(gym.RewardWrapper):
     def __init__(self, env):
@@ -169,9 +177,7 @@ class WarpFrame(gym.ObservationWrapper):
 
         if self._grayscale:
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        frame = cv2.resize(
-            frame, (self._width, self._height), interpolation=cv2.INTER_AREA
-        )
+        frame = cv2.resize(frame, (self._width, self._height), interpolation=cv2.INTER_AREA)
         if self._grayscale:
             frame = np.expand_dims(frame, -1)
 
@@ -195,7 +201,9 @@ class FrameStack(gym.Wrapper):
         self.k = k
         self.frames = deque([], maxlen=k)
         shp = env.observation_space.shape
-        self.observation_space = spaces.Box(low=0, high=255, shape=((shp[0] * k,)+shp[1:]), dtype=env.observation_space.dtype)
+        self.observation_space = spaces.Box(
+            low=0, high=255, shape=((shp[0] * k,) + shp[1:]), dtype=env.observation_space.dtype
+        )
 
     def reset(self):
         ob = self.env.reset()
@@ -212,6 +220,7 @@ class FrameStack(gym.Wrapper):
         assert len(self.frames) == self.k
         return LazyFrames(list(self.frames))
 
+
 class ScaledFloatFrame(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
@@ -221,6 +230,7 @@ class ScaledFloatFrame(gym.ObservationWrapper):
         # careful! This undoes the memory optimization, use
         # with smaller replay buffers only.
         return np.array(observation).astype(np.float32) / 255.0
+
 
 class LazyFrames(object):
     def __init__(self, frames):
@@ -257,14 +267,16 @@ class LazyFrames(object):
     def frame(self, i):
         return self._force()[..., i]
 
+
 def wrap_atari(env, max_episode_steps=None):
-    assert 'NoFrameskip' in env.spec.id
+    assert "NoFrameskip" in env.spec.id
     env = NoopResetEnv(env, noop_max=30)
     env = MaxAndSkipEnv(env, skip=4)
 
     assert max_episode_steps is None
 
     return env
+
 
 class ImageToPyTorch(gym.ObservationWrapper):
     """
@@ -284,12 +296,12 @@ class ImageToPyTorch(gym.ObservationWrapper):
     def observation(self, observation):
         return np.transpose(observation, axes=(2, 0, 1))
 
+
 def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False):
-    """Configure environment for DeepMind-style Atari.
-    """
+    """Configure environment for DeepMind-style Atari."""
     if episode_life:
         env = EpisodicLifeEnv(env)
-    if 'FIRE' in env.unwrapped.get_action_meanings():
+    if "FIRE" in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
     env = WarpFrame(env)
     if scale:
@@ -301,140 +313,171 @@ def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, 
         env = FrameStack(env, 4)
     return env
 
+
 # Reference: https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf
 
+import argparse
+import os
+import random
+import re
+import time
+from distutils.util import strtobool
+
+import gym
+import matplotlib
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
-from torch.utils.tensorboard import SummaryWriter
+from gym.spaces import Discrete
+from gym.wrappers import Monitor
 from torch.utils.data.dataset import IterableDataset
+from torch.utils.tensorboard import SummaryWriter
 
-import argparse
-from distutils.util import strtobool
-import collections
-import numpy as np
-import gym
-import d4rl_atari
-from gym.wrappers import TimeLimit, Monitor
-from gym.spaces import Discrete, Box, MultiBinary, MultiDiscrete, Space
-import time
-import random
-import os
-import re
-
-import matplotlib
-matplotlib.use('Agg')
-import seaborn as sns
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 from PIL import Image
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='DQN agent')
+    parser = argparse.ArgumentParser(description="DQN agent")
     # Common arguments
-    parser.add_argument('--exp-name', type=str, default=os.path.basename(__file__).rstrip(".py"),
-                        help='the name of this experiment')
-    parser.add_argument('--gym-id', type=str, default="BreakoutNoFrameskip-v4",
-                        help='the id of the gym environment')
-    parser.add_argument('--learning-rate', type=float, default=1e-4,
-                        help='the learning rate of the optimizer')
-    parser.add_argument('--seed', type=int, default=2,
-                        help='seed of the experiment')
-    parser.add_argument('--total-timesteps', type=int, default=10000000,
-                        help='total timesteps of the experiments')
-    parser.add_argument('--torch-deterministic', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                        help='if toggled, `torch.backends.cudnn.deterministic=False`')
-    parser.add_argument('--cuda', type=lambda x:bool(strtobool(x)), default=True, nargs='?', const=True,
-                        help='if toggled, cuda will not be enabled by default')
-    parser.add_argument('--track', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                        help='run the script in production mode and use wandb to log outputs')
-    parser.add_argument('--capture-video', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
-                        help='weather to capture videos of the agent performances (check out `videos` folder)')
-    parser.add_argument('--wandb-project-name', type=str, default="cleanRL",
-                        help="the wandb's project name")
-    parser.add_argument('--wandb-entity', type=str, default=None,
-                        help="the entity (team) of wandb's project")
-    
+    parser.add_argument(
+        "--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"), help="the name of this experiment"
+    )
+    parser.add_argument("--gym-id", type=str, default="BreakoutNoFrameskip-v4", help="the id of the gym environment")
+    parser.add_argument("--learning-rate", type=float, default=1e-4, help="the learning rate of the optimizer")
+    parser.add_argument("--seed", type=int, default=2, help="seed of the experiment")
+    parser.add_argument("--total-timesteps", type=int, default=10000000, help="total timesteps of the experiments")
+    parser.add_argument(
+        "--torch-deterministic",
+        type=lambda x: bool(strtobool(x)),
+        default=True,
+        nargs="?",
+        const=True,
+        help="if toggled, `torch.backends.cudnn.deterministic=False`",
+    )
+    parser.add_argument(
+        "--cuda",
+        type=lambda x: bool(strtobool(x)),
+        default=True,
+        nargs="?",
+        const=True,
+        help="if toggled, cuda will not be enabled by default",
+    )
+    parser.add_argument(
+        "--track",
+        type=lambda x: bool(strtobool(x)),
+        default=False,
+        nargs="?",
+        const=True,
+        help="run the script in production mode and use wandb to log outputs",
+    )
+    parser.add_argument(
+        "--capture-video",
+        type=lambda x: bool(strtobool(x)),
+        default=False,
+        nargs="?",
+        const=True,
+        help="weather to capture videos of the agent performances (check out `videos` folder)",
+    )
+    parser.add_argument("--wandb-project-name", type=str, default="cleanRL", help="the wandb's project name")
+    parser.add_argument("--wandb-entity", type=str, default=None, help="the entity (team) of wandb's project")
+
     # Algorithm specific arguments
-    parser.add_argument('--offline-dataset-id', type=str, default="expert-v0",
-                        help='the id of the offline dataset gym environment')
-    parser.add_argument('--min-q-weight', type=float, default=10.0,
-                        help="the scale of the CQL's objective to minimize the q values")
-    parser.add_argument('--buffer-size', type=int, default=1000000,
-                         help='the replay memory buffer size')
-    parser.add_argument('--gamma', type=float, default=0.99,
-                        help='the discount factor gamma')
-    parser.add_argument('--target-network-frequency', type=int, default=1000,
-                        help="the timesteps it takes to update the target network")
-    parser.add_argument('--max-grad-norm', type=float, default=0.5,
-                        help='the maximum norm for the gradient clipping')
-    parser.add_argument('--batch-size', type=int, default=32,
-                        help="the batch size of sample from the reply memory")
-    parser.add_argument('--start-e', type=float, default=0.02,
-                        help="the starting epsilon for exploration")
-    parser.add_argument('--end-e', type=float, default=0.02,
-                        help="the ending epsilon for exploration")
-    parser.add_argument('--exploration-fraction', type=float, default=0.10,
-                        help="the fraction of `total-timesteps` it takes from start-e to go end-e")
-    parser.add_argument('--learning-starts', type=int, default=80000,
-                        help="timestep to start learning")
-    parser.add_argument('--train-frequency', type=int, default=4,
-                        help="the frequency of training")
+    parser.add_argument(
+        "--offline-dataset-id", type=str, default="expert-v0", help="the id of the offline dataset gym environment"
+    )
+    parser.add_argument(
+        "--min-q-weight", type=float, default=10.0, help="the scale of the CQL's objective to minimize the q values"
+    )
+    parser.add_argument("--buffer-size", type=int, default=1000000, help="the replay memory buffer size")
+    parser.add_argument("--gamma", type=float, default=0.99, help="the discount factor gamma")
+    parser.add_argument(
+        "--target-network-frequency", type=int, default=1000, help="the timesteps it takes to update the target network"
+    )
+    parser.add_argument("--max-grad-norm", type=float, default=0.5, help="the maximum norm for the gradient clipping")
+    parser.add_argument("--batch-size", type=int, default=32, help="the batch size of sample from the reply memory")
+    parser.add_argument("--start-e", type=float, default=0.02, help="the starting epsilon for exploration")
+    parser.add_argument("--end-e", type=float, default=0.02, help="the ending epsilon for exploration")
+    parser.add_argument(
+        "--exploration-fraction",
+        type=float,
+        default=0.10,
+        help="the fraction of `total-timesteps` it takes from start-e to go end-e",
+    )
+    parser.add_argument("--learning-starts", type=int, default=80000, help="timestep to start learning")
+    parser.add_argument("--train-frequency", type=int, default=4, help="the frequency of training")
     args = parser.parse_args()
     if not args.seed:
         args.seed = int(time.time())
     # create offline gym id: 'BeamRiderNoFrameskip-v4' -> 'beam-rider-expert-v0'
-    args.offline_gym_id = re.sub(r'(?<!^)(?=[A-Z])', '-', args.gym_id).lower().replace(
-        "no-frameskip-v4", "") + args.offline_dataset_id
+    args.offline_gym_id = (
+        re.sub(r"(?<!^)(?=[A-Z])", "-", args.gym_id).lower().replace("no-frameskip-v4", "") + args.offline_dataset_id
+    )
+
 
 class QValueVisualizationWrapper(gym.Wrapper):
     def __init__(self, env):
         super().__init__(env)
         self.env.reset()
         self.image_shape = self.env.render(mode="rgb_array").shape
-        self.q_values = [[0.,0.,0.,0.]]
+        self.q_values = [[0.0, 0.0, 0.0, 0.0]]
         # self.metadata['video.frames_per_second'] = 60
-        
+
     def set_q_values(self, q_values):
         self.q_values = q_values
 
     def render(self, mode="human"):
-        if mode=="rgb_array":
+        if mode == "rgb_array":
             env_rgb_array = super().render(mode)
-            fig, ax = plt.subplots(figsize=(self.image_shape[1]/100,self.image_shape[0]/100), constrained_layout=True, dpi=100)
+            fig, ax = plt.subplots(
+                figsize=(self.image_shape[1] / 100, self.image_shape[0] / 100), constrained_layout=True, dpi=100
+            )
             df = pd.DataFrame(np.array(self.q_values).T)
             sns.barplot(x=df.index, y=0, data=df, ax=ax)
-            ax.set(xlabel='actions', ylabel='q-values')
+            ax.set(xlabel="actions", ylabel="q-values")
             fig.canvas.draw()
             X = np.array(fig.canvas.renderer.buffer_rgba())
             Image.fromarray(X)
             # Image.fromarray(X)
-            rgb_image = np.array(Image.fromarray(X).convert('RGB'))
+            rgb_image = np.array(Image.fromarray(X).convert("RGB"))
             plt.close(fig)
             q_value_rgb_array = rgb_image
             return np.append(env_rgb_array, q_value_rgb_array, axis=1)
         else:
             super().render(mode)
 
+
 # TRY NOT TO MODIFY: setup the environment
 experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
-writer.add_text('hyperparameters', "|param|value|\n|-|-|\n%s" % (
-        '\n'.join([f"|{key}|{value}|" for key, value in vars(args).items()])))
+writer.add_text(
+    "hyperparameters", "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()]))
+)
 if args.track:
     import wandb
-    wandb.init(project=args.wandb_project_name, entity=args.wandb_entity, sync_tensorboard=True, config=vars(args), name=experiment_name, monitor_gym=True, save_code=True)
+
+    wandb.init(
+        project=args.wandb_project_name,
+        entity=args.wandb_entity,
+        sync_tensorboard=True,
+        config=vars(args),
+        name=experiment_name,
+        monitor_gym=True,
+        save_code=True,
+    )
     writer = SummaryWriter(f"/tmp/{experiment_name}")
 
 # TRY NOT TO MODIFY: seeding
-device = torch.device('cuda' if torch.cuda.is_available() and args.cuda else 'cpu')
+device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 env = gym.make(args.gym_id)
 env = wrap_atari(env)
-env = gym.wrappers.RecordEpisodeStatistics(env) # records episode reward in `info['episode']['r']`
+env = gym.wrappers.RecordEpisodeStatistics(env)  # records episode reward in `info['episode']['r']`
 if args.capture_video:
     env = QValueVisualizationWrapper(env)
-    env = Monitor(env, f'videos/{experiment_name}')
+    env = Monitor(env, f"videos/{experiment_name}")
 env = wrap_deepmind(
     env,
     clip_rewards=True,
@@ -461,6 +504,7 @@ class Linear0(nn.Linear):
         if self.bias is not None:
             nn.init.constant_(self.bias, 0.0)
 
+
 class Scale(nn.Module):
     def __init__(self, scale):
         super().__init__()
@@ -468,11 +512,13 @@ class Scale(nn.Module):
 
     def forward(self, x):
         return x * self.scale
+
+
 class QNetwork(nn.Module):
     def __init__(self, env, frames=4):
         super(QNetwork, self).__init__()
         self.network = nn.Sequential(
-            Scale(1/255),
+            Scale(1 / 255),
             nn.Conv2d(frames, 32, 8, stride=4),
             nn.ReLU(),
             nn.Conv2d(32, 64, 4, stride=2),
@@ -482,33 +528,38 @@ class QNetwork(nn.Module):
             nn.Flatten(),
             nn.Linear(3136, 512),
             nn.ReLU(),
-            Linear0(512, env.action_space.n)
+            Linear0(512, env.action_space.n),
         )
 
     def forward(self, x, device):
         x = torch.Tensor(x).to(device)
         return self.network(x)
 
+
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
-    slope =  (end_e - start_e) / duration
+    slope = (end_e - start_e) / duration
     return max(slope * t + start_e, end_e)
+
 
 class ExperienceReplayDataset(IterableDataset):
     def __init__(self):
         self.dataset_env = gym.make(args.offline_gym_id)
         self.dataset = self.dataset_env.get_dataset()
+
     def __iter__(self):
         while True:
-            idx = np.random.choice(len(self.dataset['observations'])-1)
-            yield self.dataset['observations'][idx],self.dataset['actions'][idx],self.dataset['rewards'][idx],self.dataset['observations'][idx+1],self.dataset['terminals'][idx]
+            idx = np.random.choice(len(self.dataset["observations"]) - 1)
+            yield self.dataset["observations"][idx], self.dataset["actions"][idx], self.dataset["rewards"][idx], self.dataset[
+                "observations"
+            ][idx + 1], self.dataset["terminals"][idx]
+
 
 q_network = QNetwork(env).to(device)
 target_network = QNetwork(env).to(device)
 target_network.load_state_dict(q_network.state_dict())
 optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
 loss_fn = nn.MSELoss()
-data_loader = iter(torch.utils.data.DataLoader(
-    ExperienceReplayDataset(), batch_size=args.batch_size, num_workers=2))
+data_loader = iter(torch.utils.data.DataLoader(ExperienceReplayDataset(), batch_size=args.batch_size, num_workers=2))
 print(device.__repr__())
 print(q_network)
 # TRY NOT TO MODIFY: start the game
@@ -517,9 +568,9 @@ episode_reward = 0
 
 for global_step in range(args.total_timesteps):
     # ALGO LOGIC: put action logic here
-    epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
+    epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
     obs = np.array(obs)
-    logits = q_network.forward(obs.reshape((1,)+obs.shape), device)
+    logits = q_network.forward(obs.reshape((1,) + obs.shape), device)
     if args.capture_video:
         env.set_q_values(logits.tolist())
     if random.random() < epsilon:
@@ -530,14 +581,14 @@ for global_step in range(args.total_timesteps):
     # TRY NOT TO MODIFY: execute the game and log data.
     next_obs, reward, done, info = env.step(action)
     episode_reward += reward
-    
+
     # TRY NOT TO MODIFY: record rewards for plotting purposes
-    if 'episode' in info.keys():
+    if "episode" in info.keys():
         print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
-        writer.add_scalar("charts/episodic_return", info['episode']['r'], global_step)
+        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
         writer.add_scalar("charts/epsilon", epsilon, global_step)
 
-    # TRY NOT TO MODIFY: CRUCIAL step easy to overlook 
+    # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
     obs = next_obs
     if done:
         # important to note that because `EpisodicLifeEnv` wrapper is applied,
@@ -548,12 +599,18 @@ for global_step in range(args.total_timesteps):
     if global_step % args.train_frequency == 0:
         # s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)
         s_obs, s_actions, s_rewards, s_next_obses, s_dones = next(data_loader)
-        s_obs, s_actions, s_rewards, s_next_obses, s_dones = s_obs.to(device), s_actions.to(device), s_rewards.to(device), s_next_obses.to(device), s_dones.to(device)
+        s_obs, s_actions, s_rewards, s_next_obses, s_dones = (
+            s_obs.to(device),
+            s_actions.to(device),
+            s_rewards.to(device),
+            s_next_obses.to(device),
+            s_dones.to(device),
+        )
         with torch.no_grad():
             target_max = torch.max(target_network.network(s_next_obses), dim=1)[0]
             td_target = s_rewards + args.gamma * target_max * (1 - s_dones)
         old_qs = q_network.network(s_obs)
-        old_val = old_qs.gather(1, s_actions.long().view(-1,1)).squeeze()
+        old_val = old_qs.gather(1, s_actions.long().view(-1, 1)).squeeze()
         loss = loss_fn(td_target, old_val)
         writer.add_scalar("losses/td_loss", loss, global_step)
 
@@ -566,7 +623,7 @@ for global_step in range(args.total_timesteps):
 
         # optimize the model
         optimizer.zero_grad()
-        (loss+min_q_loss).backward()
+        (loss + min_q_loss).backward()
         nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
         optimizer.step()
 
