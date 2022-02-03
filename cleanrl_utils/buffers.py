@@ -189,7 +189,7 @@ class PrioritizedReplayBufferSamples(NamedTuple):
     dones: th.Tensor
     rewards: th.Tensor
     weights: np.ndarray
-    indeces: np.ndarray
+    indices: np.ndarray
 
 
 class BaseBuffer(ABC):
@@ -589,7 +589,7 @@ class PrioritizedReplayBuffer(BaseBuffer):
         https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/buffers.py
 
     :param buffer_size: Max number of element in the buffer
-    :param alpha: How much priorization is used (0: diabled, 1: full priorization)
+    :param alpha: How much priorization is used (0: disabled, 1: full priorization)
     :param observation_space: Observation space
     :param action_space: Action space
     :param device:
@@ -664,7 +664,7 @@ class PrioritizedReplayBuffer(BaseBuffer):
             to normalize the observations/rewards when sampling
         :return:
         """
-        # Sample indeces
+        # Sample indices
         mass = []
         total = self._it_sum.sum(0, self.size() - 1)
         # TODO(szymon): should we ensure no repeats?
@@ -677,7 +677,7 @@ class PrioritizedReplayBuffer(BaseBuffer):
         p_sample = self._it_sum[batch_inds] / self._it_sum.sum()
         weights = (p_sample * self.size()) ** (-beta) / max_weight
 
-        return PrioritizedReplayBufferSamples(*tuple(map(self.to_torch, th_data)), weights=weights, indeces=batch_inds)
+        return PrioritizedReplayBufferSamples(*tuple(map(self.to_torch, th_data)), weights=weights, indices=batch_inds)
 
     def update_weights(self, batch_inds: np.ndarray, weights: np.ndarray):
         """

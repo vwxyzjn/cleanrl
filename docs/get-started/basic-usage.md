@@ -134,7 +134,7 @@ optional arguments:
   --clip-coef CLIP_COEF
                         the surrogate clipping coefficient
   --clip-vloss [CLIP_VLOSS]
-                        Toggles wheter or not to use a clipped loss for the value
+                        Toggles whether or not to use a clipped loss for the value
                         function, as per the paper.
   --ent-coef ENT_COEF   coefficient of the entropy
   --vf-coef VF_COEF     coefficient of the value function

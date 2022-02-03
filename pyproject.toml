@@ -15,7 +15,7 @@ opencv-python = "^4.5.3"
 stable-baselines3 = "^1.1.0"
 gym = { git = "https://github.com/openai/gym", rev = "b9e8b6c" }
 
-# Optinal dependencies
+# Optional dependencies
 ale-py = {version = "^0.7", optional = true}
 AutoROM = {version = "^0.4.2", optional = true, extras = ["accept-rom-license"]}
 pybullet = {version = "3.1.8", optional = true}

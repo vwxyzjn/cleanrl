@@ -505,7 +505,7 @@ if __name__ == "__main__":
         default=True,
         nargs="?",
         const=True,
-        help="Toggles wheter or not to use a clipped loss for the value function, as per the paper.",
+        help="Toggles whether or not to use a clipped loss for the value function, as per the paper.",
     )
     parser.add_argument(
         "--sticky-action",
@@ -513,7 +513,7 @@ if __name__ == "__main__":
         default=True,
         nargs="?",
         const=True,
-        help="Toggles wheter or not to use sticky action.",
+        help="Toggles whether or not to use sticky action.",
     )
 
     # RND arguments
@@ -789,7 +789,7 @@ next_obs = envs.reset()
 next_done = torch.zeros(args.num_envs).to(device)
 num_updates = args.total_timesteps // args.batch_size
 
-print("Start to initailize observation normalization parameter.....")
+print("Start to initialize observation normalization parameter.....")
 next_ob = []
 for step in range(args.num_steps * 50):
     acs = torch.from_numpy(np.random.randint(0, envs.action_space.n, size=(args.num_envs,)))
@@ -800,7 +800,7 @@ for step in range(args.num_steps * 50):
         next_ob = np.stack(next_ob)
         obs_rms.update(next_ob)
         next_ob = []
-print("End to initalize...")
+print("End to initialize...")
 
 for update in range(1, num_updates + 1):
     # Annealing the rate if instructed to do so.
@@ -922,7 +922,7 @@ for update in range(1, num_updates + 1):
 
     obs_rms.update(b_obs.data.cpu().numpy()[:, 3, :, :].reshape(-1, 1, 84, 84))
 
-    # Optimizaing the policy and value network
+    # Optimizing the policy and value network
     forward_mse = nn.MSELoss(reduction="none")
     target_agent = Agent(envs).to(device)
     inds = np.arange(

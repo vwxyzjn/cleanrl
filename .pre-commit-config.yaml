@@ -28,4 +28,5 @@ repos:
     hooks:
       - id: codespell
         args:
-          - --ignore-words-list=nd,reacher,thist,ths
+          - --ignore-words-list=nd,reacher,thist,ths,magent
+          - --skip=docs/css/termynal.css,docs/js/termynal.js

@@ -121,7 +121,7 @@ if __name__ == "__main__":
         default=True,
         nargs="?",
         const=True,
-        help="Toggles wheter or not to use a clipped loss for the value function, as per the paper.",
+        help="Toggles whether or not to use a clipped loss for the value function, as per the paper.",
     )
 
     args = parser.parse_args()
@@ -389,7 +389,7 @@ for phase in range(starting_phase, num_phases):
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
 
-        # Optimizaing the policy and value network
+        # Optimizing the policy and value network
         inds = np.arange(
             args.batch_size,
         )

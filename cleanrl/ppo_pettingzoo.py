@@ -118,7 +118,7 @@ if __name__ == "__main__":
         default=True,
         nargs="?",
         const=True,
-        help="Toggles wheter or not to use a clipped loss for the value function, as per the paper.",
+        help="Toggles whether or not to use a clipped loss for the value function, as per the paper.",
     )
 
     args = parser.parse_args()
@@ -374,7 +374,7 @@ for update in range(1, num_updates + 1):
     b_returns = returns.reshape(-1)
     b_values = values.reshape(-1)
 
-    # Optimizaing the policy and value network
+    # Optimizing the policy and value network
     target_agent = Agent().to(device)
     inds = np.arange(
         args.batch_size,
