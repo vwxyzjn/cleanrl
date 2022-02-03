@@ -91,7 +91,7 @@ def parse_args():
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.aux_batch_size = int(args.batch_size * args.n_iteration)
     args.aux_minibatch_size = int(args.aux_batch_size // (args.n_aux_minibatch * args.n_aux_grad_accum))
-    assert args.v_value == 1, "Multiple value function epoch is not supported yet"
+    assert args.v_value == 1, "Multiple value epoch (v_value != 1) is not supported yet"
     # fmt: on
     return args
 
