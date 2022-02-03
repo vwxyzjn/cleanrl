@@ -25,7 +25,7 @@ def parse_args():
         help="the learning rate of the optimizer")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
-    parser.add_argument("--total-timesteps", type=int, default=int(1e8),
+    parser.add_argument("--total-timesteps", type=int, default=25e6,
         help="total timesteps of the experiments")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
@@ -184,7 +184,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = ProcgenEnv(num_envs=args.num_envs, env_name=args.gym_id, num_levels=0, start_level=0, distribution_mode="hard")
+    envs = ProcgenEnv(num_envs=args.num_envs, env_name=args.gym_id, num_levels=0, start_level=0, distribution_mode="easy")
     envs = gym.wrappers.TransformObservation(envs, lambda obs: obs["rgb"])
     envs.single_action_space = envs.action_space
     envs.single_observation_space = envs.observation_space["rgb"]
