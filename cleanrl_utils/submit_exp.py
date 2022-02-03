@@ -122,8 +122,8 @@ if args.provider == "aws":
                     "command": ["/bin/bash", "-c", final_run_cmd],
                     "environment": [
                         {"name": "WANDB_API_KEY", "value": args.wandb_key},
-                        {'name': 'WANDB_RESUME', 'value': 'allow'},
-                        {'name': 'WANDB_RUN_ID', 'value': wandb.util.generate_id()},
+                        {"name": "WANDB_RESUME", "value": "allow"},
+                        {"name": "WANDB_RUN_ID", "value": wandb.util.generate_id()},
                     ],
                     "resourceRequirements": resources_requirements,
                 },

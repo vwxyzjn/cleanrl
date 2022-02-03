@@ -25,12 +25,12 @@ Our single-file implementations of PPO:
 * [ppo_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py)
     * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
     * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
-    * Workes with the `Discerete` action space
+    * Works with the `Discerete` action space
     * Includes the 9 Atari-specific implementation details as shown in the following video tutorial
       [![PPO2](ppo-2-title.png)](https://youtu.be/05RMTj-2K_Y)
 * [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py)
     * For continuous action space. Also implemented Mujoco-specific code-level optimizations
     * Works with the `Box` observation space of low-level features
-    * Workes with the `Box` (continuous) action space
+    * Works with the `Box` (continuous) action space
     * Includes the 8 implementation details for  as shown in the following video tutorial (need fixing)
       [![PPO3](ppo-3-title.png)](https://youtu.be/05RMTj-2K_Y)

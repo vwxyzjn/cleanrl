@@ -54,7 +54,7 @@ class SegmentTree(object):
             else:
                 return self._operation(
                     self._reduce_helper(start, mid, 2 * node, node_start, mid),
-                    self._reduce_helper(mid + 1, end, 2 * node + 1, mid + 1, node_end)
+                    self._reduce_helper(mid + 1, end, 2 * node + 1, mid + 1, node_end),
                 )
 
     def reduce(self, start=0, end=None):
@@ -85,10 +85,7 @@ class SegmentTree(object):
         idxs = unique(idxs // 2)
         while len(idxs) > 1 or idxs[0] > 0:
             # as long as there are non-zero indexes, update the corresponding values
-            self._value[idxs] = self._operation(
-                self._value[2 * idxs],
-                self._value[2 * idxs + 1]
-            )
+            self._value[idxs] = self._operation(self._value[2 * idxs], self._value[2 * idxs + 1])
             # go up one level in the tree and remove duplicate indexes
             idxs = unique(idxs // 2)
 
@@ -100,11 +97,7 @@ class SegmentTree(object):
 
 class SumSegmentTree(SegmentTree):
     def __init__(self, capacity):
-        super(SumSegmentTree, self).__init__(
-            capacity=capacity,
-            operation=np.add,
-            neutral_element=0.0
-        )
+        super(SumSegmentTree, self).__init__(capacity=capacity, operation=np.add, neutral_element=0.0)
         self._value = np.array(self._value)
 
     def sum(self, start=0, end=None):
@@ -153,11 +146,7 @@ class SumSegmentTree(SegmentTree):
 
 class MinSegmentTree(SegmentTree):
     def __init__(self, capacity):
-        super(MinSegmentTree, self).__init__(
-            capacity=capacity,
-            operation=np.minimum,
-            neutral_element=float('inf')
-        )
+        super(MinSegmentTree, self).__init__(capacity=capacity, operation=np.minimum, neutral_element=float("inf"))
         self._value = np.array(self._value)
 
     def min(self, start=0, end=None):
@@ -173,12 +162,11 @@ class MinSegmentTree(SegmentTree):
 
 import warnings
 from abc import ABC, abstractmethod
-from typing import Dict, Generator, Optional, Union
+from typing import Dict, Generator, NamedTuple, Optional, Union
 
 import numpy as np
 import torch as th
 from gym import spaces
-from typing import NamedTuple
 
 try:
     # Check memory used by replay buffer when possible
@@ -187,8 +175,12 @@ except ImportError:
     psutil = None
 
 from stable_baselines3.common.preprocessing import get_action_dim, get_obs_shape
-from stable_baselines3.common.type_aliases import ReplayBufferSamples, RolloutBufferSamples
+from stable_baselines3.common.type_aliases import (
+    ReplayBufferSamples,
+    RolloutBufferSamples,
+)
 from stable_baselines3.common.vec_env import VecNormalize
+
 
 class PrioritizedReplayBufferSamples(NamedTuple):
     observations: th.Tensor
@@ -197,7 +189,7 @@ class PrioritizedReplayBufferSamples(NamedTuple):
     dones: th.Tensor
     rewards: th.Tensor
     weights: np.ndarray
-    indeces: np.ndarray
+    indices: np.ndarray
 
 
 class BaseBuffer(ABC):
@@ -597,7 +589,7 @@ class PrioritizedReplayBuffer(BaseBuffer):
         https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/buffers.py
 
     :param buffer_size: Max number of element in the buffer
-    :param alpha: How much priorization is used (0: diabled, 1: full priorization)
+    :param alpha: How much priorization is used (0: disabled, 1: full priorization)
     :param observation_space: Observation space
     :param action_space: Action space
     :param device:
@@ -641,8 +633,8 @@ class PrioritizedReplayBuffer(BaseBuffer):
         self.rewards[self.pos] = np.array(reward).copy()
         self.dones[self.pos] = np.array(done).copy()
 
-        self._it_sum[self.pos] = self._max_weight ** self._alpha
-        self._it_min[self.pos] = self._max_weight ** self._alpha
+        self._it_sum[self.pos] = self._max_weight**self._alpha
+        self._it_min[self.pos] = self._max_weight**self._alpha
 
         self.pos += 1
         if self.pos == self.buffer_size:
@@ -672,7 +664,7 @@ class PrioritizedReplayBuffer(BaseBuffer):
             to normalize the observations/rewards when sampling
         :return:
         """
-        # Sample indeces
+        # Sample indices
         mass = []
         total = self._it_sum.sum(0, self.size() - 1)
         # TODO(szymon): should we ensure no repeats?
@@ -685,7 +677,7 @@ class PrioritizedReplayBuffer(BaseBuffer):
         p_sample = self._it_sum[batch_inds] / self._it_sum.sum()
         weights = (p_sample * self.size()) ** (-beta) / max_weight
 
-        return PrioritizedReplayBufferSamples(*tuple(map(self.to_torch, th_data)), weights=weights, indeces=batch_inds)
+        return PrioritizedReplayBufferSamples(*tuple(map(self.to_torch, th_data)), weights=weights, indices=batch_inds)
 
     def update_weights(self, batch_inds: np.ndarray, weights: np.ndarray):
         """
@@ -702,7 +694,7 @@ class PrioritizedReplayBuffer(BaseBuffer):
         assert np.min(weights) > 0
         assert np.min(batch_inds) >= 0
         assert np.max(batch_inds) < self.size()
-        self._it_sum[batch_inds] = weights ** self._alpha
-        self._it_min[batch_inds] = weights ** self._alpha
+        self._it_sum[batch_inds] = weights**self._alpha
+        self._it_min[batch_inds] = weights**self._alpha
 
         self._max_weight = max(self._max_weight, np.max(weights))
