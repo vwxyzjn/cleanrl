@@ -9,10 +9,11 @@ import numpy as np
 import pybullet_envs  # noqa
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
-from torch.utils.tensorboard import SummaryWriter
+import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
+from torch.utils.tensorboard import SummaryWriter
+
 
 def parse_args():
     # fmt: off
@@ -83,8 +84,7 @@ def make_env(gym_id, seed, idx, capture_video, run_name):
 class QNetwork(nn.Module):
     def __init__(self, env):
         super(QNetwork, self).__init__()
-        self.fc1 = nn.Linear(
-            np.array(env.single_observation_space.shape).prod()+np.prod(env.single_action_space.shape), 256)
+        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
@@ -94,6 +94,7 @@ class QNetwork(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+
 
 class Actor(nn.Module):
     def __init__(self, env):
@@ -138,9 +139,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv(
-        [make_env(args.gym_id, 0, 0, args.capture_video, run_name)]
-    )
+    envs = gym.vector.SyncVectorEnv([make_env(args.gym_id, 0, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     max_action = float(envs.single_action_space.high[0])
@@ -153,7 +152,9 @@ if __name__ == "__main__":
     q_optimizer = optim.Adam(list(qf1.parameters()), lr=args.learning_rate)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.learning_rate)
 
-    rb = ReplayBuffer(args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device, optimize_memory_usage=True)
+    rb = ReplayBuffer(
+        args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device, optimize_memory_usage=True
+    )
     loss_fn = nn.MSELoss()
 
     # TRY NOT TO MODIFY: start the game
@@ -164,10 +165,14 @@ if __name__ == "__main__":
             actions = envs.action_space.sample()
         else:
             actions = actor.forward(torch.Tensor(obs).to(device))
-            actions = np.array([(
-                actions.tolist()[0]
-                + np.random.normal(0, max_action * args.exploration_noise, size=envs.action_space.shape[0])
-            ).clip(envs.single_action_space.low, envs.single_action_space.high)])
+            actions = np.array(
+                [
+                    (
+                        actions.tolist()[0]
+                        + np.random.normal(0, max_action * args.exploration_noise, size=envs.action_space.shape[0])
+                    ).clip(envs.single_action_space.low, envs.single_action_space.high)
+                ]
+            )
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
@@ -193,9 +198,9 @@ if __name__ == "__main__":
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
             with torch.no_grad():
-                next_state_actions = (
-                    target_actor.forward(data.next_observations)
-                ).clamp(envs.single_action_space.low[0], envs.single_action_space.high[0])
+                next_state_actions = (target_actor.forward(data.next_observations)).clamp(
+                    envs.single_action_space.low[0], envs.single_action_space.high[0]
+                )
                 qf1_next_target = qf1_target.forward(data.next_observations, next_state_actions)
                 next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (qf1_next_target).view(-1)
 

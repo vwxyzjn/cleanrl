@@ -9,8 +9,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.tensorboard import SummaryWriter
 from stable_baselines3.common.buffers import ReplayBuffer
+from torch.utils.tensorboard import SummaryWriter
+
 
 def parse_args():
     # fmt: off
@@ -96,7 +97,7 @@ class QNetwork(nn.Module):
 
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
-    slope =  (end_e - start_e) / duration
+    slope = (end_e - start_e) / duration
     return max(slope * t + start_e, end_e)
 
 
@@ -130,9 +131,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv(
-        [make_env(args.gym_id, 0, 0, args.capture_video, run_name)]
-    )
+    envs = gym.vector.SyncVectorEnv([make_env(args.gym_id, 0, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(envs).to(device)
@@ -140,14 +139,16 @@ if __name__ == "__main__":
     target_network = QNetwork(envs).to(device)
     target_network.load_state_dict(q_network.state_dict())
 
-    rb = ReplayBuffer(args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device, optimize_memory_usage=True)
+    rb = ReplayBuffer(
+        args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device, optimize_memory_usage=True
+    )
     loss_fn = nn.MSELoss()
 
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
-        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction*args.total_timesteps, global_step)
+        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
         if random.random() < epsilon:
             actions = envs.action_space.sample()
         else:
