@@ -1,11 +1,11 @@
 repos:
   - repo: https://github.com/PyCQA/isort
-    rev: 5.10.0
+    rev: 5.10.1
     hooks:
       - id: isort
         args:
           - --profile=black
-          - --skip=wandb
+          - --skip-glob=wandb/**/*
   - repo: https://github.com/myint/autoflake
     rev: v1.4
     hooks:
