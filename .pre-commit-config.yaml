@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/PyCQA/isort
-    rev: 5.10.1
+    rev: 5.10.0
     hooks:
       - id: isort
         args:
@@ -17,7 +17,7 @@ repos:
           - --remove-unused-variables
           - --remove-all-unused-imports
   - repo: https://github.com/python/black
-    rev: 21.7b0
+    rev: 22.1.0
     hooks:
       - id: black
         args:
