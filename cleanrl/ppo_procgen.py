@@ -21,7 +21,7 @@ def parse_args():
         help="the name of this experiment")
     parser.add_argument("--gym-id", type=str, default="starpilot",
         help="the id of the gym environment")
-    parser.add_argument("--learning-rate", type=float, default=2.5e-4,
+    parser.add_argument("--learning-rate", type=float, default=5e-4,
         help="the learning rate of the optimizer")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
@@ -139,8 +139,8 @@ class Agent(nn.Module):
             nn.ReLU(),
         ]
         self.network = nn.Sequential(*conv_seqs)
-        self.actor = nn.Linear(in_features=256, out_features=envs.single_action_space.n)
-        self.critic = nn.Linear(in_features=256, out_features=1)
+        self.actor = layer_init(nn.Linear(256, envs.single_action_space.n), std=0.01)
+        self.critic = layer_init(nn.Linear(256, 1), std=1)
 
     def get_value(self, x):
         return self.critic(self.network(x.permute((0, 3, 1, 2)) / 255.0))  # "bhwc" -> "bchw"
@@ -190,6 +190,8 @@ if __name__ == "__main__":
     envs.single_observation_space = envs.observation_space["rgb"]
     envs.is_vector_env = True
     envs = gym.wrappers.RecordEpisodeStatistics(envs)
+    envs = gym.wrappers.NormalizeReward(envs)
+    envs = gym.wrappers.TransformReward(envs, lambda reward: np.clip(reward, -10, 10))
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent = Agent(envs).to(device)
