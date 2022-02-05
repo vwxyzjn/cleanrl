@@ -198,9 +198,9 @@ if __name__ == "__main__":
     num_updates = args.total_timesteps // args.batch_size
 
     with torch.profiler.profile(
-            on_trace_ready=torch.profiler.tensorboard_trace_handler(f"runs/{run_name}"),
-            # profile_memory=True,
-            with_stack=True,
+        on_trace_ready=torch.profiler.tensorboard_trace_handler(f"runs/{run_name}"),
+        # profile_memory=True,
+        with_stack=True,
     ) as prof:
 
         for update in range(1, num_updates + 1):
@@ -235,7 +235,7 @@ if __name__ == "__main__":
                             writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
                             writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
                             break
-        
+
             with torch.profiler.record_function("training"):
                 # bootstrap value if not done
                 with torch.no_grad():
@@ -282,7 +282,9 @@ if __name__ == "__main__":
                         end = start + args.minibatch_size
                         mb_inds = b_inds[start:end]
 
-                        _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                        _, newlogprob, entropy, newvalue = agent.get_action_and_value(
+                            b_obs[mb_inds], b_actions.long()[mb_inds]
+                        )
                         logratio = newlogprob - b_logprobs[mb_inds]
                         ratio = logratio.exp()
 
