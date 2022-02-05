@@ -31,6 +31,7 @@ spyder = {version = "^5.1.5", optional = true}
 pytest = {version = "^6.2.5", optional = true}
 free-mujoco-py = {version = "^2.1.6", optional = true}
 mkdocs-material = {version = "^7.3.4", optional = true}
+torch-tb-profiler = "^0.3.1"
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^2.17.0"

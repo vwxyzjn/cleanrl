@@ -17,6 +17,7 @@ mjkey.txt
 __pycache__/
 *.py[cod]
 *$py.class
+*.pt.trace.json
 
 # C extensions
 *.so
