@@ -87,6 +87,10 @@ python cleanrl/sac_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
 poetry install -E procgen
 python cleanrl/ppo_procgen.py --gym-id starpilot
 python cleanrl/ppg_procgen.py --gym-id starpilot
+
+# ppo + lstm
+python cleanrl/ppo_atari_lstm.py --gym-id BreakoutNoFrameskip-v4
+python cleanrl/ppo_memory_env_lstm.py
 ```
 
 You may also use a prebuilt development environment hosted in Gitpod:

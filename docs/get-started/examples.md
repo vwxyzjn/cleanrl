@@ -45,3 +45,11 @@ python cleanrl/ppg_procgen.py --gym-id starpilot
 ```
 
 
+## PPO + LSTM
+```
+poetry shell
+
+poetry install -E atari
+python cleanrl/ppo_atari_lstm.py --gym-id BreakoutNoFrameskip-v4
+python cleanrl/ppo_memory_env_lstm.py
+```
