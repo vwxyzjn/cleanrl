@@ -12,14 +12,6 @@ import torch.optim as optim
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
-from stable_baselines3.common.atari_wrappers import (  # isort:skip
-    ClipRewardEnv,
-    EpisodicLifeEnv,
-    FireResetEnv,
-    MaxAndSkipEnv,
-    NoopResetEnv,
-)
-
 
 def parse_args():
     # fmt: off
@@ -86,6 +78,7 @@ def parse_args():
 
 
 class TestMemoryEnv(gym.Env):
+    # fmt: off
     """
     final state  [0,0,0,1,0]    [0,0,0,0,1]
                        \           /
@@ -97,11 +90,15 @@ class TestMemoryEnv(gym.Env):
     That is, if the agent has been in [1,0,0,0,0], it will get reward if the final state is [0,0,0,1,0].
     So solving this env requires a memory mechanism.
     """
+    # fmt: on
 
     def __init__(self):
         self.action_space = gym.spaces.Discrete(2)
         self.observation_space = gym.spaces.Box(
-            np.array([-1,]*5), np.array([1,]*5), dtype=np.float32)
+            np.array([-1] * 5),
+            np.array([1] * 5),
+            dtype=np.float32,
+        )
 
     def reset(self):
         self.first_state = np.zeros(5, dtype=np.float32)
@@ -120,13 +117,13 @@ class TestMemoryEnv(gym.Env):
             if action == 0:
                 third_state[3] = 1
                 reward = 0
-                if np.array_equal(self.first_state, np.array([1,0,0,0,0])):
+                if np.array_equal(self.first_state, np.array([1, 0, 0, 0, 0])):
                     reward = 1
                 return third_state, reward, True, {}
             else:
                 third_state[4] = 1
                 reward = 0
-                if np.array_equal(self.first_state, np.array([0,1,0,0,0])):
+                if np.array_equal(self.first_state, np.array([0, 1, 0, 0, 0])):
                     reward = 1
                 return third_state, reward, True, {}
 
