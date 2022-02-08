@@ -11,7 +11,7 @@ python cleanrl/ppo_atari.py --gym-id BreakoutNoFrameskip-v4
 python cleanrl/apex_dqn_atari.py --gym-id BreakoutNoFrameskip-v4
 
 # NEW: 3-4x side-effects free speed up with envpool's atari (only available to linux)
-poetry install -E procgen
+poetry install -E envpool
 python cleanrl/ppo_atari.py --gym-id BreakoutNoFrameskip-v4
 ```
 ### Demo
