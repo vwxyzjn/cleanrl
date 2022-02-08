@@ -12,7 +12,10 @@ python cleanrl/apex_dqn_atari.py --gym-id BreakoutNoFrameskip-v4
 
 # NEW: 3-4x side-effects free speed up with envpool's atari (only available to linux)
 poetry install -E envpool
-python cleanrl/ppo_atari.py --gym-id BreakoutNoFrameskip-v4
+python cleanrl/ppo_atari_envpool.py --gym-id BreakoutNoFrameskip-v4
+# Learn Pong-v5 in ~5-10 mins
+# Side effects such as lower sample efficiency might occur
+poetry run python ppo_atari_envpool.py --clip-coef=0.2 --num-envs=16 --num-minibatches=8 --num-steps=128 --update-epochs=3
 ```
 ### Demo
 
