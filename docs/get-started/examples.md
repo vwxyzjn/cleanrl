@@ -41,9 +41,7 @@ poetry shell
 
 poetry install -E procgen
 python cleanrl/ppo_procgen.py --gym-id starpilot
-python cleanrl/ppo_procgen_impala_cnn.py --gym-id starpilot
 python cleanrl/ppg_procgen.py --gym-id starpilot
-python cleanrl/ppg_procgen_impala_cnn.py --gym-id starpilot
 ```
 
 
