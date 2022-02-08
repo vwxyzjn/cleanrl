@@ -15,7 +15,7 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 
 
 * Single-file Implementation
-  * **Every detail about an algorithm is put into the algorithm's own file.** Therefore, it's easier for you to fully understand an algorithm and do research with it.
+    * **Every detail about an algorithm is put into the algorithm's own file.** Therefore, it's easier for you to fully understand an algorithm and do research with it.
 * Benchmarked Implementation on 7+ algorithms and 34+ games 
 * Tensorboard Logging
 * Local Reproducibility via Seeding

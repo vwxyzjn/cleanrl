@@ -86,9 +86,7 @@ python cleanrl/sac_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
 # procgen
 poetry install -E procgen
 python cleanrl/ppo_procgen.py --gym-id starpilot
-python cleanrl/ppo_procgen_impala_cnn.py --gym-id starpilot
 python cleanrl/ppg_procgen.py --gym-id starpilot
-python cleanrl/ppg_procgen_impala_cnn.py --gym-id starpilot
 ```
 
 You may also use a prebuilt development environment hosted in Gitpod:
