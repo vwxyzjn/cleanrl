@@ -91,6 +91,10 @@ python cleanrl/ppg_procgen.py --gym-id starpilot
 # ppo + lstm
 python cleanrl/ppo_atari_lstm.py --gym-id BreakoutNoFrameskip-v4
 python cleanrl/ppo_memory_env_lstm.py
+
+# NEW: 3-4x side-effects free speed up with envpool's atari (only available to linux)
+poetry install -E procgen
+python cleanrl/ppo_atari.py --gym-id BreakoutNoFrameskip-v4
 ```
 
 You may also use a prebuilt development environment hosted in Gitpod:
