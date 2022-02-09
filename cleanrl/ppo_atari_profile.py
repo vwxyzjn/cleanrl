@@ -1,4 +1,5 @@
 import argparse
+import glob
 import os
 import random
 import time
@@ -349,6 +350,9 @@ if __name__ == "__main__":
             print("SPS:", int(global_step / (time.time() - start_time)))
             writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
             prof.step()
+
+    if args.track:
+        wandb.save(glob.glob(f"runs/{run_name}/*.pt.trace.json")[0], base_path=f"runs/{run_name}", policy="now")
 
     envs.close()
     writer.close()
