@@ -13,7 +13,7 @@ wandb = "^0.12.1"
 pyglet = "^1.5.19"
 opencv-python = "^4.5.3"
 stable-baselines3 = "^1.1.0"
-gym = "^0.22.0"
+gym = { git = "https://github.com/openai/gym", rev = "b9e8b6c" }
 
 # Optional dependencies
 ale-py = {version = "^0.7", optional = true}
