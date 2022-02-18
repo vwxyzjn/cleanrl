@@ -153,9 +153,7 @@ if __name__ == "__main__":
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.learning_rate)
 
     envs.single_observation_space.dtype = np.float32
-    rb = ReplayBuffer(
-        args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device
-    )
+    rb = ReplayBuffer(args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device)
     loss_fn = nn.MSELoss()
 
     # TRY NOT TO MODIFY: start the game
