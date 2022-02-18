@@ -117,7 +117,7 @@ jobs:
         run: poetry run pip install setuptools==59.5.0
       - name: install mujoco dependencies
         run: |
-          apt-get -y install wget unzip software-properties-common \
+          sudo apt-get update && sudo apt-get -y install wget unzip software-properties-common \
             libgl1-mesa-dev \
             libgl1-mesa-glx \
             libglew-dev \
