@@ -86,3 +86,41 @@ jobs:
         run: poetry run pip install setuptools==59.5.0
       - name: Run pybullet tests
         run: poetry run pytest tests/test_pybullet.py
+
+
+  test-mujoco-envs:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+        poetry-version: [1.1.11]
+        os: [ubuntu-18.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+
+      # pybullet tests
+      - name: Install core dependencies
+        run: poetry install -E pytest
+      - name: Install pybullet dependencies
+        run: poetry install -E pybullet
+      - name: Install mujoco dependencies
+        run: poetry install -E mujoco
+      - name: Downgrade setuptools
+        run: poetry run pip install setuptools==59.5.0
+      - name: install mujoco dependencies
+        run: |
+          sudo apt-get update && sudo apt-get -y install wget unzip software-properties-common \
+            libgl1-mesa-dev \
+            libgl1-mesa-glx \
+            libglew-dev \
+            libosmesa6-dev patchelf
+      - name: Run mujoco tests
+        run: poetry run pytest tests/test_mujoco.py
