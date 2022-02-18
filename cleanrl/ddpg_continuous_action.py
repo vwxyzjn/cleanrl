@@ -152,8 +152,9 @@ if __name__ == "__main__":
     q_optimizer = optim.Adam(list(qf1.parameters()), lr=args.learning_rate)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.learning_rate)
 
+    envs.single_observation_space.dtype = np.float32
     rb = ReplayBuffer(
-        args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device, optimize_memory_usage=True
+        args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device
     )
     loss_fn = nn.MSELoss()
 
