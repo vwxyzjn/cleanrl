@@ -20,14 +20,8 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
         help="the name of this experiment")
-    parser.add_argument("--gym-id", type=str, default="starpilot",
-        help="the id of the gym environment")
-    parser.add_argument("--learning-rate", type=float, default=5e-4,
-        help="the learning rate of the optimizer")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
-    parser.add_argument("--total-timesteps", type=int, default=25e6,
-        help="total timesteps of the experiments")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
     parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -42,6 +36,12 @@ def parse_args():
         help="weather to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
+    parser.add_argument("--env-id", type=str, default="starpilot",
+        help="the id of the environment")
+    parser.add_argument("--learning-rate", type=float, default=5e-4,
+        help="the learning rate of the optimizer")
+    parser.add_argument("--total-timesteps", type=int, default=25e6,
+        help="total timesteps of the experiments")
     parser.add_argument("--num-envs", type=int, default=64,
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=256,
@@ -183,7 +183,7 @@ class Agent(nn.Module):
 
 if __name__ == "__main__":
     args = parse_args()
-    run_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
 
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = ProcgenEnv(num_envs=args.num_envs, env_name=args.gym_id, num_levels=0, start_level=0, distribution_mode="easy")
+    envs = ProcgenEnv(num_envs=args.num_envs, env_name=args.env_id, num_levels=0, start_level=0, distribution_mode="easy")
     envs = gym.wrappers.TransformObservation(envs, lambda obs: obs["rgb"])
     envs.single_action_space = envs.action_space
     envs.single_observation_space = envs.observation_space["rgb"]

@@ -346,7 +346,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"), help="the name of this experiment"
     )
-    parser.add_argument("--gym-id", type=str, default="BreakoutNoFrameskip-v4", help="the id of the gym environment")
+    parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4", help="the id of the environment")
     parser.add_argument("--learning-rate", type=float, default=1e-4, help="the learning rate of the optimizer")
     parser.add_argument("--seed", type=int, default=2, help="seed of the experiment")
     parser.add_argument("--total-timesteps", type=int, default=10000000, help="total timesteps of the experiments")
@@ -413,8 +413,8 @@ if __name__ == "__main__":
     if not args.seed:
         args.seed = int(time.time())
     # create offline gym id: 'BeamRiderNoFrameskip-v4' -> 'beam-rider-expert-v0'
-    args.offline_gym_id = (
-        re.sub(r"(?<!^)(?=[A-Z])", "-", args.gym_id).lower().replace("no-frameskip-v4", "") + args.offline_dataset_id
+    args.offline_env_id = (
+        re.sub(r"(?<!^)(?=[A-Z])", "-", args.env_id).lower().replace("no-frameskip-v4", "") + args.offline_dataset_id
     )
 
 
@@ -451,7 +451,7 @@ class QValueVisualizationWrapper(gym.Wrapper):
 
 
 # TRY NOT TO MODIFY: setup the environment
-experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+experiment_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
 writer.add_text(
     "hyperparameters", "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()]))
@@ -472,7 +472,7 @@ if args.track:
 
 # TRY NOT TO MODIFY: seeding
 device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
-env = gym.make(args.gym_id)
+env = gym.make(args.env_id)
 env = wrap_atari(env)
 env = gym.wrappers.RecordEpisodeStatistics(env)  # records episode reward in `info['episode']['r']`
 if args.capture_video:
@@ -543,7 +543,7 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
 
 class ExperienceReplayDataset(IterableDataset):
     def __init__(self):
-        self.dataset_env = gym.make(args.offline_gym_id)
+        self.dataset_env = gym.make(args.offline_env_id)
         self.dataset = self.dataset_env.get_dataset()
 
     def __iter__(self):

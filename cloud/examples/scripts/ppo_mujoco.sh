@@ -2,7 +2,7 @@
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
-    --gym-id Reacher-v2 \
+    --env-id Reacher-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -15,7 +15,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
-    --gym-id Pusher-v2 \
+    --env-id Pusher-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -28,7 +28,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
-    --gym-id Thrower-v2 \
+    --env-id Thrower-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -41,7 +41,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
-    --gym-id Striker-v2 \
+    --env-id Striker-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -54,7 +54,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
-    --gym-id InvertedPendulum-v2 \
+    --env-id InvertedPendulum-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -67,7 +67,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
-    --gym-id HalfCheetah-v2 \
+    --env-id HalfCheetah-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -80,7 +80,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
-    --gym-id Hopper-v2 \
+    --env-id Hopper-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -93,7 +93,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
-    --gym-id Swimmer-v2 \
+    --env-id Swimmer-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -106,7 +106,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
-    --gym-id Walker2d-v2 \
+    --env-id Walker2d-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -119,7 +119,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
-    --gym-id Ant-v2 \
+    --env-id Ant-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -132,7 +132,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ppo_continuous_action.py \
-    --gym-id Humanoid-v2 \
+    --env-id Humanoid-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \

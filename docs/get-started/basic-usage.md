@@ -10,7 +10,7 @@ the CleanRL script under the poetry virtual environments.
     ```bash
     poetry run python cleanrl/ppo.py \
         --seed 1 \
-        --gym-id CartPole-v0 \
+        --env-id CartPole-v0 \
         --total-timesteps 50000
     ```
     <script id="asciicast-443649" src="https://asciinema.org/a/443649.js" async></script>
@@ -31,7 +31,7 @@ the CleanRL script under the poetry virtual environments.
     ```bash
     python cleanrl/ppo.py \
         --seed 1 \
-        --gym-id CartPole-v0 \
+        --env-id CartPole-v0 \
         --total-timesteps 50000
     ```
     <script id="asciicast-JL1FR00I2JNklAhMd2dwEAQuz" src="https://asciinema.org/a/JL1FR00I2JNklAhMd2dwEAQuz.js" async></script>
@@ -64,7 +64,7 @@ which will save the videos in the `videos/{$run_name}` folder.
 ```bash linenums="1" hl_lines="5"
 python cleanrl/ppo.py \
     --seed 1 \
-    --gym-id CartPole-v0 \
+    --env-id CartPole-v0 \
     --total-timesteps 50000 \
     --capture-video
 ```
@@ -79,7 +79,7 @@ You can directly obtained the documentation by using the `--help` flag.
 ```bash
 python cleanrl/ppo.py --help
 
-usage: ppo.py [-h] [--exp-name EXP_NAME] [--gym-id GYM_ID]
+usage: ppo.py [-h] [--exp-name EXP_NAME] [--env-id ENV_ID]
               [--learning-rate LEARNING_RATE] [--seed SEED]
               [--total-timesteps TOTAL_TIMESTEPS]
               [--torch-deterministic [TORCH_DETERMINISTIC]] [--cuda [CUDA]]
@@ -96,7 +96,7 @@ usage: ppo.py [-h] [--exp-name EXP_NAME] [--gym-id GYM_ID]
 optional arguments:
   -h, --help            show this help message and exit
   --exp-name EXP_NAME   the name of this experiment
-  --gym-id GYM_ID       the id of the gym environment
+  --env-id ENV_ID       the id of the environment
   --learning-rate LEARNING_RATE
                         the learning rate of the optimizer
   --seed SEED           seed of the experiment

@@ -2,7 +2,7 @@
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
-    --gym-id MinitaurBulletEnv-v0 \
+    --env-id MinitaurBulletEnv-v0 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -15,7 +15,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
-    --gym-id MinitaurBulletDuckEnv-v0 \
+    --env-id MinitaurBulletDuckEnv-v0 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -28,7 +28,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
-    --gym-id InvertedPendulumBulletEnv-v0 \
+    --env-id InvertedPendulumBulletEnv-v0 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -41,7 +41,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
-    --gym-id InvertedDoublePendulumBulletEnv-v0 \
+    --env-id InvertedDoublePendulumBulletEnv-v0 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -54,7 +54,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
-    --gym-id Walker2DBulletEnv-v0 \
+    --env-id Walker2DBulletEnv-v0 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -67,7 +67,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
-    --gym-id HalfCheetahBulletEnv-v0 \
+    --env-id HalfCheetahBulletEnv-v0 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -80,7 +80,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
-    --gym-id AntBulletEnv-v0 \
+    --env-id AntBulletEnv-v0 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -93,7 +93,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
-    --gym-id HopperBulletEnv-v0 \
+    --env-id HopperBulletEnv-v0 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -106,7 +106,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
-    --gym-id HumanoidBulletEnv-v0 \
+    --env-id HumanoidBulletEnv-v0 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -119,7 +119,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
-    --gym-id BipedalWalker-v3 \
+    --env-id BipedalWalker-v3 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -132,7 +132,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
-    --gym-id LunarLanderContinuous-v2 \
+    --env-id LunarLanderContinuous-v2 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -145,7 +145,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
-    --gym-id Pendulum-v0 \
+    --env-id Pendulum-v0 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
@@ -158,7 +158,7 @@ done
 for seed in {1..2}
 do
     (sleep 0.3 && nohup xvfb-run -a python ddpg_continuous_action.py \
-    --gym-id MountainCarContinuous-v0 \
+    --env-id MountainCarContinuous-v0 \
     --total-timesteps 2000000 \
     --wandb-project-name cleanrl.benchmark \
     --track \
