@@ -99,20 +99,20 @@ if not path.exists(f"{feature_name}/all_df_cache.pkl"):
                     exp_name += "-" + param + "-" + str(run.config[param]) + "-"
 
             # hacks
-            if run.config["gym_id"] in env_dict:
+            if run.config["env_id"] in env_dict:
                 exp_name += "shaped"
-                run.config["gym_id"] = env_dict[run.config["gym_id"]]
+                run.config["env_id"] = env_dict[run.config["env_id"]]
 
             metrics_dataframe.insert(len(metrics_dataframe.columns), "algo", exp_name)
             exp_names += [exp_name]
             metrics_dataframe.insert(len(metrics_dataframe.columns), "seed", run.config["seed"])
 
             data += [metrics_dataframe]
-            if run.config["gym_id"] not in envs:
-                envs[run.config["gym_id"]] = [metrics_dataframe]
-                envs[run.config["gym_id"] + "total_timesteps"] = run.config["total_timesteps"]
+            if run.config["env_id"] not in envs:
+                envs[run.config["env_id"]] = [metrics_dataframe]
+                envs[run.config["env_id"] + "total_timesteps"] = run.config["total_timesteps"]
             else:
-                envs[run.config["gym_id"]] += [metrics_dataframe]
+                envs[run.config["env_id"]] += [metrics_dataframe]
 
             # run.summary are the output key/values like accuracy.  We call ._json_dict to omit large files
             summary_list.append(run.summary._json_dict)
@@ -166,11 +166,11 @@ for env in envs:
 sns.set(style="darkgrid")
 
 
-def get_df_for_env(gym_id):
-    env_total_timesteps = envs[gym_id + "total_timesteps"]
+def get_df_for_env(env_id):
+    env_total_timesteps = envs[env_id + "total_timesteps"]
     env_increment = env_total_timesteps / 500
     envs_same_x_axis = []
-    for sampled_run in envs[gym_id]:
+    for sampled_run in envs[env_id]:
         df = pd.DataFrame(columns=sampled_run.columns)
         x_axis = [i * env_increment for i in range(500 - 2)]
         current_row = 0
@@ -236,9 +236,9 @@ if args.font_size:
     plt.rc("ytick", labelsize=args.font_size)  # fontsize of the tick labels
     plt.rc("legend", fontsize=args.font_size)  # legend fontsize
 
-stats = {item: [] for item in ["gym_id", "exp_name", args.feature_of_interest]}
+stats = {item: [] for item in ["env_id", "exp_name", args.feature_of_interest]}
 # uncommenet the following to generate all figures
-for env in set(all_df["gym_id"]):
+for env in set(all_df["env_id"]):
     if not path.exists(f"{feature_name}/data/{env}.pkl"):
         with open(f"{feature_name}/data/{env}.pkl", "wb") as handle:
             data = get_df_for_env(env)
@@ -305,7 +305,7 @@ for env in set(all_df["gym_id"]):
         for item in last_n_episodes_features:
             stats[args.feature_of_interest] += [item]
             stats["exp_name"] += [exp_convert_dict[algo]]
-            stats["gym_id"] += [env]
+            stats["env_id"] += [env]
 
 # export legend
 ax = sns.lineplot(
@@ -324,5 +324,5 @@ plt.clf()
 
 # analysis
 stats_df = pd.DataFrame(stats)
-g = stats_df.groupby(["gym_id", "exp_name"]).agg(lambda x: f"{np.mean(x):.2f} ± {np.std(x):.2f}")
-print(g.reset_index().pivot("exp_name", "gym_id", args.feature_of_interest).to_latex().replace("±", "$\pm$"))
+g = stats_df.groupby(["env_id", "exp_name"]).agg(lambda x: f"{np.mean(x):.2f} ± {np.std(x):.2f}")
+print(g.reset_index().pivot("exp_name", "env_id", args.feature_of_interest).to_latex().replace("±", "$\pm$"))

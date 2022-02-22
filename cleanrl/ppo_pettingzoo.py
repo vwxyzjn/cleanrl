@@ -21,7 +21,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"), help="the name of this experiment"
     )
-    parser.add_argument("--gym-id", type=str, default="pistonball_v4-v0", help="the id of the gym environment")
+    parser.add_argument("--env-id", type=str, default="pistonball_v4-v0", help="the id of the environment")
     parser.add_argument("--learning-rate", type=float, default=3e-4, help="the learning rate of the optimizer")
     parser.add_argument("--seed", type=int, default=1, help="seed of the experiment")
     parser.add_argument("--total-timesteps", type=int, default=2000000, help="total timesteps of the experiments")
@@ -182,7 +182,7 @@ class VecMonitor(VecEnvWrapper):
 
 
 # TRY NOT TO MODIFY: setup the environment
-experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+experiment_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
 writer.add_text(
     "hyperparameters", "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()]))

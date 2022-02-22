@@ -407,7 +407,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"), help="the name of this experiment"
     )
-    parser.add_argument("--gym-id", type=str, default="BreakoutNoFrameskip-v4", help="the id of the gym environment")
+    parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4", help="the id of the environment")
     parser.add_argument("--learning-rate", type=float, default=2.5e-4, help="the learning rate of the optimizer")
     parser.add_argument("--seed", type=int, default=1, help="seed of the experiment")
     parser.add_argument("--total-timesteps", type=int, default=10000000, help="total timesteps of the experiments")
@@ -585,7 +585,7 @@ class ProbsVisualizationWrapper(gym.Wrapper):
 
 
 # TRY NOT TO MODIFY: setup the environment
-experiment_name = f"{args.gym_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+experiment_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
 writer = SummaryWriter(f"runs/{experiment_name}")
 writer.add_text(
     "hyperparameters", "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()]))
@@ -612,9 +612,9 @@ torch.manual_seed(args.seed)
 torch.backends.cudnn.deterministic = args.torch_deterministic
 
 
-def make_env(gym_id, seed, idx):
+def make_env(env_id, seed, idx):
     def thunk():
-        env = gym.make(gym_id)
+        env = gym.make(env_id)
         env = wrap_atari(env, sticky_action=args.sticky_action)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if args.capture_video:
@@ -640,10 +640,10 @@ def make_env(gym_id, seed, idx):
     return thunk
 
 
-envs = VecPyTorch(DummyVecEnv([make_env(args.gym_id, args.seed + i, i) for i in range(args.num_envs)]), device)
+envs = VecPyTorch(DummyVecEnv([make_env(args.env_id, args.seed + i, i) for i in range(args.num_envs)]), device)
 # if args.track:
 #     envs = VecPyTorch(
-#         SubprocVecEnv([make_env(args.gym_id, args.seed+i, i) for i in range(args.num_envs)], "fork"),
+#         SubprocVecEnv([make_env(args.env_id, args.seed+i, i) for i in range(args.num_envs)], "fork"),
 #         device
 #     )
 assert isinstance(envs.action_space, Discrete), "only discrete action space is supported"

@@ -5,14 +5,14 @@
 poetry shell
 
 poetry install -E atari
-python cleanrl/dqn_atari.py --gym-id BreakoutNoFrameskip-v4
-python cleanrl/c51_atari.py --gym-id BreakoutNoFrameskip-v4
-python cleanrl/ppo_atari.py --gym-id BreakoutNoFrameskip-v4
-python cleanrl/apex_dqn_atari.py --gym-id BreakoutNoFrameskip-v4
+python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
+python cleanrl/c51_atari.py --env-id BreakoutNoFrameskip-v4
+python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
+python cleanrl/apex_dqn_atari.py --env-id BreakoutNoFrameskip-v4
 
 # NEW: 3-4x side-effects free speed up with envpool's atari (only available to linux)
 poetry install -E envpool
-python cleanrl/ppo_atari_envpool.py --gym-id BreakoutNoFrameskip-v4
+python cleanrl/ppo_atari_envpool.py --env-id BreakoutNoFrameskip-v4
 # Learn Pong-v5 in ~5-10 mins
 # Side effects such as lower sample efficiency might occur
 poetry run python ppo_atari_envpool.py --clip-coef=0.2 --num-envs=16 --num-minibatches=8 --num-steps=128 --update-epochs=3
@@ -27,9 +27,9 @@ You can also run training scripts in other games, such as:
 ```
 poetry shell
 
-python cleanrl/dqn.py --gym-id CartPole-v1
-python cleanrl/ppo.py --gym-id CartPole-v1
-python cleanrl/c51.py --gym-id CartPole-v1
+python cleanrl/dqn.py --env-id CartPole-v1
+python cleanrl/ppo.py --env-id CartPole-v1
+python cleanrl/c51.py --env-id CartPole-v1
 ```
 
 ## PyBullet
@@ -37,9 +37,9 @@ python cleanrl/c51.py --gym-id CartPole-v1
 poetry shell
 
 poetry install -E pybullet
-python cleanrl/td3_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
-python cleanrl/ddpg_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
-python cleanrl/sac_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
+python cleanrl/td3_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
+python cleanrl/ddpg_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
+python cleanrl/sac_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
 ```
 
 ## Procgen 
@@ -47,8 +47,8 @@ python cleanrl/sac_continuous_action.py --gym-id MinitaurBulletDuckEnv-v0
 poetry shell
 
 poetry install -E procgen
-python cleanrl/ppo_procgen.py --gym-id starpilot
-python cleanrl/ppg_procgen.py --gym-id starpilot
+python cleanrl/ppo_procgen.py --env-id starpilot
+python cleanrl/ppg_procgen.py --env-id starpilot
 ```
 
 
@@ -57,6 +57,6 @@ python cleanrl/ppg_procgen.py --gym-id starpilot
 poetry shell
 
 poetry install -E atari
-python cleanrl/ppo_atari_lstm.py --gym-id BreakoutNoFrameskip-v4
+python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/ppo_memory_env_lstm.py
 ```
