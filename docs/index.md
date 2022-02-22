@@ -1,5 +1,6 @@
 # CleanRL
 
+
 <img src="
 https://img.shields.io/github/license/vwxyzjn/cleanrl">
 [![tests](https://github.com/vwxyzjn/cleanrl/actions/workflows/tests.yaml/badge.svg)](https://github.com/vwxyzjn/cleanrl/actions/workflows/tests.yaml)
@@ -8,6 +9,8 @@ https://img.shields.io/github/license/vwxyzjn/cleanrl">
 [<img src="https://badge.fury.io/py/cleanrl.svg">](
 https://pypi.org/project/cleanrl/)
 [<img src="https://img.shields.io/youtube/channel/views/UCDdC6BIFRI0jvcwuhi3aI6w?style=social">](https://www.youtube.com/channel/UCDdC6BIFRI0jvcwuhi3aI6w/videos)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 
 ## Overview
 
