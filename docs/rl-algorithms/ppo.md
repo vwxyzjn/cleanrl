@@ -1,14 +1,5 @@
 # Proximal Policy Gradient (PPO)
 
-<style>
-.grid-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    image-rendering: -webkit-optimize-contrast;
-    grid-gap: 50px;
-}
-</style>
-
 
 ## Overview
 
@@ -36,27 +27,34 @@ The [ppo.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py) has 
 * Works with the `Discerete` action space
 * Works with envs like `CartPole-v1`
 
+### Usage
+
+```bash
+poetry install
+python cleanrl/ppo.py --help
+python cleanrl/ppo.py --env-id CartPole-v1
+```
+
 ### Implementation details
 
 [ppo.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py) includes the 11 core implementation details:
 
-1. Vectorized architecture ([common/cmd_util.py#L22](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/cmd_util.py#L22))
-1. Orthogonal Initialization of Weights and Constant Initialization of biases ([a2c/utils.py#L58)](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L58))
-1. The Adam Optimizer's Epsilon Parameter ([ppo2/model.py#L100](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L100))
-1. Adam Learning Rate Annealing ([ppo2/ppo2.py#L133-L135](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/ppo2.py#L133-L135))
-1. Generalized Advantage Estimation ([ppo2/runner.py#L56-L65](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/runner.py#L56-L65))
-1. Mini-batch Updates ([ppo2/ppo2.py#L157-L166](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/ppo2.py#L157-L166))
-1. Normalization of Advantages ([ppo2/model.py#L139](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L139))
-1. Clipped surrogate objective ([ppo2/model.py#L81-L86](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L81-L86))
-1. Value Function Loss Clipping ([ppo2/model.py#L68-L75](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L68-L75))
-1. Overall Loss and Entropy Bonus ([ppo2/model.py#L91](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L91))
-1. Global Gradient Clipping ([ppo2/model.py#L102-L108](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L102-L108))
+1. Vectorized architecture (:material-github: [common/cmd_util.py#L22](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/cmd_util.py#L22))
+1. Orthogonal Initialization of Weights and Constant Initialization of biases (:material-github: [a2c/utils.py#L58)](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L58))
+1. The Adam Optimizer's Epsilon Parameter (:material-github: [ppo2/model.py#L100](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L100))
+1. Adam Learning Rate Annealing (:material-github: [ppo2/ppo2.py#L133-L135](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/ppo2.py#L133-L135))
+1. Generalized Advantage Estimation (:material-github: [ppo2/runner.py#L56-L65](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/runner.py#L56-L65))
+1. Mini-batch Updates (:material-github: [ppo2/ppo2.py#L157-L166](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/ppo2.py#L157-L166))
+1. Normalization of Advantages (:material-github: [ppo2/model.py#L139](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L139))
+1. Clipped surrogate objective (:material-github: [ppo2/model.py#L81-L86](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L81-L86))
+1. Value Function Loss Clipping (:material-github: [ppo2/model.py#L68-L75](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L68-L75))
+1. Overall Loss and Entropy Bonus (:material-github: [ppo2/model.py#L91](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L91))
+1. Global Gradient Clipping (:material-github: [ppo2/model.py#L102-L108](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L102-L108))
 
 
 ### Experiment results
 
-Below are the average episodic return for `ppo.py`. We compared the results
-against `openai/baselies`' PPO
+We conducted experiments based on :material-github: [3437186](https://github.com/vwxyzjn/cleanrl/commit/343718608eb27787039e0187322ffa4b7220e1da), and below are the average episodic returns for `ppo.py`. We compared the results against `openai/baselies`' PPO
 
 | Environment      | `ppo.py` | `openai/baselies`' PPO
 | ----------- | ----------- | ----------- |
@@ -64,18 +62,21 @@ against `openai/baselies`' PPO
 | Acrobot-v1   | -82.48 ± 5.93     |  -81.82 ± 5.58 |
 | MountainCar-v0   | -200.00 ± 0.00         | -200.00 ± 0.00 |
 
-<!-- <iframe src="https://wandb.ai/vwxyzjn/ppo-details/reports/ppo-py-benchmark--VmlldzoxNTkxOTc4#benchmark-results:" style="width:100%; height:500px" title="CleanRL CartPole-v1 Example"></iframe> -->
 
 Learning curves:
 
 <div class="grid-container">
-<img src="https://ppo-details.cleanrl.dev//public/images/2021-11-5-ppo-implementation-details//CartPole-v1.png">
+<img src="../ppo/CartPole-v1.png">
 
-<img src="https://ppo-details.cleanrl.dev//public/images/2021-11-5-ppo-implementation-details//Acrobot-v1.png">
+<img src="../ppo/Acrobot-v1.png">
 
-<img src="https://ppo-details.cleanrl.dev//public/images/2021-11-5-ppo-implementation-details//MountainCar-v0.png">
+<img src="../ppo/MountainCar-v0.png">
 </div>
 
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/cleanrl/benchmark/reports/ppo-py-v1-Classic-Control---VmlldzoxNTk2NjE4" style="width:100%; height:500px" title="CleanRL CartPole-v1 Example"></iframe>
 
 ### Video tutorial
 
