@@ -73,6 +73,7 @@ nav:
     - cloud/installation.md
     - cloud/submit-experiments.md
   - RL Algorithms:
+    - rl-algorithms/overview.md
     - rl-algorithms/ppo.md
     - rl-algorithms/dqn.md
   - Open RL Benchmark: open-rl-benchmark.md
