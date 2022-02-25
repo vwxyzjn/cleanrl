@@ -1,5 +1,5 @@
 # docs and experiment results can be found at
-# https://cleanrl-553u0zazz-vwxyzjn.vercel.app/rl-algorithms/ppo/#ppopy
+# https://docs.cleanrl.dev/rl-algorithms/ppo/#ppopy
 
 import argparse
 import os
