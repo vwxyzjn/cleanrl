@@ -108,13 +108,23 @@ You may also use a prebuilt development environment hosted in Gitpod:
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/vwxyzjn/cleanrl)
 
 ## Algorithms Implemented
-- [x] Deep Q-Learning (DQN)
-- [x] Categorical DQN (C51)
-- [x] Proximal Policy Gradient (PPO) 
-- [x] Soft Actor Critic (SAC)
-- [x] Deep Deterministic Policy Gradient (DDPG)
-- [x] Twin Delayed Deep Deterministic Policy Gradient (TD3)
-- [x] Apex Deep Q-Learning (Apex-DQN)
+
+| Algorithm      | Variants Implemented |
+| ----------- | ----------- |
+| ✅ [Proximal Policy Gradient (PPO)](https://arxiv.org/pdf/1707.06347.pdf)  | [`ppo.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py),  [docs](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppopy) |
+| | [`ppo_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py),  [docs](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_ataripy) |
+| | [`ppo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py),  [docs](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_continuous_actionpy) |
+| | [`ppo_atari_lstm.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py) |
+| | [`ppo_procgen.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_procgen.py) |
+| ✅ [Deep Q-Learning (DQN)](https://web.stanford.edu/class/psych209/Readings/MnihEtAlHassibis15NatureControlDeepRL.pdf) | [`dqn.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py) |
+| | [`dqn_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py) |
+| ✅ [Categorical DQN (C51)](https://arxiv.org/pdf/1707.06887.pdf) | [`c51.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/c51.py) |
+| | [`c51_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/c51_atari.py) |
+| ✅ [Apex Deep Q-Learning (Apex-DQN)](https://arxiv.org/pdf/1803.00933.pdf) | [`apex_dqn_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/apex_dqn_atari.py) |
+| ✅ [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf) | [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) |
+| ✅ [Deep Deterministic Policy Gradient (DDPG)](https://arxiv.org/pdf/1509.02971.pdf) | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) |
+| ✅ [Twin Delayed Deep Deterministic Policy Gradient (TD3)](https://arxiv.org/pdf/1802.09477.pdf) | [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) |
+
 
 ## Open RL Benchmark
 

@@ -26,7 +26,7 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 * Experiment Management with [Weights and Biases](https://wandb.ai/site)
 * Cloud Integration with Docker and AWS 
 
-You can read more about CleanRL in our [technical paper]((https://arxiv.org/abs/2111.08819)) and [documentation](https://docs.cleanrl.dev/).
+You can read more about CleanRL in our [technical paper](https://arxiv.org/abs/2111.08819) and [documentation](https://docs.cleanrl.dev/).
 
 Good luck have fun 🚀
 

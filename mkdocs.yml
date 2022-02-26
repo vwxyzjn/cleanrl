@@ -41,6 +41,9 @@ markdown_extensions:
   - pymdownx.superfences
   - attr_list
   - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
   # - toc:
   #     permalink: true
   # - markdown.extensions.codehilite:
@@ -70,6 +73,7 @@ nav:
     - cloud/installation.md
     - cloud/submit-experiments.md
   - RL Algorithms:
+    - rl-algorithms/overview.md
     - rl-algorithms/ppo.md
     - rl-algorithms/dqn.md
   - Open RL Benchmark: open-rl-benchmark.md
