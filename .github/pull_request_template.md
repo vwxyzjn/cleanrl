@@ -19,6 +19,7 @@
 If you are adding new algorithms or your change could result in performance difference, you may need to (re-)run tracked experiments. 
 - [ ] I have contacted @vwxyzjn to obtain access to the [cleanrl W&B team](https://wandb.ai/cleanrl) (**required**).
 - [ ] I have tracked applicable experiments in [cleanrl/benchmark](https://wandb.ai/cleanrl/benchmark) with `--capture-video` flag toggled on (**required**).
+- [ ] I have added additional documentation as follows.
     - [ ] I have explained note-worthy implementation details.
     - [ ] I have added links to the original paper and related papers (if applicable).
     - [ ] I have added links to the PR related to the algorithm.
