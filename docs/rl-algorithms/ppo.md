@@ -102,7 +102,7 @@ The [ppo_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_at
 
 * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
 * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
-* Works with the `Discerete` action space
+* Works with the `Discrete` action space
 * Includes the 9 Atari-specific implementation details as shown in the following video tutorial
   [![PPO2](ppo/ppo-2-title.png)](https://youtu.be/05RMTj-2K_Y)
 

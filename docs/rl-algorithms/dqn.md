@@ -40,4 +40,4 @@ The [dqn_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_at
 
 * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
 * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
-* Works with the `Discerete` action space
+* Works with the `Discrete` action space
