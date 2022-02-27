@@ -34,7 +34,7 @@ Below are our single-file implementations of PPO:
 The [ppo.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py) has the following features:
 
 * Works with the `Box` observation space of low-level features
-* Works with the `Discerete` action space
+* Works with the `Discrete` action space
 * Works with envs like `CartPole-v1`
 
 ### Usage
