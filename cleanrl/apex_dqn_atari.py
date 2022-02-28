@@ -820,9 +820,7 @@ def act(args, experiment_name, i, q_network, target_network, lock, rollouts_queu
                     1 - torch.Tensor(s_dones).to(device)
                 )
 
-                old_val = (
-                    q_network(s_obs, device).gather(1, torch.LongTensor(s_actions).view(-1, 1).to(device)).squeeze()
-                )
+                old_val = q_network(s_obs, device).gather(1, torch.LongTensor(s_actions).view(-1, 1).to(device)).squeeze()
                 td_errors = td_target - old_val
             new_priorities = np.abs(td_errors.tolist()) + args.pr_eps
             rollouts_queue.put((storage, new_priorities))
