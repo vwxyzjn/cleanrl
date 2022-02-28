@@ -205,6 +205,7 @@ if __name__ == "__main__":
 
     envs.single_observation_space.dtype = np.float32
     rb = ReplayBuffer(args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device)
+    start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
@@ -298,6 +299,9 @@ if __name__ == "__main__":
                 writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                 writer.add_scalar("losses/alpha", alpha, global_step)
+                writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
+                print("SPS:", int(global_step / (time.time() - start_time)))
+                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
                 if args.autotune:
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
 
