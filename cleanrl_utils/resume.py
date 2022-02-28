@@ -6,6 +6,7 @@ from distutils.util import strtobool
 
 import boto3
 import requests
+
 import wandb
 
 client = boto3.client("batch")

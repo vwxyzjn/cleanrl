@@ -845,7 +845,7 @@ for update in range(1, num_updates + 1):
         for idx, info in enumerate(infos):
             if "episode" in info.keys():
                 print(
-                    f"global_step={global_step}, episode_reward={info['episode']['r']}, curiosity_reward={curiosity_rewards[step][idx]}"
+                    f"global_step={global_step}, episodic_return={info['episode']['r']}, curiosity_reward={curiosity_rewards[step][idx]}"
                 )
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                 writer.add_scalar("charts/episode_curiosity_reward", curiosity_rewards[step][idx], global_step)

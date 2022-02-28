@@ -334,7 +334,7 @@ for update in range(1, num_updates + 1):
 
         for info in infos:
             if "episode" in info.keys():
-                print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
+                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                 break
 
