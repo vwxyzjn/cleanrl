@@ -71,9 +71,42 @@ python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
         )
         ``` 
     - `dqn_atari.py` uses `--learning-starts=80000` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--learning-starts=50000`.
+    - `dqn_atari.py` uses `--target-network-frequency=1000` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--learning-starts=10000`.
     - `dqn_atari.py` uses `--total-timesteps=10000000` (i.e., 10M timesteps = 40M frames because of frame-skipping) whereas (Mnih et al., 2015)[^1] uses `--total-timesteps=12500000` (i.e., 12.5M timesteps = 50M frames) (See "Training details" under "METHODS" on page 6).
     - `dqn_atari.py` uses `--end-e=0.01` (the final exploration epsilon) whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--end-e=0.1`.
+    - `dqn_atari.py` uses `--exploration-fraction=0.1` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--exploration-fraction=0.02` (all corresponds to 250000 steps or 1M frames being the frame that epsilon is annealed to `--end-e=0.1` ).
 1. `dqn_atari.py` use a self-contained evaluation scheme: `dqn_atari.py` simply reports the episodic returns obtained throughout training, whereas (Mnih et al., 2015)[^1] is trained with `--end-e=0.1` but reported episodic returns using a separate evaluation process with `--end-e=0.01` (See "Evaluation procedure" under "METHODS" on page 6).
+
+
+### Experiment results
+
+PR :material-github: [vwxyzjn/cleanrl#124](https://github.com/vwxyzjn/cleanrl/pull/124) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/dqn](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/dqn).
+
+Below are the average episodic returns for `dqn_atari.py`. 
+
+<!-- To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO. -->
+
+| Environment      | `dqn_atari.py` | (Mnih et al., 2015)[^1]
+| ----------- | ----------- | ----------- |
+| BreakoutNoFrameskip-v4      | 1 ± 1      |401.2 ± 26.9  |
+| PongNoFrameskip-v4  | 1 ± 1     |  18.9 ± 1.3 |
+| BeamRiderNoFrameskip-v4   | 1 ± 0.00         | 6846 ± 1619 |
+
+
+<!-- Learning curves:
+
+<div class="grid-container">
+<img src="../ppo/CartPole-v1.png">
+
+<img src="../ppo/Acrobot-v1.png">
+
+<img src="../ppo/MountainCar-v0.png">
+</div> -->
+
+
+<!-- Tracked experiments and game play videos: -->
+
+<!-- <iframe src="https://wandb.ai/cleanrl/benchmark/reports/ppo-py-v1-Classic-Control---VmlldzoxNTk2NjE4" style="width:100%; height:500px" title="CleanRL CartPole-v1 Example"></iframe> -->
 
 
 [^1]:Mnih, V., Kavukcuoglu, K., Silver, D. et al. Human-level control through deep reinforcement learning. Nature 518, 529–533 (2015). https://doi.org/10.1038/nature14236
