@@ -20,7 +20,7 @@ parser.add_argument(
     "--wandb-project", type=str, default="cleanrl/cleanrl.benchmark", help="the name of wandb project (e.g. cleanrl/cleanrl)"
 )
 parser.add_argument(
-    "--feature-of-interest", type=str, default="charts/episode_reward", help="which feature to be plotted on the y-axis"
+    "--feature-of-interest", type=str, default="charts/episodic_return", help="which feature to be plotted on the y-axis"
 )
 parser.add_argument("--hyper-params-tuned", nargs="+", default=[], help="the hyper parameters tuned")
 # parser.add_argument('--scan-history', type=lambda x:bool(strtobool(x)), default=False, nargs='?', const=True,
@@ -67,7 +67,7 @@ exp_convert_dict = {
     "td3_continuous_action": "TD3",
 }
 
-# args.feature_of_interest = 'charts/episode_reward'
+# args.feature_of_interest = 'charts/episodic_return'
 feature_name = args.feature_of_interest.replace("/", "_")
 if not os.path.exists(feature_name):
     os.makedirs(feature_name)

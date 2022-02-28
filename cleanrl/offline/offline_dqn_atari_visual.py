@@ -561,7 +561,7 @@ print(device.__repr__())
 print(q_network)
 # TRY NOT TO MODIFY: start the game
 obs = env.reset()
-episode_reward = 0
+episodic_return = 0
 for global_step in range(args.total_timesteps):
     # ALGO LOGIC: put action logic here
     epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
@@ -576,11 +576,11 @@ for global_step in range(args.total_timesteps):
 
     # TRY NOT TO MODIFY: execute the game and log data.
     next_obs, reward, done, info = env.step(action)
-    episode_reward += reward
+    episodic_return += reward
 
     # TRY NOT TO MODIFY: record rewards for plotting purposes
     if "episode" in info.keys():
-        print(f"global_step={global_step}, episode_reward={info['episode']['r']}")
+        print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
         writer.add_scalar("charts/epsilon", epsilon, global_step)
 
@@ -590,7 +590,7 @@ for global_step in range(args.total_timesteps):
         # important to note that because `EpisodicLifeEnv` wrapper is applied,
         # the real episode reward is actually the sum of episode reward of 5 lives
         # which we record through `info['episode']['r']` provided by gym.wrappers.RecordEpisodeStatistics
-        obs, episode_reward = env.reset(), 0
+        obs, episodic_return = env.reset(), 0
 
     if global_step % args.train_frequency == 0:
         # s_obs, s_actions, s_rewards, s_next_obses, s_dones = rb.sample(args.batch_size)

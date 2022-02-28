@@ -768,7 +768,7 @@ def act(args, experiment_name, i, q_network, target_network, lock, rollouts_queu
     # TRY NOT TO MODIFY: start the game
     obs = env.reset()
     storage = []
-    episode_reward = 0
+    episodic_return = 0
     update_step = 0
     while True:
         update_step += 1
@@ -787,7 +787,7 @@ def act(args, experiment_name, i, q_network, target_network, lock, rollouts_queu
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, reward, done, info = env.step(action)
-        episode_reward += reward
+        episodic_return += reward
         storage += [(obs, action, reward, next_obs, float(done))]
         with lock:
             global_step += 1
@@ -834,7 +834,7 @@ def act(args, experiment_name, i, q_network, target_network, lock, rollouts_queu
             # important to note that because `EpisodicLifeEnv` wrapper is applied,
             # the real episode reward is actually the sum of episode reward of 5 lives
             # which we record through `info['episode']['r']` provided by gym.wrappers.RecordEpisodeStatistics
-            obs, episode_reward = env.reset(), 0
+            obs, episodic_return = env.reset(), 0
 
 
 def data_process(args, i, global_step, rollouts_queue, data_process_queue, data_process_back_queues, device):
@@ -1102,7 +1102,7 @@ if __name__ == "__main__":
             m = stats_queue.get()
             if m[0] == "charts/episodic_return":
                 r, l = m[1], m[2]
-                print(f"global_step={global_step}, episode_reward={r}")
+                print(f"global_step={global_step}, episodic_return={r}")
                 writer.add_scalar("charts/episodic_return", r, global_step)
                 writer.add_scalar("charts/stats_queue_size", stats_queue.qsize(), global_step)
                 writer.add_scalar("charts/rollouts_queue_size", rollouts_queue.qsize(), global_step)
