@@ -163,7 +163,7 @@ if __name__ == "__main__":
         if global_step < args.learning_starts:
             actions = envs.action_space.sample()
         else:
-            actions = actor.forward(torch.Tensor(obs).to(device))
+            actions = actor(torch.Tensor(obs).to(device))
             actions = np.array(
                 [
                     (
@@ -197,13 +197,13 @@ if __name__ == "__main__":
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
             with torch.no_grad():
-                next_state_actions = (target_actor.forward(data.next_observations)).clamp(
+                next_state_actions = (target_actor(data.next_observations)).clamp(
                     envs.single_action_space.low[0], envs.single_action_space.high[0]
                 )
-                qf1_next_target = qf1_target.forward(data.next_observations, next_state_actions)
+                qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                 next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (qf1_next_target).view(-1)
 
-            qf1_a_values = qf1.forward(data.observations, data.actions).view(-1)
+            qf1_a_values = qf1(data.observations, data.actions).view(-1)
             qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
 
             # optimize the model
@@ -213,7 +213,7 @@ if __name__ == "__main__":
             q_optimizer.step()
 
             if global_step % args.policy_frequency == 0:
-                actor_loss = -qf1.forward(data.observations, actor.forward(data.observations)).mean()
+                actor_loss = -qf1(data.observations, actor(data.observations)).mean()
                 actor_optimizer.zero_grad()
                 actor_loss.backward()
                 nn.utils.clip_grad_norm_(list(actor.parameters()), args.max_grad_norm)

@@ -102,11 +102,8 @@ class QNetwork(nn.Module):
             nn.Linear(84, self.n * n_atoms),
         )
 
-    def forward(self, x):
-        return self.network(x)
-
     def get_action(self, x, action=None):
-        logits = self.forward(x)
+        logits = self.network(x)
         # probability mass function for each action
         pmfs = torch.softmax(logits.view(len(x), self.n, self.n_atoms), dim=2)
         q_values = (pmfs * self.atoms).sum(2)

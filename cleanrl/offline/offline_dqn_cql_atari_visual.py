@@ -570,7 +570,7 @@ for global_step in range(args.total_timesteps):
     # ALGO LOGIC: put action logic here
     epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
     obs = np.array(obs)
-    logits = q_network.forward(obs.reshape((1,) + obs.shape), device)
+    logits = q_network(obs.reshape((1,) + obs.shape), device)
     if args.capture_video:
         env.set_q_values(logits.tolist())
     if random.random() < epsilon:

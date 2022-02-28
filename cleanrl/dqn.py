@@ -153,7 +153,7 @@ if __name__ == "__main__":
         if random.random() < epsilon:
             actions = envs.action_space.sample()
         else:
-            logits = q_network.forward(torch.Tensor(obs).to(device))
+            logits = q_network(torch.Tensor(obs).to(device))
             actions = torch.argmax(logits, dim=1).cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
@@ -181,9 +181,9 @@ if __name__ == "__main__":
         if global_step > args.learning_starts and global_step % args.train_frequency == 0:
             data = rb.sample(args.batch_size)
             with torch.no_grad():
-                target_max, _ = target_network.forward(data.next_observations).max(dim=1)
+                target_max, _ = target_network(data.next_observations).max(dim=1)
                 td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
-            old_val = q_network.forward(data.observations).gather(1, data.actions).squeeze()
+            old_val = q_network(data.observations).gather(1, data.actions).squeeze()
             loss = F.mse_loss(td_target, old_val)
 
             if global_step % 100 == 0:
