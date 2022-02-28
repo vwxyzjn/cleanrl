@@ -159,7 +159,6 @@ if __name__ == "__main__":
 
     envs.single_observation_space.dtype = np.float32
     rb = ReplayBuffer(args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device)
-    loss_fn = nn.MSELoss()
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
@@ -217,8 +216,8 @@ if __name__ == "__main__":
 
             qf1_a_values = qf1.forward(data.observations, data.actions).view(-1)
             qf2_a_values = qf2.forward(data.observations, data.actions).view(-1)
-            qf1_loss = loss_fn(qf1_a_values, next_q_value)
-            qf2_loss = loss_fn(qf2_a_values, next_q_value)
+            qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
+            qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
 
             # optimize the model
             q_optimizer.zero_grad()

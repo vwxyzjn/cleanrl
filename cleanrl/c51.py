@@ -161,7 +161,6 @@ if __name__ == "__main__":
     rb = ReplayBuffer(
         args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device, optimize_memory_usage=True
     )
-    loss_fn = nn.MSELoss()
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game

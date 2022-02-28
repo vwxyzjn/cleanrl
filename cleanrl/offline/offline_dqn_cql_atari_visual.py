@@ -328,6 +328,7 @@ import matplotlib
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from gym.spaces import Discrete
 from gym.wrappers import Monitor
@@ -558,7 +559,6 @@ q_network = QNetwork(env).to(device)
 target_network = QNetwork(env).to(device)
 target_network.load_state_dict(q_network.state_dict())
 optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
-loss_fn = nn.MSELoss()
 data_loader = iter(torch.utils.data.DataLoader(ExperienceReplayDataset(), batch_size=args.batch_size, num_workers=2))
 print(device.__repr__())
 print(q_network)
@@ -611,7 +611,7 @@ for global_step in range(args.total_timesteps):
             td_target = s_rewards + args.gamma * target_max * (1 - s_dones)
         old_qs = q_network.network(s_obs)
         old_val = old_qs.gather(1, s_actions.long().view(-1, 1)).squeeze()
-        loss = loss_fn(td_target, old_val)
+        loss = F.mse_loss(td_target, old_val)
         writer.add_scalar("losses/td_loss", loss, global_step)
 
         # CQL losses
