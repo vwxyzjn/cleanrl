@@ -1,9 +1,10 @@
 name: tests
 on:
   push:
-    paths:
-      - cleanrl/**
-      - tests/**
+    paths-ignore:
+      - '**/README.md'
+      - 'docs/**/*'
+      - 'cloud/**/*'
 jobs:
   test-core-envs:
     strategy:
