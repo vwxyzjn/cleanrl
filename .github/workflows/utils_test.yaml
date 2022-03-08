@@ -1,9 +1,10 @@
 name: utils_test
 on:
   push:
-    paths:
-      - cleanrl_utils/**
-      - tests/**
+    paths-ignore:
+      - '**/README.md'
+      - 'docs/**/*'
+      - 'cloud/**/*'
 jobs:
   ci:
     strategy:
