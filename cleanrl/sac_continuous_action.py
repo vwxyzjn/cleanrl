@@ -205,6 +205,7 @@ if __name__ == "__main__":
 
     envs.single_observation_space.dtype = np.float32
     rb = ReplayBuffer(args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device)
+    start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
@@ -246,9 +247,6 @@ if __name__ == "__main__":
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
-            # NOTE: other potential refactors
-            # 1. using qf1() instead, which calls forward() by default
-            # 2. use F.mse_loss() instead of loss_fn = nn.MSELoss()
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
             qf2_a_values = qf2(data.observations, data.actions).view(-1)
             qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
@@ -298,6 +296,9 @@ if __name__ == "__main__":
                 writer.add_scalar("losses/qf_loss", qf_loss.item(), global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                 writer.add_scalar("losses/alpha", alpha, global_step)
+                writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
+                print("SPS:", int(global_step / (time.time() - start_time)))
+                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
                 if args.autotune:
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
 

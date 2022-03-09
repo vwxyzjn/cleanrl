@@ -8,6 +8,7 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
@@ -142,7 +143,7 @@ if __name__ == "__main__":
     rb = ReplayBuffer(
         args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device, optimize_memory_usage=True
     )
-    loss_fn = nn.MSELoss()
+    start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
@@ -152,7 +153,7 @@ if __name__ == "__main__":
         if random.random() < epsilon:
             actions = envs.action_space.sample()
         else:
-            logits = q_network.forward(torch.Tensor(obs).to(device))
+            logits = q_network(torch.Tensor(obs).to(device))
             actions = torch.argmax(logits, dim=1).cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
@@ -180,13 +181,16 @@ if __name__ == "__main__":
         if global_step > args.learning_starts and global_step % args.train_frequency == 0:
             data = rb.sample(args.batch_size)
             with torch.no_grad():
-                target_max, _ = target_network.forward(data.next_observations).max(dim=1)
+                target_max, _ = target_network(data.next_observations).max(dim=1)
                 td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
-            old_val = q_network.forward(data.observations).gather(1, data.actions).squeeze()
-            loss = loss_fn(td_target, old_val)
+            old_val = q_network(data.observations).gather(1, data.actions).squeeze()
+            loss = F.mse_loss(td_target, old_val)
 
             if global_step % 100 == 0:
                 writer.add_scalar("losses/td_loss", loss, global_step)
+                writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
+                print("SPS:", int(global_step / (time.time() - start_time)))
+                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
             # optimize the model
             optimizer.zero_grad()

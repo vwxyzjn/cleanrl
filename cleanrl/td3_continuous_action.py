@@ -159,7 +159,7 @@ if __name__ == "__main__":
 
     envs.single_observation_space.dtype = np.float32
     rb = ReplayBuffer(args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device)
-    loss_fn = nn.MSELoss()
+    start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
@@ -168,7 +168,7 @@ if __name__ == "__main__":
         if global_step < args.learning_starts:
             actions = envs.action_space.sample()
         else:
-            actions = actor.forward(torch.Tensor(obs).to(device))
+            actions = actor(torch.Tensor(obs).to(device))
             actions = np.array(
                 [
                     (
@@ -206,18 +206,18 @@ if __name__ == "__main__":
                     -args.noise_clip, args.noise_clip
                 )
 
-                next_state_actions = (target_actor.forward(data.next_observations) + clipped_noise.to(device)).clamp(
+                next_state_actions = (target_actor(data.next_observations) + clipped_noise.to(device)).clamp(
                     envs.single_action_space.low[0], envs.single_action_space.high[0]
                 )
-                qf1_next_target = qf1_target.forward(data.next_observations, next_state_actions)
-                qf2_next_target = qf2_target.forward(data.next_observations, next_state_actions)
+                qf1_next_target = qf1_target(data.next_observations, next_state_actions)
+                qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target)
                 next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
-            qf1_a_values = qf1.forward(data.observations, data.actions).view(-1)
-            qf2_a_values = qf2.forward(data.observations, data.actions).view(-1)
-            qf1_loss = loss_fn(qf1_a_values, next_q_value)
-            qf2_loss = loss_fn(qf2_a_values, next_q_value)
+            qf1_a_values = qf1(data.observations, data.actions).view(-1)
+            qf2_a_values = qf2(data.observations, data.actions).view(-1)
+            qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
+            qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
 
             # optimize the model
             q_optimizer.zero_grad()
@@ -227,7 +227,7 @@ if __name__ == "__main__":
             q_optimizer.step()
 
             if global_step % args.policy_frequency == 0:
-                actor_loss = -qf1.forward(data.observations, actor.forward(data.observations)).mean()
+                actor_loss = -qf1(data.observations, actor(data.observations)).mean()
                 actor_optimizer.zero_grad()
                 actor_loss.backward()
                 nn.utils.clip_grad_norm_(list(actor.parameters()), args.max_grad_norm)
@@ -244,6 +244,9 @@ if __name__ == "__main__":
             if global_step % 100 == 0:
                 writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
+                writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
+                print("SPS:", int(global_step / (time.time() - start_time)))
+                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
     envs.close()
     writer.close()

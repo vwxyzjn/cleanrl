@@ -123,11 +123,8 @@ class QNetwork(nn.Module):
             nn.Linear(512, self.n * n_atoms),
         )
 
-    def forward(self, x):
-        return self.network(x / 255.0)
-
     def get_action(self, x, action=None):
-        logits = self.forward(x)
+        logits = self.network(x / 255.0)
         # probability mass function for each action
         pmfs = torch.softmax(logits.view(len(x), self.n, self.n_atoms), dim=2)
         q_values = (pmfs * self.atoms).sum(2)
@@ -182,7 +179,7 @@ if __name__ == "__main__":
     rb = ReplayBuffer(
         args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device, optimize_memory_usage=True
     )
-    loss_fn = nn.MSELoss()
+    start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
@@ -243,7 +240,10 @@ if __name__ == "__main__":
             loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5, max=1 - 1e-5).log()).sum(-1)).mean()
 
             if global_step % 100 == 0:
-                writer.add_scalar("losses/td_loss", loss, global_step)
+                old_val = (old_pmfs * q_network.atoms).sum(1)
+                writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
+                print("SPS:", int(global_step / (time.time() - start_time)))
+                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
             # optimize the model
             optimizer.zero_grad()
