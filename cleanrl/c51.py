@@ -166,7 +166,7 @@ if __name__ == "__main__":
         # ALGO LOGIC: put action logic here
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
         if random.random() < epsilon:
-            actions = envs.action_space.sample()
+            actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
             actions, pmf = q_network.get_action(torch.Tensor(obs).to(device))
             actions = actions.cpu().numpy()
