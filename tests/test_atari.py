@@ -18,7 +18,7 @@ def test_dqn():
 
 def test_apex_dqn_atari():
     subprocess.run(
-        "python cleanrl/c51_atari.py --learning-starts 10 --total-timesteps 16 --buffer-size 10 --batch-size 4",
+        "python cleanrl/apex_dqn_atari.py --learning-starts 10 --total-timesteps 16 --buffer-size 10 --batch-size 4",
         shell=True,
         check=True,
     )
