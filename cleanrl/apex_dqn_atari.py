@@ -1100,13 +1100,12 @@ if __name__ == "__main__":
             m = stats_queue.get()
             if m[0] == "charts/episodic_return":
                 r, l = m[1], m[2]
-                print(f"global_step={global_step}, episodic_return={r}")
                 writer.add_scalar("charts/episodic_return", r, global_step)
                 writer.add_scalar("charts/stats_queue_size", stats_queue.qsize(), global_step)
                 writer.add_scalar("charts/rollouts_queue_size", rollouts_queue.qsize(), global_step)
                 writer.add_scalar("charts/data_process_queue_size", data_process_queue.qsize(), global_step)
-                writer.add_scalar("charts/fps", (global_step.item() - start_global_step) / (timer() - start_time), global_step)
-                print("FPS: ", (global_step.item() - start_global_step) / (timer() - start_time))
+                writer.add_scalar("charts/SPS", (global_step.item() - start_global_step) / (timer() - start_time), global_step)
+                print("SPS: ", (global_step.item() - start_global_step) / (timer() - start_time))
             else:
                 # print(m[0], m[1], global_step)
                 writer.add_scalar(m[0], m[1], global_step)
