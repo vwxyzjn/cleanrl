@@ -692,14 +692,14 @@ class Agent(nn.Module):
         return self.network(x)
 
     def get_action(self, x, action=None):
-        logits = self.actor(self(x))
+        logits = self.actor(self.forward(x))
         probs = Categorical(logits=logits)
         if action is None:
             action = probs.sample()
         return action, probs.log_prob(action), probs.entropy()
 
     def get_value(self, x):
-        features = self(x)
+        features = self.forward(x)
         return self.critic_ext(self.extra_layer(features) + features), self.critic_int(self.extra_layer(features) + features)
 
 
@@ -780,7 +780,6 @@ curiosity_rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
 dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
 ext_values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 int_values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-start_time = time.time()
 
 # TRY NOT TO MODIFY: start the game
 global_step = 0
@@ -824,7 +823,7 @@ for update in range(1, num_updates + 1):
 
             # visualization
             if args.capture_video:
-                probs_list = np.array(Categorical(logits=agent.actor(agent(obs[step]))).probs[0:1].tolist())
+                probs_list = np.array(Categorical(logits=agent.actor(agent.forward(obs[step]))).probs[0:1].tolist())
                 envs.env_method("set_probs", probs_list, indices=0)
 
         actions[step] = action
@@ -1006,8 +1005,6 @@ for update in range(1, num_updates + 1):
     writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
     if args.kle_stop or args.kle_rollback:
         writer.add_scalar("debug/pg_stop_iter", i_epoch_pi, global_step)
-    print("SPS:", int(global_step / (time.time() - start_time)))
-    writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
 envs.close()
 writer.close()
