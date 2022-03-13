@@ -76,6 +76,7 @@ nav:
     - rl-algorithms/overview.md
     - rl-algorithms/ppo.md
     - rl-algorithms/dqn.md
+    - rl-algorithms/ddpg.md
   - Open RL Benchmark: open-rl-benchmark.md
   - Advanced:
     - advanced/resume-training.md
