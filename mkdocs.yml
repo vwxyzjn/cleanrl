@@ -97,6 +97,6 @@ extra:
       link: https://github.com/vwxyzjn/cleanrl
 copyright: Copyright &copy; 2021, CleanRL. All rights reserved.
 extra_javascript:
-  - javascripts/mathjax.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
+#   - javascripts/mathjax.js
+#   - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
