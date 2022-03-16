@@ -26,7 +26,7 @@ Below are our single-file implementations of PPO:
 
 ## `ddpg_continuous_action.py`
 
-The [ppo.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py) has the following features:
+The [ddpg.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg.py) has the following features:
 
 * For continuous action space. Also implemented Mujoco-specific code-level optimizations
 * Works with the `Box` observation space of low-level features
@@ -45,13 +45,13 @@ python cleanrl/ddpg_continuous_action.py --env-id Hopper-v3
 
 ### Implementation details
 
-Our [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) is based on the [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) from :material-github: [sfujim/TD3](https://github.com/sfujim/TD3), which presents the the following implementation difference from (Lillicrap et al., 2016)[^1]:
+Our [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) is based on the [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) from :material-github: [sfujim/TD3](https://github.com/sfujim/TD3), which presents the the following implementation difference from (Lillicrap et al., 2016)[^1]:
 
-1. [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses a gaussian exploration noise $\mathcal{N}(0, 0.1)$, while (Lillicrap et al., 2016)[^1] uses Ornstein-Uhlenbeck process with $\theta=0.15$ and $\sigma=0.2$.
+1. [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses a gaussian exploration noise $\mathcal{N}(0, 0.1)$, while (Lillicrap et al., 2016)[^1] uses Ornstein-Uhlenbeck process with $\theta=0.15$ and $\sigma=0.2$.
 
-1. [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) runs the experiments using the `openai/gym` MuJoCo environments, while (Lillicrap et al., 2016)[^1] uses their proprietary MuJoCo environments.
+1. [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) runs the experiments using the `openai/gym` MuJoCo environments, while (Lillicrap et al., 2016)[^1] uses their proprietary MuJoCo environments.
 
-1. [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses the following architecture:
+1. [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses the following architecture:
     ```python
     class QNetwork(nn.Module):
         def __init__(self, env):
@@ -111,7 +111,7 @@ Our [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/c
             return torch.tanh(self.fc_mu(x))
     ```
 
-1. [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses the following learning rates:
+1. [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses the following learning rates:
 
     ```python
     q_optimizer = optim.Adam(list(qf1.parameters()), lr=3e-4)
@@ -124,7 +124,7 @@ Our [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/c
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=1e-3)
     ```
 
-1. [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses `--batch-size=256 --tau=0.005`, while (Lillicrap et al., 2016, see Appendix 7 EXPERIMENT DETAILS)[^1] uses `--batch-size=64 --tau=0.001`
+1. [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses `--batch-size=256 --tau=0.005`, while (Lillicrap et al., 2016, see Appendix 7 EXPERIMENT DETAILS)[^1] uses `--batch-size=64 --tau=0.001`
 
 <!-- 
 1. Vectorized architecture (:material-github: [common/cmd_util.py#L22](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/cmd_util.py#L22))
@@ -142,31 +142,40 @@ Our [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/c
 
 ### Experiment results
 
-PR :material-github: [vwxyzjn/cleanrl#120](https://github.com/vwxyzjn/cleanrl/pull/120) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/ppo](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/ppo).
+PR :material-github: [vwxyzjn/cleanrl#137](https://github.com/vwxyzjn/cleanrl/pull/137) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/ddpg](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/ddpg).
 
-Below are the average episodic returns for `ppo.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
+Below are the average episodic returns for [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
 
-| Environment      | `ppo.py` | `openai/baselies`' PPO
-| ----------- | ----------- | ----------- |
-| CartPole-v1      | 488.75 ± 18.40      |497.54 ± 4.02  |
-| Acrobot-v1   | -82.48 ± 5.93     |  -81.82 ± 5.58 |
-| MountainCar-v0   | -200.00 ± 0.00         | -200.00 ± 0.00 |
+| Environment      | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) | [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018, Table 1)[^2]  | [`DDPG.py`](https://github.com/sfujim/TD3/blob/master/DDPG.py) using settings from (Lillicrap et al., 2016)[^1] in (Fujimoto et al., 2018, Table 1)[^2]    |
+| ----------- | ----------- | ----------- | ----------- |
+| HalfCheetah      | 9260.485 ± 643.088      |8577.29  | 3305.60|
+| Walker2d   | 1728.72 ± 758.33     |  3098.11 | 1843.85 |
+| Hopper   | 1404.44 ± 544.78         |  1860.02 | 2020.46 |
 
+
+
+???+ info
+
+    Note that [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses gym MuJoCo v2 environments while [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018)[^2] uses the gym MuJoCo v1 environments. According to the :material-github: [openai/gym#834](https://github.com/openai/gym/pull/834), gym MuJoCo v2 environments should be equivalent to the gym MuJoCo v1 environments.
+
+    Also note the performance of our `ddpg_continuous_action.py` seems to perform worse than the reference implementation on Walker2d and Hopper. This is likely due to :material-github: [openai/gym#938](https://github.com/openai/baselines/issues/938). We would have a hard time reproducing gym MuJoCo v1 environments because they have been long deprecated.
 
 Learning curves:
-<!-- 
+
 <div class="grid-container">
-<img src="../ppo/CartPole-v1.png">
+<img src="../ddpg/HalfCheetah-v2.png">
 
-<img src="../ppo/Acrobot-v1.png">
+<img src="../ddpg/Walker2d-v2.png">
 
-<img src="../ppo/MountainCar-v0.png">
-</div> -->
+<img src="../ddpg/Hopper-v2.png">
+</div>
 
 
 Tracked experiments and game play videos:
 
-<!-- <iframe src="https://wandb.ai/cleanrl/benchmark/reports/ppo-py-v1-Classic-Control---VmlldzoxNTk2NjE4" style="width:100%; height:500px" title="CleanRL CartPole-v1 Example"></iframe> -->
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-DDPG--VmlldzoxNjkyMjc1" style="width:100%; height:500px" title="MuJoCo: CleanRL's DDPG"></iframe>
 
 
 [^1]:Lillicrap, T.P., Hunt, J.J., Pritzel, A., Heess, N.M., Erez, T., Tassa, Y., Silver, D., & Wierstra, D. (2016). Continuous control with deep reinforcement learning. CoRR, abs/1509.02971. https://arxiv.org/abs/1509.02971
+
+[^2]:Fujimoto, S., Hoof, H.V., & Meger, D. (2018). Addressing Function Approximation Error in Actor-Critic Methods. ArXiv, abs/1802.09477. https://arxiv.org/abs/1802.09477
