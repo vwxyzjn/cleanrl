@@ -54,7 +54,7 @@ Running `python cleanrl/ddpg_continuous_action.py` will automatically record var
 
 $$ \mathbb{E}_{s_{t} \sim \rho^{\beta}}\left[\left.\left.\nabla_{a} Q\left(s, a \mid \theta^{Q}\right)\right|_{s=s_{t}, a=\mu\left(s_{t}\right)} \nabla_{\theta_{\mu}} \mu\left(s \mid \theta^{\mu}\right)\right|_{s=s_{t}}\right]$$
 
-* `losses/qf1_values`: implemented as `qf1(data.observations, data.actions).view(-1); it is the average Q values of the sampled data in the replay buffer; useful when gauging if significant under or over esitmations happen
+* `losses/qf1_values`: implemented as `qf1(data.observations, data.actions).view(-1); it is the average Q values of the sampled data in the replay buffer; useful when gauging if under or over esitmations happen
 
 
 ### Implementation details
