@@ -43,6 +43,20 @@ poetry install -E mujoco # only works in Linux
 python cleanrl/ddpg_continuous_action.py --env-id Hopper-v3
 ```
 
+### Explanation of the logged metrics
+
+Running `python cleanrl/ddpg_continuous_action.py` will automatically record various metrics such as various losses in Tensorboard. Below are the documentation for these metrics:
+
+* `charts/episodic_return`: episodic return of the game
+* `charts/SPS`: number of steps per second
+* `losses/qf1_loss`: the MSE between the Q values at timestep $t$ and the target Q values at timestep $t+1$, which minimizes temporal difference. 
+* `losses/actor_loss`: implemented as `-qf1(data.observations, actor(data.observations)).mean()`; it is the *negative* average Q values calculated based on the 1) observations and the 2) actions computed by the actor based on these observations. By minimizing `actor_loss`, the optimizer updates the actors paramater using the following gradient (Lillicrap et al., 2016, Equation 6)[^1]:
+
+$$ \mathbb{E}_{s_{t} \sim \rho^{\beta}}\left[\left.\left.\nabla_{a} Q\left(s, a \mid \theta^{Q}\right)\right|_{s=s_{t}, a=\mu\left(s_{t}\right)} \nabla_{\theta_{\mu}} \mu\left(s \mid \theta^{\mu}\right)\right|_{s=s_{t}}\right]$$
+
+* `losses/qf1_values`: implemented as `qf1(data.observations, data.actions).view(-1); it is the average Q values of the sampled data in the replay buffer; useful when gauging if significant under or over esitmations happen
+
+
 ### Implementation details
 
 Our [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) is based on the [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) from :material-github: [sfujim/TD3](https://github.com/sfujim/TD3), which presents the the following implementation difference from (Lillicrap et al., 2016)[^1]:
