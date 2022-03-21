@@ -3,7 +3,7 @@
 
 ## Overview
 
-DDPG is a popular DRL algorithm for continuous control. It extends DQN to work with the continuous action space by introducing a deterministirc actor that directly outputs continuous actions. DDPG also combines techniques from DQN such as thhe replay buffer and target network.
+DDPG is a popular DRL algorithm for continuous control. It extends DQN to work with the continuous action space by introducing a deterministic actor that directly outputs continuous actions. DDPG also combines techniques from DQN, such as the replay buffer and target network.
 
 
 Original paper: 
