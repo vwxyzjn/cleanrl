@@ -3,7 +3,7 @@
 
 ## Overview
 
-DDPG is a popular DRL algorithm for continuous control. It runs reasonably fast by leveraging vector (parallel) environments and naturally works well with different action spaces, therefore supporting a variety of games. It also has good sample efficiency compared to algorithms such as DQN.
+DDPG is a popular DRL algorithm for continuous control. It extends DQN to work with the continuous action space by introducing a deterministirc actor that directly outputs continuous actions. DDPG also combines techniques from DQN such as thhe replay buffer and target network.
 
 
 Original paper: 
@@ -13,6 +13,7 @@ Original paper:
 Reference resources:
 
 * :material-github: [sfujim/TD3](https://github.com/sfujim/TD3)
+* [Deep Deterministic Policy Gradient | Spinning Up in Deep RL](https://spinningup.openai.com/en/latest/algorithms/ddpg.html)
 
 ## Implemented Variants
 
