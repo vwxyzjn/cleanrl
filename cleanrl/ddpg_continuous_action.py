@@ -1,3 +1,6 @@
+# docs and experiment results can be found at
+# https://docs.cleanrl.dev/rl-algorithms/ddpg/#ddpg_continuous_actionpy
+
 import argparse
 import os
 import random

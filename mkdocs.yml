@@ -41,9 +41,12 @@ markdown_extensions:
   - pymdownx.superfences
   - attr_list
   - md_in_html
+  - footnotes
   - pymdownx.emoji:
       emoji_index: !!python/name:materialx.emoji.twemoji
       emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.arithmatex:
+      generic: true
   # - toc:
   #     permalink: true
   # - markdown.extensions.codehilite:
@@ -76,6 +79,7 @@ nav:
     - rl-algorithms/overview.md
     - rl-algorithms/ppo.md
     - rl-algorithms/dqn.md
+    - rl-algorithms/ddpg.md
   - Open RL Benchmark: open-rl-benchmark.md
   - Advanced:
     - advanced/resume-training.md
@@ -92,4 +96,7 @@ extra:
     - icon: fontawesome/brands/github
       link: https://github.com/vwxyzjn/cleanrl
 copyright: Copyright &copy; 2021, CleanRL. All rights reserved.
-
+extra_javascript:
+#   - javascripts/mathjax.js
+#   - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
