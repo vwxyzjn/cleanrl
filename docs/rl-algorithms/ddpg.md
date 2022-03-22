@@ -20,16 +20,16 @@ Reference resources:
 
 | Variants Implemented      | Description |
 | ----------- | ----------- |
-| :material-github: [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py), :material-file-document: [docs](/rl-algorithms/ddpg/#ddpg_continuous_actionpy) | For continuous action space. Also implemented Mujoco-specific code-level optimizations |
+| :material-github: [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py), :material-file-document: [docs](/rl-algorithms/ddpg/#ddpg_continuous_actionpy) | For continuous action space |
 
 
 Below are our single-file implementations of PPO:
 
 ## `ddpg_continuous_action.py`
 
-The [ddpg.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg.py) has the following features:
+The [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) has the following features:
 
-* For continuous action space. Also implemented Mujoco-specific code-level optimizations
+* For continuous action space
 * Works with the `Box` observation space of low-level features
 * Works with the `Box` (continuous) action space
 
