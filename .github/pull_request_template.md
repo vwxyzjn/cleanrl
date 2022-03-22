@@ -13,17 +13,19 @@
 <!--- If you're unsure about any of these, don't hesitate to ask. We're here to help! -->
 - [ ] I've read the [CONTRIBUTION](https://github.com/vwxyzjn/cleanrl/blob/master/CONTRIBUTING.md) guide (**required**).
 - [ ] I have ensured `pre-commit run --all-files` passes (**required**).
-- [ ] I have updated the documentation accordingly.
+- [ ] I have updated the documentation and previewed the changes via `mkdocs serve`.
 - [ ] I have updated the tests accordingly (if applicable).
 
-If you are adding new algorithms or your change could result in performance difference, you may need to (re-)run tracked experiments. 
-- [ ] I have contacted @vwxyzjn to obtain access to the [cleanrl W&B team](https://wandb.ai/cleanrl) (**required**).
-- [ ] I have tracked applicable experiments in [cleanrl/benchmark](https://wandb.ai/cleanrl/benchmark) with `--capture-video` flag toggled on (**required**).
-- [ ] I have added additional documentation as follows.
+If you are adding new algorithms or your change could result in performance difference, you may need to (re-)run tracked experiments. See https://github.com/vwxyzjn/cleanrl/pull/137 as an example PR. 
+- [ ] I have contacted @vwxyzjn to obtain access to the [openrlbenchmark W&B team](https://wandb.ai/openrlbenchmark) (**required**).
+- [ ] I have tracked applicable experiments in [openrlbenchmark/cleanrl](https://wandb.ai/openrlbenchmark/cleanrl) with `--capture-video` flag toggled on (**required**).
+- [ ] I have added additional documentation and previewed the changes via `mkdocs serve`.
     - [ ] I have explained note-worthy implementation details.
+    - [ ] I have explained the logged metrics.
     - [ ] I have added links to the original paper and related papers (if applicable).
     - [ ] I have added links to the PR related to the algorithm.
     - [ ] I have created a table comparing my results against those from reputable sources (i.e., the original paper or other reference implementation).
-    - [ ] I have added the learning curves.
+    - [ ] I have added the learning curves (in PNG format with `width=500` and `height=300`).
     - [ ] I have added links to the tracked experiments.
+- [ ] I have updated the tests accordingly (if applicable).
 
