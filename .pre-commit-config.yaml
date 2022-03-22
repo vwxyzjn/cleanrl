@@ -41,4 +41,20 @@ repos:
         name: poetry-export requirements-atari.txt
         args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-atari.txt", "-E", "atari"]
         stages: [manual]
+      - id: poetry-export
+        name: poetry-export requirements-pybullet.txt
+        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-pybullet.txt", "-E", "atari"]
+        stages: [manual]
+      - id: poetry-export
+        name: poetry-export requirements-procgen.txt
+        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-procgen.txt", "-E", "atari"]
+        stages: [manual]
+      - id: poetry-export
+        name: poetry-export requirements-mujoco.txt
+        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-mujoco.txt", "-E", "atari"]
+        stages: [manual]
+      - id: poetry-export
+        name: poetry-export requirements-envpool.txt
+        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-envpool.txt", "-E", "atari"]
+        stages: [manual]
         

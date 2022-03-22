@@ -20,7 +20,3 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - uses: pre-commit/action@v2.0.3
-      - uses: pre-commit/action@v2.0.3
-        name: Run poetry export for requirements.txt files
-        with:
-          extra_args: --hook-stage manual --all-files
