@@ -88,11 +88,11 @@ Below are the average episodic returns for `dqn_atari.py`.
 
 <!-- To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO. -->
 
-| Environment      | `dqn_atari.py` | (Mnih et al., 2015)[^1]
+| Environment      | `dqn_atari.py` 10M steps | (Mnih et al., 2015)[^1] 50M steps
 | ----------- | ----------- | ----------- |
-| BreakoutNoFrameskip-v4      | 1 ± 1      |401.2 ± 26.9  |
-| PongNoFrameskip-v4  | 1 ± 1     |  18.9 ± 1.3 |
-| BeamRiderNoFrameskip-v4   | 1 ± 0.00         | 6846 ± 1619 |
+| BreakoutNoFrameskip-v4      | 337.64 ± 69.47      |401.2 ± 26.9  |
+| PongNoFrameskip-v4  | 20.293 ± 0.37     |  18.9 ± 1.3 |
+| BeamRiderNoFrameskip-v4   | 6207.41 ± 1019.96        | 6846 ± 1619 |
 
 
 Learning curves:
