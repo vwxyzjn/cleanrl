@@ -77,6 +77,7 @@ python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
     - `dqn_atari.py` uses `--exploration-fraction=0.1` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--exploration-fraction=0.02` (all corresponds to 250000 steps or 1M frames being the frame that epsilon is annealed to `--end-e=0.1` ).
     - `dqn_atari.py` treats termination and truncation the same way due to the gym interface[^2] whereas (Mnih et al., 2015)[^1] correctly handles truncation.
 1. `dqn_atari.py` use a self-contained evaluation scheme: `dqn_atari.py` reports the episodic returns obtained throughout training, whereas (Mnih et al., 2015)[^1] is trained with `--end-e=0.1` but reported episodic returns using a separate evaluation process with `--end-e=0.01` (See "Evaluation procedure" under "METHODS" on page 6).
+1. `dqn_atari.py` use a global gradient clipping.
 
 
 ### Experiment results
@@ -94,20 +95,20 @@ Below are the average episodic returns for `dqn_atari.py`.
 | BeamRiderNoFrameskip-v4   | 1 ± 0.00         | 6846 ± 1619 |
 
 
-<!-- Learning curves:
+Learning curves:
 
 <div class="grid-container">
-<img src="../ppo/CartPole-v1.png">
+<img src="../dqn/BeamRiderNoFrameskip-v4.png">
 
-<img src="../ppo/Acrobot-v1.png">
+<img src="../dqn/BreakoutNoFrameskip-v4.png">
 
-<img src="../ppo/MountainCar-v0.png">
-</div> -->
+<img src="../dqn/PongNoFrameskip-v4.png">
+</div>
 
 
-<!-- Tracked experiments and game play videos: -->
+Tracked experiments and game play videos:
 
-<!-- <iframe src="https://wandb.ai/cleanrl/benchmark/reports/ppo-py-v1-Classic-Control---VmlldzoxNTk2NjE4" style="width:100%; height:500px" title="CleanRL CartPole-v1 Example"></iframe> -->
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-DQN--VmlldzoxNjk3NjYx" style="width:100%; height:500px" title="CleanRL DQN Tracked Experiments"></iframe>
 
 
 [^1]:Mnih, V., Kavukcuoglu, K., Silver, D. et al. Human-level control through deep reinforcement learning. Nature 518, 529–533 (2015). https://doi.org/10.1038/nature14236
