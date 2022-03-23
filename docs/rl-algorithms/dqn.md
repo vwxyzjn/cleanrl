@@ -50,6 +50,21 @@ python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
 ```
 
+
+### Explanation of the logged metrics
+
+Running `python cleanrl/dqn_atari.py` will automatically record various metrics such as actor or value losses in Tensorboard. Below is the documentation for these metrics:
+
+* `charts/episodic_return`: episodic return of the game
+* `charts/SPS`: number of steps per second
+* `losses/td_loss`: the mean squared error (MSE) between the Q values at timestep $t$ and the Bellman update target estimated using the reward $r_t$ and the Q values at timestep $t+1$, thus minimizing the *one-step* temporal difference. Formally, it can be expressed by the equation below.
+$$
+    J(\theta^{Q}) = \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \big[ (Q(s, a) - y)^2 \big],
+$$
+with the Bellman update target is $y = r + \gamma \, Q^{'}(s', a')$ and the replay buffer is $\mathcal{D}$.
+* `losses/q_values`: implemented as `qf1(data.observations, data.actions).view(-1)`, it is the average Q values of the sampled data in the replay buffer; useful when gauging if under or over estimation happens.
+
+
 ### Implementation details
 
 [dqn_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py) is based on (Mnih et al., 2015)[^1] but presents a few implementation differences:
@@ -92,6 +107,9 @@ Below are the average episodic returns for `dqn_atari.py`.
 | BreakoutNoFrameskip-v4      | 337.64 ± 69.47      |401.2 ± 26.9  | ~230 at 10M steps, ~300 at 50M steps
 | PongNoFrameskip-v4  | 20.293 ± 0.37     |  18.9 ± 1.3 |  ~20 10M steps, ~20 at 50M steps 
 | BeamRiderNoFrameskip-v4   | 6207.41 ± 1019.96        | 6846 ± 1619 | ~6000 10M steps, ~7000 at 50M steps 
+
+
+Note that we save computational time by reducing timesteps from 50M to 10M, but our `dqn_atari.py` scores the same or higher than (Mnih et al., 2015)[^1] in 10M steps.
 
 
 Learning curves:
