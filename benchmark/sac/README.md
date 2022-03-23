@@ -25,7 +25,7 @@ Running the following scripts will sequentially execute the `sac_continuous_acti
 
 ```bash
 # reproduce the classic control experiments
-bash cleanrl/pybullet.sh
+bash benchmark/sac/pybullet.sh
 ```
 
 ### Free Mujoco
@@ -33,7 +33,7 @@ Running the following scripts will sequentially execute the `sac_continuous_acti
 
 ```bash
 # reproduce the classic control experiments
-bash cleanrl/mujoco.sh
+bash benchmark/sac/mujoco.sh
 ```
 
 ### Additional comment

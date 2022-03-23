@@ -73,7 +73,7 @@ $$
 
 **[TODO: add the min over the target Q values]
 
-with the *entropy regularized* Bellman update target 
+with the *entropy regularized* Bellman update target
 $$
     y = r + \gamma \, Q_{\theta_{i}^{'}}(s', a') + \alpha \, \mathcal{H} \big[ \pi(a' \vert s') \big]
 $$, where $a' \sim \pi( \cdot \vert s')$, $a' \sim \pi( \cdot \vert s')$ represents the entropy of the policy, and $\mathcal{D}$ is the replay buffer storing samples of the agent during training.
