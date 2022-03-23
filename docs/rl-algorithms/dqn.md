@@ -86,13 +86,12 @@ PR :material-github: [vwxyzjn/cleanrl#124](https://github.com/vwxyzjn/cleanrl/pu
 
 Below are the average episodic returns for `dqn_atari.py`. 
 
-<!-- To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO. -->
 
-| Environment      | `dqn_atari.py` 10M steps | (Mnih et al., 2015)[^1] 50M steps
-| ----------- | ----------- | ----------- |
-| BreakoutNoFrameskip-v4      | 337.64 ± 69.47      |401.2 ± 26.9  |
-| PongNoFrameskip-v4  | 20.293 ± 0.37     |  18.9 ± 1.3 |
-| BeamRiderNoFrameskip-v4   | 6207.41 ± 1019.96        | 6846 ± 1619 |
+| Environment      | `dqn_atari.py` 10M steps | (Mnih et al., 2015)[^1] 50M steps | (Hessel et al., 2017, Figure 5)[^3] 
+| ----------- | ----------- | ----------- | ---- |
+| BreakoutNoFrameskip-v4      | 337.64 ± 69.47      |401.2 ± 26.9  | ~230 at 10M steps, ~300 at 50M steps
+| PongNoFrameskip-v4  | 20.293 ± 0.37     |  18.9 ± 1.3 |  ~20 10M steps, ~20 at 50M steps 
+| BeamRiderNoFrameskip-v4   | 6207.41 ± 1019.96        | 6846 ± 1619 | ~6000 10M steps, ~7000 at 50M steps 
 
 
 Learning curves:
@@ -113,3 +112,4 @@ Tracked experiments and game play videos:
 
 [^1]:Mnih, V., Kavukcuoglu, K., Silver, D. et al. Human-level control through deep reinforcement learning. Nature 518, 529–533 (2015). https://doi.org/10.1038/nature14236
 [^2]:\[Proposal\] Formal API handling of truncation vs termination. https://github.com/openai/gym/issues/2510
+[^3]: Hessel, M., Modayil, J., Hasselt, H.V., Schaul, T., Ostrovski, G., Dabney, W., Horgan, D., Piot, B., Azar, M.G., & Silver, D. (2018). Rainbow: Combining Improvements in Deep Reinforcement Learning. AAAI.
