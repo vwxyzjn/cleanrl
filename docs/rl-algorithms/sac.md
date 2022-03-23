@@ -53,8 +53,8 @@ poetry install -E pybullet
 ## Default
 python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0
 
-## Automatic entropy coef. tuning
-python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0 --autotune
+## Without Automatic entropy coef. tuning
+python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0 --autotune False --alpha 0.2
 ```
 
 ### Explanation of the logged metrics
@@ -78,7 +78,7 @@ $$
 with the *entropy regularized* Bellman update target
 $$
     y = r + \gamma \, Q_{\theta_{i}^{'}}(s', a') + \alpha \, \mathcal{H} \big[ \pi(a' \vert s') \big]
-$$, where $a' \sim \pi( \cdot \vert s')$, $a' \sim \pi( \cdot \vert s')$ represents the entropy of the policy, and $\mathcal{D}$ is the replay buffer storing samples of the agent during training.
+$$, where $a' \sim \pi( \cdot \vert s')$, $\mathcal{H} \big[ \pi(a' \vert s') \big]$ represents the entropy of the policy, and $\mathcal{D}$ is the replay buffer storing samples of the agent during training.
 
 * `losses/qf_loss`: averages `losses/qf1_loss` and `losses/qf2_loss` for comparison with algorithms using a single Q-value network.
 
@@ -98,3 +98,7 @@ PR :material-github: [vwxyzjn/cleanrl#146](https://github.com/vwxyzjn/cleanrl/pu
 
 Tracked experiments and game play videos:
 
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-SAC--VmlldzoxNzI1NDM0" style="width:100%; height:1200px" title="MuJoCo: CleanRL's DDPG"></iframe>
+
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/PyBullet-CleanRL-s-SAC--VmlldzoxNzI1NDQw" style="width:100%; height:1200px" title="PyBullet: CleanRL's DDPG"></iframe>
