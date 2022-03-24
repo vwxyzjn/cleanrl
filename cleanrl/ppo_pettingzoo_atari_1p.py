@@ -10,9 +10,9 @@ import supersuit as ss
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from pettingzoo.atari import pong_v2
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
-from pettingzoo.atari import pong_v2
 
 from stable_baselines3.common.atari_wrappers import (  # isort:skip
     ClipRewardEnv,
@@ -143,12 +143,12 @@ class Agent(nn.Module):
 
     def get_value(self, x):
         x = x.clone()
-        x[:,:,:,[0,1,2,3]] /= 255.0
+        x[:, :, :, [0, 1, 2, 3]] /= 255.0
         return self.critic(self.network(x.permute((0, 3, 1, 2))))
 
     def get_action_and_value(self, x, action=None):
         x = x.clone()
-        x[:,:,:,[0,1,2,3]] /= 255.0
+        x[:, :, :, [0, 1, 2, 3]] /= 255.0
         hidden = self.network(x.permute((0, 3, 1, 2)))
         logits = self.actor(hidden)
         probs = Categorical(logits=logits)
@@ -250,7 +250,7 @@ if __name__ == "__main__":
             cpu_action = torch.randint(high=envs.single_action_space.n, size=(args.num_envs,))
             # cpu_action = torch.zeros((args.num_envs)).long()
             cpu_action[learning_player_idxs] = action.cpu()[learning_player_idxs]
-            
+
             next_obs, reward, done, info = envs.step(cpu_action.numpy())
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)

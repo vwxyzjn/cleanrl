@@ -1,4 +1,5 @@
 import argparse
+import importlib
 import os
 import random
 import time
@@ -12,7 +13,6 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
-from pettingzoo.atari import pong_v2
 
 from stable_baselines3.common.atari_wrappers import (  # isort:skip
     ClipRewardEnv,
@@ -136,12 +136,12 @@ class Agent(nn.Module):
 
     def get_value(self, x):
         x = x.clone()
-        x[:,:,:,[0,1,2,3]] /= 255.0
+        x[:, :, :, [0, 1, 2, 3]] /= 255.0
         return self.critic(self.network(x.permute((0, 3, 1, 2))))
 
     def get_action_and_value(self, x, action=None):
         x = x.clone()
-        x[:,:,:,[0,1,2,3]] /= 255.0
+        x[:, :, :, [0, 1, 2, 3]] /= 255.0
         hidden = self.network(x.permute((0, 3, 1, 2)))
         logits = self.actor(hidden)
         probs = Categorical(logits=logits)
@@ -180,7 +180,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    env = pong_v2.parallel_env()
+    env = importlib.import_module(f"pettingzoo.atari.{args.env_id}").parallel_env()
     env = ss.max_observation_v0(env, 2)
     env = ss.frame_skip_v0(env, 4)
     env = ss.clip_reward_v0(env, lower_bound=-1, upper_bound=1)
