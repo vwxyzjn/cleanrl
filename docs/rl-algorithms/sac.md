@@ -1,13 +1,13 @@
 # Soft Actor-Critic (SAC)
 
-## Overivew
+## Overview
 
-The Soft Actor-Critic (SAC) algorithm extends the DDPG algorithms by 1) using a stochastic policy, which in theory would to express multi-modal optimal policies.
-This also enables the use of 2) *entropy regularization* based on the stochsatic policy's entropy. It serves as a built-in, state-dependent exploration heuristic for the agent, instead of relying on non-correlated noise processes as in [DDPG](/rl-algorithms/ddpg/), or [TD3](/rl-algorithms/td3/)
-Additionally, it incorporates the 3) usage of two *Soft Q-network* to reduce the over-estimation bias issue in Q-network based methods.
+The Soft Actor-Critic (SAC) algorithm extends the DDPG algorithms by 1) using a stochastic policy, which in theory can express multi-modal optimal policies.
+This also enables the use of 2) *entropy regularization* based on the stochastic policy's entropy. It serves as a built-in, state-dependent exploration heuristic for the agent, instead of relying on non-correlated noise processes as in [DDPG](/rl-algorithms/ddpg/), or [TD3](/rl-algorithms/td3/)
+Additionally, it incorporates the 3) usage of two *Soft Q-network* to reduce the overestimation bias issue in Q-network-based methods.
 
 Original papers:
-The SAC algorithm introduction, and later and updates and improvements can be chronologically traced through the following publications:
+The SAC algorithm's initial proposal, and later updates and improvements can be chronologically traced through the following publications:
 
 * [Reinforcement Learning with Deep Energy-Based Policies](https://arxiv.org/abs/1702.08165)
 * [Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor](https://arxiv.org/abs/1801.01290)
@@ -59,7 +59,7 @@ python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0 --autotune F
 
 Running python cleanrl/ddpg_continuous_action.py will automatically record various metrics such as actor or value losses in Tensorboard. Below is the documentation for these metrics:
 
-* `charts/episodic_return`: episodic return of the game
+* `charts/episodic_return`: the episodic return of the game during training
 
 * `charts/SPS`: number of steps per second
 
@@ -80,7 +80,7 @@ Here, $\min_{\theta_{1,2}}Q_{\theta_i^{'}}(s',a')$ takes the minimum *Soft Q-val
 
 * `losses/qf_loss`: averages `losses/qf1_loss` and `losses/qf2_loss` for comparison with algorithms using a single Q-value network.
 
-* `losses/actor_loss`: Given the stochastic nature of the policy in SAC, the actor (or policy) objective is formulated so as to maximize the likelihood of actions $a \sim \pi( \cdot \vert s)$ that would result in high Q-value estimate $Q(s,a)$. Additionally, the policy objective encourages the policy to maintain its entropy high enough to help explore, discover, and capture multi-model optimal policies.
+* `losses/actor_loss`: Given the stochastic nature of the policy in SAC, the actor (or policy) objective is formulated so as to maximize the likelihood of actions $a \sim \pi( \cdot \vert s)$ that would result in high Q-value estimate $Q(s, a)$. Additionally, the policy objective encourages the policy to maintain its entropy high enough to help explore, discover, and capture multi-model optimal policies.
 
 The policy's objective function can thus be defined as:
 
@@ -94,10 +94,10 @@ where the action is sampled using the reparameterization trick **TODO: VAE refer
 * `losses/alpha`: $\alpha$ coefficient for *entropy regularization* of the policy.
 
 * `losses/alpha_loss`: In the policy's objective defined above, the coefficient of the _entropy bonus_ $\alpha$ is kept fixed all across the training.
-As suggested by the authors in Section 5 of the [_Soft Actor Critic And Applications_](https://arxiv.org/abs/1812.05905) paper, the original purpose of augmenting the standard reward with the entropy of the policy is to *encourage exploration* of not well enough explored states (thus high entropy).
-Conversely, for states where the policy has already learned a near-optimal policy, it would be preferable to reduce the entropy bonus of the policy, so that it does not _become sub-optimal due to entropy maximization incentive_.
+As suggested by the authors in Section 5 of the [_Soft Actor-Critic And Applications_](https://arxiv.org/abs/1812.05905) paper, the original purpose of augmenting the standard reward with the entropy of the policy is to *encourage exploration* of not well enough explored states (thus high entropy).
+Conversely, for states where the policy has already learned a near-optimal policy, it would be preferable to reduce the entropy bonus of the policy, so that it does not _become sub-optimal due to the entropy maximization incentive_.
 
-Therefore, having a fixed value for $\alpha$ does not fit this desiderata of matching the entropy bonus with the knowledge of the policy at an arbitrary state during its training.
+Therefore, having a fixed value for $\alpha$ does not fit this desideratum of matching the entropy bonus with the knowledge of the policy at an arbitrary state during its training.
 
 To mitigate this, the authors proposed a method to dynamically adjust $\alpha$ as the policy is trained, which is as follows:
 
@@ -105,7 +105,7 @@ $$
     \alpha^{*}_t = \text{argmin}_{\alpha_t} \mathbb{E}_{a_t \sim \pi^{*}_t} \big[ -\alpha_t \, \text{log}\pi^{*}_t(a_t \vert s_t; \alpha_t) - \alpha_t \mathcal{H} \big],
 $$
 
-where $\mathcal{H}$ represents the _target entropy_, the desired lower-bound for the expected entropy of the policy over the trajectory distribution induced by the latter.
+where $\mathcal{H}$ represents the _target entropy_, the desired lower bound for the expected entropy of the policy over the trajectory distribution induced by the latter.
 As a heuristic for the _target entropy_, the authors use the dimension of the action space of the task.
 
 ## Implementation details
@@ -215,7 +215,7 @@ The table below compares the results of CleanRL's [`sac_continuous_action.py`](h
     <img src="../sac/HopperBulletEnv-v0.png">
 </div>
 
-### Tracked experiments and game play videos
+### Tracked experiments and gameplay videos
 
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-SAC--VmlldzoxNzI1NDM0" style="width:100%; height:1200px" title="MuJoCo: CleanRL's DDPG"></iframe>
 
