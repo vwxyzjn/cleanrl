@@ -169,7 +169,7 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
     ```
     while [openai/spinningup](https://github.com/openai/spinningup/blob/038665d62d569055401d91856abb287263096178/spinup/algos/tf1/sac/sac.py#L44)'s uses a single learning rate of `lr=1e-3` for both components.
 
-    Note that in case it is used, the *automatic entropy coefficent* $\alpha$'s tuning shares the `q-lr` learning rate:
+    Note that in case it is used, the *automatic entropy coefficient* $\alpha$'s tuning shares the `q-lr` learning rate:
     ```python hl_lines="6"
         # Automatic entropy tuning
         if args.autotune:
