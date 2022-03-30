@@ -1,5 +1,51 @@
 # CleanRL
 
+<br />
+<p align="center">
+    <a href="https://github.com/mosaicml/composer#gh-light-mode-only" class="only-light">
+      <img src="https://storage.googleapis.com/docs.mosaicml.com/images/header_light.svg" width="50%"/>
+    </a>
+    <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_BEGIN -->
+    <a href="https://github.com/mosaicml/composer#gh-dark-mode-only" class="only-dark">
+      <img src="docs/static/logo.svg" width="35%"/>
+    </a>
+    <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_END -->
+</p>
+
+<h2><p align="center">Clean Implementation of RL Algorithms</p></h2>
+<!-- <h3><p align="center">Train Faster, Reduce Cost, Get Better Models</p></h3> -->
+
+<h4><p align='center'>
+<a href="https://cleanrl.dev">[Website]</a>
+- <a href="https://docs.cleanrl.dev/get-started/installation/">[Getting Started]</a>
+- <a href="https://docs.cleanrl.dev/">[Docs]</a>
+<!-- - <a href="https://docs.mosaicml.com/en/stable/method_cards/methods_overview.html">[Methods]</a>
+- <a href="https://cleanrl.dev/team">[We're Hiring!]</a> -->
+</p></h4>
+
+<p align="center">
+    <a href="https://pypi.org/project/mosaicml/">
+        <img alt="PyPi Version" src="https://img.shields.io/pypi/pyversions/mosaicml">
+    </a>
+    <a href="https://pypi.org/project/mosaicml/">
+        <img alt="PyPi Package Version" src="https://img.shields.io/pypi/v/mosaicml">
+    </a>
+    <a href="https://pypi.org/project/mosaicml/">
+        <img alt="PyPi Downloads" src="https://img.shields.io/pypi/dm/mosaicml">
+    </a>
+    <a href="https://docs.mosaicml.com/en/stable/">
+        <img alt="Documentation" src="https://readthedocs.org/projects/composer/badge/?version=stable">
+    </a>
+    <a href="https://join.slack.com/t/mosaicml-community/shared_invite/zt-w0tiddn9-WGTlRpfjcO9J5jyrMub1dg">
+        <img alt="Chat @ Slack" src="https://img.shields.io/badge/slack-chat-2eb67d.svg?logo=slack">
+    </a>
+    <a href="https://github.com/mosaicml/composer/blob/dev/LICENSE">
+        <img alt="License" src="https://img.shields.io/badge/License-Apache%202.0-green.svg?logo=slack">
+    </a>
+</p>
+<br />
+
+
 
 <img src="
 https://img.shields.io/github/license/vwxyzjn/cleanrl">
