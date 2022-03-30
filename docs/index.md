@@ -2,12 +2,9 @@
 
 <br />
 <p align="center">
-    <a href="https://github.com/mosaicml/composer#gh-light-mode-only" class="only-light">
-      <img src="https://storage.googleapis.com/docs.mosaicml.com/images/header_light.svg" width="50%"/>
-    </a>
     <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_BEGIN -->
     <a href="https://github.com/mosaicml/composer#gh-dark-mode-only" class="only-dark">
-      <img src="docs/static/logo.svg" width="35%"/>
+      <img src="static/logo.svg" width="35%"/>
     </a>
     <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_END -->
 </p>
