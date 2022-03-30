@@ -9,6 +9,16 @@
     </a>
     <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_END -->
 </p>
+<p align="center">
+    <a href="https://github.com/mosaicml/composer#gh-light-mode-only" class="only-light">
+      <img src="docs/static/logo2.svg" width="35%"/>
+    </a>
+    <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_BEGIN -->
+    <a href="https://github.com/mosaicml/composer#gh-dark-mode-only" class="only-dark">
+      <img src="docs/static/logo2.svg" width="35%"/>
+    </a>
+    <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_END -->
+</p>
 
 <h2><p align="center">Clean Implementation of RL Algorithms</p></h2>
 <!-- <h3><p align="center">Train Faster, Reduce Cost, Get Better Models</p></h3> -->
