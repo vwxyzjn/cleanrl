@@ -11,8 +11,8 @@ theme:
   palette:
     - media: "(prefers-color-scheme: dark)" 
       scheme: slate
-      primary: teal
-      accent: light green
+      primary: green
+      accent: deep orange
       toggle:
         icon: material/lightbulb
         name: Switch to light mode
