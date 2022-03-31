@@ -80,7 +80,7 @@ Here, $\min_{\theta_{1,2}}Q_{\theta_i^{'}}(s',a')$ takes the minimum *Soft Q-val
 
 * `losses/qf_loss`: averages `losses/qf1_loss` and `losses/qf2_loss` for comparison with algorithms using a single Q-value network.
 
-* `losses/actor_loss`: Given the stochastic nature of the policy in SAC, the actor (or policy) objective is formulated so as to maximize the likelihood of actions $a \sim \pi( \cdot \vert s)$ that would result in high Q-value estimate $Q(s, a)$. Additionally, the policy objective encourages the policy to maintain its entropy high enough to help explore, discover, and capture multi-model optimal policies.
+* `losses/actor_loss`: Given the stochastic nature of the policy in SAC, the actor (or policy) objective is formulated so as to maximize the likelihood of actions $a \sim \pi( \cdot \vert s)$ that would result in high Q-value estimate $Q(s, a)$. Additionally, the policy objective encourages the policy to maintain its entropy high enough to help explore, discover, and capture multi-modal optimal policies.
 
 The policy's objective function can thus be defined as:
 
