@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Soft Actor-Critic (SAC) algorithm extends the DDPG algorithms by 1) using a stochastic policy, which in theory can express multi-modal optimal policies.
+The Soft Actor-Critic (SAC) algorithm extends the DDPG algorithm by 1) using a stochastic policy, which in theory can express multi-modal optimal policies.
 This also enables the use of 2) *entropy regularization* based on the stochastic policy's entropy. It serves as a built-in, state-dependent exploration heuristic for the agent, instead of relying on non-correlated noise processes as in [DDPG](/rl-algorithms/ddpg/), or [TD3](/rl-algorithms/td3/)
 Additionally, it incorporates the 3) usage of two *Soft Q-network* to reduce the overestimation bias issue in Q-network-based methods.
 
@@ -182,6 +182,33 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
     ```
 
 3. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) uses `--batch-size=256` while :material-github: [openai/spinningup](https://github.com/openai/spinningup/blob/038665d62d569055401d91856abb287263096178/spinup/algos/tf1/sac/sac.py#L44)'s uses `--batch-size=100` by default.
+
+4. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) also implementts global gradient norm clipping with `--max-grad-norm` set to `0.5` by default.
+
+```python
+    parser.add_argument("--max-grad-norm", type=float, default=0.5,
+        help="the maximum norm for the gradient clipping")
+```
+
+The gradient norm clipping is applied during the Soft Q-value, and the policy networks optimization:
+
+```python hl_lines="5"
+    qf_loss = qf1_loss + qf2_loss
+
+    q_optimizer.zero_grad()
+    qf_loss.backward()
+    nn.utils.clip_grad_norm_(list(qf1.parameters()) + list(qf2.parameters()), args.max_grad_norm)
+    q_optimizer.step()
+```
+
+```python hl_lines="5"
+    actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
+
+    actor_optimizer.zero_grad()
+    actor_loss.backward()
+    nn.utils.clip_grad_norm_(list(actor.parameters()), args.max_grad_norm)
+    actor_optimizer.step()
+```
 
 ## Experiment results
 
