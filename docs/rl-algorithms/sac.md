@@ -88,7 +88,7 @@ $$
     \text{max}_{\phi} \, J_{\pi}(\phi) = \mathbb{E}_{s \sim \mathcal{D}} \Big[ \text{min}_{i=1,2} Q_{\theta_i}(s, a) - \alpha \, \text{log}\pi_{\phi}(a \vert s) \Big]
 $$
 
-where the action is sampled using the reparameterization trick **TODO: VAE reference**: $a = \mu_{\phi}(s) + \epsilon \sigma_{\phi}(s)$, $\text{log} \pi_{\phi}( \cdot \vert s')$ approximates the entropy of the policy, and $\mathcal{D}$ is the replay buffer storing samples of the agent during training.
+where the action is sampled using the reparameterization trick[^1]: $a = \mu_{\phi}(s) + \epsilon \, \sigma_{\phi}(s)$ with $\epsilon \sim \mathcal{N}(0, 1)$, $\text{log} \pi_{\phi}( \cdot \vert s')$ approximates the entropy of the policy, and $\mathcal{D}$ is the replay buffer storing samples of the agent during training.
 
 
 * `losses/alpha`: $\alpha$ coefficient for *entropy regularization* of the policy.
@@ -249,3 +249,4 @@ The table below compares the results of CleanRL's [`sac_continuous_action.py`](h
 
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/PyBullet-CleanRL-s-SAC--VmlldzoxNzI1NDQw" style="width:100%; height:1200px" title="PyBullet: CleanRL's DDPG"></iframe>
 
+[^1]:Diederik P Kingma, Max Welling (2016). Auto-Encoding Variational Bayes. ArXiv, abs/1312.6114. https://arxiv.org/abs/1312.6114
