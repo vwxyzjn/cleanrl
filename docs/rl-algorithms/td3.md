@@ -67,7 +67,7 @@ Our [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/
 
 ### Experiment results
 
-PR :material-github: [vwxyzjn/cleanrl#137](https://github.com/vwxyzjn/cleanrl/pull/137) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/td3](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/td3).
+PR :material-github: [vwxyzjn/cleanrl#141](https://github.com/vwxyzjn/cleanrl/pull/141) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/td3](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/td3).
 
 Below are the average episodic returns for [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
 
