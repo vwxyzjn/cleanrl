@@ -3,7 +3,7 @@
 
 ## Overview
 
-TD3 is a popular DRL algorithm for continuous control. It extends DQN to work with the continuous action space by introducing a deterministirc actor that directly outputs continuous actions. DDPG also combines techniques from DQN such as the replay buffer and target network.
+TD3 is a popular DRL algorithm for continuous control. It extends DDPG with three techniques: 1) Clipped Double Q-Learning, 2) Delayed Policy Updates, and 3) Target Policy Smoothing Regularization. With these three techniques TD3 shows significantly better performance compared to DDPG.
 
 
 Original paper: 
@@ -23,7 +23,7 @@ Reference resources:
 | :material-github: [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py), :material-file-document: [docs](/rl-algorithms/td3/#td3_continuous_actionpy) | For continuous action space |
 
 
-Below are our single-file implementations of PPO:
+Below are our single-file implementations of TD3:
 
 ## `td3_continuous_action.py`
 
@@ -101,7 +101,7 @@ Learning curves:
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-TD3--VmlldzoxNjk4Mzk5" style="width:100%; height:500px" title="MuJoCo: CleanRL's DDPG"></iframe>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-TD3--VmlldzoxNjk4Mzk5" style="width:100%; height:500px" title="MuJoCo: CleanRL's TD3"></iframe>
 
 
 [^1]:Lillicrap, T.P., Hunt, J.J., Pritzel, A., Heess, N.M., Erez, T., Tassa, Y., Silver, D., & Wierstra, D. (2016). Continuous control with deep reinforcement learning. CoRR, abs/1509.02971. https://arxiv.org/abs/1509.02971
