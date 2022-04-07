@@ -20,10 +20,10 @@ poetry install -E mujoco
 
 ## Reproduce CleanRL's DDPG Benchmark
 
-Follow the commNote that you may need to overwrite the `--wandb-entity cleanrl` to your own W&B entity.
+Execute the command below. Note that you may need to overwrite the `--wandb-entity cleanrl` to your own W&B entity.
 
 ```bash
-# reproduce the classic control experiments
+# reproduce the MuJoCo experiments
 bash cleanrl/mujoco.sh
 ```
 

@@ -1,6 +1,6 @@
-# Deep Deterministic Policy Gradient Benchmark
+# Twin Delayed Deep Deterministic Policy Gradient (TD3) Benchmark
 
-This repository contains instructions to reproduce our DDPG experiments.
+This repository contains instructions to reproduce our TD3 experiments.
 
 ## Install CleanRL
 
@@ -16,12 +16,12 @@ git checkout v0.6.0 # pinned master version
 poetry install
 ```
 
-## Reproduce CleanRL's DDPG Benchmark
+## Reproduce CleanRL's TD3 Benchmark
 
-Follow the commNote that you may need to overwrite the `--wandb-entity cleanrl` to your own W&B entity.
+Execute the command below. Note that you may need to overwrite the `--wandb-entity cleanrl` to your own W&B entity.
 
 ```bash
-# reproduce the classic control experiments
-bash cleanrl/mujoco.sh
+# reproduce the MuJoCo experiments
+bash mujoco.sh
 ```
 
