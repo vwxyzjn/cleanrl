@@ -14,6 +14,8 @@ Install dependencies:
 git clone https://github.com/vwxyzjn/cleanrl.git && cd cleanrl
 git checkout v0.6.0 # pinned master version
 poetry install
+poetry install -E pybullet
+poetry install -E mujoco
 ```
 
 ## Reproduce CleanRL's TD3 Benchmark
@@ -22,6 +24,6 @@ Execute the command below. Note that you may need to overwrite the `--wandb-enti
 
 ```bash
 # reproduce the MuJoCo experiments
-bash mujoco.sh
+bash cleanrl/td3/mujoco.sh
 ```
 

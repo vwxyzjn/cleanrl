@@ -24,6 +24,6 @@ Execute the command below. Note that you may need to overwrite the `--wandb-enti
 
 ```bash
 # reproduce the MuJoCo experiments
-bash cleanrl/mujoco.sh
+bash cleanrl/ddpg/mujoco.sh
 ```
 
