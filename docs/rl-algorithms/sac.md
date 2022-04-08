@@ -38,7 +38,7 @@ The [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 * For continuous action space.
 * Works with the `Box` observation space of low-level features.
 * Works with the `Box` (continuous) action space.
-* Numerically stable stochastic policy based on :material-github: [openai/spinningup](https://github.com/openai/spinningup/tree/master/spinup/algos/tf1/sac) implementation.
+* Numerically stable stochastic policy based on :material-github: [openai/spinningup](https://github.com/openai/spinningup/tree/master/spinup/algos/tf1/sac) and [pranz24/pytorch-soft-actor-critic](https://github.com/pranz24/pytorch-soft-actor-critic) implementations.
 * Supports automatic entropy coefficient $\alpha$ tuning, enabled by default.
 
 ### Usage
