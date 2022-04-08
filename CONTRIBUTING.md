@@ -19,14 +19,14 @@ Then you can run the scripts under the poetry environment in two ways: `poetry r
 * `poetry run`:
     By prefixing `poetry run`, your command will run in poetry's virtual environment. For example, try running
     ```bash
-    poetry run python vdqn.py
+    poetry run python ppo.py
     ```
 * `poetry shell`:
     First, activate the poetry's virtual environment by executing `poetry shell`. Then, the name of the poetry's
-    virtual environment (e.g. `(vectorized-value-methods-T4LxsEjE-py3.9)`) should appear in the left side of your shell.
+    virtual environment (e.g. `(cleanrl-ghSZGHE3-py3.9)`) should appear in the left side of your shell.
     Afterwards, you can directly run
     ```bash
-    python python vdqn.py
+    python ppo.py
 
 
 ## Code Formatting
@@ -55,7 +55,7 @@ To help ease the review process, here is a checklist:
     * add links to the original paper and related papers (if applicable)
     * add links to the PR related to the algorithm
     * add links to the tracked experiments and benchmark results
-4. **Tests**: the proposed algorithm should come with an end-to-end test (see examples [here](https://github.com/vwxyzjn/cleanrl/blob/master/tests/test_atari.py)) that ensures the algorithm does not crash. Other applicatable tests are also welcome.
+4. **Tests**: the proposed algorithm should come with an end-to-end test (see examples [here](https://github.com/vwxyzjn/cleanrl/blob/master/tests/test_atari.py)) that ensures the algorithm does not crash. Other applicable tests are also welcome.
 
 
 ## Checklist:
