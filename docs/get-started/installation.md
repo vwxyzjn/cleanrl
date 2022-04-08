@@ -14,6 +14,18 @@ poetry install
 
 <script id="asciicast-443647" src="https://asciinema.org/a/443647.js" async></script>
 
+
+!!! note "Working with PyPI mirrors"
+
+    Users in some countries (e.g., China) can usually speed up package installation via faster PyPI mirrors. If this helps you, try appending the following lines to the [pyproject.toml](https://github.com/vwxyzjn/cleanrl/blob/master/pyproject.toml) at the root of this repository and run `poetry install`
+
+    ```toml
+    [[tool.poetry.source]]
+    name = "douban"
+    url = "https://pypi.doubanio.com/simple/"
+    default = true
+    ```
+
 ## Optional Dependencies
 
 CleanRL makes it easy to install optional dependencies for common RL environments
@@ -34,13 +46,25 @@ spyder = ["spyder"]
 
 You can install them using the following command
 
-```
+```bash
 poetry install -E atari
 poetry install -E pybullet
+poetry install -E mujoco
 poetry install -E procgen
+poetry install -E envpool
 poetry install -E pettingzoo
-poetry install -E plot
-poetry install -E cloud
-poetry install -E docs
-poetry install -E spyder
+```
+
+## Install via `pip`
+
+While we recommend using `poetry` to manage environments and dependencies, the traditional `requirements.txt` are available:
+
+```bash
+pip install -r requirements/requirements.txt
+pip install -r requirements/requirements-atari.txt
+pip install -r requirements/requirements-pybullet.txt
+pip install -r requirements/requirements-mujoco.txt
+pip install -r requirements/requirements-procgen.txt
+pip install -r requirements/requirements-envpool.txt
+pip install -r requirements/requirements-pettingzoo.txt
 ```

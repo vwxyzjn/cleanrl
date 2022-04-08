@@ -60,7 +60,7 @@ def parse_args():
         help="the batch size of sample from the reply memory")
     parser.add_argument("--start-e", type=float, default=1,
         help="the starting epsilon for exploration")
-    parser.add_argument("--end-e", type=float, default=0.02,
+    parser.add_argument("--end-e", type=float, default=0.01,
         help="the ending epsilon for exploration")
     parser.add_argument("--exploration-fraction", type=float, default=0.10,
         help="the fraction of `total-timesteps` it takes from start-e to go end-e")
