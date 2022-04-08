@@ -19,6 +19,7 @@ Reference resources:
 
 * :material-github: [haarnoja/sac](https://github.com/haarnoja/sac)
 * :material-github: [openai/spinningup](https://github.com/openai/spinningup/tree/master/spinup/algos/tf1/sac)
+* :material-github: [pranz24/pytorch-soft-actor-critic](https://github.com/pranz24/pytorch-soft-actor-critic)
 * :material-github: [DLR-RM/stable-baselines3](https://github.com/DLR-RM/stable-baselines3/tree/master/stable_baselines3/sac)
 * :material-github: [denisyarats/pytorch_sac](https://github.com/denisyarats/pytorch_sac)
 * :material-github: [haarnoja/softqlearning](https://github.com/haarnoja/softqlearning)
