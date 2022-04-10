@@ -124,7 +124,7 @@ class ConvSequence(nn.Module):
 
 class Agent(nn.Module):
     def __init__(self, envs):
-        super(Agent, self).__init__()
+        super().__init__()
         h, w, c = envs.single_observation_space.shape
         shape = (c, h, w)
         conv_seqs = []

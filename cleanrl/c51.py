@@ -89,7 +89,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
     def __init__(self, env, n_atoms=101, v_min=-100, v_max=100):
-        super(QNetwork, self).__init__()
+        super().__init__()
         self.env = env
         self.n_atoms = n_atoms
         self.register_buffer("atoms", torch.linspace(v_min, v_max, steps=n_atoms))

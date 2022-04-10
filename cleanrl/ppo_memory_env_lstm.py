@@ -79,7 +79,7 @@ def parse_args():
 
 class TestMemoryEnv(gym.Env):
     # fmt: off
-    """
+    r"""
     final state  [0,0,0,1,0]    [0,0,0,0,1]
                        \           /
     second state        [0,0,1,0,0]
@@ -152,7 +152,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 class Agent(nn.Module):
     def __init__(self, envs):
-        super(Agent, self).__init__()
+        super().__init__()
         self.network = nn.Sequential(
             layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
             nn.Tanh(),
