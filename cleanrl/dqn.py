@@ -37,7 +37,7 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="CartPole-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=25000,
+    parser.add_argument("--total-timesteps", type=int, default=500000,
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=2.5e-4,
         help="the learning rate of the optimizer")
@@ -49,17 +49,17 @@ def parse_args():
         help="the timesteps it takes to update the target network")
     parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
-    parser.add_argument("--batch-size", type=int, default=32,
+    parser.add_argument("--batch-size", type=int, default=128,
         help="the batch size of sample from the reply memory")
     parser.add_argument("--start-e", type=float, default=1,
         help="the starting epsilon for exploration")
     parser.add_argument("--end-e", type=float, default=0.05,
         help="the ending epsilon for exploration")
-    parser.add_argument("--exploration-fraction", type=float, default=0.8,
+    parser.add_argument("--exploration-fraction", type=float, default=0.5,
         help="the fraction of `total-timesteps` it takes from start-e to go end-e")
     parser.add_argument("--learning-starts", type=int, default=10000,
         help="timestep to start learning")
-    parser.add_argument("--train-frequency", type=int, default=1,
+    parser.add_argument("--train-frequency", type=int, default=10,
         help="the frequency of training")
     args = parser.parse_args()
     # fmt: on
