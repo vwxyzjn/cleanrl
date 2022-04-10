@@ -6,6 +6,7 @@ repos:
         args:
           - --profile=black
           - --skip-glob=wandb/**/*
+          - --thirdparty=wandb
   - repo: https://github.com/myint/autoflake
     rev: v1.4
     hooks:
