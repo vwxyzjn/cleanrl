@@ -80,6 +80,8 @@ nav:
     - rl-algorithms/ppo.md
     - rl-algorithms/dqn.md
     - rl-algorithms/ddpg.md
+    - rl-algorithms/sac.md
+    - rl-algorithms/td3.md
   - Open RL Benchmark: open-rl-benchmark.md
   - Advanced:
     - advanced/resume-training.md
