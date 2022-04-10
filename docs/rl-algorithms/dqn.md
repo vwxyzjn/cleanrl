@@ -149,7 +149,22 @@ The [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py) shar
             nn.Linear(84, env.single_action_space.n),
         )
         ```
-2. `dqn.py` runs with different hyperparameters. See :material-github: [vwxyzjn/cleanrl/benchmark/dqn](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/dqn).
+2. `dqn.py` runs with different hyperparameters:
+
+    ```bash
+    python dqn.py --total-timesteps 500000 \
+        --learning-rate 2.5e-4 \
+        --buffer-size 10000 \
+        --gamma 0.99 \
+        --target-network-frequency 500 \
+        --max-grad-norm 0.5 \
+        --batch-size 128 \
+        --start-e 1 \
+        --end-e 0.05 \
+        --exploration-fraction 0.5 \
+        --learning-starts 10000 \
+        --train-frequency 10
+    ```
 
 
 ### Experiment results
@@ -159,30 +174,30 @@ PR :material-github: [vwxyzjn/cleanrl#157](https://github.com/vwxyzjn/cleanrl/pu
 Below are the average episodic returns for `dqn.py`. 
 
 
-| Environment      | `dqn.py` 10M steps | (Mnih et al., 2015)[^1] 50M steps | (Hessel et al., 2017, Figure 5)[^3] 
-| ----------- | ----------- | ----------- | ---- |
-| BreakoutNoFrameskip-v4      | 337.64 ± 69.47      |401.2 ± 26.9  | ~230 at 10M steps, ~300 at 50M steps
-| PongNoFrameskip-v4  | 20.293 ± 0.37     |  18.9 ± 1.3 |  ~20 10M steps, ~20 at 50M steps 
-| BeamRiderNoFrameskip-v4   | 6207.41 ± 1019.96        | 6846 ± 1619 | ~6000 10M steps, ~7000 at 50M steps 
+| Environment      | `dqn.py`  | 
+| ----------- | ----------- | 
+| CartPole-v1      | 471.21 ± 43.45      |
+| Acrobot-v1  | -93.37 ± 8.46     | 
+| MountainCar-v0   | -170.51 ± 26.22        | 
 
 
-Note that we save computational time by reducing timesteps from 50M to 10M, but our `dqn.py` scores the same or higher than (Mnih et al., 2015)[^1] in 10M steps.
+Note that the DQN has no official benchmark on classic control environments, so we did not include a comparison. That said, our `dqn.py` was able to achieve near perfect scores in `CartPole-v1` and `Acrobot-v1`; further, it can obtain successful runs in the sparse environment `MountainCar-v0`.
 
 
 Learning curves:
 
 <div class="grid-container">
-<img src="../dqn/BeamRiderNoFrameskip-v4.png">
+<img src="../dqn/CartPole-v1.png">
 
-<img src="../dqn/BreakoutNoFrameskip-v4.png">
+<img src="../dqn/Acrobot-v1.png">
 
-<img src="../dqn/PongNoFrameskip-v4.png">
+<img src="../dqn/MountainCar-v0.png">
 </div>
 
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-DQN--VmlldzoxNjk3NjYx" style="width:100%; height:500px" title="CleanRL DQN Tracked Experiments"></iframe>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Classic-Control-CleanRL-s-DQN--VmlldzoxODE4Mjg1" style="width:100%; height:500px" title="CleanRL DQN Tracked Experiments"></iframe>
 
 
 
