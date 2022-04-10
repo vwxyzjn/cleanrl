@@ -133,30 +133,40 @@ python cleanrl/dqn.py --env-id CartPole-v1
 
 ### Explanation of the logged metrics
 
-See [docs](/rl-algorithms/dqn/#explanation-of-the-logged-metrics)
+See [related docs](/rl-algorithms/dqn/#explanation-of-the-logged-metrics) for `dqn_atari.py`.
 
 ### Implementation details
 
 The [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py) shares the same implementation details as [`dqn_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py) except the `dqn.py` runs with different hyperparameters and neural network architecture. Specifically,
 
-
+1. `dqn.py` uses a simpler neural network as follows:
+        ```python
+        self.network = nn.Sequential(
+            nn.Linear(np.array(env.single_observation_space.shape).prod(), 120),
+            nn.ReLU(),
+            nn.Linear(120, 84),
+            nn.ReLU(),
+            nn.Linear(84, env.single_action_space.n),
+        )
+        ```
+2. `dqn.py` runs with different hyperparameters. See :material-github: [vwxyzjn/cleanrl/benchmark/dqn](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/dqn).
 
 
 ### Experiment results
 
-PR :material-github: [vwxyzjn/cleanrl#124](https://github.com/vwxyzjn/cleanrl/pull/124) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/dqn](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/dqn).
+PR :material-github: [vwxyzjn/cleanrl#157](https://github.com/vwxyzjn/cleanrl/pull/157) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/dqn](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/dqn).
 
-Below are the average episodic returns for `dqn_atari.py`. 
+Below are the average episodic returns for `dqn.py`. 
 
 
-| Environment      | `dqn_atari.py` 10M steps | (Mnih et al., 2015)[^1] 50M steps | (Hessel et al., 2017, Figure 5)[^3] 
+| Environment      | `dqn.py` 10M steps | (Mnih et al., 2015)[^1] 50M steps | (Hessel et al., 2017, Figure 5)[^3] 
 | ----------- | ----------- | ----------- | ---- |
 | BreakoutNoFrameskip-v4      | 337.64 ± 69.47      |401.2 ± 26.9  | ~230 at 10M steps, ~300 at 50M steps
 | PongNoFrameskip-v4  | 20.293 ± 0.37     |  18.9 ± 1.3 |  ~20 10M steps, ~20 at 50M steps 
 | BeamRiderNoFrameskip-v4   | 6207.41 ± 1019.96        | 6846 ± 1619 | ~6000 10M steps, ~7000 at 50M steps 
 
 
-Note that we save computational time by reducing timesteps from 50M to 10M, but our `dqn_atari.py` scores the same or higher than (Mnih et al., 2015)[^1] in 10M steps.
+Note that we save computational time by reducing timesteps from 50M to 10M, but our `dqn.py` scores the same or higher than (Mnih et al., 2015)[^1] in 10M steps.
 
 
 Learning curves:
