@@ -1,21 +1,32 @@
 <br />
 <p align="center">
-    <a href="https://github.com/mosaicml/composer#gh-light-mode-only" class="only-light">
+    <a href="https://github.com/vwxyzjn/cleanrl#gh-light-mode-only" class="only-light">
       <img src="docs/static/logo.svg" width="35%"/>
     </a>
     <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_BEGIN -->
-    <a href="https://github.com/mosaicml/composer#gh-dark-mode-only" class="only-dark">
+    <a href="https://github.com/vwxyzjn/cleanrl#gh-dark-mode-only" class="only-dark">
       <img src="docs/static/logo.svg" width="35%"/>
     </a>
     <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_END -->
 </p>
 <p align="center">
-    <a href="https://github.com/mosaicml/composer#gh-light-mode-only" class="only-light">
+    <a href="https://github.com/vwxyzjn/cleanrl#gh-light-mode-only" class="only-light">
       <img src="docs/static/logo2.svg" width="35%"/>
     </a>
     <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_BEGIN -->
-    <a href="https://github.com/mosaicml/composer#gh-dark-mode-only" class="only-dark">
+    <a href="https://github.com/vwxyzjn/cleanrl#gh-dark-mode-only" class="only-dark">
       <img src="docs/static/logo2.svg" width="35%"/>
+    </a>
+    <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_END -->
+</p>
+
+<p align="center">
+    <a href="https://github.com/vwxyzjn/cleanrl#gh-light-mode-only" class="only-light">
+      <img src="docs/static/logo21.svg" width="35%"/>
+    </a>
+    <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_BEGIN -->
+    <a href="https://github.com/vwxyzjn/cleanrl#gh-dark-mode-only" class="only-dark">
+      <img src="docs/static/logo22.svg" width="35%"/>
     </a>
     <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_END -->
 </p>

@@ -3,18 +3,31 @@
 <br />
 <p align="center">
     <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_BEGIN -->
-    <a href="https://github.com/mosaicml/composer#gh-dark-mode-only" class="only-dark">
+    <a href="https://github.com/vwxyzjn/cleanrl#gh-dark-mode-only" class="only-dark">
       <img src="static/logo.svg" width="35%"/>
     </a>
     <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_END -->
 </p>
 <p align="center">
     <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_BEGIN -->
-    <a href="https://github.com/mosaicml/composer#gh-dark-mode-only" class="only-dark">
+    <a href="https://github.com/vwxyzjn/cleanrl#gh-dark-mode-only" class="only-dark">
       <img src="static/logo2.svg" width="35%"/>
     </a>
     <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_END -->
 </p>
+<p align="center">
+    <a href="https://github.com/vwxyzjn/cleanrl#gh-light-mode-only" class="only-light">
+      <img src="static/logo22.svg" width="35%"/>
+    </a>
+    <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_BEGIN -->
+</p>
+<p align="center">
+    <a href="https://github.com/vwxyzjn/cleanrl#gh-light-mode-only" class="only-light">
+      <img src="static/logo21.svg" width="35%"/>
+    </a>
+    <!-- SETUPTOOLS_LONG_DESCRIPTION_HIDE_BEGIN -->
+</p>
+
 
 <h2><p align="center">Clean Implementation of RL Algorithms</p></h2>
 <!-- <h3><p align="center">Train Faster, Reduce Cost, Get Better Models</p></h3> -->
@@ -22,7 +35,7 @@
 <h4><p align='center'>
 <a href="https://docs.cleanrl.dev/get-started/installation/">[Getting Started]</a>
 - <a href="https://docs.cleanrl.dev/">[Docs]</a>
-<!-- - <a href="https://docs.mosaicml.com/en/stable/method_cards/methods_overview.html">[Methods]</a>
+<!-- - <a href="https://docs.vwxyzjn/cleanrl/en/stable/method_cards/methods_overview.html">[Methods]</a>
 - <a href="https://cleanrl.dev/team">[We're Hiring!]</a> -->
 </p></h4>
 
