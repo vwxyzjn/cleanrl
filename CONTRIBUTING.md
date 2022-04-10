@@ -43,24 +43,7 @@ We welcome the contributions of new algorithms.
 
 **Before opening a pull request**, please open an issue first to discuss with us since this is likely a sizable effort. Once we agree on the plan, feel free to make a PR to include the new algorithm.
 
-To help ease the review process, here is a checklist:
-
-1. **Code style**: Make sure you match the code style used in other implemented algorithms in CleanRL. In particular, `poetry run pre-commit run --all-files` will help auto-format the code.
-2. **Empirical analysis and benchmark**: we adopt a similar guide from [sb3-contrib](https://github.com/Stable-Baselines-Team/stable-baselines3-contrib/blob/master/CONTRIBUTING.md) with a bit of our spin. The implemented algorithm should come with **tracked** experiments that
-    * match the reported performance in the paper (if applicable)
-    * match the reported performance in a high-quality reference implementation (SB3, Tianshou, and others) (if applicable).
-    * We should also add documentation on how exactly we want the tracked experiments to be done (i.e., what W&B project? should they capture video recording?)
-3. **Documentation**: the proposed algorithm should also come with documentation at https://docs.cleanrl.dev/rl-algorithms/ to 
-    * explain crucial implementation details
-    * add links to the original paper and related papers (if applicable)
-    * add links to the PR related to the algorithm
-    * add links to the tracked experiments and benchmark results
-4. **Tests**: the proposed algorithm should come with an end-to-end test (see examples [here](https://github.com/vwxyzjn/cleanrl/blob/master/tests/test_atari.py)) that ensures the algorithm does not crash. Other applicable tests are also welcome.
-
-
-## Checklist:
-
-Here is a checklist template when contributing a new algorithm. See https://github.com/vwxyzjn/cleanrl/pull/137 as an example.
+To help ease the review process, here is a checklist template when contributing a new algorithm. See https://github.com/vwxyzjn/cleanrl/pull/137 as an example.
 
 - [ ] I've read the [CONTRIBUTION](https://github.com/vwxyzjn/cleanrl/blob/master/CONTRIBUTING.md) guide (**required**).
 - [ ] I have ensured `pre-commit run --all-files` passes (**required**).
