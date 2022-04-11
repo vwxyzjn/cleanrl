@@ -11,7 +11,6 @@ Prerequisites:
 ## Reproducing CleanRL's DQN Benchmark
 
 ### Classic Control
-Running the following scripts will sequentially execute the `sac_continuous_action.py` over three seeds, for the `HalfCheetahBulletEnv-v0`, `Walker2DBulletEnv-v0`, and `HopperBulletEnv-v0` environments.
 
 ```bash
 git clone https://github.com/vwxyzjn/cleanrl.git && cd cleanrl
@@ -24,7 +23,6 @@ Note that you may need to overwrite the `--wandb-entity cleanrl` to your own W&B
 
 
 ### Atari games
-Running the following scripts will sequentially execute the `sac_continuous_action.py` over three seeds, for the `HalfCheetahBulletEnv-v0`, `Walker2DBulletEnv-v0`, and `HopperBulletEnv-v0` environments.
 
 ```bash
 git clone https://github.com/vwxyzjn/cleanrl.git && cd cleanrl
