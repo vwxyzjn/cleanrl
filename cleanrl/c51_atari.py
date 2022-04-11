@@ -177,7 +177,12 @@ if __name__ == "__main__":
     target_network.load_state_dict(q_network.state_dict())
 
     rb = ReplayBuffer(
-        args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device, optimize_memory_usage=True
+        args.buffer_size,
+        envs.single_observation_space,
+        envs.single_action_space,
+        device,
+        optimize_memory_usage=True,
+        handle_timeout_termination=True,
     )
     start_time = time.time()
 
@@ -240,6 +245,7 @@ if __name__ == "__main__":
             loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5, max=1 - 1e-5).log()).sum(-1)).mean()
 
             if global_step % 100 == 0:
+                writer.add_scalar("losses/loss", loss.item(), global_step)
                 old_val = (old_pmfs * q_network.atoms).sum(1)
                 writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
                 print("SPS:", int(global_step / (time.time() - start_time)))
