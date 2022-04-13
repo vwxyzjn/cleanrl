@@ -33,7 +33,7 @@ client = docker.from_env()
 
 # c = client.containers.run("ubuntu:latest", "echo hello world", detach=True)
 
-with open(args.exp_script, "r") as f:
+with open(args.exp_script) as f:
     lines = f.readlines()
 
 tasks = []

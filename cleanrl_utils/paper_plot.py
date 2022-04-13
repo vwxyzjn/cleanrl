@@ -72,7 +72,7 @@ feature_name = args.feature_of_interest.replace("/", "_")
 if not os.path.exists(feature_name):
     os.makedirs(feature_name)
     with open(f"{feature_name}/cache.pkl", "wb") as handle:
-        pickle.dump([[], [], [], {}, [], set([])], handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump([[], [], [], {}, [], set()], handle, protocol=pickle.HIGHEST_PROTOCOL)
 with open(f"{feature_name}/cache.pkl", "rb") as handle:
     summary_list, config_list, name_list, envs, exp_names, ids = pickle.load(handle)
 
@@ -304,4 +304,4 @@ plt.clf()
 # analysis
 stats_df = pd.DataFrame(stats)
 g = stats_df.groupby(["env_id", "exp_name"]).agg(lambda x: f"{np.mean(x):.2f} ± {np.std(x):.2f}")
-print(g.reset_index().pivot("exp_name", "env_id", args.feature_of_interest).to_latex().replace("±", "$\pm$"))
+print(g.reset_index().pivot("exp_name", "env_id", args.feature_of_interest).to_latex().replace("±", r"$\pm$"))

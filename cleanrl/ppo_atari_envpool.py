@@ -81,7 +81,7 @@ def parse_args():
 
 class RecordEpisodeStatistics(gym.Wrapper):
     def __init__(self, env, deque_size=100):
-        super(RecordEpisodeStatistics, self).__init__(env)
+        super().__init__(env)
         self.num_envs = getattr(env, "num_envs", 1)
         self.episode_returns = None
         self.episode_lengths = None
@@ -94,7 +94,7 @@ class RecordEpisodeStatistics(gym.Wrapper):
             print("env has lives")
 
     def reset(self, **kwargs):
-        observations = super(RecordEpisodeStatistics, self).reset(**kwargs)
+        observations = super().reset(**kwargs)
         self.episode_returns = np.zeros(self.num_envs, dtype=np.float32)
         self.episode_lengths = np.zeros(self.num_envs, dtype=np.int32)
         self.lives = np.zeros(self.num_envs, dtype=np.int32)
@@ -103,7 +103,7 @@ class RecordEpisodeStatistics(gym.Wrapper):
         return observations
 
     def step(self, action):
-        observations, rewards, dones, infos = super(RecordEpisodeStatistics, self).step(action)
+        observations, rewards, dones, infos = super().step(action)
         self.episode_returns += infos["reward"]
         self.episode_lengths += 1
         self.returned_episode_returns[:] = self.episode_returns
@@ -133,7 +133,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 class Agent(nn.Module):
     def __init__(self, envs):
-        super(Agent, self).__init__()
+        super().__init__()
         self.network = nn.Sequential(
             layer_init(nn.Conv2d(4, 32, 8, stride=4)),
             nn.ReLU(),

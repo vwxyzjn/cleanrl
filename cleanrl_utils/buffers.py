@@ -15,7 +15,7 @@ def unique(sorted_array):
     return sorted_array[uniques]
 
 
-class SegmentTree(object):
+class SegmentTree:
     def __init__(self, capacity, operation, neutral_element):
         """
         Build a Segment Tree data structure.
@@ -97,7 +97,7 @@ class SegmentTree(object):
 
 class SumSegmentTree(SegmentTree):
     def __init__(self, capacity):
-        super(SumSegmentTree, self).__init__(capacity=capacity, operation=np.add, neutral_element=0.0)
+        super().__init__(capacity=capacity, operation=np.add, neutral_element=0.0)
         self._value = np.array(self._value)
 
     def sum(self, start=0, end=None):
@@ -108,7 +108,7 @@ class SumSegmentTree(SegmentTree):
         :param end: (int) end position of the reduction (must be < len(arr), can be None for len(arr) - 1)
         :return: (Any) reduction of SumSegmentTree
         """
-        return super(SumSegmentTree, self).reduce(start, end)
+        return super().reduce(start, end)
 
     def find_prefixsum_idx(self, prefixsum):
         """
@@ -146,7 +146,7 @@ class SumSegmentTree(SegmentTree):
 
 class MinSegmentTree(SegmentTree):
     def __init__(self, capacity):
-        super(MinSegmentTree, self).__init__(capacity=capacity, operation=np.minimum, neutral_element=float("inf"))
+        super().__init__(capacity=capacity, operation=np.minimum, neutral_element=float("inf"))
         self._value = np.array(self._value)
 
     def min(self, start=0, end=None):
@@ -157,7 +157,7 @@ class MinSegmentTree(SegmentTree):
         :param end: (int) end position of the reduction (must be < len(arr), can be None for len(arr) - 1)
         :return: (Any) reduction of MinSegmentTree
         """
-        return super(MinSegmentTree, self).reduce(start, end)
+        return super().reduce(start, end)
 
 
 import warnings
@@ -212,7 +212,7 @@ class BaseBuffer(ABC):
         device: Union[th.device, str] = "cpu",
         n_envs: int = 1,
     ):
-        super(BaseBuffer, self).__init__()
+        super().__init__()
         self.buffer_size = buffer_size
         self.observation_space = observation_space
         self.action_space = action_space
@@ -343,7 +343,7 @@ class ReplayBuffer(BaseBuffer):
         n_envs: int = 1,
         optimize_memory_usage: bool = False,
     ):
-        super(ReplayBuffer, self).__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
+        super().__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
 
         assert n_envs == 1, "Replay buffer only support single environment for now"
 
@@ -465,7 +465,7 @@ class RolloutBuffer(BaseBuffer):
         n_envs: int = 1,
     ):
 
-        super(RolloutBuffer, self).__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
+        super().__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
         self.gae_lambda = gae_lambda
         self.gamma = gamma
         self.observations, self.actions, self.rewards, self.advantages = None, None, None, None
@@ -483,7 +483,7 @@ class RolloutBuffer(BaseBuffer):
         self.log_probs = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.advantages = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.generator_ready = False
-        super(RolloutBuffer, self).reset()
+        super().reset()
 
     def compute_returns_and_advantage(self, last_values: th.Tensor, dones: np.ndarray) -> None:
         """
@@ -605,7 +605,7 @@ class PrioritizedReplayBuffer(BaseBuffer):
         device: Union[th.device, str] = "cpu",
         n_envs: int = 1,
     ):
-        super(PrioritizedReplayBuffer, self).__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
+        super().__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
 
         assert n_envs == 1, "Replay buffer only support single environment for now"
         assert alpha >= 0

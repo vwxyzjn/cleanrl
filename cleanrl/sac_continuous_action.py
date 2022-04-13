@@ -91,7 +91,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 # ALGO LOGIC: initialize agent here:
 class SoftQNetwork(nn.Module):
     def __init__(self, env):
-        super(SoftQNetwork, self).__init__()
+        super().__init__()
         self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
@@ -110,7 +110,7 @@ LOG_STD_MIN = -5
 
 class Actor(nn.Module):
     def __init__(self, env):
-        super(Actor, self).__init__()
+        super().__init__()
         self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc_mean = nn.Linear(256, np.prod(env.single_action_space.shape))
@@ -146,7 +146,7 @@ class Actor(nn.Module):
     def to(self, device):
         self.action_scale = self.action_scale.to(device)
         self.action_bias = self.action_bias.to(device)
-        return super(Actor, self).to(device)
+        return super().to(device)
 
 
 if __name__ == "__main__":

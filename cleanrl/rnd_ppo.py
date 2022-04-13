@@ -11,7 +11,7 @@ from gym import spaces
 cv2.ocl.setUseOpenCL(False)
 
 
-class RunningMeanStd(object):
+class RunningMeanStd:
     # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
     def __init__(self, epsilon=1e-4, shape=()):
         self.mean = np.zeros(shape, "float64")
@@ -41,7 +41,7 @@ class RunningMeanStd(object):
         self.count = new_count
 
 
-class RewardForwardFilter(object):
+class RewardForwardFilter:
     def __init__(self, gamma):
         self.rewems = None
         self.gamma = gamma
@@ -291,7 +291,7 @@ class ScaledFloatFrame(gym.ObservationWrapper):
         return np.array(observation).astype(np.float32) / 255.0
 
 
-class LazyFrames(object):
+class LazyFrames:
     def __init__(self, frames):
         """This object ensures that common frames between the observations are only stored once.
         It exists purely to optimize memory usage which can be huge for DQN's 1M frames replay
@@ -360,7 +360,7 @@ class ImageToPyTorch(gym.ObservationWrapper):
     """
 
     def __init__(self, env):
-        super(ImageToPyTorch, self).__init__(env)
+        super().__init__(env)
         old_shape = self.observation_space.shape
         self.observation_space = gym.spaces.Box(
             low=0,
@@ -533,7 +533,7 @@ args.minibatch_size = int(args.batch_size // args.n_minibatch)
 
 class VecPyTorch(VecEnvWrapper):
     def __init__(self, venv, device):
-        super(VecPyTorch, self).__init__(venv)
+        super().__init__(venv)
         self.device = device
 
     def reset(self):
@@ -666,7 +666,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 class Agent(nn.Module):
     def __init__(self, envs, frames=4):
-        super(Agent, self).__init__()
+        super().__init__()
         self.network = nn.Sequential(
             Scale(1 / 255),
             layer_init(nn.Conv2d(frames, 32, 8, stride=4)),
@@ -710,7 +710,7 @@ class Flatten(nn.Module):
 
 class RNDModel(nn.Module):
     def __init__(self, input_size, output_size):
-        super(RNDModel, self).__init__()
+        super().__init__()
 
         self.input_size = input_size
         self.output_size = output_size
@@ -911,7 +911,7 @@ for update in range(1, num_updates + 1):
     # flatten the batch
     b_obs = obs.reshape((-1,) + envs.observation_space.shape)
     b_logprobs = logprobs.reshape(-1)
-    b_actions = actions.reshape((-1))
+    b_actions = actions.reshape(-1)
     b_ext_advantages = ext_advantages.reshape(-1)
     b_int_advantages = int_advantages.reshape(-1)
     b_ext_returns = ext_returns.reshape(-1)
