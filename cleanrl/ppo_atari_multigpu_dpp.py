@@ -216,7 +216,7 @@ def train(rank: int, size: int):
     start_time = time.time()
     next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
-    num_updates = args.total_timesteps // args.batch_size
+    num_updates = args.total_timesteps // (args.batch_size * size)
 
     for update in range(1, num_updates + 1):
         # Annealing the rate if instructed to do so.
