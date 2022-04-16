@@ -10,11 +10,11 @@ import torch
 
 torch.set_num_threads(1)
 import torch.distributed as dist
-from torch.nn.parallel import DistributedDataParallel as DDP
 import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.categorical import Categorical
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.tensorboard import SummaryWriter
 
 from stable_baselines3.common.atari_wrappers import (  # isort:skip
@@ -366,7 +366,4 @@ def train(rank: int, size: int):
 if __name__ == "__main__":
     # taken from https://pytorch.org/docs/stable/notes/ddp.html
     world_size = 2
-    mp.spawn(train,
-        args=(world_size,),
-        nprocs=world_size,
-        join=True)
+    mp.spawn(train, args=(world_size,), nprocs=world_size, join=True)
