@@ -7,10 +7,11 @@ from distutils.util import strtobool
 import gym
 import numpy as np
 import torch
+
 torch.set_num_threads(1)
-import torch.nn as nn
 import torch.distributed as dist
 import torch.multiprocessing as mp
+import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
@@ -147,10 +148,10 @@ class Agent(nn.Module):
         return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
 
 
-def init_process(rank, size, fn, backend='gloo'):
-    """ Initialize the distributed environment. """
-    os.environ['MASTER_ADDR'] = '127.0.0.1'
-    os.environ['MASTER_PORT'] = '29500'
+def init_process(rank, size, fn, backend="gloo"):
+    """Initialize the distributed environment."""
+    os.environ["MASTER_ADDR"] = "127.0.0.1"
+    os.environ["MASTER_PORT"] = "29500"
     dist.init_process_group(backend, rank=rank, world_size=size)
     fn(rank, size)
 
@@ -342,7 +343,7 @@ def train(rank: int, size: int):
                 offset = 0
                 for param in agent.parameters():
                     if param.grad is not None:
-                        param.grad.data.copy_(all_grads[offset:offset + param.numel()].view_as(param.grad.data) / size)
+                        param.grad.data.copy_(all_grads[offset : offset + param.numel()].view_as(param.grad.data) / size)
                         offset += param.numel()
 
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
@@ -370,7 +371,8 @@ def train(rank: int, size: int):
             writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
     envs.close()
-    if rank == 0: writer.close()
+    if rank == 0:
+        writer.close()
 
 
 if __name__ == "__main__":
