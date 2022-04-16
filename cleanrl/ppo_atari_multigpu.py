@@ -7,10 +7,11 @@ from distutils.util import strtobool
 import gym
 import numpy as np
 import torch
+
 torch.set_num_threads(1)
-import torch.nn as nn
 import torch.distributed as dist
 import torch.multiprocessing as mp
+import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
@@ -120,7 +121,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 class Agent(nn.Module):
     def __init__(self, envs):
-        super(Agent, self).__init__()
+        super().__init__()
         self.network = nn.Sequential(
             layer_init(nn.Conv2d(4, 32, 8, stride=4)),
             nn.ReLU(),
@@ -147,10 +148,10 @@ class Agent(nn.Module):
         return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
 
 
-def init_process(rank, size, fn, backend='gloo'):
-    """ Initialize the distributed environment. """
-    os.environ['MASTER_ADDR'] = '127.0.0.1'
-    os.environ['MASTER_PORT'] = '29500'
+def init_process(rank, size, fn, backend="gloo"):
+    """Initialize the distributed environment."""
+    os.environ["MASTER_ADDR"] = "127.0.0.1"
+    os.environ["MASTER_PORT"] = "29500"
     dist.init_process_group(backend, rank=rank, world_size=size)
     fn(rank, size)
 
@@ -331,6 +332,8 @@ def train(rank: int, size: int):
 
                 optimizer.zero_grad()
                 loss.backward()
+
+                # using example from https://pytorch.org/tutorials/intermediate/dist_tuto.html#distributed-training
                 for param in agent.parameters():
                     dist.all_reduce(param.grad.data, op=dist.ReduceOp.SUM)
                     param.grad.data /= size
@@ -359,7 +362,8 @@ def train(rank: int, size: int):
             writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
     envs.close()
-    if rank == 0: writer.close()
+    if rank == 0:
+        writer.close()
 
 
 if __name__ == "__main__":
