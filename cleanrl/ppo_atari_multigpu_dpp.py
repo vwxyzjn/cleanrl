@@ -195,6 +195,7 @@ def train(rank: int, size: int):
     agent = Agent(envs).to(device)
     ddp_agent = DDP(agent, device_ids=[0])
     optimizer = optim.Adam(ddp_agent.parameters(), lr=args.learning_rate, eps=1e-5)
+    agent = ddp_agent.module # see https://discuss.pytorch.org/t/how-to-reach-model-attributes-wrapped-by-nn-dataparallel/1373/3
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -360,5 +361,10 @@ def train(rank: int, size: int):
 
 if __name__ == "__main__":
     # taken from https://pytorch.org/docs/stable/notes/ddp.html
+    # Environment variables which need to be
+    # set when using c10d's default "env"
+    # initialization mode.
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "29500"
     world_size = 2
     mp.spawn(train, args=(world_size,), nprocs=world_size, join=True)
