@@ -185,9 +185,10 @@ def train(rank: int, size: int):
         )
 
     # TRY NOT TO MODIFY: seeding
+    args.seed += rank
     random.seed(args.seed)
     np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    torch.manual_seed(args.seed - rank)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
@@ -199,6 +200,7 @@ def train(rank: int, size: int):
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent = Agent(envs).to(device)
+    torch.manual_seed(args.seed)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage setup
@@ -247,7 +249,8 @@ def train(rank: int, size: int):
                         writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
                         writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
                         break
-
+        
+        print(f"rank: {rank}, action.sum(): {action.sum()}, update: {update}, agent.actor.weight.sum(): {agent.actor.weight.sum()}")
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)
