@@ -176,6 +176,7 @@ def train(rank: int, size: int):
         )
 
     # TRY NOT TO MODIFY: seeding
+    args.seed += rank
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -190,12 +191,8 @@ def train(rank: int, size: int):
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent = Agent(envs).to(device)
-    ddp_agent = DDP(agent, device_ids=[0])  # device_ids=[rank]
-    optimizer = optim.Adam(ddp_agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    agent = (
-        ddp_agent.module
-    )  # see https://discuss.pytorch.org/t/how-to-reach-model-attributes-wrapped-by-nn-dataparallel/1373/3
-
+    agent = DDP(agent, device_ids=[0], output_device=0)  # device_ids=[rank]
+    optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
@@ -243,9 +240,13 @@ def train(rank: int, size: int):
                         writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
                         break
 
+        print(
+            f"rank: {rank}, action.sum(): {action.sum()}, update: {update}, agent.actor.weight.sum(): {agent.module.actor.weight.sum()}"
+        )
+
         # bootstrap value if not done
         with torch.no_grad():
-            next_value = agent.get_value(next_obs).reshape(1, -1)
+            next_value = agent.module.get_value(next_obs).reshape(1, -1)
             if args.gae:
                 advantages = torch.zeros_like(rewards).to(device)
                 lastgaelam = 0
