@@ -149,19 +149,12 @@ class Agent(nn.Module):
         return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
 
 
-def init_process(rank, size, fn, backend="gloo"):
-    """Initialize the distributed environment."""
-    os.environ["MASTER_ADDR"] = "127.0.0.1"
-    os.environ["MASTER_PORT"] = "29500"
-    dist.init_process_group(backend, rank=rank, world_size=size)
-    fn(rank, size)
-
-
 def train(rank: int, size: int):
     args = parse_args()
     args.num_envs = int(args.num_envs / size)
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
+    dist.init_process_group("gloo", rank=rank, world_size=size)
     print(f"================================")
     print(f"args.num_envs: {args.num_envs}, args.batch_size: {args.batch_size}, args.minibatch_size: {args.minibatch_size}")
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -361,7 +354,8 @@ def train(rank: int, size: int):
     envs.close()
     if rank == 0:
         writer.close()
-        if args.track: wandb.finish()
+        if args.track:
+            wandb.finish()
 
 
 if __name__ == "__main__":

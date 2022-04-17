@@ -365,7 +365,8 @@ def train(rank: int, size: int):
     envs.close()
     if rank == 0:
         writer.close()
-        if args.track: wandb.finish()
+        if args.track:
+            wandb.finish()
 
 
 if __name__ == "__main__":
