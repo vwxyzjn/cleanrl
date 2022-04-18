@@ -6,7 +6,7 @@ OMP_NUM_THREADS=1 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids CartPole-v1 Acrobot-v1 MountainCar-v0 \
     --command "poetry run python cleanrl/ppo.py --cuda False --track --capture-video" \
     --num-seeds 3 \
-    --workers 1
+    --workers 9
 
 poetry install -E atari
 OMP_NUM_THREADS=1 xvfb-run -a python -m cleanrl_utils.benchmark \
