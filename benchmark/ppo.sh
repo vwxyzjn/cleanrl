@@ -4,7 +4,7 @@
 poetry install
 OMP_NUM_THREADS=1 python -m cleanrl_utils.benchmark \
     --env-ids CartPole-v1 Acrobot-v1 MountainCar-v0 \
-    --command "poetry run python cleanrl/ppo.py --track --cuda False" \
+    --command "poetry run python cleanrl/ppo.py --cuda False --track" \
     --num-seeds 3 \
     --workers 3
 
@@ -33,13 +33,13 @@ poetry install -E "mujoco pybullet"
 python -c "import mujoco_py"
 OMP_NUM_THREADS=1 python -m cleanrl_utils.benchmark \
     --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 \
-    --command "poetry run python cleanrl/ppo_continuous_action.py --track --cuda False" \
+    --command "poetry run python cleanrl/ppo_continuous_action.py --cuda False --track" \
     --num-seeds 3 \
     --workers 3
 
 poetry install -E procgen
 python -m cleanrl_utils.benchmark \
     --env-ids starpilot bossfight bigfish \
-    --command "poetry run python cleanrl/ppo_procgen.py --track --track" \
+    --command "poetry run python cleanrl/ppo_procgen.py --track" \
     --num-seeds 3 \
     --workers 1
