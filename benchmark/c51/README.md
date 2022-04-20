@@ -8,7 +8,7 @@ Prerequisites:
 * [GitHub CLI](https://cli.github.com/)
 
 
-## Reproducing CleanRL's DQN Benchmark
+## Reproducing CleanRL's Categorical DQN (C51) Benchmark
 
 ### Classic Control
 
