@@ -19,7 +19,7 @@ def parse_args():
     return args
 
 
-def run_evaluation(command: str):
+def run_experiment(command: str):
     command_list = shlex.split(command)
     print(f"running {command}")
     fd = subprocess.Popen(command_list)
@@ -41,5 +41,5 @@ if __name__ == "__main__":
 
         executor = ThreadPoolExecutor(max_workers=args.workers, thread_name_prefix="cleanrl-benchmark-worker-")
         for command in commands:
-            executor.submit(run_evaluation, command)
+            executor.submit(run_experiment, command)
         executor.shutdown(wait=True, cancel_futures=False)
