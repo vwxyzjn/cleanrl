@@ -37,7 +37,7 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="CartPole-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=25000,
+    parser.add_argument("--total-timesteps", type=int, default=500000,
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=2.5e-4,
         help="the learning rate of the optimizer")
@@ -49,17 +49,17 @@ def parse_args():
         help="the timesteps it takes to update the target network")
     parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
-    parser.add_argument("--batch-size", type=int, default=32,
+    parser.add_argument("--batch-size", type=int, default=128,
         help="the batch size of sample from the reply memory")
     parser.add_argument("--start-e", type=float, default=1,
         help="the starting epsilon for exploration")
     parser.add_argument("--end-e", type=float, default=0.05,
         help="the ending epsilon for exploration")
-    parser.add_argument("--exploration-fraction", type=float, default=0.8,
+    parser.add_argument("--exploration-fraction", type=float, default=0.5,
         help="the fraction of `total-timesteps` it takes from start-e to go end-e")
     parser.add_argument("--learning-starts", type=int, default=10000,
         help="timestep to start learning")
-    parser.add_argument("--train-frequency", type=int, default=1,
+    parser.add_argument("--train-frequency", type=int, default=10,
         help="the frequency of training")
     args = parser.parse_args()
     # fmt: on
@@ -86,11 +86,11 @@ class QNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
         self.network = nn.Sequential(
-            nn.Linear(np.array(env.single_observation_space.shape).prod(), 64),
-            nn.Tanh(),
-            nn.Linear(64, 64),
-            nn.Tanh(),
-            nn.Linear(64, env.single_action_space.n),
+            nn.Linear(np.array(env.single_observation_space.shape).prod(), 120),
+            nn.ReLU(),
+            nn.Linear(120, 84),
+            nn.ReLU(),
+            nn.Linear(84, env.single_action_space.n),
         )
 
     def forward(self, x):
@@ -141,7 +141,11 @@ if __name__ == "__main__":
     target_network.load_state_dict(q_network.state_dict())
 
     rb = ReplayBuffer(
-        args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device, optimize_memory_usage=True
+        args.buffer_size,
+        envs.single_observation_space,
+        envs.single_action_space,
+        device,
+        handle_timeout_termination=True,
     )
     start_time = time.time()
 

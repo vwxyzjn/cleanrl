@@ -162,7 +162,12 @@ if __name__ == "__main__":
     target_network.load_state_dict(q_network.state_dict())
 
     rb = ReplayBuffer(
-        args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device, optimize_memory_usage=True
+        args.buffer_size,
+        envs.single_observation_space,
+        envs.single_action_space,
+        device,
+        optimize_memory_usage=True,
+        handle_timeout_termination=True,
     )
     start_time = time.time()
 
