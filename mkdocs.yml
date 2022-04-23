@@ -72,6 +72,7 @@ nav:
     - get-started/basic-usage.md
     - get-started/experiment-tracking.md
     - get-started/examples.md
+    - get-started/benchmark-utility.md
   - Cloud Integration: 
     - cloud/installation.md
     - cloud/submit-experiments.md
