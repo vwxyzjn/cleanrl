@@ -402,9 +402,77 @@ Learning curves:
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-LSTM--VmlldzoxODcxMzE4" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-LSTM"></iframe>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-Envpool--VmlldzoxODcxMzI3" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool"></iframe>
 
 
+
+
+## `ppo_procgen.py`
+
+The [ppo_procgen.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_procgen.py) has the following features:
+
+* For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+* Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
+* Works with the `Discrete` action space
+
+
+### Usage
+
+```bash
+poetry install -E atari
+python cleanrl/ppo_procgen.py --help
+python cleanrl/ppo_procgen.py --env-id BreakoutNoFrameskip-v4
+```
+
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`.
+
+### Implementation details
+
+[ppo_procgen.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_procgen.py) is based on the details in "Appendix" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/), which are as follows:
+
+1. IMPALA-style Neural Network (:material-github: [common/models.py#L28](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/models.py#L28))
+
+
+### Experiment results
+
+
+
+To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5184afc2b7d5032b56e6689175a17b7bad172771%2Fbenchmark%2Fppo.sh%23L40-L45&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+
+We try to match the default setting in [openai/train-procgen](https://github.com/openai/train-procgen) except that we use the `easy` distribution mode and `total_timesteps=25e6` to save compute. Notice [openai/train-procgen](https://github.com/openai/train-procgen) has the following settings:
+
+1. Learning rate annealing is turned off by default
+1. Reward scaling and reward clipping is used
+
+
+Below are the average episodic returns for `ppo_procgen.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
+
+| Environment      | `ppo_procgen.py` | `openai/baselies`' PPO (Huang et al., 2022)[^1]
+| ----------- | ----------- | ----------- |
+| StarPilot      | 416.31 ± 43.92     | 406.57 ± 31.554  |
+| BossFight   | 20.59 ± 0.35    |  20.512 ± 0.50 |
+| BigFish   | 2445.38 ± 528.91         | 2642.97 ± 670.37 |
+
+
+Learning curves:
+
+<div class="grid-container">
+<img src="../ppo/StarPilot.png">
+
+<img src="../ppo/BossFight.png">
+
+<img src="../ppo/BigFish.png">
+</div>
+
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Procgen-CleanRL-s-PPO--VmlldzoxODcxMzUy" style="width:100%; height:500px" title="Procgen-CleanRL-s-PPO"></iframe>
 
 
 
