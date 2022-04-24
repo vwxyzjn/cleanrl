@@ -454,9 +454,9 @@ Below are the average episodic returns for `ppo_procgen.py`. To ensure the quali
 
 | Environment      | `ppo_procgen.py` | `openai/baselies`' PPO (Huang et al., 2022)[^1]
 | ----------- | ----------- | ----------- |
-| StarPilot      | 416.31 ± 43.92     | 406.57 ± 31.554  |
-| BossFight   | 20.59 ± 0.35    |  20.512 ± 0.50 |
-| BigFish   | 2445.38 ± 528.91         | 2642.97 ± 670.37 |
+| StarPilot      | 31.40 ± 11.73     | 33.97 ± 7.86  |
+| BossFight   | 9.09 ± 2.35    |  9.35 ± 2.04 |
+| BigFish   | 21.44 ± 6.73         | 20.06 ± 5.34 |
 
 
 Learning curves:
