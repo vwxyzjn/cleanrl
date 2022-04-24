@@ -1,7 +1,7 @@
 # CleanRL (Clean Implementation of RL Algorithms)
 
 <img src="
-https://img.shields.io/github/license/vwxyzjn/cleanrl">
+https://img.shields.io/badge/license-MIT-blue">
 [![tests](https://github.com/vwxyzjn/cleanrl/actions/workflows/tests.yaml/badge.svg)](https://github.com/vwxyzjn/cleanrl/actions/workflows/tests.yaml)
 [![ci](https://github.com/vwxyzjn/cleanrl/actions/workflows/docs.yaml/badge.svg)](https://github.com/vwxyzjn/cleanrl/actions/workflows/docs.yaml)
 [<img src="https://img.shields.io/discord/767863440248143916?label=discord">](https://discord.gg/D6RCjA6sVT)
