@@ -30,6 +30,3 @@ Below are the implemented algorithms and their brief descriptions.
 - [x] Twin Delayed Deep Deterministic Policy Gradient (TD3)
     * [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py)
         * For continuous action space.
-- [x] Apex Deep Q-Learning (Apex-DQN)
-    * [apex_dqn_atari_visual.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/apex_dqn_atari_visual.py)
-        * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.

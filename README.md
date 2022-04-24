@@ -78,7 +78,6 @@ poetry install -E atari
 python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/c51_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
-python cleanrl/apex_dqn_atari.py --env-id BreakoutNoFrameskip-v4
 
 # NEW: 3-4x side-effects free speed up with envpool's atari (only available to linux)
 poetry install -E envpool
@@ -120,7 +119,6 @@ You may also use a prebuilt development environment hosted in Gitpod:
 | | [`dqn_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py) |
 | ✅ [Categorical DQN (C51)](https://arxiv.org/pdf/1707.06887.pdf) | [`c51.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/c51.py) |
 | | [`c51_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/c51_atari.py) |
-| ✅ [Apex Deep Q-Learning (Apex-DQN)](https://arxiv.org/pdf/1803.00933.pdf) | [`apex_dqn_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/apex_dqn_atari.py) |
 | ✅ [Soft Actor-Critic (SAC)](https://arxiv.org/pdf/1812.05905.pdf) | [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) |
 | ✅ [Deep Deterministic Policy Gradient (DDPG)](https://arxiv.org/pdf/1509.02971.pdf) | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) |
 | ✅ [Twin Delayed Deep Deterministic Policy Gradient (TD3)](https://arxiv.org/pdf/1802.09477.pdf) | [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) |
