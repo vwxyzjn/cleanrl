@@ -46,6 +46,23 @@ python cleanrl/ppo.py --help
 python cleanrl/ppo.py --env-id CartPole-v1
 ```
 
+### Explanation of the logged metrics
+
+Running `python cleanrl/ppo.py` will automatically record various metrics such as actor or value losses in Tensorboard. Below is the documentation for these metrics:
+
+* `charts/episodic_return`: episodic return of the game
+* `charts/episodic_length`: episodic length of the game
+* `charts/SPS`: number of steps per second
+* `charts/learning_rate`: the current learning rate
+* `losses/value_loss`: the mean value loss across all data points
+* `losses/policy_loss`: the mean policy loss across all data points
+* `losses/entropy`: the mean entropy value across all data points
+* `losses/old_approx_kl`: the approximate Kullback–Leibler divergence, measured by `(-logratio).mean()`, which corresponds to the k1 estimator in John Schulman’s blog post on [approximating KL](http://joschu.net/blog/kl-approx.html)
+* `losses/approx_kl`: better alternative to `olad_approx_kl` measured by `(logratio.exp() - 1) - logratio`, which corresponds to the k3 estimator in [approximating KL](http://joschu.net/blog/kl-approx.html)
+* `losses/clipfrac`: the fraction of the training data that triggered the clipped objective
+* `losses/explained_variance`: the explained variance for the value function
+
+
 ### Implementation details
 
 [ppo.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py) is based on the "13 core implementation details" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/), which are as follows:
@@ -120,6 +137,10 @@ python cleanrl/ppo_atari.py --help
 python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
 ```
 
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`.
+
 ### Implementation details
 
 [ppo_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py) is based on the "9 Atari implementation details" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/), which are as follows:
@@ -190,6 +211,10 @@ poetry install -E atari
 python cleanrl/ppo_continuous_action.py --help
 python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
 ```
+
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`.
 
 ### Implementation details
 
@@ -265,6 +290,10 @@ poetry install -E atari
 python cleanrl/ppo_atari_lstm.py --help
 python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
 ```
+
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`.
 
 ### Implementation details
 
