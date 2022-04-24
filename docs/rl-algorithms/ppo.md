@@ -341,6 +341,71 @@ Tracked experiments and game play videos:
 
 
 
+## `ppo_atari_envpool.py`
+
+The [ppo_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool.py) has the following features:
+
+* Uses the blazing fast [Envpool](https://github.com/sail-sg/envpool) vectorized environment.
+* For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+* Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
+* Works with the `Discrete` action space
+
+### Usage
+
+```bash
+poetry install -E atari
+python cleanrl/ppo_atari_envpool.py --help
+python cleanrl/ppo_atari_envpool.py --env-id Breakout-v5
+```
+
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`.
+
+### Implementation details
+
+[ppo_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool.py) uses a customized `RecordEpisodeStatistics` to work with envpool but has the same other implementation details as `ppo_atari.py` (see [related docs](/rl-algorithms/ppo/#implementation-details_1)).
+
+### Experiment results
+
+To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5184afc2b7d5032b56e6689175a17b7bad172771%2Fbenchmark%2Fppo.sh%23L25-L30&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+
+Below are the average episodic returns for `ppo_atari_envpool.py`. Notice it has the same sample efficiency as `ppo_atari.py`, but runs about 3x faster.
+
+
+
+| Environment      | `ppo_atari_envpool.py` (~80 mins) | `ppo_atari.py` (~220 mins)
+| ----------- | ----------- | ----------- |
+| BreakoutNoFrameskip-v4 |   389.57 ± 29.62    | 416.31 ± 43.92 
+| PongNoFrameskip-v4 | 20.55 ± 0.37   | 20.59 ± 0.35   
+| BeamRiderNoFrameskip-v4 |   2039.83 ± 1146.62 | 2445.38 ± 528.91  
+
+
+
+
+Learning curves:
+
+<div class="grid-container">
+<img src="../ppo/Breakout.png">
+<img src="../ppo/Breakout-time.png">
+
+<img src="../ppo/Pong.png">
+<img src="../ppo/Pong-time.png">
+
+<img src="../ppo/BeamRider.png">
+<img src="../ppo/BeamRider-time.png">
+</div>
+
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-LSTM--VmlldzoxODcxMzE4" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-LSTM"></iframe>
+
+
+
 
 
 [^1]: Huang, Shengyi; Dossa, Rousslan Fernand Julien; Raffin, Antonin; Kanervisto, Anssi; Wang, Weixun (2022). The 37 Implementation Details of Proximal Policy Optimization. ICLR 2022 Blog Track https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/
