@@ -66,7 +66,10 @@ python cleanrl/ppo.py --env-id CartPole-v1
 
 ### Experiment results
 
-PR :material-github: [vwxyzjn/cleanrl#120](https://github.com/vwxyzjn/cleanrl/pull/120) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/ppo](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/ppo).
+To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5184afc2b7d5032b56e6689175a17b7bad172771%2Fbenchmark%2Fppo.sh%23L4-L9&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
 
 Below are the average episodic returns for `ppo.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
 
@@ -119,7 +122,7 @@ python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
 
 ### Implementation details
 
-[ppo_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py) is based on the "9 core implementation details" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/), which are as follows:
+[ppo_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py) is based on the "9 Atari implementation details" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/), which are as follows:
 
 1. The Use of `NoopResetEnv` (:material-github: [common/atari_wrappers.py#L12](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/atari_wrappers.py#L12)) 
 1. The Use of `MaxAndSkipEnv` (:material-github: [common/atari_wrappers.py#L97](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/atari_wrappers.py#L97)) 
@@ -133,7 +136,12 @@ python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
 
 ### Experiment results
 
-PR :material-github: [vwxyzjn/cleanrl#120](https://github.com/vwxyzjn/cleanrl/pull/120) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/ppo](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/ppo).
+
+
+To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fppo.sh%23L11-L16&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
 
 Below are the average episodic returns for `ppo_atari.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
 
@@ -161,7 +169,7 @@ Tracked experiments and game play videos:
 
 ### Video tutorial
 
-If you'd like to learn `ppo.py` in-depth, consider checking out the following video tutorial:
+If you'd like to learn `ppo_atari.py` in-depth, consider checking out the following video tutorial:
 
 
 <div style="text-align: center;"><iframe width="560" height="315" src="https://www.youtube.com/embed/05RMTj-2K_Y" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
@@ -174,8 +182,72 @@ The [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 * For continuous action space. Also implemented Mujoco-specific code-level optimizations
 * Works with the `Box` observation space of low-level features
 * Works with the `Box` (continuous) action space
-* Includes the 8 implementation details for  as shown in the following video tutorial (need fixing)
-  [![PPO3](ppo/ppo-3-title.png)](https://youtu.be/05RMTj-2K_Y)
+
+### Usage
+
+```bash
+poetry install -E atari
+python cleanrl/ppo_continuous_action.py --help
+python cleanrl/ppo_continuous_action.py --env-id BreakoutNoFrameskip-v4
+```
+
+### Implementation details
+
+[ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py) is based on the "9 details for continuous action domains (e.g. Mujoco)" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/), which are as follows:
+
+
+1. Continuous actions via normal distributions (:material-github: [common/distributions.py#L103-L104](https://github.com/openai/baselines/blob/9b68103b737ac46bc201dfb3121cfa5df2127e53/baselines/common/distributions.py#L103-L104))
+2. State-independent log standard deviation (:material-github: [common/distributions.py#L104](https://github.com/openai/baselines/blob/9b68103b737ac46bc201dfb3121cfa5df2127e53/baselines/common/distributions.py#L104))
+3. Independent action components (:material-github: [common/distributions.py#L238-L246](https://github.com/openai/baselines/blob/9b68103b737ac46bc201dfb3121cfa5df2127e53/baselines/common/distributions.py#L238-L246))
+4. Separate MLP networks for policy and value functions (:material-github: [common/policies.py#L160](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/policies.py#L160), [baselines/common/models.py#L75-L103](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/models.py#L75-L103)
+5. Handling of action clipping to valid range and storage (:material-github: [common/cmd_util.py#L99-L100](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/cmd_util.py#L99-L100)) 
+6. Normalization of Observation (:material-github: [common/vec_env/vec_normalize.py#L4](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/vec_env/vec_normalize.py#L4))
+7. Observation Clipping (:material-github: [common/vec_env/vec_normalize.py#L39](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/vec_env/vec_normalize.py#L39))
+8. Reward Scaling (:material-github: [common/vec_env/vec_normalize.py#L28](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/vec_env/vec_normalize.py#L28))
+9. Reward Clipping (:material-github: [common/vec_env/vec_normalize.py#L32](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/vec_env/vec_normalize.py#L32))
+
+
+
+### Experiment results
+
+To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5184afc2b7d5032b56e6689175a17b7bad172771%2Fbenchmark%2Fppo.sh%23L32-L38&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+
+
+Below are the average episodic returns for `ppo_continuous_action.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
+
+| Environment      | `ppo_continuous_action.py` | `openai/baselies`' PPO
+| ----------- | ----------- | ----------- |
+| Hopper-v2      | 2231.12 ± 656.72     | 2518.95 ± 850.46  |
+| Walker2d-v2   | 3050.09 ± 1136.21    |  3208.08 ± 1264.37 |
+| HalfCheetah-v2   | 1822.82 ± 928.11         | 2152.26 ± 1159.84 |
+
+
+Learning curves:
+
+<div class="grid-container">
+<img src="../ppo/Hopper-v2.png">
+
+<img src="../ppo/Walker2d-v2.png">
+
+<img src="../ppo/HalfCheetah-v2.png">
+</div>
+
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-PPO--VmlldzoxODAwNjkw" style="width:100%; height:500px" title="MuJoCo-CleanRL-s-PPO"></iframe>
+
+### Video tutorial
+
+If you'd like to learn `ppo_continuous_action.py` in-depth, consider checking out the following video tutorial:
+
+
+<div style="text-align: center;"><iframe width="560" height="315" src="https://www.youtube.com/embed/BvZvx7ENZBw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+
+
 
 
 [^1]: Huang, Shengyi; Dossa, Rousslan Fernand Julien; Raffin, Antonin; Kanervisto, Anssi; Wang, Weixun (2022). The 37 Implementation Details of Proximal Policy Optimization. ICLR 2022 Blog Track https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/
