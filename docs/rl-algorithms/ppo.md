@@ -188,7 +188,7 @@ The [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 ```bash
 poetry install -E atari
 python cleanrl/ppo_continuous_action.py --help
-python cleanrl/ppo_continuous_action.py --env-id BreakoutNoFrameskip-v4
+python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
 ```
 
 ### Implementation details
