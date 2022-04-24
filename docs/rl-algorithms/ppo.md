@@ -145,7 +145,7 @@ To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://g
 
 Below are the average episodic returns for `ppo_atari.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
 
-| Environment      | `ppo_atari.py` | `openai/baselies`' PPO
+| Environment      | `ppo_atari.py` | `openai/baselies`' PPO (Huang et al., 2022)[^1]
 | ----------- | ----------- | ----------- |
 | BreakoutNoFrameskip-v4      | 416.31 ± 43.92     | 406.57 ± 31.554  |
 | PongNoFrameskip-v4   | 20.59 ± 0.35    |  20.512 ± 0.50 |
@@ -218,7 +218,7 @@ To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://g
 
 Below are the average episodic returns for `ppo_continuous_action.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
 
-| Environment      | `ppo_continuous_action.py` | `openai/baselies`' PPO
+| Environment      | `ppo_continuous_action.py` | `openai/baselies`' PPO (Huang et al., 2022)[^1]
 | ----------- | ----------- | ----------- |
 | Hopper-v2      | 2231.12 ± 656.72     | 2518.95 ± 850.46  |
 | Walker2d-v2   | 3050.09 ± 1136.21    |  3208.08 ± 1264.37 |
@@ -246,6 +246,70 @@ If you'd like to learn `ppo_continuous_action.py` in-depth, consider checking ou
 
 
 <div style="text-align: center;"><iframe width="560" height="315" src="https://www.youtube.com/embed/BvZvx7ENZBw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+
+
+
+
+## `ppo_atari_lstm.py`
+
+The [ppo_atari_lstm.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py) has the following features:
+
+* For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+* Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
+* Works with the `Discrete` action space
+
+### Usage
+
+```bash
+poetry install -E atari
+python cleanrl/ppo_atari_lstm.py --help
+python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
+```
+
+### Implementation details
+
+[ppo_atari_lstm.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py) is based on the "5 LSTM implementation details" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/), which are as follows:
+
+1. Layer initialization for LSTM layers (:material-github: [a2c/utils.py#L84-L86](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L84-L86))
+2. Initialize the LSTM states to be zeros (:material-github: [common/models.py#L179](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/models.py#L179))
+3. Reset LSTM states at the end of the episode (:material-github: [common/models.py#L141](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/models.py#L141))
+4. Prepare sequential rollouts in mini-batches (:material-github: [a2c/utils.py#L81](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L81))
+5. Reconstruct LSTM states during training (:material-github: [a2c/utils.py#L81](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L81))
+
+
+
+### Experiment results
+
+To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5184afc2b7d5032b56e6689175a17b7bad172771%2Fbenchmark%2Fppo.sh%23L18-L23&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+
+Below are the average episodic returns for `ppo_atari_lstm.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
+
+
+| Environment      | `ppo_atari_lstm.py` | `openai/baselies`' PPO (Huang et al., 2022)[^1]
+| ----------- | ----------- | ----------- |
+| BreakoutNoFrameskip-v4      | 128.92 ± 31.10    | 138.98 ± 50.76  |
+| PongNoFrameskip-v4   | 19.78 ± 1.58    | 19.79 ± 0.67 |
+| BeamRiderNoFrameskip-v4   | 1536.20 ± 612.21         | 1591.68 ± 372.95|
+
+
+Learning curves:
+
+<div class="grid-container">
+<img src="../ppo/lstm/BreakoutNoFrameskip-v4.png">
+
+<img src="../ppo/lstm/PongNoFrameskip-v4.png">
+
+<img src="../ppo/lstm/BeamRiderNoFrameskip-v4.png">
+</div>
+
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-LSTM--VmlldzoxODcxMzE4" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-LSTM"></iframe>
+
 
 
 
