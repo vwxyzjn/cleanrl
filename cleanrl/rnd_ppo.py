@@ -1,3 +1,4 @@
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/rnd/#rnd_ppopy
 # https://github.com/facebookresearch/torchbeast/blob/master/torchbeast/core/environment.py
 
 import time
