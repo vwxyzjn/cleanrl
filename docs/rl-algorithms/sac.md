@@ -184,33 +184,6 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
 
 3. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) uses `--batch-size=256` while :material-github: [openai/spinningup](https://github.com/openai/spinningup/blob/038665d62d569055401d91856abb287263096178/spinup/algos/tf1/sac/sac.py#L44)'s uses `--batch-size=100` by default.
 
-4. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) also implementts global gradient norm clipping with `--max-grad-norm` set to `0.5` by default.
-
-```python
-    parser.add_argument("--max-grad-norm", type=float, default=0.5,
-        help="the maximum norm for the gradient clipping")
-```
-
-The gradient norm clipping is applied during the Soft Q-value, and the policy networks optimization:
-
-```python hl_lines="5"
-    qf_loss = qf1_loss + qf2_loss
-
-    q_optimizer.zero_grad()
-    qf_loss.backward()
-    nn.utils.clip_grad_norm_(list(qf1.parameters()) + list(qf2.parameters()), args.max_grad_norm)
-    q_optimizer.step()
-```
-
-```python hl_lines="5"
-    actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
-
-    actor_optimizer.zero_grad()
-    actor_loss.backward()
-    nn.utils.clip_grad_norm_(list(actor.parameters()), args.max_grad_norm)
-    actor_optimizer.step()
-```
-
 ## Experiment results
 
 PR :material-github: [vwxyzjn/cleanrl#146](https://github.com/vwxyzjn/cleanrl/pull/146) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/sac](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/sac), after 1 million training steps.
