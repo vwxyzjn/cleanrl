@@ -1,9 +1,0 @@
-OMP_NUM_THREADS=1 poetry run python cleanrl/ppo.py --env-id CartPole-v1 --track --capture-video --seed 1 --wandb-entity cleanrl --wandb-project-name benchmark --cuda False --total-timesteps 500000
-OMP_NUM_THREADS=1 poetry run python cleanrl/ppo.py --env-id CartPole-v1 --track --capture-video --seed 2 --wandb-entity cleanrl --wandb-project-name benchmark --cuda False --total-timesteps 500000
-OMP_NUM_THREADS=1 poetry run python cleanrl/ppo.py --env-id CartPole-v1 --track --capture-video --seed 3 --wandb-entity cleanrl --wandb-project-name benchmark --cuda False --total-timesteps 500000
-OMP_NUM_THREADS=1 poetry run python cleanrl/ppo.py --env-id Acrobot-v1 --track --capture-video --seed 1 --wandb-entity cleanrl --wandb-project-name benchmark --cuda False --total-timesteps 500000
-OMP_NUM_THREADS=1 poetry run python cleanrl/ppo.py --env-id Acrobot-v1 --track --capture-video --seed 2 --wandb-entity cleanrl --wandb-project-name benchmark --cuda False --total-timesteps 500000
-OMP_NUM_THREADS=1 poetry run python cleanrl/ppo.py --env-id Acrobot-v1 --track --capture-video --seed 3 --wandb-entity cleanrl --wandb-project-name benchmark --cuda False --total-timesteps 500000
-OMP_NUM_THREADS=1 poetry run python cleanrl/ppo.py --env-id MountainCar-v0 --track --capture-video --seed 1 --wandb-entity cleanrl --wandb-project-name benchmark --cuda False --total-timesteps 500000
-OMP_NUM_THREADS=1 poetry run python cleanrl/ppo.py --env-id MountainCar-v0 --track --capture-video --seed 2 --wandb-entity cleanrl --wandb-project-name benchmark --cuda False --total-timesteps 500000
-OMP_NUM_THREADS=1 poetry run python cleanrl/ppo.py --env-id MountainCar-v0 --track --capture-video --seed 3 --wandb-entity cleanrl --wandb-project-name benchmark --cuda False --total-timesteps 500000
