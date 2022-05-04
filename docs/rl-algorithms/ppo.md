@@ -674,7 +674,7 @@ We can see how `ppo_atari_multigpu.py` can result in no loss of sample efficienc
 
 To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fppo.sh%23L11-L16&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fc8fe88b7d7daf5be5324c00735885efddb40a252%2Fbenchmark%2Fppo.sh%23L47-L52&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 
 Below are the average episodic returns for `ppo_atari_multigpu.py`. To ensure no loss of sample efficiency, we compared the results against `ppo_atari.py`.
@@ -713,7 +713,7 @@ Under the same hardware, we see that `ppo_atari_multigpu.py` is about **30% fast
         <img src="../ppo/Breakout-time-a.png">
     </div>
 
-    The purpose of `ppo_atari_multigpu.py` is not (yet) to achieve the fastest PPO + Atari example. Rather, its purpose is to *rigorously validate data paralleism does provide performance benefits*.
+    The purpose of `ppo_atari_multigpu.py` is not (yet) to achieve the fastest PPO + Atari example. Rather, its purpose is to *rigorously validate data paralleism does provide performance benefits*. We could do something like `ppo_atari_multigpu_envpool.py` to possibly obtain the fastest PPO + Atari possible, but that is for another day. Note we may need `numba` to pin the threads `envpool` is using in each subprocess to avoid threads fighting each other and lowering the throughput.
 
 
 Tracked experiments and game play videos:
