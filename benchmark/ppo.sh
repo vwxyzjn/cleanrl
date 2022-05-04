@@ -45,8 +45,8 @@ xvfb-run -a python -m cleanrl_utils.benchmark \
     --workers 1
 
 poetry install -E atari
-OMP_NUM_THREADS=1 xvfb-run -a python -m cleanrl_utils.benchmark \
+xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids PongNoFrameskip-v4 BeamRiderNoFrameskip-v4 BreakoutNoFrameskip-v4 \
-    --command "poetry run python cleanrl/ppo_atari.py --track --capture-video" \
+    --command "poetry run torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --track --capture-video" \
     --num-seeds 3 \
-    --workers 3
+    --workers 1
