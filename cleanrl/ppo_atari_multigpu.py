@@ -2,13 +2,13 @@ import argparse
 import os
 import random
 import time
+import warnings
 from distutils.util import strtobool
 
 import gym
 import numpy as np
 import torch
 import torch.distributed as dist
-import warnings
 import torch.nn as nn
 import torch.optim as optim
 from torch.distributions.categorical import Categorical
@@ -162,11 +162,13 @@ if __name__ == "__main__":
     if world_size > 1:
         dist.init_process_group(args.backend, rank=local_rank, world_size=world_size)
     else:
-        warnings.warn("""
+        warnings.warn(
+            """
 Not using distributed mode!
 If you want to use distributed mode, please execute this script with 'torchrun'.
 E.g., ` torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py`
-        """)
+        """
+        )
     print(f"================================")
     print(f"args.num_envs: {args.num_envs}, args.batch_size: {args.batch_size}, args.minibatch_size: {args.minibatch_size}")
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -363,7 +365,9 @@ E.g., ` torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.p
                     offset = 0
                     for param in agent.parameters():
                         if param.grad is not None:
-                            param.grad.data.copy_(all_grads[offset : offset + param.numel()].view_as(param.grad.data) / world_size)
+                            param.grad.data.copy_(
+                                all_grads[offset : offset + param.numel()].view_as(param.grad.data) / world_size
+                            )
                             offset += param.numel()
 
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
