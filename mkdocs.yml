@@ -2,7 +2,7 @@ site_name: CleanRL User Guide
 theme:
   name: material
   features:
-    - navigation.instant
+    # - navigation.instant
     # - navigation.tabs
     - navigation.expand
     - navigation.top
