@@ -79,21 +79,22 @@ with the Bellman update target is $y = r + \gamma \, Q^{'}(s', a')$ and the repl
     - `dqn_atari.py` uses `--exploration-fraction=0.1` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--exploration-fraction=0.02` (all corresponds to 250000 steps or 1M frames being the frame that epsilon is annealed to `--end-e=0.1` ).
     - `dqn_atari.py` handles truncation and termination properly like (Mnih et al., 2015)[^1] by using SB3's replay buffer's `handle_timeout_termination=True`.
 1. `dqn_atari.py` use a self-contained evaluation scheme: `dqn_atari.py` reports the episodic returns obtained throughout training, whereas (Mnih et al., 2015)[^1] is trained with `--end-e=0.1` but reported episodic returns using a separate evaluation process with `--end-e=0.01` (See "Evaluation procedure" under "METHODS" on page 6).
-1. `dqn_atari.py` rescales the gradient so that the norm of the parameters does not exceed `0.5` like done in PPO (:material-github: [ppo2/model.py#L102-L108](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L102-L108)). 
 
 
 ### Experiment results
 
-PR :material-github: [vwxyzjn/cleanrl#124](https://github.com/vwxyzjn/cleanrl/pull/124) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/dqn](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/dqn).
+To run benchmark experiments, see :material-github: [benchmark/c51.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/c51.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F2e2dc9c6ede5e5e5df3eaea73c458bb9a83507d2%2Fbenchmark%2Fc51.sh%23L8-L13&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 Below are the average episodic returns for `dqn_atari.py`. 
 
 
 | Environment      | `dqn_atari.py` 10M steps | (Mnih et al., 2015)[^1] 50M steps | (Hessel et al., 2017, Figure 5)[^3] 
 | ----------- | ----------- | ----------- | ---- |
-| BreakoutNoFrameskip-v4      | 337.64 ± 69.47      |401.2 ± 26.9  | ~230 at 10M steps, ~300 at 50M steps
-| PongNoFrameskip-v4  | 20.293 ± 0.37     |  18.9 ± 1.3 |  ~20 10M steps, ~20 at 50M steps 
-| BeamRiderNoFrameskip-v4   | 6207.41 ± 1019.96        | 6846 ± 1619 | ~6000 10M steps, ~7000 at 50M steps 
+| BreakoutNoFrameskip-v4      | 366.928 ± 39.89      |401.2 ± 26.9  | ~230 at 10M steps, ~300 at 50M steps
+| PongNoFrameskip-v4  | 20.25 ± 0.41     |  18.9 ± 1.3 |  ~20 10M steps, ~20 at 50M steps 
+| BeamRiderNoFrameskip-v4   | 6673.24 ± 1434.37        | 6846 ± 1619 | ~6000 10M steps, ~7000 at 50M steps 
 
 
 Note that we save computational time by reducing timesteps from 50M to 10M, but our `dqn_atari.py` scores the same or higher than (Mnih et al., 2015)[^1] in 10M steps.
@@ -169,16 +170,18 @@ The [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py) shar
 
 ### Experiment results
 
-PR :material-github: [vwxyzjn/cleanrl#157](https://github.com/vwxyzjn/cleanrl/pull/157) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/dqn](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/dqn).
+To run benchmark experiments, see :material-github: [benchmark/c51.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/c51.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F2e2dc9c6ede5e5e5df3eaea73c458bb9a83507d2%2Fbenchmark%2Fc51.sh%23L2-L6&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 Below are the average episodic returns for `dqn.py`. 
 
 
 | Environment      | `dqn.py`  | 
 | ----------- | ----------- | 
-| CartPole-v1      | 471.21 ± 43.45      |
-| Acrobot-v1  | -93.37 ± 8.46     | 
-| MountainCar-v0   | -170.51 ± 26.22        | 
+| CartPole-v1      | 488.69 ± 16.11      |
+| Acrobot-v1  | -91.54 ± 7.20     | 
+| MountainCar-v0   | -194.95 ± 8.48        | 
 
 
 Note that the DQN has no official benchmark on classic control environments, so we did not include a comparison. That said, our `dqn.py` was able to achieve near perfect scores in `CartPole-v1` and `Acrobot-v1`; further, it can obtain successful runs in the sparse environment `MountainCar-v0`.

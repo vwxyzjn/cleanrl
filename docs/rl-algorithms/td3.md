@@ -63,20 +63,22 @@ $$ \nabla_{\phi} J(\phi)=\left.N^{-1} \sum \nabla_{a} Q_{\theta_{1}}(s, a)\right
 Our [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) is based on the [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py) from :material-github: [sfujim/TD3](https://github.com/sfujim/TD3). Our [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) presents the following implementation differences.
 
 1. [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) uses a two separate objects `qf1` and `qf2` to represents the two Q functions in the Clipped Double Q-learning architecture, whereas  [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py)  (Fujimoto et al., 2018)[^2] uses a single `Critic` class that contains both Q networks. That said, these two implementations are virtually the same.
-1. [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) rescales the gradient so that the norm of the parameters does not exceed `0.5` like done in PPO (:material-github: [ppo2/model.py#L102-L108](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L102-L108)). 
 
 
 ### Experiment results
 
-PR :material-github: [vwxyzjn/cleanrl#141](https://github.com/vwxyzjn/cleanrl/pull/141) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/td3](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/td3).
+To run benchmark experiments, see :material-github: [benchmark/td3.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/td3.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F2e2dc9c6ede5e5e5df3eaea73c458bb9a83507d2%2Fbenchmark%2Ftd3.sh%23L1-L7&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
 
 Below are the average episodic returns for [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
 
 | Environment      | [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) | [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py) (Fujimoto et al., 2018, Table 1)[^2]  |
 | ----------- | ----------- | ----------- | 
-| HalfCheetah      | 9391.52 ± 448.54      |9636.95 ± 859.065  |
-| Walker2d   | 3895.80 ± 333.89     |  4682.82 ± 539.64 | 
-| Hopper   | 3379.25 ± 200.22         |  3564.07 ± 114.74 | 
+| HalfCheetah      | 9018.31 ± 1078.31      |9636.95 ± 859.065  |
+| Walker2d   | 4246.07 ± 1210.84     |  4682.82 ± 539.64 | 
+| Hopper   | 3391.78 ± 232.21        |  3564.07 ± 114.74 | 
 
 
 
