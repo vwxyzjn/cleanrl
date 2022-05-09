@@ -169,9 +169,9 @@ Below are the average episodic returns for [`ddpg_continuous_action.py`](https:/
 
 | Environment      | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) | [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018, Table 1)[^2]  | [`DDPG.py`](https://github.com/sfujim/TD3/blob/master/DDPG.py) using settings from (Lillicrap et al., 2016)[^1] in (Fujimoto et al., 2018, Table 1)[^2]    |
 | ----------- | ----------- | ----------- | ----------- |
-| HalfCheetah      | 9260.485 ± 643.088      |8577.29  | 3305.60|
-| Walker2d   | 1728.72 ± 758.33     |  3098.11 | 1843.85 |
-| Hopper   | 1404.44 ± 544.78         |  1860.02 | 2020.46 |
+| HalfCheetah      | 9382.32 ± 1395.52      |8577.29  | 3305.60|
+| Walker2d   | 1598.35 ± 862.66     |  3098.11 | 1843.85 |
+| Hopper   | 1313.43 ± 684.46         |  1860.02 | 2020.46 |
 
 
 

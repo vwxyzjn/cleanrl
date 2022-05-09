@@ -197,9 +197,9 @@ The table below compares the results of CleanRL's [`sac_continuous_action.py`](h
 
 | Environment      | [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) |[SAC: Algorithms and Applications](https://arxiv.org/abs/1812.05905) @ 1M steps|
 | --------------- | ------------------ | ---------------- |
-| HalfCheetah-v2  | 9,063 ± 1381       | ~11,250          |
-| Walker2d-v2     | 4554 ± 296         | ~4,800           |
-| Hopper-v2       | 2347 ± 538         | ~3,250           |
+| HalfCheetah-v2  | 10310.37 ± 1873.21       | ~11,250          |
+| Walker2d-v2     | 4418.15 ± 592.82         | ~4,800           |
+| Hopper-v2       | 2685.76 ± 762.16         | ~3,250           |
 
 
 ### Learning curves
@@ -212,17 +212,10 @@ The table below compares the results of CleanRL's [`sac_continuous_action.py`](h
 
 <div></div>
 
-<div class="grid-container">
-    <img src="../sac/HalfCheetahBulletEnv-v0.png">
-    <img src="../sac/Walker2DBulletEnv-v0.png">
-    <img src="../sac/HopperBulletEnv-v0.png">
-</div>
 
 ### Tracked experiments and gameplay videos
 
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-SAC--VmlldzoxNzI1NDM0" style="width:100%; height:1200px" title="MuJoCo: CleanRL's DDPG"></iframe>
 
-
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/PyBullet-CleanRL-s-SAC--VmlldzoxNzI1NDQw" style="width:100%; height:1200px" title="PyBullet: CleanRL's DDPG"></iframe>
 
 [^1]:Diederik P Kingma, Max Welling (2016). Auto-Encoding Variational Bayes. ArXiv, abs/1312.6114. https://arxiv.org/abs/1312.6114

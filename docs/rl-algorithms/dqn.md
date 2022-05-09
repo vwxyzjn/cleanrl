@@ -92,9 +92,9 @@ Below are the average episodic returns for `dqn_atari.py`.
 
 | Environment      | `dqn_atari.py` 10M steps | (Mnih et al., 2015)[^1] 50M steps | (Hessel et al., 2017, Figure 5)[^3] 
 | ----------- | ----------- | ----------- | ---- |
-| BreakoutNoFrameskip-v4      | 337.64 ± 69.47      |401.2 ± 26.9  | ~230 at 10M steps, ~300 at 50M steps
-| PongNoFrameskip-v4  | 20.293 ± 0.37     |  18.9 ± 1.3 |  ~20 10M steps, ~20 at 50M steps 
-| BeamRiderNoFrameskip-v4   | 6207.41 ± 1019.96        | 6846 ± 1619 | ~6000 10M steps, ~7000 at 50M steps 
+| BreakoutNoFrameskip-v4      | 366.928 ± 39.89      |401.2 ± 26.9  | ~230 at 10M steps, ~300 at 50M steps
+| PongNoFrameskip-v4  | 20.25 ± 0.41     |  18.9 ± 1.3 |  ~20 10M steps, ~20 at 50M steps 
+| BeamRiderNoFrameskip-v4   | 6673.24 ± 1434.37        | 6846 ± 1619 | ~6000 10M steps, ~7000 at 50M steps 
 
 
 Note that we save computational time by reducing timesteps from 50M to 10M, but our `dqn_atari.py` scores the same or higher than (Mnih et al., 2015)[^1] in 10M steps.
@@ -179,9 +179,9 @@ Below are the average episodic returns for `dqn.py`.
 
 | Environment      | `dqn.py`  | 
 | ----------- | ----------- | 
-| CartPole-v1      | 471.21 ± 43.45      |
-| Acrobot-v1  | -93.37 ± 8.46     | 
-| MountainCar-v0   | -170.51 ± 26.22        | 
+| CartPole-v1      | 488.69 ± 16.11      |
+| Acrobot-v1  | -91.54 ± 7.20     | 
+| MountainCar-v0   | -194.95 ± 8.48        | 
 
 
 Note that the DQN has no official benchmark on classic control environments, so we did not include a comparison. That said, our `dqn.py` was able to achieve near perfect scores in `CartPole-v1` and `Acrobot-v1`; further, it can obtain successful runs in the sparse environment `MountainCar-v0`.
