@@ -27,7 +27,7 @@ Reference resources:
 
 | Variants Implemented      | Description |
 | ----------- | ----------- |
-| :material-github: [`sac_continuous_actions.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_continuous_action_py) | For continuous action space |
+| :material-github: [`sac_continuous_actions.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_continuous_actionpy) | For continuous action space |
 
 Below is our single-file implementations of SAC:
 
@@ -109,7 +109,7 @@ $$
 where $\mathcal{H}$ represents the _target entropy_, the desired lower bound for the expected entropy of the policy over the trajectory distribution induced by the latter.
 As a heuristic for the _target entropy_, the authors use the dimension of the action space of the task.
 
-## Implementation details
+### Implementation details
 CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) implementation is based on :material-github: [openai/spinningup](https://github.com/openai/spinningup/tree/master/spinup/algos/pytorch/sac).
 
 1. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) uses a *numerically stable* estimation method for the standard deviation $\sigma$ of the policy, which squashes it into a range of reasonable values for a standard deviation:
@@ -184,7 +184,7 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
 
 3. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) uses `--batch-size=256` while :material-github: [openai/spinningup](https://github.com/openai/spinningup/blob/038665d62d569055401d91856abb287263096178/spinup/algos/tf1/sac/sac.py#L44)'s uses `--batch-size=100` by default.
 
-## Experiment results
+### Experiment results
 
 To run benchmark experiments, see :material-github: [benchmark/sac.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/sac.sh). Specifically, execute the following command:
 
@@ -202,7 +202,7 @@ The table below compares the results of CleanRL's [`sac_continuous_action.py`](h
 | Hopper-v2       | 2685.76 ± 762.16         | ~3,250           |
 
 
-### Learning curves
+Learning curves:
 
 <div class="grid-container">
     <img src="../sac/HalfCheetah-v2.png">
@@ -213,7 +213,7 @@ The table below compares the results of CleanRL's [`sac_continuous_action.py`](h
 <div></div>
 
 
-### Tracked experiments and gameplay videos
+Tracked experiments and game play videos:
 
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-SAC--VmlldzoxNzI1NDM0" style="width:100%; height:1200px" title="MuJoCo: CleanRL's DDPG"></iframe>
 
