@@ -24,9 +24,11 @@ All our PPO implementations below are augmented with the same code-level optimiz
 | Variants Implemented      | Description |
 | ----------- | ----------- |
 | :material-github: [`ppo.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppopy) | For classic control tasks like `CartPole-v1`. |
-| :material-github: [`ppo_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_ataripy) |  For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques. |
+| :material-github: [`ppo_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_ataripy) |  For Atari games. It uses convolutional layers and common atari-based pre-processing techniques. |
 | :material-github: [`ppo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_continuous_actionpy) | For continuous action space. Also implemented Mujoco-specific code-level optimizations |
-
+| :material-github: [`ppo_atari_lstm.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_lstmpy) | For Atari games using LSTM without stacked frames. |
+| :material-github: [`ppo_atari_envpool.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_envpoolpy) | Uses the blazing fast Envpool Atari vectorized environment. |
+| :material-github: [`ppo_procgen.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_procgen.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_procgenpy) | For the procgen environments |
 
 Below are our single-file implementations of PPO:
 
@@ -124,7 +126,7 @@ If you'd like to learn `ppo.py` in-depth, consider checking out the following vi
 
 The [ppo_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py) has the following features:
 
-* For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+* For Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
 * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
 * Works with the `Discrete` action space
 
@@ -279,7 +281,7 @@ If you'd like to learn `ppo_continuous_action.py` in-depth, consider checking ou
 
 The [ppo_atari_lstm.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py) has the following features:
 
-* For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+* For Atari games using LSTM without stacked frames. It uses convolutional layers and common atari-based pre-processing techniques.
 * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
 * Works with the `Discrete` action space
 
@@ -304,6 +306,8 @@ See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `p
 3. Reset LSTM states at the end of the episode (:material-github: [common/models.py#L141](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/models.py#L141))
 4. Prepare sequential rollouts in mini-batches (:material-github: [a2c/utils.py#L81](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L81))
 5. Reconstruct LSTM states during training (:material-github: [a2c/utils.py#L81](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L81))
+
+To help test out the memory, we remove the 4 stacked frames from the observation (i.e., using `env = gym.wrappers.FrameStack(env, 1)` instead of `env = gym.wrappers.FrameStack(env, 4)` like in `ppo_atari.py` )
 
 
 
@@ -346,7 +350,7 @@ Tracked experiments and game play videos:
 The [ppo_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool.py) has the following features:
 
 * Uses the blazing fast [Envpool](https://github.com/sail-sg/envpool) vectorized environment.
-* For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+* For Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
 * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
 * Works with the `Discrete` action space
 
@@ -411,8 +415,8 @@ Tracked experiments and game play videos:
 
 The [ppo_procgen.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_procgen.py) has the following features:
 
-* For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
-* Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
+* For the procgen environments
+* Uses IMPALA-style neural network
 * Works with the `Discrete` action space
 
 
