@@ -42,7 +42,7 @@ def parse_args():
         help="the learning rate of the optimizer")
     parser.add_argument("--total-timesteps", type=int, default=25e6,
         help="total timesteps of the experiments")
-    parser.add_argument("--num-envs", type=int, default=64,
+    parser.add_argument("--num-envs", type=int, default=64, 
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=256,
         help="the number of steps to run in each environment per policy rollout")
@@ -56,8 +56,10 @@ def parse_args():
         help="the lambda for the general advantage estimation")
     parser.add_argument("--num-minibatches", type=int, default=8,
         help="the number of mini-batches")
-    parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+    parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggles advantages normalization")
+    parser.add_argument("--norm-adv-ppg", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="Full batch advantage normalization as used in PPG code")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -82,7 +84,7 @@ def parse_args():
         help="E_aux:the K epochs to update the policy")
     parser.add_argument("--beta-clone", type=float, default=1.0,
         help="the behavior cloning coefficient")
-    parser.add_argument("--n-aux-minibatch", type=int, default=16 * 32,
+    parser.add_argument("--aux-num-rollouts", type=int, default=16,
         help="the number of mini batch in the auxiliary phase")
     parser.add_argument("--n-aux-grad-accum", type=int, default=1,
         help="the number of gradient accumulation in mini batch")
@@ -90,24 +92,30 @@ def parse_args():
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.aux_batch_size = int(args.batch_size * args.n_iteration)
-    args.aux_minibatch_size = int(args.aux_batch_size // (args.n_aux_minibatch * args.n_aux_grad_accum))
+    # args.aux_minibatch_size = int(args.aux_batch_size // (args.n_aux_minibatch * args.n_aux_grad_accum))
+    args.aux_minibatch_size = int(args.num_steps * args.aux_num_rollouts)
     assert args.v_value == 1, "Multiple value epoch (v_value != 1) is not supported yet"
     # fmt: on
     return args
 
 
-def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
-    torch.nn.init.orthogonal_(layer.weight, std)
-    torch.nn.init.constant_(layer.bias, bias_const)
+def layer_init_normed(layer, norm_dim, scale=1.0):
+    with torch.no_grad():
+        layer.weight.data *= scale / layer.weight.norm(dim=norm_dim, p=2, keepdim=True)
+        layer.bias *= 0
     return layer
 
 
 # taken from https://github.com/AIcrowd/neurips2020-procgen-starter-kit/blob/142d09586d2272a17f44481a115c4bd817cf6a94/models/impala_cnn_torch.py
 class ResidualBlock(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, channels, scale):
         super().__init__()
-        self.conv0 = nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, padding=1)
-        self.conv1 = nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, padding=1)
+        # scale = (1/3**0.5 * 1/2**0.5)**0.5 # For default IMPALA CNN this is the final scale value in the PPG code
+        scale = np.sqrt(scale)
+        conv0 = nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, padding=1)
+        self.conv0 = layer_init_normed(conv0, norm_dim=(1, 2, 3), scale=scale)
+        conv1 = nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, padding=1)
+        self.conv1 = layer_init_normed(conv1, norm_dim=(1, 2, 3), scale=scale)
 
     def forward(self, x):
         inputs = x
@@ -119,13 +127,16 @@ class ResidualBlock(nn.Module):
 
 
 class ConvSequence(nn.Module):
-    def __init__(self, input_shape, out_channels):
+    def __init__(self, input_shape, out_channels, scale):
         super().__init__()
         self._input_shape = input_shape
         self._out_channels = out_channels
-        self.conv = nn.Conv2d(in_channels=self._input_shape[0], out_channels=self._out_channels, kernel_size=3, padding=1)
-        self.res_block0 = ResidualBlock(self._out_channels)
-        self.res_block1 = ResidualBlock(self._out_channels)
+        conv = nn.Conv2d(in_channels=self._input_shape[0], out_channels=self._out_channels, kernel_size=3, padding=1)
+        self.conv = layer_init_normed(conv, norm_dim=(1, 2, 3), scale=1.)
+        nblocks = 2 # Set to the number of residual blocks
+        scale = scale / np.sqrt(nblocks)
+        self.res_block0 = ResidualBlock(self._out_channels, scale=scale)
+        self.res_block1 = ResidualBlock(self._out_channels, scale=scale)
 
     def forward(self, x):
         x = self.conv(x)
@@ -146,20 +157,25 @@ class Agent(nn.Module):
         h, w, c = envs.single_observation_space.shape
         shape = (c, h, w)
         conv_seqs = []
-        for out_channels in [16, 32, 32]:
-            conv_seq = ConvSequence(shape, out_channels)
+        chans = [16, 32, 32]
+        scale = 1 / np.sqrt(len(chans)) # Not fully sure about the logic behind this but its used in PPG code
+        for out_channels in chans:
+            conv_seq = ConvSequence(shape, out_channels, scale=scale)
             shape = conv_seq.get_output_shape()
             conv_seqs.append(conv_seq)
+
+        encodertop = nn.Linear(in_features=shape[0] * shape[1] * shape[2], out_features=256)
+        encodertop = layer_init_normed(encodertop, norm_dim=1, scale=1.4)
         conv_seqs += [
             nn.Flatten(),
             nn.ReLU(),
-            nn.Linear(in_features=shape[0] * shape[1] * shape[2], out_features=256),
+            encodertop,
             nn.ReLU(),
         ]
         self.network = nn.Sequential(*conv_seqs)
-        self.actor = layer_init(nn.Linear(256, envs.single_action_space.n), std=0.01)
-        self.critic = layer_init(nn.Linear(256, 1), std=1)
-        self.aux_critic = layer_init(nn.Linear(256, 1), std=1)
+        self.actor = layer_init_normed(nn.Linear(256, envs.single_action_space.n), norm_dim=1, scale=0.1)
+        self.critic = layer_init_normed(nn.Linear(256, 1), norm_dim=1, scale=0.1)
+        self.aux_critic = layer_init_normed(nn.Linear(256, 1), norm_dim=1, scale=0.1)
 
     def get_action_and_value(self, x, action=None):
         hidden = self.network(x.permute((0, 3, 1, 2)) / 255.0)  # "bhwc" -> "bchw"
@@ -310,7 +326,11 @@ if __name__ == "__main__":
             b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
             b_advantages = advantages.reshape(-1)
             b_returns = returns.reshape(-1)
-            b_values = values.reshape(-1)
+            b_values = values.reshape(-1) 
+
+            # PPG code does full batch advantage normalization
+            if args.norm_adv_ppg:
+                b_advantages = (b_advantages - b_advantages.mean()) / (b_advantages.std() + 1e-8)
 
             # Optimizing the policy and value network
             b_inds = np.arange(args.batch_size)
@@ -389,11 +409,22 @@ if __name__ == "__main__":
             aux_returns[storage_slice] = b_returns.cpu().clone()
 
         # AUXILIARY PHASE
-        old_agent = Agent(envs).to(device)
-        old_agent.load_state_dict(agent.state_dict())
+        # old_agent = Agent(envs).to(device)
+        # old_agent.load_state_dict(agent.state_dict())
         aux_inds = np.arange(
             args.aux_batch_size,
         )
+        
+        # Build the old policy on the aux buffer before distilling to the network
+        aux_pi = np.empty((args.aux_batch_size, envs.single_action_space.n), dtype=np.float32)
+        for i, start in enumerate(range(0, args.aux_batch_size, args.aux_minibatch_size)):
+            end = start + args.aux_minibatch_size
+            aux_minibatch_ind = aux_inds[start:end]
+            m_aux_obs = aux_obs[aux_minibatch_ind].to(device)
+            with torch.no_grad():
+                aux_pi[aux_minibatch_ind] = agent.get_pi(m_aux_obs).logits.cpu().numpy()
+            del m_aux_obs
+
         for auxiliary_update in range(1, args.e_auxiliary + 1):
             print(f"aux epoch {auxiliary_update}")
             np.random.shuffle(aux_inds)
@@ -407,8 +438,10 @@ if __name__ == "__main__":
                     new_pi, new_values, new_aux_values = agent.get_pi_value_and_aux_value(m_aux_obs)
                     new_values = new_values.view(-1)
                     new_aux_values = new_aux_values.view(-1)
-                    with torch.no_grad():
-                        old_pi = old_agent.get_pi(m_aux_obs)
+                    # with torch.no_grad():
+                        # old_pi = old_agent.get_pi(m_aux_obs)
+                    old_pi_logits = torch.from_numpy(aux_pi[aux_minibatch_ind]).to(device)
+                    old_pi = Categorical(logits=old_pi_logits)
                     kl_loss = td.kl_divergence(old_pi, new_pi).mean()
 
                     real_value_loss = 0.5 * ((new_values - m_aux_returns) ** 2).mean()
