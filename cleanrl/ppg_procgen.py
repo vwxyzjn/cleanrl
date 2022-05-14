@@ -247,7 +247,8 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    aux_obs = torch.zeros((args.num_steps * args.num_envs * args.n_iteration,) + envs.single_observation_space.shape)
+    aux_obs = torch.zeros((args.num_steps * args.num_envs * args.n_iteration,) + envs.single_observation_space.shape, 
+                          dtype=torch.uint8) # Saves lot system RAM
     aux_returns = torch.zeros((args.num_steps * args.num_envs * args.n_iteration,))
 
     # TRY NOT TO MODIFY: start the game
@@ -405,12 +406,10 @@ if __name__ == "__main__":
 
             # PPG Storage:
             storage_slice = slice(args.num_steps * args.num_envs * (update - 1), args.num_steps * args.num_envs * update)
-            aux_obs[storage_slice] = b_obs.cpu().clone()
+            aux_obs[storage_slice] = b_obs.cpu().clone().to(torch.uint8)
             aux_returns[storage_slice] = b_returns.cpu().clone()
 
         # AUXILIARY PHASE
-        # old_agent = Agent(envs).to(device)
-        # old_agent.load_state_dict(agent.state_dict())
         aux_inds = np.arange(
             args.aux_batch_size,
         )
@@ -420,7 +419,7 @@ if __name__ == "__main__":
         for i, start in enumerate(range(0, args.aux_batch_size, args.aux_minibatch_size)):
             end = start + args.aux_minibatch_size
             aux_minibatch_ind = aux_inds[start:end]
-            m_aux_obs = aux_obs[aux_minibatch_ind].to(device)
+            m_aux_obs = aux_obs[aux_minibatch_ind].to(torch.float32).to(device)
             with torch.no_grad():
                 aux_pi[aux_minibatch_ind] = agent.get_pi(m_aux_obs).logits.cpu().numpy()
             del m_aux_obs
@@ -433,13 +432,11 @@ if __name__ == "__main__":
                 aux_minibatch_ind = aux_inds[start:end]
                 try:
                     m_aux_obs = aux_obs[aux_minibatch_ind].to(device)
-                    m_aux_returns = aux_returns[aux_minibatch_ind].to(device)
+                    m_aux_returns = aux_returns[aux_minibatch_ind].to(torch.float32).to(device)
 
                     new_pi, new_values, new_aux_values = agent.get_pi_value_and_aux_value(m_aux_obs)
                     new_values = new_values.view(-1)
                     new_aux_values = new_aux_values.view(-1)
-                    # with torch.no_grad():
-                        # old_pi = old_agent.get_pi(m_aux_obs)
                     old_pi_logits = torch.from_numpy(aux_pi[aux_minibatch_ind]).to(device)
                     old_pi = Categorical(logits=old_pi_logits)
                     kl_loss = td.kl_divergence(old_pi, new_pi).mean()
