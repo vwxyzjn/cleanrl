@@ -432,7 +432,7 @@ if __name__ == "__main__":
             m_obs_shape = m_aux_obs.shape
             m_aux_obs = flatten01(m_aux_obs)
             with torch.no_grad():
-                pi_logits = agent.get_pi(m_aux_obs).logits.clone()
+                pi_logits = agent.get_pi(m_aux_obs).logits.cpu().clone()
             aux_pi[:, aux_minibatch_ind] = unflatten01(pi_logits, m_obs_shape[:2])
             del m_aux_obs
 
