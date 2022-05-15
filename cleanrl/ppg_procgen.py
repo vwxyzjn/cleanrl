@@ -84,16 +84,14 @@ def parse_args():
         help="E_aux:the K epochs to update the policy")
     parser.add_argument("--beta-clone", type=float, default=1.0,
         help="the behavior cloning coefficient")
-    parser.add_argument("--aux-num-rollouts", type=int, default=16,
+    parser.add_argument("--aux-num-rollouts", type=int, default=4,
         help="the number of mini batch in the auxiliary phase")
     parser.add_argument("--n-aux-grad-accum", type=int, default=1,
         help="the number of gradient accumulation in mini batch")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
-    args.aux_batch_size = int(args.batch_size * args.n_iteration)
-    # args.aux_minibatch_size = int(args.aux_batch_size // (args.n_aux_minibatch * args.n_aux_grad_accum))
-    args.aux_minibatch_size = int(args.num_steps * args.aux_num_rollouts)
+    args.aux_batch_rollouts = int(args.num_envs * args.n_iteration)
     assert args.v_value == 1, "Multiple value epoch (v_value != 1) is not supported yet"
     # fmt: on
     return args
@@ -105,6 +103,17 @@ def layer_init_normed(layer, norm_dim, scale=1.0):
         layer.bias *= 0
     return layer
 
+def flatten01(arr):
+    return arr.reshape((-1, *arr.shape[2:]))
+
+def unflatten01(arr, targetshape):
+    return arr.reshape((*targetshape, *arr.shape[1:]))
+
+def flatten_unflatten_test():
+    a = torch.rand(400, 30, 100, 100, 5)
+    b = flatten01(a)
+    c = unflatten01(b, a.shape[:2])
+    assert torch.equal(a, c)
 
 # taken from https://github.com/AIcrowd/neurips2020-procgen-starter-kit/blob/142d09586d2272a17f44481a115c4bd817cf6a94/models/impala_cnn_torch.py
 class ResidualBlock(nn.Module):
@@ -218,6 +227,8 @@ if __name__ == "__main__":
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
+    flatten_unflatten_test() # Try not to mess with the flatten unflatten logic
+
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -247,9 +258,9 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    aux_obs = torch.zeros((args.num_steps * args.num_envs * args.n_iteration,) + envs.single_observation_space.shape, 
-                          dtype=torch.uint8) # Saves lot system RAM
-    aux_returns = torch.zeros((args.num_steps * args.num_envs * args.n_iteration,))
+    aux_obs = torch.zeros((args.num_steps, args.aux_batch_rollouts) + envs.single_observation_space.shape, 
+                           dtype=torch.uint8) # Saves lot system RAM
+    aux_returns = torch.zeros((args.num_steps, args.aux_batch_rollouts))
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -404,40 +415,45 @@ if __name__ == "__main__":
             print("SPS:", int(global_step / (time.time() - start_time)))
             writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
-            # PPG Storage:
-            storage_slice = slice(args.num_steps * args.num_envs * (update - 1), args.num_steps * args.num_envs * update)
-            aux_obs[storage_slice] = b_obs.cpu().clone().to(torch.uint8)
-            aux_returns[storage_slice] = b_returns.cpu().clone()
+            # PPG Storage - Rollouts are saved without flattening for sampling full rollouts later:
+            storage_slice = slice(args.num_envs * (update - 1), args.num_envs * update)
+            aux_obs[:, storage_slice] = obs.cpu().clone().to(torch.uint8)
+            aux_returns[:, storage_slice] = returns.cpu().clone()
 
         # AUXILIARY PHASE
-        aux_inds = np.arange(
-            args.aux_batch_size,
-        )
+        aux_inds = np.arange(args.aux_batch_rollouts)
         
         # Build the old policy on the aux buffer before distilling to the network
-        aux_pi = np.empty((args.aux_batch_size, envs.single_action_space.n), dtype=np.float32)
-        for i, start in enumerate(range(0, args.aux_batch_size, args.aux_minibatch_size)):
-            end = start + args.aux_minibatch_size
+        aux_pi = torch.zeros((args.num_steps, args.aux_batch_rollouts, envs.single_action_space.n))
+        for i, start in enumerate(range(0, args.aux_batch_rollouts, args.aux_num_rollouts)):
+            end = start + args.aux_num_rollouts
             aux_minibatch_ind = aux_inds[start:end]
-            m_aux_obs = aux_obs[aux_minibatch_ind].to(torch.float32).to(device)
+            m_aux_obs = aux_obs[:, aux_minibatch_ind].to(torch.float32).to(device)
+            m_obs_shape = m_aux_obs.shape
+            m_aux_obs = flatten01(m_aux_obs)
             with torch.no_grad():
-                aux_pi[aux_minibatch_ind] = agent.get_pi(m_aux_obs).logits.cpu().numpy()
+                pi_logits = agent.get_pi(m_aux_obs).logits.clone()
+            aux_pi[:, aux_minibatch_ind] = unflatten01(pi_logits, m_obs_shape[:2])
             del m_aux_obs
 
         for auxiliary_update in range(1, args.e_auxiliary + 1):
             print(f"aux epoch {auxiliary_update}")
             np.random.shuffle(aux_inds)
-            for i, start in enumerate(range(0, args.aux_batch_size, args.aux_minibatch_size)):
-                end = start + args.aux_minibatch_size
+            for i, start in enumerate(range(0, args.aux_batch_rollouts, args.aux_num_rollouts)):
+                end = start + args.aux_num_rollouts
                 aux_minibatch_ind = aux_inds[start:end]
                 try:
-                    m_aux_obs = aux_obs[aux_minibatch_ind].to(device)
-                    m_aux_returns = aux_returns[aux_minibatch_ind].to(torch.float32).to(device)
+                    m_aux_obs = aux_obs[:, aux_minibatch_ind].to(device)
+                    m_obs_shape = m_aux_obs.shape
+                    m_aux_obs = flatten01(m_aux_obs) # Sample full rollouts for PPG instead of random indexes
+                    m_aux_returns = aux_returns[:, aux_minibatch_ind].to(torch.float32).to(device)
+                    m_aux_returns = flatten01(m_aux_returns)
 
                     new_pi, new_values, new_aux_values = agent.get_pi_value_and_aux_value(m_aux_obs)
+
                     new_values = new_values.view(-1)
                     new_aux_values = new_aux_values.view(-1)
-                    old_pi_logits = torch.from_numpy(aux_pi[aux_minibatch_ind]).to(device)
+                    old_pi_logits = flatten01(aux_pi[:, aux_minibatch_ind]).to(device)
                     old_pi = Categorical(logits=old_pi_logits)
                     kl_loss = td.kl_divergence(old_pi, new_pi).mean()
 
