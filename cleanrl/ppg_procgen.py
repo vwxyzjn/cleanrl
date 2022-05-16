@@ -249,7 +249,7 @@ if __name__ == "__main__":
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent = Agent(envs).to(device)
-    optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
+    optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-8)
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -461,13 +461,14 @@ if __name__ == "__main__":
                     aux_value_loss = 0.5 * ((new_aux_values - m_aux_returns) ** 2).mean()
                     joint_loss = aux_value_loss + args.beta_clone * kl_loss
 
-                    optimizer.zero_grad()
                     loss = (joint_loss + real_value_loss) / args.n_aux_grad_accum
                     loss.backward()
 
                     if (i + 1) % args.n_aux_grad_accum == 0:
                         nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                         optimizer.step()
+                        optimizer.zero_grad() # This cannot be outside, else gradients won't accumulate
+                        
                 except RuntimeError:
                     raise Exception(
                         "if running out of CUDA memory, try a higher --n-aux-grad-accum, which trades more time for less gpu memory"
