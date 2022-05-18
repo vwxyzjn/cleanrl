@@ -63,9 +63,9 @@ Learning curves:
 
 <div class="grid-container">
 
-<img src="ppg/bigfish-easy-ppg-ppo.svg">
+<img src="../ppg/bigfish-easy-ppg-ppo.png">
 
-<img src="ppg/starpilot-easy-ppg-ppo.svg">
+<img src="../ppg/starpilot-easy-ppg-ppo.png">
 
 </div>
 
