@@ -103,17 +103,21 @@ def layer_init_normed(layer, norm_dim, scale=1.0):
         layer.bias *= 0
     return layer
 
+
 def flatten01(arr):
     return arr.reshape((-1, *arr.shape[2:]))
 
+
 def unflatten01(arr, targetshape):
     return arr.reshape((*targetshape, *arr.shape[1:]))
+
 
 def flatten_unflatten_test():
     a = torch.rand(400, 30, 100, 100, 5)
     b = flatten01(a)
     c = unflatten01(b, a.shape[:2])
     assert torch.equal(a, c)
+
 
 # taken from https://github.com/AIcrowd/neurips2020-procgen-starter-kit/blob/142d09586d2272a17f44481a115c4bd817cf6a94/models/impala_cnn_torch.py
 class ResidualBlock(nn.Module):
@@ -141,8 +145,8 @@ class ConvSequence(nn.Module):
         self._input_shape = input_shape
         self._out_channels = out_channels
         conv = nn.Conv2d(in_channels=self._input_shape[0], out_channels=self._out_channels, kernel_size=3, padding=1)
-        self.conv = layer_init_normed(conv, norm_dim=(1, 2, 3), scale=1.)
-        nblocks = 2 # Set to the number of residual blocks
+        self.conv = layer_init_normed(conv, norm_dim=(1, 2, 3), scale=1.0)
+        nblocks = 2  # Set to the number of residual blocks
         scale = scale / np.sqrt(nblocks)
         self.res_block0 = ResidualBlock(self._out_channels, scale=scale)
         self.res_block1 = ResidualBlock(self._out_channels, scale=scale)
@@ -167,7 +171,7 @@ class Agent(nn.Module):
         shape = (c, h, w)
         conv_seqs = []
         chans = [16, 32, 32]
-        scale = 1 / np.sqrt(len(chans)) # Not fully sure about the logic behind this but its used in PPG code
+        scale = 1 / np.sqrt(len(chans))  # Not fully sure about the logic behind this but its used in PPG code
         for out_channels in chans:
             conv_seq = ConvSequence(shape, out_channels, scale=scale)
             shape = conv_seq.get_output_shape()
@@ -227,7 +231,7 @@ if __name__ == "__main__":
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
-    flatten_unflatten_test() # Try not to mess with the flatten unflatten logic
+    flatten_unflatten_test()  # Try not to mess with the flatten unflatten logic
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -258,8 +262,9 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    aux_obs = torch.zeros((args.num_steps, args.aux_batch_rollouts) + envs.single_observation_space.shape, 
-                           dtype=torch.uint8) # Saves lot system RAM
+    aux_obs = torch.zeros(
+        (args.num_steps, args.aux_batch_rollouts) + envs.single_observation_space.shape, dtype=torch.uint8
+    )  # Saves lot system RAM
     aux_returns = torch.zeros((args.num_steps, args.aux_batch_rollouts))
 
     # TRY NOT TO MODIFY: start the game
@@ -338,7 +343,7 @@ if __name__ == "__main__":
             b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
             b_advantages = advantages.reshape(-1)
             b_returns = returns.reshape(-1)
-            b_values = values.reshape(-1) 
+            b_values = values.reshape(-1)
 
             # PPG code does full batch advantage normalization
             if args.norm_adv_ppg:
@@ -422,7 +427,7 @@ if __name__ == "__main__":
 
         # AUXILIARY PHASE
         aux_inds = np.arange(args.aux_batch_rollouts)
-        
+
         # Build the old policy on the aux buffer before distilling to the network
         aux_pi = torch.zeros((args.num_steps, args.aux_batch_rollouts, envs.single_action_space.n))
         for i, start in enumerate(range(0, args.aux_batch_rollouts, args.aux_num_rollouts)):
@@ -445,7 +450,7 @@ if __name__ == "__main__":
                 try:
                     m_aux_obs = aux_obs[:, aux_minibatch_ind].to(device)
                     m_obs_shape = m_aux_obs.shape
-                    m_aux_obs = flatten01(m_aux_obs) # Sample full rollouts for PPG instead of random indexes
+                    m_aux_obs = flatten01(m_aux_obs)  # Sample full rollouts for PPG instead of random indexes
                     m_aux_returns = aux_returns[:, aux_minibatch_ind].to(torch.float32).to(device)
                     m_aux_returns = flatten01(m_aux_returns)
 
@@ -467,8 +472,8 @@ if __name__ == "__main__":
                     if (i + 1) % args.n_aux_grad_accum == 0:
                         nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                         optimizer.step()
-                        optimizer.zero_grad() # This cannot be outside, else gradients won't accumulate
-                        
+                        optimizer.zero_grad()  # This cannot be outside, else gradients won't accumulate
+
                 except RuntimeError:
                     raise Exception(
                         "if running out of CUDA memory, try a higher --n-aux-grad-accum, which trades more time for less gpu memory"

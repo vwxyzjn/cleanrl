@@ -57,7 +57,7 @@ python cleanrl/ppg_procgen.py --env-id "bigfish"
 
 ### Experiment results
 
-Below are the average episodic returns for `ppg_procgen.py`, and comparision with `ppg_procgen.py` on 25M timesteps.
+Below are the average episodic returns for `ppg_procgen.py`, and comparison with `ppg_procgen.py` on 25M timesteps.
 
 | Environment         | `ppg_procgen.py`    | `ppg_procgen.py` |
 | -----------         | -----------         | -----------      |
