@@ -1,4 +1,4 @@
-# Phasic Policy Gradient (PPO)
+# Phasic Policy Gradient (PPG)
 
 ## Overview
 
