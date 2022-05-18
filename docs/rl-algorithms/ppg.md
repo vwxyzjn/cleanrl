@@ -14,9 +14,14 @@ Reference resources:
 
 The original code has multiple code level details that are not mentioned in the paper. We found these changes to be important for reproducing the results claimed by the paper.
 
-## Implementation 
+## Implemented Variants
 
-Below is the single-file implementations of PPG:
+
+| Variants Implemented      | Description |
+| ----------- | ----------- |
+| :material-github: [`ppg_procgen.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppg_procgen.py), :material-file-document: [docs](/rl-algorithms/ppg/#ppg_procgenpy) | For classic control tasks like `CartPole-v1`. |
+
+Below are our single-file implementations of PPG:
 
 ## `ppg_procgen.py`
 
@@ -25,9 +30,9 @@ Below is the single-file implementations of PPG:
 ### Usage
 
 ```bash
-poetry install
-python cleanrl/ppo_procgen.py --help
-python cleanrl/ppo_procgen.py --env-id "bigfish"
+poetry install -E procgen
+python cleanrl/ppg_procgen.py --help
+python cleanrl/ppg_procgen.py --env-id "bigfish"
 ```
 
 ### Implementation details
@@ -52,9 +57,9 @@ python cleanrl/ppo_procgen.py --env-id "bigfish"
 
 ### Experiment results
 
-Below are the average episodic returns for `ppo_procgen.py`, and comparision with `ppo_procgen.py` on 25M timesteps.
+Below are the average episodic returns for `ppg_procgen.py`, and comparision with `ppg_procgen.py` on 25M timesteps.
 
-| Environment         | `ppg_procgen.py`    | `ppo_procgen.py` |
+| Environment         | `ppg_procgen.py`    | `ppg_procgen.py` |
 | -----------         | -----------         | -----------      |
 | Bigfish (easy)      | 27.670 ± 9.523      | 21.605 ± 7.996   |
 | Starpilot (easy)    |  39.086 ± 11.042    |  34.025 ± 12.535 |
