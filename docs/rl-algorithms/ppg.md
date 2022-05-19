@@ -91,3 +91,4 @@ To be added
 
 - The original PPG code supports LSTM whereas the CleanRL code does not.
 - The original PPG code uses separate optimizers for policy and auxiliary phase, but we do not implement this as we found it to not make too much difference.
+- The original PPG code utilizes multiple GPUs but our implementation does not
