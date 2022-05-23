@@ -56,9 +56,7 @@ def parse_args():
         help="the lambda for the general advantage estimation")
     parser.add_argument("--num-minibatches", type=int, default=8,
         help="the number of mini-batches")
-    parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="Toggles advantages normalization")
-    parser.add_argument("--norm-adv-ppg", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+    parser.add_argument("--adv-norm-fullbatch", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Full batch advantage normalization as used in PPG code")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
@@ -84,7 +82,7 @@ def parse_args():
         help="E_aux:the K epochs to update the policy")
     parser.add_argument("--beta-clone", type=float, default=1.0,
         help="the behavior cloning coefficient")
-    parser.add_argument("--aux-num-rollouts", type=int, default=4,
+    parser.add_argument("--num-aux-rollouts", type=int, default=4,
         help="the number of mini batch in the auxiliary phase")
     parser.add_argument("--n-aux-grad-accum", type=int, default=1,
         help="the number of gradient accumulation in mini batch")
@@ -346,7 +344,7 @@ if __name__ == "__main__":
             b_values = values.reshape(-1)
 
             # PPG code does full batch advantage normalization
-            if args.norm_adv_ppg:
+            if args.adv_norm_fullbatch:
                 b_advantages = (b_advantages - b_advantages.mean()) / (b_advantages.std() + 1e-8)
 
             # Optimizing the policy and value network
@@ -369,8 +367,6 @@ if __name__ == "__main__":
                         clipfracs += [((ratio - 1.0).abs() > args.clip_coef).float().mean().item()]
 
                     mb_advantages = b_advantages[mb_inds]
-                    if args.norm_adv:
-                        mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
                     # Policy loss
                     pg_loss1 = -mb_advantages * ratio
@@ -430,8 +426,8 @@ if __name__ == "__main__":
 
         # Build the old policy on the aux buffer before distilling to the network
         aux_pi = torch.zeros((args.num_steps, args.aux_batch_rollouts, envs.single_action_space.n))
-        for i, start in enumerate(range(0, args.aux_batch_rollouts, args.aux_num_rollouts)):
-            end = start + args.aux_num_rollouts
+        for i, start in enumerate(range(0, args.aux_batch_rollouts, args.num_aux_rollouts)):
+            end = start + args.num_aux_rollouts
             aux_minibatch_ind = aux_inds[start:end]
             m_aux_obs = aux_obs[:, aux_minibatch_ind].to(torch.float32).to(device)
             m_obs_shape = m_aux_obs.shape
@@ -444,8 +440,8 @@ if __name__ == "__main__":
         for auxiliary_update in range(1, args.e_auxiliary + 1):
             print(f"aux epoch {auxiliary_update}")
             np.random.shuffle(aux_inds)
-            for i, start in enumerate(range(0, args.aux_batch_rollouts, args.aux_num_rollouts)):
-                end = start + args.aux_num_rollouts
+            for i, start in enumerate(range(0, args.aux_batch_rollouts, args.num_aux_rollouts)):
+                end = start + args.num_aux_rollouts
                 aux_minibatch_ind = aux_inds[start:end]
                 try:
                     m_aux_obs = aux_obs[:, aux_minibatch_ind].to(device)

@@ -35,7 +35,7 @@ python cleanrl/ppg_procgen.py --help
 python cleanrl/ppg_procgen.py --env-id "bigfish"
 ```
 
-### Implementation details
+## Implementation details
 
 `ppg_procgen.py` includes the <TODO> level implementation details that are different from PPO:
 
@@ -53,6 +53,21 @@ python cleanrl/ppg_procgen.py --env-id "bigfish"
             * Fully connected layer after last conv later - 1.4
             * Convolutional layers - Approximately 0.638
 1. The Adam Optimizer's Epsilon Parameter -(:material-github: [phasic_policy_gradient/ppg.py#L239](https://github.com/openai/phasic-policy-gradient/blob/c789b00be58aa704f7223b6fc8cd28a5aaa2e101/phasic_policy_gradient/ppg.py#L239)) - Set to torch default of 1e-8 instead of 1e-5 which is used in PPO.
+
+### Extra notes
+
+- All the default hyperparameters from the original PPG implementation are used. Except setting 64 for the number of environments.
+- The original PPG paper does not report results on easy environments, hence more hyperparameter tuning can give better results.
+- Skipping every alternate auxiliary phase gives similar performance on easy environments while saving compute.
+- Normalized network initialization scheme seems to matter a lot, but using layernorm with orthogonal initialization also works.
+- Using mixed precision for auxiliary phase also works well to save compute, but using on policy phase makes training unstable.
+
+
+### Differences from the original PPG code
+
+- The original PPG code supports LSTM whereas the CleanRL code does not.
+- The original PPG code uses separate optimizers for policy and auxiliary phase, but we do not implement this as we found it to not make too much difference.
+- The original PPG code utilizes multiple GPUs but our implementation does not
 
 
 ### Experiment results
@@ -77,18 +92,3 @@ Learning curves:
 Tracked experiments and game play videos:
 
 To be added
-
-### Extra notes
-
-- All the default hyperparameters from the original PPG implementation are used. Except setting 64 for the number of environments.
-- The original PPG paper does not report results on easy environments, hence more hyperparameter tuning can give better results.
-- Skipping every alternate auxiliary phase gives similar performance on easy environments while saving compute.
-- Normalized network initialization scheme seems to matter a lot, but using layernorm with orthogonal initialization also works.
-- Using mixed precision for auxiliary phase also works well to save compute, but using on policy phase makes training unstable.
-
-
-### Differences from the original PPG code
-
-- The original PPG code supports LSTM whereas the CleanRL code does not.
-- The original PPG code uses separate optimizers for policy and auxiliary phase, but we do not implement this as we found it to not make too much difference.
-- The original PPG code utilizes multiple GPUs but our implementation does not
