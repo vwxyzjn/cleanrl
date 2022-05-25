@@ -87,8 +87,10 @@ Learning curves:
 
 <img src="../ppg/starpilot-easy-ppg-ppo.png">
 
+<img src="../ppg/bossfight-easy-ppg-ppo.png">
+
 </div>
 
 Tracked experiments and game play videos:
 
-To be added
+Please check this [wandb report](https://wandb.ai/openrlbenchmark/cleanrl/reports/CleanRL-PPG-vs-PPO-results--VmlldzoyMDY2NzQ5) for tracked results.
