@@ -168,7 +168,7 @@ if __name__ == "__main__":
             """
 Not using distributed mode!
 If you want to use distributed mode, please execute this script with 'torchrun'.
-E.g., ` torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py`
+E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py`
         """
         )
     print(f"================================")
