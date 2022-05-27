@@ -1,3 +1,4 @@
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/c51/#c51_ataripy
 import argparse
 import os
 import random
@@ -59,8 +60,6 @@ def parse_args():
         help="the discount factor gamma")
     parser.add_argument("--target-network-frequency", type=int, default=10000,
         help="the timesteps it takes to update the target network")
-    parser.add_argument("--max-grad-norm", type=float, default=0.5,
-        help="the maximum norm for the gradient clipping")
     parser.add_argument("--batch-size", type=int, default=32,
         help="the batch size of sample from the reply memory")
     parser.add_argument("--start-e", type=float, default=1,
@@ -168,7 +167,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, 0, 0, args.capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(envs, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
@@ -205,6 +204,7 @@ if __name__ == "__main__":
             if "episode" in info.keys():
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 writer.add_scalar("charts/epsilon", epsilon, global_step)
                 break
 
@@ -221,7 +221,6 @@ if __name__ == "__main__":
         # ALGO LOGIC: training.
         if global_step > args.learning_starts and global_step % args.train_frequency == 0:
             data = rb.sample(args.batch_size)
-
             with torch.no_grad():
                 _, next_pmfs = target_network.get_action(data.next_observations)
                 next_atoms = data.rewards + args.gamma * target_network.atoms * (1 - data.dones)
@@ -254,7 +253,6 @@ if __name__ == "__main__":
             # optimize the model
             optimizer.zero_grad()
             loss.backward()
-            nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
             optimizer.step()
 
             # update the target network

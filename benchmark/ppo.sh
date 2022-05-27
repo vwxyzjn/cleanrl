@@ -1,5 +1,4 @@
-export WANDB_ENTITY=openrlbenchmark
-export WANDB_PROJECT=cleanrl
+# export WANDB_ENTITY=openrlbenchmark
 
 poetry install
 OMP_NUM_THREADS=1 xvfb-run -a python -m cleanrl_utils.benchmark \

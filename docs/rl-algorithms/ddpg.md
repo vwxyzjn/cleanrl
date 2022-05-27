@@ -145,8 +145,6 @@ Our [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master
     ```
 
 1. [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses `--batch-size=256 --tau=0.005`, while (Lillicrap et al., 2016, see Appendix 7 EXPERIMENT DETAILS)[^1] uses `--batch-size=64 --tau=0.001`
-1. [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) rescales the gradient so that the norm of the parameters does not exceed `0.5` like done in PPO (:material-github: [ppo2/model.py#L102-L108](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L102-L108)). 
-
 <!-- 
 1. Vectorized architecture (:material-github: [common/cmd_util.py#L22](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/cmd_util.py#L22))
 1. Orthogonal Initialization of Weights and Constant Initialization of biases (:material-github: [a2c/utils.py#L58)](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L58))
@@ -163,15 +161,17 @@ Our [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master
 
 ### Experiment results
 
-PR :material-github: [vwxyzjn/cleanrl#137](https://github.com/vwxyzjn/cleanrl/pull/137) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/ddpg](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/ddpg).
+To run benchmark experiments, see :material-github: [benchmark/ddpg.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ddpg.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F2e2dc9c6ede5e5e5df3eaea73c458bb9a83507d2%2Fbenchmark%2Fddpg.sh%23L1-L7&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 Below are the average episodic returns for [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
 
 | Environment      | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) | [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018, Table 1)[^2]  | [`DDPG.py`](https://github.com/sfujim/TD3/blob/master/DDPG.py) using settings from (Lillicrap et al., 2016)[^1] in (Fujimoto et al., 2018, Table 1)[^2]    |
 | ----------- | ----------- | ----------- | ----------- |
-| HalfCheetah      | 9260.485 ± 643.088      |8577.29  | 3305.60|
-| Walker2d   | 1728.72 ± 758.33     |  3098.11 | 1843.85 |
-| Hopper   | 1404.44 ± 544.78         |  1860.02 | 2020.46 |
+| HalfCheetah      | 9382.32 ± 1395.52      |8577.29  | 3305.60|
+| Walker2d   | 1598.35 ± 862.66     |  3098.11 | 1843.85 |
+| Hopper   | 1313.43 ± 684.46         |  1860.02 | 2020.46 |
 
 
 

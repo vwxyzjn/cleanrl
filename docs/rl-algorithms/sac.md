@@ -27,7 +27,7 @@ Reference resources:
 
 | Variants Implemented      | Description |
 | ----------- | ----------- |
-| :material-github: [`sac_continuous_actions.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_continuous_action_py) | For continuous action space |
+| :material-github: [`sac_continuous_actions.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_continuous_actionpy) | For continuous action space |
 
 Below is our single-file implementations of SAC:
 
@@ -109,7 +109,7 @@ $$
 where $\mathcal{H}$ represents the _target entropy_, the desired lower bound for the expected entropy of the policy over the trajectory distribution induced by the latter.
 As a heuristic for the _target entropy_, the authors use the dimension of the action space of the task.
 
-## Implementation details
+### Implementation details
 CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) implementation is based on :material-github: [openai/spinningup](https://github.com/openai/spinningup/tree/master/spinup/algos/pytorch/sac).
 
 1. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) uses a *numerically stable* estimation method for the standard deviation $\sigma$ of the policy, which squashes it into a range of reasonable values for a standard deviation:
@@ -184,36 +184,11 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
 
 3. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) uses `--batch-size=256` while :material-github: [openai/spinningup](https://github.com/openai/spinningup/blob/038665d62d569055401d91856abb287263096178/spinup/algos/tf1/sac/sac.py#L44)'s uses `--batch-size=100` by default.
 
-4. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) also implementts global gradient norm clipping with `--max-grad-norm` set to `0.5` by default.
+### Experiment results
 
-```python
-    parser.add_argument("--max-grad-norm", type=float, default=0.5,
-        help="the maximum norm for the gradient clipping")
-```
+To run benchmark experiments, see :material-github: [benchmark/sac.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/sac.sh). Specifically, execute the following command:
 
-The gradient norm clipping is applied during the Soft Q-value, and the policy networks optimization:
-
-```python hl_lines="5"
-    qf_loss = qf1_loss + qf2_loss
-
-    q_optimizer.zero_grad()
-    qf_loss.backward()
-    nn.utils.clip_grad_norm_(list(qf1.parameters()) + list(qf2.parameters()), args.max_grad_norm)
-    q_optimizer.step()
-```
-
-```python hl_lines="5"
-    actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
-
-    actor_optimizer.zero_grad()
-    actor_loss.backward()
-    nn.utils.clip_grad_norm_(list(actor.parameters()), args.max_grad_norm)
-    actor_optimizer.step()
-```
-
-## Experiment results
-
-PR :material-github: [vwxyzjn/cleanrl#146](https://github.com/vwxyzjn/cleanrl/pull/146) tracks our effort to conduct experiments, and the reprodudction instructions can be found at :material-github: [vwxyzjn/cleanrl/benchmark/sac](https://github.com/vwxyzjn/cleanrl/tree/master/benchmark/sac), after 1 million training steps.
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F2e2dc9c6ede5e5e5df3eaea73c458bb9a83507d2%2Fbenchmark%2Fsac.sh%23L1-L7&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 The table below compares the results of CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) with the [latest published results](https://arxiv.org/abs/1812.05905) by the original authors of the SAC algorithm.
 
@@ -222,12 +197,12 @@ The table below compares the results of CleanRL's [`sac_continuous_action.py`](h
 
 | Environment      | [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) |[SAC: Algorithms and Applications](https://arxiv.org/abs/1812.05905) @ 1M steps|
 | --------------- | ------------------ | ---------------- |
-| HalfCheetah-v2  | 9,063 ± 1381       | ~11,250          |
-| Walker2d-v2     | 4554 ± 296         | ~4,800           |
-| Hopper-v2       | 2347 ± 538         | ~3,250           |
+| HalfCheetah-v2  | 10310.37 ± 1873.21       | ~11,250          |
+| Walker2d-v2     | 4418.15 ± 592.82         | ~4,800           |
+| Hopper-v2       | 2685.76 ± 762.16         | ~3,250           |
 
 
-### Learning curves
+Learning curves:
 
 <div class="grid-container">
     <img src="../sac/HalfCheetah-v2.png">
@@ -237,17 +212,10 @@ The table below compares the results of CleanRL's [`sac_continuous_action.py`](h
 
 <div></div>
 
-<div class="grid-container">
-    <img src="../sac/HalfCheetahBulletEnv-v0.png">
-    <img src="../sac/Walker2DBulletEnv-v0.png">
-    <img src="../sac/HopperBulletEnv-v0.png">
-</div>
 
-### Tracked experiments and gameplay videos
+Tracked experiments and game play videos:
 
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-SAC--VmlldzoxNzI1NDM0" style="width:100%; height:1200px" title="MuJoCo: CleanRL's DDPG"></iframe>
 
-
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/PyBullet-CleanRL-s-SAC--VmlldzoxNzI1NDQw" style="width:100%; height:1200px" title="PyBullet: CleanRL's DDPG"></iframe>
 
 [^1]:Diederik P Kingma, Max Welling (2016). Auto-Encoding Variational Bayes. ArXiv, abs/1312.6114. https://arxiv.org/abs/1312.6114
