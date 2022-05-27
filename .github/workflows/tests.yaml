@@ -113,7 +113,7 @@ jobs:
 
       # procgen tests
       - name: Install core dependencies
-        run: poetry install -E procgen
+        run: poetry install -E "pytest procgen"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run pybullet tests
