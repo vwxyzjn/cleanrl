@@ -35,6 +35,30 @@ python cleanrl/ppg_procgen.py --help
 python cleanrl/ppg_procgen.py --env-id "bigfish"
 ```
 
+### Explanation of the logged metrics
+
+Running `python cleanrl/ppg_procgen.py` will automatically record various metrics such as actor or value losses in Tensorboard. Below is the documentation for these metrics:
+
+Same as PPO:
+
+* `charts/episodic_return`: episodic return of the game
+* `charts/episodic_length`: episodic length of the game
+* `charts/SPS`: number of steps per second (this is initially high but drops off after the auxiliary phase)
+* `charts/learning_rate`: the current learning rate (annealing is not done by default)
+* `losses/value_loss`: the mean value loss across all data points
+* `losses/policy_loss`: the mean policy loss across all data points
+* `losses/entropy`: the mean entropy value across all data points
+* `losses/old_approx_kl`: the approximate Kullback–Leibler divergence, measured by `(-logratio).mean()`, which corresponds to the k1 estimator in John Schulman’s blog post on [approximating KL](http://joschu.net/blog/kl-approx.html)
+* `losses/approx_kl`: better alternative to `olad_approx_kl` measured by `(logratio.exp() - 1) - logratio`, which corresponds to the k3 estimator in [approximating KL](http://joschu.net/blog/kl-approx.html)
+* `losses/clipfrac`: the fraction of the training data that triggered the clipped objective
+* `losses/explained_variance`: the explained variance for the value function
+
+PPG specific:
+
+* `losses/aux/kl_loss`: the mean value of the KL divergence when distilling the latest policy during the auxiliary phase.
+* `losses/aux/aux_value_loss`: the mean value loss on the auxiliary value head
+* `losses/aux/real_value_loss`: the mean value loss on the detached value head used to calculate the GAE returns during policy phase
+
 ### Implementation details
 
 `ppg_procgen.py` includes the <TODO> level implementation details that are different from PPO:
