@@ -74,23 +74,28 @@ python cleanrl/ppg_procgen.py --env-id "bigfish"
 
 Below are the average episodic returns for `ppg_procgen.py`, and comparison with `ppg_procgen.py` on 25M timesteps.
 
-| Environment         | `ppg_procgen.py`    | `ppg_procgen.py` |
-| -----------         | -----------         | -----------      |
-| Bigfish (easy)      | 27.670 ± 9.523      | 21.605 ± 7.996   |
-| Starpilot (easy)    |  39.086 ± 11.042    |  34.025 ± 12.535 |
+| Environment      | `ppg_procgen.py` | `ppo_procgen.py` | `openai/phasic-policy-gradient` (easy) |
+|------------------|------------------|------------------|----------------------------------------|
+| Starpilot (easy) | 35.19 ± 13.07    | 33.15 ± 11.99    | 42.01 ± 9.59                           |
+| Bossfight (easy) | 10.34 ± 2.27     | 9.48 ± 2.42      | 10.71 ± 2.05                           |
+| Bigfish (easy)   | 27.25 ± 7.55     | 22.21 ± 7.42     | 15.94 ± 10.80                          |
 
 Learning curves:
 
 <div class="grid-container">
+<img src="../ppg/StarPilot.png">
+<img src="../ppg/comparison/StarPilot.png">
 
-<img src="../ppg/bigfish-easy-ppg-ppo.png">
+<img src="../ppg/BossFight.png">
+<img src="../ppg/comparison/BossFight.png">
 
-<img src="../ppg/starpilot-easy-ppg-ppo.png">
-
-<img src="../ppg/bossfight-easy-ppg-ppo.png">
-
+<img src="../ppg/BigFish.png">
+<img src="../ppg/comparison/BigFish.png">
 </div>
 
 Tracked experiments and game play videos:
 
-Please check this [wandb report](https://wandb.ai/openrlbenchmark/cleanrl/reports/CleanRL-PPG-vs-PPO-results--VmlldzoyMDY2NzQ5) for tracked results.
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Procgen-CleanRL-s-PPG--VmlldzoyMDc1MDMz" style="width:100%; height:500px" title="Procgen-CleanRL-s-PPG"></iframe>
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Procgen-CleanRL-s-PPG-vs-PPO-vs-openai-phasic-policy-gradient--VmlldzoyMDc1MDc3" style="width:100%; height:500px" title="Procgen-CleanRL-s-PPG-PPO-openai-phasic-policy-gradient"></iframe>
