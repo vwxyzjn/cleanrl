@@ -423,9 +423,9 @@ The [ppo_procgen.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_
 ### Usage
 
 ```bash
-poetry install -E atari
+poetry install -E procgen
 python cleanrl/ppo_procgen.py --help
-python cleanrl/ppo_procgen.py --env-id BreakoutNoFrameskip-v4
+python cleanrl/ppo_procgen.py --env-id starpilot
 ```
 
 ### Explanation of the logged metrics
