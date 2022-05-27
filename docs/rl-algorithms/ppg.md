@@ -35,7 +35,7 @@ python cleanrl/ppg_procgen.py --help
 python cleanrl/ppg_procgen.py --env-id "bigfish"
 ```
 
-## Implementation details
+### Implementation details
 
 `ppg_procgen.py` includes the <TODO> level implementation details that are different from PPO:
 
@@ -54,7 +54,7 @@ python cleanrl/ppg_procgen.py --env-id "bigfish"
             * Convolutional layers - Approximately 0.638
 1. The Adam Optimizer's Epsilon Parameter -(:material-github: [phasic_policy_gradient/ppg.py#L239](https://github.com/openai/phasic-policy-gradient/blob/c789b00be58aa704f7223b6fc8cd28a5aaa2e101/phasic_policy_gradient/ppg.py#L239)) - Set to torch default of 1e-8 instead of 1e-5 which is used in PPO.
 
-### Extra notes
+Here are some additional notes:
 
 - All the default hyperparameters from the original PPG implementation are used. Except setting 64 for the number of environments.
 - The original PPG paper does not report results on easy environments, hence more hyperparameter tuning can give better results.
@@ -63,7 +63,7 @@ python cleanrl/ppg_procgen.py --env-id "bigfish"
 - Using mixed precision for auxiliary phase also works well to save compute, but using on policy phase makes training unstable.
 
 
-### Differences from the original PPG code
+Also, `ppg_procgen.py` differs from the original  `openai/phasic-policy-gradient` implementation in the following ways.
 
 - The original PPG code supports LSTM whereas the CleanRL code does not.
 - The original PPG code uses separate optimizers for policy and auxiliary phase, but we do not implement this as we found it to not make too much difference.
@@ -79,6 +79,11 @@ Below are the average episodic returns for `ppg_procgen.py`, and comparison with
 | Starpilot (easy) | 35.19 ± 13.07    | 33.15 ± 11.99    | 42.01 ± 9.59                           |
 | Bossfight (easy) | 10.34 ± 2.27     | 9.48 ± 2.42      | 10.71 ± 2.05                           |
 | Bigfish (easy)   | 27.25 ± 7.55     | 22.21 ± 7.42     | 15.94 ± 10.80                          |
+
+
+???+ info
+
+    Note that we have run the procgen experiments using the `easy` distribution for reducing the computational cost.
 
 Learning curves:
 
