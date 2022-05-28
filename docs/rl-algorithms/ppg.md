@@ -71,7 +71,7 @@ PPG specific:
     * Original PPO used orthogonal initialization of only the Policy head and Value heads with scale of 0.01 and 1. respectively.
     * For PPG
         * All weights are initialized with the default torch initialization (Kaiming Uniform)
-        * Each layer’s weights are divided by the L2 norm of the weights along the (which axis?), and multiplied by a scale factor.
+        * Each layer’s weights are divided by the L2 norm of the weights such that the weights of `input_channels` axis are individually normalized (axis 1 for linear layers and 1,2,3 for convolutional layers). Then the weights are multiplied by a scale factor.
         * Scale factors for different layers
             * Value head, Policy head, Auxiliary value head - 0.1
             * Fully connected layer after last conv later - 1.4
