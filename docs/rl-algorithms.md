@@ -30,3 +30,6 @@ Below are the implemented algorithms and their brief descriptions.
 - [x] Twin Delayed Deep Deterministic Policy Gradient (TD3)
     * [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py)
         * For continuous action space.
+- [x] Phasic Policy Gradient (PPG) 
+    * [ppg_procgen.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppg_procgen.py)
+        * PPG implementation for Procgen

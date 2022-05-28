@@ -87,6 +87,7 @@ nav:
     - rl-algorithms/ddpg.md
     - rl-algorithms/sac.md
     - rl-algorithms/td3.md
+    - rl-algorithms/ppg.md
   - Open RL Benchmark: open-rl-benchmark.md
   - Advanced:
     - advanced/resume-training.md
