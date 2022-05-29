@@ -17,14 +17,6 @@ def test_ppo_lstm():
     )
 
 
-def test_ppo_multigpu():
-    subprocess.run(
-        "torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --num-envs 8 --num-steps 32 --total-timesteps 256",
-        shell=True,
-        check=True,
-    )
-
-
 def test_dqn():
     subprocess.run(
         "python cleanrl/dqn_atari.py --learning-starts 10 --total-timesteps 16 --buffer-size 10 --batch-size 4",

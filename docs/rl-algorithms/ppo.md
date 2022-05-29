@@ -350,10 +350,15 @@ The [ppo_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanr
 * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
 * Works with the `Discrete` action space
 
+???+ warning
+
+    Note that `ppo_atari_envpool.py` does not work in Windows :fontawesome-brands-windows: and MacOs :fontawesome-brands-apple:. See envpool's built wheels here: [https://pypi.org/project/envpool/#files](https://pypi.org/project/envpool/#files)
+
+
 ### Usage
 
 ```bash
-poetry install -E atari
+poetry install -E envpool
 python cleanrl/ppo_atari_envpool.py --help
 python cleanrl/ppo_atari_envpool.py --env-id Breakout-v5
 ```
@@ -486,6 +491,10 @@ The [ppo_atari_multigpu.py](https://github.com/vwxyzjn/cleanrl/blob/master/clean
 * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
 * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
 * Works with the `Discrete` action space
+
+???+ warning
+
+    Note that `ppo_atari_multigpu.py` does not work in Windows :fontawesome-brands-windows: and MacOs :fontawesome-brands-apple:. It will error out with `NOTE: Redirects are currently not supported in Windows or MacOs.` See [pytorch/pytorch#20380](https://github.com/pytorch/pytorch/issues/20380)
 
 ### Usage
 
