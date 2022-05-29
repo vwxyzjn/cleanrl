@@ -354,10 +354,15 @@ The [ppo_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanr
 * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
 * Works with the `Discrete` action space
 
+???+ warning
+
+    Note that `ppo_atari_envpool.py` does not work in Windows :fontawesome-brands-windows: and MacOs :fontawesome-brands-apple:. See envpool's built wheels here: [https://pypi.org/project/envpool/#files](https://pypi.org/project/envpool/#files)
+
+
 ### Usage
 
 ```bash
-poetry install -E atari
+poetry install -E envpool
 python cleanrl/ppo_atari_envpool.py --help
 python cleanrl/ppo_atari_envpool.py --env-id Breakout-v5
 ```
@@ -481,6 +486,256 @@ Learning curves:
 Tracked experiments and game play videos:
 
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Procgen-CleanRL-s-PPO--VmlldzoxODcxMzUy" style="width:100%; height:500px" title="Procgen-CleanRL-s-PPO"></iframe>
+
+
+
+## `ppo_atari_multigpu.py`
+
+The [ppo_atari_multigpu.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_multigpu.py) leverages data parallelism to speed up training time *at no cost of sample efficiency*. 
+
+`ppo_atari_multigpu.py` has the following features:
+
+* Allows the users to use do training leveraging data parallelism
+* For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+* Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
+* Works with the `Discrete` action space
+
+???+ warning
+
+    Note that `ppo_atari_multigpu.py` does not work in Windows :fontawesome-brands-windows: and MacOs :fontawesome-brands-apple:. It will error out with `NOTE: Redirects are currently not supported in Windows or MacOs.` See [pytorch/pytorch#20380](https://github.com/pytorch/pytorch/issues/20380)
+
+### Usage
+
+```bash
+poetry install -E atari
+python cleanrl/ppo_atari_multigpu.py --help
+
+# `--nproc_per_node=2` specifies how many subprocesses we spawn for training with data parallelism
+# note it is possible to run this with a *single GPU*: each process will simply share the same GPU
+torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4
+
+# by default we use the `gloo` backend, but you can use the `nccl` backend for better multi-GPU performance
+torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --backend nccl
+
+# it is possible to spawn more processes than the amount of GPUs you have via `--device-ids`
+# e.g., the command below spawns two processes using GPU 0 and two processes using GPU 1
+torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --device-ids 0 0 1 1
+```
+
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`.
+
+### Implementation details
+
+[ppo_atari_multigpu.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_multigpu.py) is based on `ppo_atari.py` (see its [related docs](/rl-algorithms/ppo/#implementation-details_1)).
+
+We use [Pytorch's distributed API](https://pytorch.org/tutorials/intermediate/dist_tuto.html) to implement the data parallelism paradigm. The basic idea is that the user can spawn $N$ processes each holding a copy of the model, step the environments, and averages their gradients together for the backward pass. Here are a few note-worthy implementation details.
+
+1. **Shard the environments**: by default, `ppo_atari_multigpu.py` uses `--num-envs=8`. When calling `torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4`, it spawns $N=2$ (by `--nproc_per_node=2`) subprocesses and shard the environments across these 2 subprocesses. In particular, each subprocess will have `8/2=4` environments. Implementation wise, we do `args.num_envs = int(args.num_envs / world_size)`. Here `world_size=2` refers to the size of the **world**, which means the group of subprocesses. We also need to adjust various variables as follows:
+    * **batch size**: by default it is `(num_envs * num_steps) = 8 * 128 = 1024` and we adjust it to `(num_envs / world_size * num_steps) = (4 * 128) = 512`. 
+    * **minibatch size**: by default it is `(num_envs * num_steps) / num_minibatches = (8 * 128) / 4 = 256` and we adjust it to `(num_envs / world_size * num_steps) / num_minibatches = (4 * 128) / 4 = 128`. 
+    * **number of updates**: by default it is `total_timesteps // batch_size = 10000000 // (8 * 128) = 9765` and we adjust it to   `total_timesteps // (batch_size * world_size) = 10000000 // (8 * 128 * 2) = 4882`.
+    * **global step increment**: by default it is `num_envs`  and we adjust it to `num_envs * world_size`.
+1. **Adjust seed per process**: we need be very careful with seeding: we could have used the exact same seed for each subprocess. To ensure this does not happen, we do the following
+
+    ```python hl_lines="2 5 16"
+    # CRUCIAL: note that we needed to pass a different seed for each data parallelism worker
+    args.seed += local_rank
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed - local_rank)
+    torch.backends.cudnn.deterministic = args.torch_deterministic
+
+    # ...
+
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
+    )
+    assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
+
+    agent = Agent(envs).to(device)
+    torch.manual_seed(args.seed)
+    optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
+    ```
+
+    Notice that we adjust the seed with `args.seed += local_rank` (line 2), where `local_rank` is the index of the subprocesses. This ensures we seed packages and envs with uncorrealted seeds. However, we do need to use the same `torch` seed for all process to initialize same weights for the `agent` (line 5), after which we can use a different seed for `torch` (line 16).
+1. **Efficient gradient averaging**: PyTorch recommends to average the gradient across the whole world via the following (see [docs](https://pytorch.org/tutorials/intermediate/dist_tuto.html#distributed-training))
+
+    ```python
+    for param in agent.parameters():
+        dist.all_reduce(param.grad.data, op=dist.ReduceOp.SUM)
+        param.grad.data /= world_size
+    ```
+
+    However, [@cswinter](https://github.com/cswinter) introduces a more efficient gradient averaging scheme with proper batching (see :material-github: [entity-neural-network/incubator#220](https://github.com/entity-neural-network/incubator/pull/220)), which looks like:
+
+    ```python
+    all_grads_list = []
+    for param in agent.parameters():
+        if param.grad is not None:
+            all_grads_list.append(param.grad.view(-1))
+    all_grads = torch.cat(all_grads_list)
+    dist.all_reduce(all_grads, op=dist.ReduceOp.SUM)
+    offset = 0
+    for param in agent.parameters():
+        if param.grad is not None:
+            param.grad.data.copy_(
+                all_grads[offset : offset + param.numel()].view_as(param.grad.data) / world_size
+            )
+            offset += param.numel()
+    ```
+
+    In our previous empirical testing (see :material-github: [vwxyzjn/cleanrl#162](https://github.com/vwxyzjn/cleanrl/pull/162#issuecomment-1107909696)), we have found [@cswinter](https://github.com/cswinter)'s implementation to be faster, hence we adopt it in our implementation.
+
+
+
+We can see how `ppo_atari_multigpu.py` can result in no loss of sample efficiency. In this example, the `ppo_atari.py`'s minibatch size is `256` and the `ppo_atari_multigpu.py`'s minibatch size is `128` with world size 2. Because we average gradient across the world, the gradient under  `ppo_atari_multigpu.py` should be virtually the same as the gradient under `ppo_atari.py`.
+
+<!-- 
+
+<script src="https://unpkg.com/monaco-editor@latest/min/vs/loader.js"></script>
+
+
+<div style="padding-bottom: 20px;">
+	<div
+	id="ppo_shared"
+	style="width: 100%; height: 600px; border: 1px solid grey"
+	></div>
+</div>
+
+<script>
+  require.config({
+    paths: { vs: "https://unpkg.com/monaco-editor@latest/min/vs" },
+  });
+  window.MonacoEnvironment = { getWorkerUrl: () => proxy };
+
+  let proxy = URL.createObjectURL(
+    new Blob(
+      [
+        `
+	self.MonacoEnvironment = {
+		baseUrl: 'https://unpkg.com/monaco-editor@latest/min/'
+	};
+	importScripts('https://unpkg.com/monaco-editor@latest/min/vs/base/worker/workerMain.js');
+`,
+      ],
+      { type: "text/javascript" }
+    )
+  );
+
+  require(["vs/editor/editor.main"], function () {
+    var diffEditor = monaco.editor.createDiffEditor(
+      document.getElementById("ppo_shared")
+    );
+
+	
+    Promise.all([
+		xhr("https://raw.githubusercontent.com/vwxyzjn/cleanrl/master/cleanrl/ppo_atari.py"),
+		xhr("https://raw.githubusercontent.com/vwxyzjn/cleanrl/master/cleanrl/ppo_atari.py")
+	]).then(function (r) {
+      var originalTxt = r[0].responseText;
+      var modifiedTxt = r[1].responseText;
+
+      diffEditor.setModel({
+        original: monaco.editor.createModel(originalTxt, "python"),
+        modified: monaco.editor.createModel(modifiedTxt, "python"),
+        startLineNumber: 104,
+      });
+      diffEditor.revealPositionInCenter({ lineNumber: 115, column: 0 });
+    });
+  });
+</script>
+<script>
+  function xhr(url) {
+    var req = null;
+    return new Promise(
+      function (c, e) {
+        req = new XMLHttpRequest();
+        req.onreadystatechange = function () {
+          if (req._canceled) {
+            return;
+          }
+
+          if (req.readyState === 4) {
+            if (
+              (req.status >= 200 && req.status < 300) ||
+              req.status === 1223
+            ) {
+              c(req);
+            } else {
+              e(req);
+            }
+            req.onreadystatechange = function () {};
+          }
+        };
+
+        req.open("GET", url, true);
+        req.responseType = "";
+
+        req.send(null);
+      },
+      function () {
+        req._canceled = true;
+        req.abort();
+      }
+    );
+  }
+</script> -->
+
+
+
+### Experiment results
+
+
+
+To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fc8fe88b7d7daf5be5324c00735885efddb40a252%2Fbenchmark%2Fppo.sh%23L47-L52&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+
+Below are the average episodic returns for `ppo_atari_multigpu.py`. To ensure no loss of sample efficiency, we compared the results against `ppo_atari.py`.
+
+| Environment      | `ppo_atari_multigpu.py` (in ~160 mins) | `ppo_atari.py` (in ~215 mins)
+| ----------- | ----------- | ----------- |
+| BreakoutNoFrameskip-v4 | 429.06 ± 52.09      | 416.31 ± 43.92     | 
+| PongNoFrameskip-v4 | 20.40 ± 0.46  | 20.59 ± 0.35    |  
+| BeamRiderNoFrameskip-v4 | 2454.54 ± 740.49   | 2445.38 ± 528.91         | 
+
+
+Learning curves:
+
+<div class="grid-container">
+<img src="../ppo/BreakoutNoFrameskip-v4multigpu.png">
+<img src="../ppo/BreakoutNoFrameskip-v4multigpu-time.png">
+
+<img src="../ppo/PongNoFrameskip-v4multigpu.png">
+<img src="../ppo/PongNoFrameskip-v4multigpu-time.png">
+
+<img src="../ppo/BeamRiderNoFrameskip-v4multigpu.png">
+<img src="../ppo/BeamRiderNoFrameskip-v4multigpu-time.png">
+</div>
+
+
+Under the same hardware, we see that `ppo_atari_multigpu.py` is about **30% faster** than `ppo_atari.py` with no loss of sample efficiency. 
+
+
+???+ info
+
+    Although `ppo_atari_multigpu.py` is 30% faster than `ppo_atari.py`, `ppo_atari_multigpu.py` is still slower than `ppo_atari_envpool.py`, as shown below.  This comparison really highlights the different kinds of optimization possible.
+
+
+    <div class="grid-container">
+        <img src="../ppo/Breakout-a.png">
+        <img src="../ppo/Breakout-time-a.png">
+    </div>
+
+    The purpose of `ppo_atari_multigpu.py` is not (yet) to achieve the fastest PPO + Atari example. Rather, its purpose is to *rigorously validate data paralleism does provide performance benefits*. We could do something like `ppo_atari_multigpu_envpool.py` to possibly obtain the fastest PPO + Atari possible, but that is for another day. Note we may need `numba` to pin the threads `envpool` is using in each subprocess to avoid threads fighting each other and lowering the throughput.
+
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-MultiGPU--VmlldzoxOTM2NDUx" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
 
 
 
