@@ -42,51 +42,46 @@ Note: When using NUMA, it's better to disable thread affinity by setting
 import argparse
 import time
 
+import envpool
 import numpy as np
 import tqdm
 
-import envpool
-
 if __name__ == "__main__":
-  parser = argparse.ArgumentParser()
-  parser.add_argument(
-    "--env", type=str, default="atari", choices=["atari", "mujoco", "vizdoom"]
-  )
-  parser.add_argument("--num-envs", type=int, default=645)
-  parser.add_argument("--batch-size", type=int, default=248)
-  # num_threads == 0 means to let envpool itself determine
-  parser.add_argument("--num-threads", type=int, default=0)
-  # thread_affinity_offset == -1 means no thread affinity
-  parser.add_argument("--thread-affinity-offset", type=int, default=0)
-  parser.add_argument("--total-step", type=int, default=50000)
-  parser.add_argument("--seed", type=int, default=0)
-  args = parser.parse_args()
-  print(args)
-  task_id = {
-    "atari": "Pong-v5",
-    "mujoco": "Ant-v3",
-    "vizdoom": "HealthGathering-v1",
-  }[args.env]
-  kwargs = dict(
-    num_envs=args.num_envs,
-    batch_size=args.batch_size,
-    num_threads=args.num_threads,
-    thread_affinity_offset=args.thread_affinity_offset,
-  )
-  if args.env in ["atari", "vizdoom"]:
-    kwargs.update(use_inter_area_resize=False)
-  env = envpool.make_gym(task_id, **kwargs)
-  env.async_reset()
-  env.action_space.seed(args.seed)
-  action = np.array(
-    [env.action_space.sample() for _ in range(args.batch_size)]
-  )
-  t = time.time()
-  for _ in tqdm.trange(args.total_step):
-    info = env.recv()[-1]
-    env.send(action, info["env_id"])
-  duration = time.time() - t
-  frame_skip = getattr(env.spec.config, "frame_skip", 1)
-  fps = args.total_step * args.batch_size / duration * frame_skip
-  print(f"Duration = {duration:.2f}s")
-  print(f"EnvPool FPS = {fps:.2f}")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--env", type=str, default="atari", choices=["atari", "mujoco", "vizdoom"])
+    parser.add_argument("--num-envs", type=int, default=645)
+    parser.add_argument("--batch-size", type=int, default=248)
+    # num_threads == 0 means to let envpool itself determine
+    parser.add_argument("--num-threads", type=int, default=0)
+    # thread_affinity_offset == -1 means no thread affinity
+    parser.add_argument("--thread-affinity-offset", type=int, default=0)
+    parser.add_argument("--total-step", type=int, default=50000)
+    parser.add_argument("--seed", type=int, default=0)
+    args = parser.parse_args()
+    print(args)
+    task_id = {
+        "atari": "Pong-v5",
+        "mujoco": "Ant-v3",
+        "vizdoom": "HealthGathering-v1",
+    }[args.env]
+    kwargs = dict(
+        num_envs=args.num_envs,
+        batch_size=args.batch_size,
+        num_threads=args.num_threads,
+        thread_affinity_offset=args.thread_affinity_offset,
+    )
+    if args.env in ["atari", "vizdoom"]:
+        kwargs.update(use_inter_area_resize=False)
+    env = envpool.make_gym(task_id, **kwargs)
+    env.async_reset()
+    env.action_space.seed(args.seed)
+    action = np.array([env.action_space.sample() for _ in range(args.batch_size)])
+    t = time.time()
+    for _ in tqdm.trange(args.total_step):
+        info = env.recv()[-1]
+        env.send(action, info["env_id"])
+    duration = time.time() - t
+    frame_skip = getattr(env.spec.config, "frame_skip", 1)
+    fps = args.total_step * args.batch_size / duration * frame_skip
+    print(f"Duration = {duration:.2f}s")
+    print(f"EnvPool FPS = {fps:.2f}")
