@@ -51,10 +51,8 @@ jobs:
           poetry-version: ${{ matrix.poetry-version }}
 
       # atari tests
-      - name: Install core dependencies
-        run: poetry install -E pytest
       - name: Install atari dependencies
-        run: poetry install -E atari
+        run: poetry install -E "pytest, atari, envpool"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run atari tests
