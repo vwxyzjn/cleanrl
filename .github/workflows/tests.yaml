@@ -231,6 +231,6 @@ jobs:
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Install ROMs
-        run: AutoROM --accept-license
+        run: poetry run AutoROM --accept-license
       - name: Run pettingzoo tests
         run: poetry run pytest tests/test_pettingzoo_ma_atari.py
