@@ -33,6 +33,9 @@ pytest = {version = "^6.2.5", optional = true}
 free-mujoco-py = {version = "^2.1.6", optional = true}
 mkdocs-material = {version = "^7.3.4", optional = true}
 envpool = {version = "^0.4.3", optional = true}
+jax = {version = "^0.3.12", optional = true}
+jaxlib = {version = "^0.3.10", optional = true}
+flax = {version = "^0.4.2", optional = true}
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^2.17.0"
@@ -53,3 +56,4 @@ pytest = ["pytest"]
 mujoco = ["free-mujoco-py"]
 docs = ["mkdocs-material"]
 envpool = ["envpool"]
+jax = ["jax", "jaxlib", "flax"]
