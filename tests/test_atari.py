@@ -25,14 +25,6 @@ def test_ppo_multigpu():
     )
 
 
-def test_ppo_envpool():
-    subprocess.run(
-        "python cleanrl/ppo_atari_envpool.py --num-envs 8 --num-steps 32 --total-timesteps 256",
-        shell=True,
-        check=True,
-    )
-
-
 def test_dqn():
     subprocess.run(
         "python cleanrl/dqn_atari.py --learning-starts 10 --total-timesteps 16 --buffer-size 10 --batch-size 4",
