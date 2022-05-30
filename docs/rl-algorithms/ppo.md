@@ -739,4 +739,150 @@ Tracked experiments and game play videos:
 
 
 
+
+
+## `ppo_pettingzoo_ma_atari.py`
+
+`ppo_pettingzoo_ma_atari.py` trains an agent to learn playing Atari games via selfplay. The selfplay environment is implemented as a vectorized environment. The basic idea is to create vectorized environment $E$ with `num_envs = N`, where $N$ is the number of players in the game. Say $N = 2$, then the 0-th sub environment of $E$ will return the observation for player 0 and 1-th sub environment will return the observation of player 1. Then the two environments takes a batch of 2 actions and execute them for player 0 and player 1, respectively. See "Vectorized architecture" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/) for more detail.
+
+`ppo_pettingzoo_ma_atari.py` has the following features:
+
+* For playing the pettingzoo's multi-agent Atari game.
+* Works with the pixel-based observation space
+* Works with the `Box` action space
+
+???+ warning
+
+    Note that `ppo_pettingzoo_ma_atari.py` does not work in Windows :fontawesome-brands-windows:. See [https://pypi.org/project/multi-agent-ale-py/#files](https://pypi.org/project/multi-agent-ale-py/#files)
+
+### Usage
+
+```bash
+poetry install -E "pettingzoo atari"
+poetry run AutoROM --accept-license
+python cleanrl/ppo_pettingzoo_ma_atari.py --help
+python cleanrl/ppo_pettingzoo_ma_atari.py --env-id pong_v3
+python cleanrl/ppo_pettingzoo_ma_atari.py --env-id surround_v2
+```
+
+See [https://www.pettingzoo.ml/atari](https://www.pettingzoo.ml/atari) for a full-list of supported environments such as `basketball_pong_v3`. Notice pettingzoo sometimes introduces breaking changes, so make sure to install the pinned dependencies via `poetry`.
+
+### Explanation of the logged metrics
+
+Additionally, it logs the following metrics
+
+* `charts/episodic_return-player0`: episodic return of the game for player 0
+* `charts/episodic_return-player1`: episodic return of the game for player 1
+* `charts/episodic_length-player0`: episodic length of the game for player 0
+* `charts/episodic_length-player1`: episodic length of the game for player 1
+
+See other logged metrics in the [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`.
+
+### Implementation details
+
+[ppo_pettingzoo_ma_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_pettingzoo_ma_atari.py) is based on `ppo_atari.py` (see its [related docs](/rl-algorithms/ppo/#implementation-details_1)).
+
+`ppo_pettingzoo_ma_atari.py` additionally has the following implementation details:
+
+1. **`supersuit` wrappers**:  uses preprocessing wrappers from `supersuit` instead of from `stable_baselines3`, which looks like the following. In particular note that the `supersuit` does not offer a wrapper similar to `NoopResetEnv`, and that it uses the `agent_indicator_v0` to add two channels indicating the which player the agent controls.
+
+    ```diff
+    -env = gym.make(env_id)
+    -env = NoopResetEnv(env, noop_max=30)
+    -env = MaxAndSkipEnv(env, skip=4)
+    -env = EpisodicLifeEnv(env)
+    -if "FIRE" in env.unwrapped.get_action_meanings():
+    -    env = FireResetEnv(env)
+    -env = ClipRewardEnv(env)
+    -env = gym.wrappers.ResizeObservation(env, (84, 84))
+    -env = gym.wrappers.GrayScaleObservation(env)
+    -env = gym.wrappers.FrameStack(env, 4)
+    +env = importlib.import_module(f"pettingzoo.atari.{args.env_id}").parallel_env()
+    +env = ss.max_observation_v0(env, 2)
+    +env = ss.frame_skip_v0(env, 4)
+    +env = ss.clip_reward_v0(env, lower_bound=-1, upper_bound=1)
+    +env = ss.color_reduction_v0(env, mode="B")
+    +env = ss.resize_v1(env, x_size=84, y_size=84)
+    +env = ss.frame_stack_v1(env, 4)
+    +env = ss.agent_indicator_v0(env, type_only=False)
+    +env = ss.pettingzoo_env_to_vec_env_v1(env)
+    +envs = ss.concat_vec_envs_v1(env, args.num_envs // 2, num_cpus=0, base_class="gym")
+    ```
+1. **A more detailed note on the `agent_indicator_v0` wrapper**: let's dig deeper into how `agent_indicator_v0` works. We do `print(envs.reset(), envs.reset().shape)`
+    ```python
+    [  0.,   0.,   0., 236.,   1,   0.]],
+
+    [[  0.,   0.,   0., 236.,   0.,   1.],
+    [  0.,   0.,   0., 236.,   0.,   1.],
+    [  0.,   0.,   0., 236.,   0.,   1.],
+    ...,
+    [  0.,   0.,   0., 236.,   0.,   1.],
+    [  0.,   0.,   0., 236.,   0.,   1.],
+    [  0.,   0.,   0., 236.,   0.,   1.]]]]) torch.Size([16, 84, 84, 6])
+    ```
+    
+    So the `agent_indicator_v0` adds the last two columns, where `[  0.,   0.,   0., 236.,   1,   0.]]` means this observation is for player 0, and `[  0.,   0.,   0., 236.,   0.,   1.]` is for player 1. Notice the observation still has the range of $[0, 255]$ but the agent indicator channel has the range of $[0,1]$, so we need to be careful when dividing the observation by 255. In particular, we would only divide the first four channels by 255 and leave the agent indicator channels untouched as follows:
+
+    ```py
+    def get_action_and_value(self, x, action=None):
+        x = x.clone()
+        x[:, :, :, [0, 1, 2, 3]] /= 255.0
+        hidden = self.network(x.permute((0, 3, 1, 2)))
+    ```
+
+
+### Experiment results
+
+
+
+To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fc8fe88b7d7daf5be5324c00735885efddb40a252%2Fbenchmark%2Fppo.sh%23L47-L52&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+
+Below are the average episodic returns for `ppo_pettingzoo_ma_atari.py`. To ensure no loss of sample efficiency, we compared the results against `ppo_atari.py`.
+
+| Environment      | `ppo_pettingzoo_ma_atari.py` (in ~160 mins) | `ppo_atari.py` (in ~215 mins)
+| ----------- | ----------- | ----------- |
+| BreakoutNoFrameskip-v4 | 429.06 ± 52.09      | 416.31 ± 43.92     | 
+| PongNoFrameskip-v4 | 20.40 ± 0.46  | 20.59 ± 0.35    |  
+| BeamRiderNoFrameskip-v4 | 2454.54 ± 740.49   | 2445.38 ± 528.91         | 
+
+
+Learning curves:
+
+<div class="grid-container">
+<img src="../ppo/BreakoutNoFrameskip-v4multigpu.png">
+<img src="../ppo/BreakoutNoFrameskip-v4multigpu-time.png">
+
+<img src="../ppo/PongNoFrameskip-v4multigpu.png">
+<img src="../ppo/PongNoFrameskip-v4multigpu-time.png">
+
+<img src="../ppo/BeamRiderNoFrameskip-v4multigpu.png">
+<img src="../ppo/BeamRiderNoFrameskip-v4multigpu-time.png">
+</div>
+
+
+Under the same hardware, we see that `ppo_pettingzoo_ma_atari.py` is about **30% faster** than `ppo_atari.py` with no loss of sample efficiency. 
+
+
+???+ info
+
+    Although `ppo_pettingzoo_ma_atari.py` is 30% faster than `ppo_atari.py`, `ppo_pettingzoo_ma_atari.py` is still slower than `ppo_atari_envpool.py`, as shown below.  This comparison really highlights the different kinds of optimization possible.
+
+
+    <div class="grid-container">
+        <img src="../ppo/Breakout-a.png">
+        <img src="../ppo/Breakout-time-a.png">
+    </div>
+
+    The purpose of `ppo_pettingzoo_ma_atari.py` is not (yet) to achieve the fastest PPO + Atari example. Rather, its purpose is to *rigorously validate data paralleism does provide performance benefits*. We could do something like `ppo_pettingzoo_ma_atari_envpool.py` to possibly obtain the fastest PPO + Atari possible, but that is for another day. Note we may need `numba` to pin the threads `envpool` is using in each subprocess to avoid threads fighting each other and lowering the throughput.
+
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-MultiGPU--VmlldzoxOTM2NDUx" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
+
+
+
 [^1]: Huang, Shengyi; Dossa, Rousslan Fernand Julien; Raffin, Antonin; Kanervisto, Anssi; Wang, Weixun (2022). The 37 Implementation Details of Proximal Policy Optimization. ICLR 2022 Blog Track https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/
