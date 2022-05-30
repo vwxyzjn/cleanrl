@@ -76,9 +76,6 @@ nav:
     - get-started/experiment-tracking.md
     - get-started/examples.md
     - get-started/benchmark-utility.md
-  - Cloud Integration: 
-    - cloud/installation.md
-    - cloud/submit-experiments.md
   - RL Algorithms:
     - rl-algorithms/overview.md
     - rl-algorithms/ppo.md
@@ -88,17 +85,20 @@ nav:
     - rl-algorithms/sac.md
     - rl-algorithms/td3.md
     - rl-algorithms/ppg.md
-  - Open RL Benchmark: open-rl-benchmark.md
+  # - Open RL Benchmark: open-rl-benchmark.md
+  - Community:
+    - contribution.md
+    - made-with-cleanrl.md
   - Advanced:
     - advanced/resume-training.md
-  - Community: community.md
-  - Contribution: contribution.md
-  - made-with-cleanrl.md
+  - Cloud Integration: 
+    - cloud/installation.md
+    - cloud/submit-experiments.md
 #footer
 extra:
   social:
     - icon: fontawesome/solid/envelope
-      link: mailto:costa.huang@live.com
+      link: mailto:costa.huang@outlook.com
     - icon: fontawesome/brands/twitter
       link: https://twitter.com/vwxyzjn
     - icon: fontawesome/brands/github
