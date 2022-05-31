@@ -839,44 +839,33 @@ To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://g
 
 <script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fc8fe88b7d7daf5be5324c00735885efddb40a252%2Fbenchmark%2Fppo.sh%23L47-L52&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
+???+ info
 
-Below are the average episodic returns for `ppo_pettingzoo_ma_atari.py`. To ensure no loss of sample efficiency, we compared the results against `ppo_atari.py`.
+    Note that evaluation is usually tricker in in selfplay environments. The usual episodic return is not a good indicator of the agent's performance in zero-sum games because the episodic return converges to zero. To evaluate the agent's ability, an intuitive approach is to take a look at the videos of the agents playing the game (included below), visually inspect the agent's behavior. The best scheme, however, is rating systems like [Trueskill](https://www.microsoft.com/en-us/research/project/trueskill-ranking-system/) or [ELO scores](https://en.wikipedia.org/wiki/Elo_rating_system). However, they are more difficult to implement and are outside the scode of `ppo_pettingzoo_ma_atari.py`. 
+    
+    
+    For simplicity, we measure the **episodic length** instead, which in a sense measures how many "back and forth" the agent can create. In other words, the longer the agent can play the game, the better the agent can play. Empirically, we have found episodic length to be a good indicator of the agent's skill, especially in `pong_v3` and `surround_v2`. However, it is not the case for `tennis_v3` and we'd need to visually inspect the agents' game play videos.
 
-| Environment      | `ppo_pettingzoo_ma_atari.py` (in ~160 mins) | `ppo_atari.py` (in ~215 mins)
-| ----------- | ----------- | ----------- |
-| BreakoutNoFrameskip-v4 | 429.06 ± 52.09      | 416.31 ± 43.92     | 
-| PongNoFrameskip-v4 | 20.40 ± 0.46  | 20.59 ± 0.35    |  
-| BeamRiderNoFrameskip-v4 | 2454.54 ± 740.49   | 2445.38 ± 528.91         | 
+
+Below are the average **episodic length** for `ppo_pettingzoo_ma_atari.py`. To ensure no loss of sample efficiency, we compared the results against `ppo_atari.py`.
+
+| Environment      | `ppo_pettingzoo_ma_atari.py`  | 
+| ----------- | ----------- | 
+| pong_v3 | 4153.60 ± 190.80      | 
+| surround_v2 | 3055.33 ± 223.68  | 
+| tennis_v3 | 14538.02 ± 7005.54   | 
 
 
 Learning curves:
 
 <div class="grid-container">
-<img src="../ppo/BreakoutNoFrameskip-v4multigpu.png">
-<img src="../ppo/BreakoutNoFrameskip-v4multigpu-time.png">
+<img src="../ppo/pong_v3.png">
 
-<img src="../ppo/PongNoFrameskip-v4multigpu.png">
-<img src="../ppo/PongNoFrameskip-v4multigpu-time.png">
+<img src="../ppo/surround_v2.png">
 
-<img src="../ppo/BeamRiderNoFrameskip-v4multigpu.png">
-<img src="../ppo/BeamRiderNoFrameskip-v4multigpu-time.png">
+<img src="../ppo/tennis_v3.png">
 </div>
 
-
-Under the same hardware, we see that `ppo_pettingzoo_ma_atari.py` is about **30% faster** than `ppo_atari.py` with no loss of sample efficiency. 
-
-
-???+ info
-
-    Although `ppo_pettingzoo_ma_atari.py` is 30% faster than `ppo_atari.py`, `ppo_pettingzoo_ma_atari.py` is still slower than `ppo_atari_envpool.py`, as shown below.  This comparison really highlights the different kinds of optimization possible.
-
-
-    <div class="grid-container">
-        <img src="../ppo/Breakout-a.png">
-        <img src="../ppo/Breakout-time-a.png">
-    </div>
-
-    The purpose of `ppo_pettingzoo_ma_atari.py` is not (yet) to achieve the fastest PPO + Atari example. Rather, its purpose is to *rigorously validate data paralleism does provide performance benefits*. We could do something like `ppo_pettingzoo_ma_atari_envpool.py` to possibly obtain the fastest PPO + Atari possible, but that is for another day. Note we may need `numba` to pin the threads `envpool` is using in each subprocess to avoid threads fighting each other and lowering the throughput.
 
 
 Tracked experiments and game play videos:
