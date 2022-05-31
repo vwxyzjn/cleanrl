@@ -837,7 +837,7 @@ See other logged metrics in the [related docs](/rl-algorithms/ppo/#explanation-o
 
 To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fc8fe88b7d7daf5be5324c00735885efddb40a252%2Fbenchmark%2Fppo.sh%23L47-L52&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F9b13d051cf8dd335d93b8b5a8c10e400e196e87f%2Fbenchmark%2Fppo.sh%23L53-L59&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 ???+ info
 
