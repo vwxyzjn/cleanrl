@@ -49,3 +49,11 @@ xvfb-run -a python -m cleanrl_utils.benchmark \
     --command "poetry run torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --track --capture-video" \
     --num-seeds 3 \
     --workers 1
+
+poetry install -E "pettingzoo atari"
+poetry run AutoROM --accept-license
+xvfb-run -a python -m cleanrl_utils.benchmark \
+    --env-ids pong_v3 surround_v2 tennis_v3  \
+    --command "poetry run python cleanrl/ppo_pettingzoo_ma_atari.py --track --capture-video" \
+    --num-seeds 3 \
+    --workers 3

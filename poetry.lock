@@ -1241,6 +1241,17 @@ optional = true
 python-versions = "*"
 
 [[package]]
+name = "multi-agent-ale-py"
+version = "0.1.11"
+description = "Multi-Agent Arcade Learning Environment Python Interface"
+category = "main"
+optional = true
+python-versions = "*"
+
+[package.dependencies]
+numpy = "*"
+
+[[package]]
 name = "mypy-extensions"
 version = "0.4.3"
 description = "Experimental type system extensions for programs checked with the mypy typechecker."
@@ -1470,7 +1481,7 @@ python-versions = "*"
 
 [[package]]
 name = "pettingzoo"
-version = "1.16.0"
+version = "1.18.1"
 description = "Gym for multi-agent reinforcement learning"
 category = "main"
 optional = true
@@ -1481,15 +1492,15 @@ gym = ">=0.21.0"
 numpy = ">=1.18.0"
 
 [package.extras]
-all = ["multi_agent_ale_py (==0.1.11)", "pygame (==2.1.0)", "chess (==1.7.0)", "rlcard (==1.0.4)", "pygame (==2.1.0)", "hanabi_learning_environment (==0.0.1)", "pygame (==2.1.0)", "pymunk (==6.2.0)", "magent (==0.2.0)", "pyglet (>=1.4.0)", "pygame (==2.1.0)", "box2d-py (==2.3.5)", "scipy (>=1.4.1)", "pillow (>=8.0.1)"]
-atari = ["multi_agent_ale_py (==0.1.11)", "pygame (==2.1.0)"]
+all = ["multi-agent-ale-py (==0.1.11)", "pygame (==2.1.0)", "chess (==1.7.0)", "rlcard (==1.0.4)", "hanabi-learning-environment (==0.0.1)", "pymunk (==6.2.0)", "magent (==0.2.2)", "pyglet (>=1.4.0)", "box2d-py (==2.3.5)", "scipy (>=1.4.1)", "pillow (>=8.0.1)"]
+atari = ["multi-agent-ale-py (==0.1.11)", "pygame (==2.1.0)"]
 butterfly = ["pygame (==2.1.0)", "pymunk (==6.2.0)"]
-classic = ["chess (==1.7.0)", "rlcard (==1.0.4)", "pygame (==2.1.0)", "hanabi_learning_environment (==0.0.1)"]
-magent = ["magent (==0.2.0)"]
+classic = ["chess (==1.7.0)", "rlcard (==1.0.4)", "pygame (==2.1.0)", "hanabi-learning-environment (==0.0.1)"]
+magent = ["magent (==0.2.2)"]
 mpe = ["pyglet (>=1.4.0)"]
 other = ["pillow (>=8.0.1)"]
 sisl = ["pygame (==2.1.0)", "box2d-py (==2.3.5)", "scipy (>=1.4.1)"]
-tests = ["pynput"]
+tests = ["pynput", "pytest", "codespell", "flake8", "isort"]
 
 [[package]]
 name = "pexpect"
@@ -4377,7 +4388,7 @@ tests = ["pytest", "pytest-cov", "pytest-env", "pytest-xdist", "pytype", "flake8
 
 [[package]]
 name = "supersuit"
-version = "3.3.4"
+version = "3.4.0"
 description = "Wrappers for Gym and PettingZoo"
 category = "main"
 optional = true
@@ -4385,8 +4396,8 @@ python-versions = ">=3.7"
 
 [package.dependencies]
 gym = ">=0.22.0"
-opencv-python = ">=3.4.0,<3.5.0"
 pettingzoo = ">=1.15.0"
+tinyscaler = ">=1.0.4"
 
 [[package]]
 name = "tensorboard"
@@ -4502,6 +4513,17 @@ webencodings = ">=0.4"
 [package.extras]
 doc = ["sphinx", "sphinx-rtd-theme"]
 test = ["pytest", "pytest-cov", "pytest-flake8", "pytest-isort", "coverage"]
+
+[[package]]
+name = "tinyscaler"
+version = "1.2.4"
+description = "A tiny, simple image scaler"
+category = "main"
+optional = true
+python-versions = "*"
+
+[package.dependencies]
+numpy = "*"
 
 [[package]]
 name = "toml"
@@ -4755,7 +4777,7 @@ cloud = ["boto3", "awscli"]
 docs = ["mkdocs-material"]
 envpool = ["envpool"]
 mujoco = ["free-mujoco-py"]
-pettingzoo = ["pettingzoo", "pygame", "pymunk"]
+pettingzoo = ["pettingzoo", "pygame", "pymunk", "SuperSuit", "multi-agent-ale-py"]
 plot = ["pandas", "seaborn"]
 procgen = ["procgen"]
 pybullet = ["pybullet"]
@@ -4765,7 +4787,7 @@ spyder = ["spyder"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "ef31d9cebf0312d146bf141368d726815c2f603bc02b3aa112398e940c19891a"
+content-hash = "eeb16be4f9bb0946d6b84e591dfc365b94b10013736fd38756719c245ba556ea"
 
 [metadata.files]
 absl-py = [
@@ -5578,6 +5600,18 @@ monotonic = [
     {file = "monotonic-1.6-py2.py3-none-any.whl", hash = "sha256:68687e19a14f11f26d140dd5c86f3dba4bf5df58003000ed467e0e2a69bca96c"},
     {file = "monotonic-1.6.tar.gz", hash = "sha256:3a55207bcfed53ddd5c5bae174524062935efed17792e9de2ad0205ce9ad63f7"},
 ]
+multi-agent-ale-py = [
+    {file = "multi-agent-ale-py-0.1.11.tar.gz", hash = "sha256:ba3ff800420f65ff354574975bdfa79035ae1597e8938b37d1df12ffc4122edb"},
+    {file = "multi_agent_ale_py-0.1.11-cp36-cp36m-macosx_10_15_x86_64.whl", hash = "sha256:b4169913de9e5245fe223c3a68bc5db3cbfd7ea7f9a032ff73f7ba3113cc7bbc"},
+    {file = "multi_agent_ale_py-0.1.11-cp36-cp36m-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:bdcc603bbea8c6bbf32e0182012f2dba275bd24f633fd7ec0965ec19e1ff3169"},
+    {file = "multi_agent_ale_py-0.1.11-cp37-cp37m-macosx_10_15_x86_64.whl", hash = "sha256:59c5ad594d34956ddd68df7ab96622581fb31a7bed3a8d8dcfea8675e339d9c4"},
+    {file = "multi_agent_ale_py-0.1.11-cp37-cp37m-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:1686a1f5dc8f146b4ce08ee96215140d32b91c77febe02e885e7472eeec816b5"},
+    {file = "multi_agent_ale_py-0.1.11-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:9ba47d47e307e10606bc93c5960b2571cd5371964cd81eaddb0b489f1cdaefd1"},
+    {file = "multi_agent_ale_py-0.1.11-cp38-cp38-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:2b66288a1160e091901f4c6af97a53e45448ab17d2ca03710978e6022adec422"},
+    {file = "multi_agent_ale_py-0.1.11-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:ce208dca1075408c41b7fe17b29df84b8fb7b8c09bd70897afbb8e767d624101"},
+    {file = "multi_agent_ale_py-0.1.11-cp39-cp39-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:48a6729423e5b5f47c06b98a25c18e726e2227e60abfd3d70735dc9a48c549d7"},
+    {file = "multi_agent_ale_py-0.1.11-pp37-pypy37_pp73-manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:7fd316dba5f05cdd2a29b0037433f9f15666fd4a0c2d98f3d85ca57a73d2b423"},
+]
 mypy-extensions = [
     {file = "mypy_extensions-0.4.3-py2.py3-none-any.whl", hash = "sha256:090fedd75945a69ae91ce1303b5824f428daf5a028d2f6ab8a299250a846f15d"},
     {file = "mypy_extensions-0.4.3.tar.gz", hash = "sha256:2d82818f5bb3e369420cb3c4060a7970edba416647068eb4c5343488a6c604a8"},
@@ -5702,7 +5736,8 @@ pathtools = [
     {file = "pathtools-0.1.2.tar.gz", hash = "sha256:7c35c5421a39bb82e58018febd90e3b6e5db34c5443aaaf742b3f33d4655f1c0"},
 ]
 pettingzoo = [
-    {file = "PettingZoo-1.16.0.tar.gz", hash = "sha256:01636b1f71f4b236fcda53e9b3a30553b8cb539ac2489f2922de1ec537949c1b"},
+    {file = "PettingZoo-1.18.1-py3-none-any.whl", hash = "sha256:25ae45fcfa2c623800e1f81b98ae50f5f5a1af6caabc5946764248de71a0371d"},
+    {file = "PettingZoo-1.18.1.tar.gz", hash = "sha256:7e6a3231dc3fc3801af83fe880f199f570d46a9acdcb990f2a223f121b6e5038"},
 ]
 pexpect = [
     {file = "pexpect-4.8.0-py2.py3-none-any.whl", hash = "sha256:0b48a55dcb3c05f3329815901ea4fc1537514d6ba867a152b581d69ae3710937"},
@@ -7191,7 +7226,8 @@ stable-baselines3 = [
     {file = "stable_baselines3-1.2.0.tar.gz", hash = "sha256:170842f30c00adff0dcccef5be74921cfa0dd2650b3eb8600c62b5d43ff78c67"},
 ]
 supersuit = [
-    {file = "SuperSuit-3.3.4.tar.gz", hash = "sha256:dfbba2a0bdadbc66227c2505772cbf6b4897ef9005c12b94fed5947fb4ba108f"},
+    {file = "SuperSuit-3.4.0-py3-none-any.whl", hash = "sha256:45b541b2b29faffd6494b53d649c8d94889966f407fd380b3e3211f9e68a49e9"},
+    {file = "SuperSuit-3.4.0.tar.gz", hash = "sha256:5999beec8d7923c11c9511eaa9dec8a38269cb0d7af029e17903c79234233409"},
 ]
 tensorboard = [
     {file = "tensorboard-2.8.0-py3-none-any.whl", hash = "sha256:65a338e4424e9079f2604923bdbe301792adce2ace1be68da6b3ddf005170def"},
@@ -7226,6 +7262,10 @@ three-merge = [
 tinycss2 = [
     {file = "tinycss2-1.1.1-py3-none-any.whl", hash = "sha256:fe794ceaadfe3cf3e686b22155d0da5780dd0e273471a51846d0a02bc204fec8"},
     {file = "tinycss2-1.1.1.tar.gz", hash = "sha256:b2e44dd8883c360c35dd0d1b5aad0b610e5156c2cb3b33434634e539ead9d8bf"},
+]
+tinyscaler = [
+    {file = "tinyscaler-1.2.4-cp310-cp310-manylinux2010_x86_64.whl", hash = "sha256:d5230e57e8eb25a770afc782289d3241a55517ad3f345245c9ca2ef65f4d4d69"},
+    {file = "tinyscaler-1.2.4.tar.gz", hash = "sha256:2f2a890c5314bf6cfe4532dc6e6c9946faeb7c15f0a8f98234c8b77cb7ad287c"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
