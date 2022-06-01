@@ -26,16 +26,29 @@ Then you can run the scripts under the poetry environment in two ways: `poetry r
     virtual environment (e.g. `(cleanrl-ghSZGHE3-py3.9)`) should appear in the left side of your shell.
     Afterwards, you can directly run
     ```bash
-    python ppo.py
+    (cleanrl-ghSZGHE3-py3.9) python ppo.py
+    ```
 
 
-## Code Formatting
+## Pre-commit utilities
 
-We use [Pre-commit](https://pre-commit.com/) to sort dependencies, remove unused variables and imports, format code using black, and check word spelling. You can run the following command:
+We use [pre-commit](https://pre-commit.com/) to helps us automate a sequence of short tasks (called pre-commit "hooks") such as code formatting. In particular, we always use the following hooks when submitting code to the main repository.
+
+* [**pyupgrade**](https://github.com/asottile/pyupgrade): pyupgrade upgrades syntax for newer versions of the language. 
+* [**isort**](https://github.com/PyCQA/isort): isort sorts imported dependencies according to their type (e.g, standard library vs third-party library) and name.
+* [**black**](https://black.readthedocs.io/en/stable/): black enforces an uniform code style across the codebase.
+* [**autoflake**](https://github.com/PyCQA/autoflake): autoflake helps remove unused imports and variables.
+* [**codespell**](https://github.com/codespell-project/codespell): codespell helps avoid common incorrect spelling.
+
+You can run the following command to run the following hooks:
 
 ```bash
 poetry run pre-commit run --all-files
 ```
+
+which in most cases should automatically fix things as shown below: 
+
+![](docs/static/pre-commit.png)
 
 ## Contributing new algorithms
 
