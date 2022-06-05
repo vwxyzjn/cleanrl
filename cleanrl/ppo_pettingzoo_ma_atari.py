@@ -1,3 +1,4 @@
+# docs and experiment results can be found at https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_pettingzoo_ma_atari.py
 import argparse
 import importlib
 import os
