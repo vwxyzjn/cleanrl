@@ -1,9 +1,12 @@
 [tool.poetry]
 name = "cleanrl"
-version = "0.5.0"
+version = "1.0.0-beta.0"
 description = "High-quality single file implementation of Deep Reinforcement Learning algorithms with research-friendly features"
 authors = ["Costa Huang <costa.huang@outlook.com>"]
 include = ["cleanrl_utils"]
+keywords = ["reinforcement", "machine", "learning", "research"]
+license="MIT"
+readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.7.1,<3.10"
