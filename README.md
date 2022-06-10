@@ -16,7 +16,8 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 
 
 * 📜 Single-file implementation
-   * *Every detail about an algorithm is put into the algorithm's own file.* It is therefore easier to fully understand an algorithm and do research with.
+   * *Every detail about an algorithm variant is put into a single standalone file.* 
+   * For example, our `ppo_atari.py` only has 340 lines of code but contains all implementation details on how PPO works with Atari games, so it is a great reference implementation to read for folks who do not wish to read an entire modular library.
 * 📊 Benchmarked Implementation (7+ algorithms and 34+ games at https://benchmark.cleanrl.dev)
 * 📈 Tensorboard Logging
 * 🪛 Local Reproducibility via Seeding
@@ -27,6 +28,8 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 You can read more about CleanRL in our [technical paper](https://arxiv.org/abs/2111.08819) and [documentation](https://docs.cleanrl.dev/).
 
 Good luck have fun :rocket:
+
+⚠️ **NOTE**: CleanRL is *not* a modular library and therefore it is not meant to be imported. At the cost of duplicate code, we make all implementation details of a DRL algorithm variant easy to understand, so CleanRL comes with its own pros and cons. You should consider using CleanRL if you want to 1) understand all implementation details of an algorithm's varaint or 2) do quick prototypes.
 
 ## Get started
 
