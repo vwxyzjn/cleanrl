@@ -63,7 +63,7 @@ def parse_args():
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--gae", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Use GAE for advantage computation")
-    parser.add_argument("--gamma", type=float, default=0.99,
+    parser.add_argument("--gamma", type=float, default=0.999,
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
@@ -83,7 +83,7 @@ def parse_args():
         help="coefficient of the value function")
     parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
-    parser.add_argument("--target-kl", type=float, default=0.03,
+    parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
     parser.add_argument("--sticky-action", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles whether or not to use sticky action.",
@@ -317,7 +317,7 @@ if __name__ == "__main__":
 
     reward_rms = RunningMeanStd()
     obs_rms = RunningMeanStd(shape=(1, 1, 84, 84))
-    discounted_reward = RewardForwardFilter(args.int_gamma)
+    discounted_reward = RewardForwardFilter(args.gamma)
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -378,9 +378,8 @@ if __name__ == "__main__":
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
             rnd_next_obs = (
-                (((next_obs[:, 3, :, :].reshape(args.num_envs, 1, 84, 84) - obs_rms.mean) / np.sqrt(obs_rms.var)).clip(-5, 5))
+                (((next_obs[:, 3, :, :].reshape(args.num_envs, 1, 84, 84) - torch.from_numpy(obs_rms.mean).to(device)) / torch.sqrt(torch.from_numpy(obs_rms.var).to(device))).clip(-5, 5))
                 .float()
-                .to(device)
             )
             target_next_feature = rnd_model.target(rnd_next_obs)
             predict_next_feature = rnd_model.predictor(rnd_next_obs)
@@ -388,7 +387,7 @@ if __name__ == "__main__":
             for idx, item in enumerate(info):
                 if "episode" in item.keys():
                     print(
-                        f"global_step={global_step}, episodic_return={item['episode']['r']}, curiosity_reward={np.mean(curiosity_rewards[step].numpy())}"
+                        f"global_step={global_step}, episodic_return={item['episode']['r']}, curiosity_reward={np.mean(curiosity_rewards[step].cpu().numpy())}"
                     )
                     writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
                     writer.add_scalar(
@@ -400,7 +399,7 @@ if __name__ == "__main__":
                     break
 
         curiosity_reward_per_env = np.array(
-            [discounted_reward.update(reward_per_step) for reward_per_step in curiosity_rewards.data.numpy().T]
+            [discounted_reward.update(reward_per_step) for reward_per_step in curiosity_rewards.cpu().data.numpy().T]
         )
         mean, std, count = (
             np.mean(curiosity_reward_per_env),
@@ -472,14 +471,14 @@ if __name__ == "__main__":
 
         b_advantages = b_int_advantages * args.int_coef + b_ext_advantages * args.ext_coef
 
-        obs_rms.update(b_obs[:, 3, :, :].reshape(-1, 1, 84, 84).numpy())
+        obs_rms.update(b_obs[:, 3, :, :].reshape(-1, 1, 84, 84).cpu().numpy())
 
         # Optimizing the policy and value network
         forward_mse = nn.MSELoss(reduction="none")
         b_inds = np.arange(args.batch_size)
 
         rnd_next_obs = (
-            (((b_obs[:, 3, :, :].reshape(-1, 1, 84, 84) - obs_rms.mean) / np.sqrt(obs_rms.var)).clip(-5, 5)).float().to(device)
+            (((b_obs[:, 3, :, :].reshape(-1, 1, 84, 84) - torch.from_numpy(obs_rms.mean).to(device)) / torch.sqrt(torch.from_numpy(obs_rms.var).to(device))).clip(-5, 5)).float()
         )
 
         clipfracs = []
@@ -538,10 +537,11 @@ if __name__ == "__main__":
 
                 optimizer.zero_grad()
                 loss.backward()
-                nn.utils.clip_grad_norm_(
-                    list(agent.parameters()) + list(rnd_model.predictor.parameters()),
-                    args.max_grad_norm,
-                )
+                if args.max_grad_norm:
+                    nn.utils.clip_grad_norm_(
+                        list(agent.parameters()) + list(rnd_model.predictor.parameters()),
+                        args.max_grad_norm,
+                    )
                 optimizer.step()
 
             if args.target_kl is not None:
