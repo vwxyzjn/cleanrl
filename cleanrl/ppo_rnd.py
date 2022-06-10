@@ -158,7 +158,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 class Agent(nn.Module):
     def __init__(self, envs, frames=4):
-        super(Agent, self).__init__()
+        super().__init__()
         self.network = nn.Sequential(
             Scale(1 / 255),
             layer_init(nn.Conv2d(frames, 32, 8, stride=4)),
@@ -199,7 +199,7 @@ class Agent(nn.Module):
 
 class RNDModel(nn.Module):
     def __init__(self, input_size, output_size):
-        super(RNDModel, self).__init__()
+        super().__init__()
 
         self.input_size = input_size
         self.output_size = output_size
@@ -245,7 +245,7 @@ class RNDModel(nn.Module):
         return predict_feature, target_feature
 
 
-class RewardForwardFilter(object):
+class RewardForwardFilter:
     def __init__(self, gamma):
         self.rewems = None
         self.gamma = gamma
@@ -378,9 +378,11 @@ if __name__ == "__main__":
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
             rnd_next_obs = (
-                (((next_obs[:, 3, :, :].reshape(args.num_envs, 1, 84, 84) - torch.from_numpy(obs_rms.mean).to(device)) / torch.sqrt(torch.from_numpy(obs_rms.var).to(device))).clip(-5, 5))
-                .float()
-            )
+                (
+                    (next_obs[:, 3, :, :].reshape(args.num_envs, 1, 84, 84) - torch.from_numpy(obs_rms.mean).to(device))
+                    / torch.sqrt(torch.from_numpy(obs_rms.var).to(device))
+                ).clip(-5, 5)
+            ).float()
             target_next_feature = rnd_model.target(rnd_next_obs)
             predict_next_feature = rnd_model.predictor(rnd_next_obs)
             curiosity_rewards[step] = ((target_next_feature - predict_next_feature).pow(2).sum(1) / 2).data
@@ -462,7 +464,7 @@ if __name__ == "__main__":
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
         b_logprobs = logprobs.reshape(-1)
-        b_actions = actions.reshape((-1))
+        b_actions = actions.reshape(-1)
         b_ext_advantages = ext_advantages.reshape(-1)
         b_int_advantages = int_advantages.reshape(-1)
         b_ext_returns = ext_returns.reshape(-1)
@@ -478,8 +480,11 @@ if __name__ == "__main__":
         b_inds = np.arange(args.batch_size)
 
         rnd_next_obs = (
-            (((b_obs[:, 3, :, :].reshape(-1, 1, 84, 84) - torch.from_numpy(obs_rms.mean).to(device)) / torch.sqrt(torch.from_numpy(obs_rms.var).to(device))).clip(-5, 5)).float()
-        )
+            (
+                (b_obs[:, 3, :, :].reshape(-1, 1, 84, 84) - torch.from_numpy(obs_rms.mean).to(device))
+                / torch.sqrt(torch.from_numpy(obs_rms.var).to(device))
+            ).clip(-5, 5)
+        ).float()
 
         clipfracs = []
         for epoch in range(args.update_epochs):
