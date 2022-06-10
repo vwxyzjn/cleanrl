@@ -1,3 +1,4 @@
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/c51/#c51py
 import argparse
 import os
 import random
@@ -36,7 +37,7 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="CartPole-v1",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=50000,
+    parser.add_argument("--total-timesteps", type=int, default=500000,
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=2.5e-4,
         help="the learning rate of the optimizer")
@@ -50,21 +51,19 @@ def parse_args():
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
-    parser.add_argument("--target-network-frequency", type=int, default=1000,
+    parser.add_argument("--target-network-frequency", type=int, default=500,
         help="the timesteps it takes to update the target network")
-    parser.add_argument("--max-grad-norm", type=float, default=0.5,
-        help="the maximum norm for the gradient clipping")
-    parser.add_argument("--batch-size", type=int, default=32,
+    parser.add_argument("--batch-size", type=int, default=128,
         help="the batch size of sample from the reply memory")
     parser.add_argument("--start-e", type=float, default=1,
         help="the starting epsilon for exploration")
-    parser.add_argument("--end-e", type=float, default=0.02,
+    parser.add_argument("--end-e", type=float, default=0.05,
         help="the ending epsilon for exploration")
     parser.add_argument("--exploration-fraction", type=float, default=0.5,
         help="the fraction of `total-timesteps` it takes from start-e to go end-e")
     parser.add_argument("--learning-starts", type=int, default=10000,
         help="timestep to start learning")
-    parser.add_argument("--train-frequency", type=int, default=1,
+    parser.add_argument("--train-frequency", type=int, default=10,
         help="the frequency of training")
     args = parser.parse_args()
     # fmt: on
@@ -89,7 +88,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
     def __init__(self, env, n_atoms=101, v_min=-100, v_max=100):
-        super(QNetwork, self).__init__()
+        super().__init__()
         self.env = env
         self.n_atoms = n_atoms
         self.register_buffer("atoms", torch.linspace(v_min, v_max, steps=n_atoms))
@@ -147,7 +146,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, 0, 0, args.capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(envs, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max).to(device)
@@ -156,7 +155,11 @@ if __name__ == "__main__":
     target_network.load_state_dict(q_network.state_dict())
 
     rb = ReplayBuffer(
-        args.buffer_size, envs.single_observation_space, envs.single_action_space, device=device, optimize_memory_usage=True
+        args.buffer_size,
+        envs.single_observation_space,
+        envs.single_action_space,
+        device,
+        handle_timeout_termination=True,
     )
     start_time = time.time()
 
@@ -179,6 +182,7 @@ if __name__ == "__main__":
             if "episode" in info.keys():
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 writer.add_scalar("charts/epsilon", epsilon, global_step)
                 break
 
@@ -195,7 +199,6 @@ if __name__ == "__main__":
         # ALGO LOGIC: training.
         if global_step > args.learning_starts and global_step % args.train_frequency == 0:
             data = rb.sample(args.batch_size)
-
             with torch.no_grad():
                 _, next_pmfs = target_network.get_action(data.next_observations)
                 next_atoms = data.rewards + args.gamma * target_network.atoms * (1 - data.dones)
@@ -219,6 +222,7 @@ if __name__ == "__main__":
             loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5, max=1 - 1e-5).log()).sum(-1)).mean()
 
             if global_step % 100 == 0:
+                writer.add_scalar("losses/loss", loss.item(), global_step)
                 old_val = (old_pmfs * q_network.atoms).sum(1)
                 writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
                 print("SPS:", int(global_step / (time.time() - start_time)))
@@ -227,7 +231,6 @@ if __name__ == "__main__":
             # optimize the model
             optimizer.zero_grad()
             loss.backward()
-            nn.utils.clip_grad_norm_(list(q_network.parameters()), args.max_grad_norm)
             optimizer.step()
 
             # update the target network

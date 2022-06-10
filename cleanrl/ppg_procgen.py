@@ -1,3 +1,4 @@
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppg/#ppg_procgenpy
 import argparse
 import os
 import random
@@ -56,8 +57,8 @@ def parse_args():
         help="the lambda for the general advantage estimation")
     parser.add_argument("--num-minibatches", type=int, default=8,
         help="the number of mini-batches")
-    parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Toggles advantages normalization")
+    parser.add_argument("--adv-norm-fullbatch", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="Full batch advantage normalization as used in PPG code")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -82,32 +83,51 @@ def parse_args():
         help="E_aux:the K epochs to update the policy")
     parser.add_argument("--beta-clone", type=float, default=1.0,
         help="the behavior cloning coefficient")
-    parser.add_argument("--n-aux-minibatch", type=int, default=16 * 32,
+    parser.add_argument("--num-aux-rollouts", type=int, default=4,
         help="the number of mini batch in the auxiliary phase")
     parser.add_argument("--n-aux-grad-accum", type=int, default=1,
         help="the number of gradient accumulation in mini batch")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
-    args.aux_batch_size = int(args.batch_size * args.n_iteration)
-    args.aux_minibatch_size = int(args.aux_batch_size // (args.n_aux_minibatch * args.n_aux_grad_accum))
+    args.aux_batch_rollouts = int(args.num_envs * args.n_iteration)
     assert args.v_value == 1, "Multiple value epoch (v_value != 1) is not supported yet"
     # fmt: on
     return args
 
 
-def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
-    torch.nn.init.orthogonal_(layer.weight, std)
-    torch.nn.init.constant_(layer.bias, bias_const)
+def layer_init_normed(layer, norm_dim, scale=1.0):
+    with torch.no_grad():
+        layer.weight.data *= scale / layer.weight.norm(dim=norm_dim, p=2, keepdim=True)
+        layer.bias *= 0
     return layer
+
+
+def flatten01(arr):
+    return arr.reshape((-1, *arr.shape[2:]))
+
+
+def unflatten01(arr, targetshape):
+    return arr.reshape((*targetshape, *arr.shape[1:]))
+
+
+def flatten_unflatten_test():
+    a = torch.rand(400, 30, 100, 100, 5)
+    b = flatten01(a)
+    c = unflatten01(b, a.shape[:2])
+    assert torch.equal(a, c)
 
 
 # taken from https://github.com/AIcrowd/neurips2020-procgen-starter-kit/blob/142d09586d2272a17f44481a115c4bd817cf6a94/models/impala_cnn_torch.py
 class ResidualBlock(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, channels, scale):
         super().__init__()
-        self.conv0 = nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, padding=1)
-        self.conv1 = nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, padding=1)
+        # scale = (1/3**0.5 * 1/2**0.5)**0.5 # For default IMPALA CNN this is the final scale value in the PPG code
+        scale = np.sqrt(scale)
+        conv0 = nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, padding=1)
+        self.conv0 = layer_init_normed(conv0, norm_dim=(1, 2, 3), scale=scale)
+        conv1 = nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, padding=1)
+        self.conv1 = layer_init_normed(conv1, norm_dim=(1, 2, 3), scale=scale)
 
     def forward(self, x):
         inputs = x
@@ -119,13 +139,16 @@ class ResidualBlock(nn.Module):
 
 
 class ConvSequence(nn.Module):
-    def __init__(self, input_shape, out_channels):
+    def __init__(self, input_shape, out_channels, scale):
         super().__init__()
         self._input_shape = input_shape
         self._out_channels = out_channels
-        self.conv = nn.Conv2d(in_channels=self._input_shape[0], out_channels=self._out_channels, kernel_size=3, padding=1)
-        self.res_block0 = ResidualBlock(self._out_channels)
-        self.res_block1 = ResidualBlock(self._out_channels)
+        conv = nn.Conv2d(in_channels=self._input_shape[0], out_channels=self._out_channels, kernel_size=3, padding=1)
+        self.conv = layer_init_normed(conv, norm_dim=(1, 2, 3), scale=1.0)
+        nblocks = 2  # Set to the number of residual blocks
+        scale = scale / np.sqrt(nblocks)
+        self.res_block0 = ResidualBlock(self._out_channels, scale=scale)
+        self.res_block1 = ResidualBlock(self._out_channels, scale=scale)
 
     def forward(self, x):
         x = self.conv(x)
@@ -142,24 +165,29 @@ class ConvSequence(nn.Module):
 
 class Agent(nn.Module):
     def __init__(self, envs):
-        super(Agent, self).__init__()
+        super().__init__()
         h, w, c = envs.single_observation_space.shape
         shape = (c, h, w)
         conv_seqs = []
-        for out_channels in [16, 32, 32]:
-            conv_seq = ConvSequence(shape, out_channels)
+        chans = [16, 32, 32]
+        scale = 1 / np.sqrt(len(chans))  # Not fully sure about the logic behind this but its used in PPG code
+        for out_channels in chans:
+            conv_seq = ConvSequence(shape, out_channels, scale=scale)
             shape = conv_seq.get_output_shape()
             conv_seqs.append(conv_seq)
+
+        encodertop = nn.Linear(in_features=shape[0] * shape[1] * shape[2], out_features=256)
+        encodertop = layer_init_normed(encodertop, norm_dim=1, scale=1.4)
         conv_seqs += [
             nn.Flatten(),
             nn.ReLU(),
-            nn.Linear(in_features=shape[0] * shape[1] * shape[2], out_features=256),
+            encodertop,
             nn.ReLU(),
         ]
         self.network = nn.Sequential(*conv_seqs)
-        self.actor = layer_init(nn.Linear(256, envs.single_action_space.n), std=0.01)
-        self.critic = layer_init(nn.Linear(256, 1), std=1)
-        self.aux_critic = layer_init(nn.Linear(256, 1), std=1)
+        self.actor = layer_init_normed(nn.Linear(256, envs.single_action_space.n), norm_dim=1, scale=0.1)
+        self.critic = layer_init_normed(nn.Linear(256, 1), norm_dim=1, scale=0.1)
+        self.aux_critic = layer_init_normed(nn.Linear(256, 1), norm_dim=1, scale=0.1)
 
     def get_action_and_value(self, x, action=None):
         hidden = self.network(x.permute((0, 3, 1, 2)) / 255.0)  # "bhwc" -> "bchw"
@@ -202,6 +230,8 @@ if __name__ == "__main__":
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
+    flatten_unflatten_test()  # Try not to mess with the flatten unflatten logic
+
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -217,12 +247,14 @@ if __name__ == "__main__":
     envs.single_observation_space = envs.observation_space["rgb"]
     envs.is_vector_env = True
     envs = gym.wrappers.RecordEpisodeStatistics(envs)
+    if args.capture_video:
+        envs = gym.wrappers.RecordVideo(envs, f"videos/{run_name}")
     envs = gym.wrappers.NormalizeReward(envs)
     envs = gym.wrappers.TransformReward(envs, lambda reward: np.clip(reward, -10, 10))
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent = Agent(envs).to(device)
-    optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
+    optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-8)
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -231,8 +263,10 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    aux_obs = torch.zeros((args.num_steps * args.num_envs * args.n_iteration,) + envs.single_observation_space.shape)
-    aux_returns = torch.zeros((args.num_steps * args.num_envs * args.n_iteration,))
+    aux_obs = torch.zeros(
+        (args.num_steps, args.aux_batch_rollouts) + envs.single_observation_space.shape, dtype=torch.uint8
+    )  # Saves lot system RAM
+    aux_returns = torch.zeros((args.num_steps, args.aux_batch_rollouts))
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -312,6 +346,10 @@ if __name__ == "__main__":
             b_returns = returns.reshape(-1)
             b_values = values.reshape(-1)
 
+            # PPG code does full batch advantage normalization
+            if args.adv_norm_fullbatch:
+                b_advantages = (b_advantages - b_advantages.mean()) / (b_advantages.std() + 1e-8)
+
             # Optimizing the policy and value network
             b_inds = np.arange(args.batch_size)
             clipfracs = []
@@ -332,8 +370,6 @@ if __name__ == "__main__":
                         clipfracs += [((ratio - 1.0).abs() > args.clip_coef).float().mean().item()]
 
                     mb_advantages = b_advantages[mb_inds]
-                    if args.norm_adv:
-                        mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
                     # Policy loss
                     pg_loss1 = -mb_advantages * ratio
@@ -383,45 +419,60 @@ if __name__ == "__main__":
             print("SPS:", int(global_step / (time.time() - start_time)))
             writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
-            # PPG Storage:
-            storage_slice = slice(args.num_steps * args.num_envs * (update - 1), args.num_steps * args.num_envs * update)
-            aux_obs[storage_slice] = b_obs.cpu().clone()
-            aux_returns[storage_slice] = b_returns.cpu().clone()
+            # PPG Storage - Rollouts are saved without flattening for sampling full rollouts later:
+            storage_slice = slice(args.num_envs * (update - 1), args.num_envs * update)
+            aux_obs[:, storage_slice] = obs.cpu().clone().to(torch.uint8)
+            aux_returns[:, storage_slice] = returns.cpu().clone()
 
         # AUXILIARY PHASE
-        old_agent = Agent(envs).to(device)
-        old_agent.load_state_dict(agent.state_dict())
-        aux_inds = np.arange(
-            args.aux_batch_size,
-        )
+        aux_inds = np.arange(args.aux_batch_rollouts)
+
+        # Build the old policy on the aux buffer before distilling to the network
+        aux_pi = torch.zeros((args.num_steps, args.aux_batch_rollouts, envs.single_action_space.n))
+        for i, start in enumerate(range(0, args.aux_batch_rollouts, args.num_aux_rollouts)):
+            end = start + args.num_aux_rollouts
+            aux_minibatch_ind = aux_inds[start:end]
+            m_aux_obs = aux_obs[:, aux_minibatch_ind].to(torch.float32).to(device)
+            m_obs_shape = m_aux_obs.shape
+            m_aux_obs = flatten01(m_aux_obs)
+            with torch.no_grad():
+                pi_logits = agent.get_pi(m_aux_obs).logits.cpu().clone()
+            aux_pi[:, aux_minibatch_ind] = unflatten01(pi_logits, m_obs_shape[:2])
+            del m_aux_obs
+
         for auxiliary_update in range(1, args.e_auxiliary + 1):
             print(f"aux epoch {auxiliary_update}")
             np.random.shuffle(aux_inds)
-            for i, start in enumerate(range(0, args.aux_batch_size, args.aux_minibatch_size)):
-                end = start + args.aux_minibatch_size
+            for i, start in enumerate(range(0, args.aux_batch_rollouts, args.num_aux_rollouts)):
+                end = start + args.num_aux_rollouts
                 aux_minibatch_ind = aux_inds[start:end]
                 try:
-                    m_aux_obs = aux_obs[aux_minibatch_ind].to(device)
-                    m_aux_returns = aux_returns[aux_minibatch_ind].to(device)
+                    m_aux_obs = aux_obs[:, aux_minibatch_ind].to(device)
+                    m_obs_shape = m_aux_obs.shape
+                    m_aux_obs = flatten01(m_aux_obs)  # Sample full rollouts for PPG instead of random indexes
+                    m_aux_returns = aux_returns[:, aux_minibatch_ind].to(torch.float32).to(device)
+                    m_aux_returns = flatten01(m_aux_returns)
 
                     new_pi, new_values, new_aux_values = agent.get_pi_value_and_aux_value(m_aux_obs)
+
                     new_values = new_values.view(-1)
                     new_aux_values = new_aux_values.view(-1)
-                    with torch.no_grad():
-                        old_pi = old_agent.get_pi(m_aux_obs)
+                    old_pi_logits = flatten01(aux_pi[:, aux_minibatch_ind]).to(device)
+                    old_pi = Categorical(logits=old_pi_logits)
                     kl_loss = td.kl_divergence(old_pi, new_pi).mean()
 
                     real_value_loss = 0.5 * ((new_values - m_aux_returns) ** 2).mean()
                     aux_value_loss = 0.5 * ((new_aux_values - m_aux_returns) ** 2).mean()
                     joint_loss = aux_value_loss + args.beta_clone * kl_loss
 
-                    optimizer.zero_grad()
                     loss = (joint_loss + real_value_loss) / args.n_aux_grad_accum
                     loss.backward()
 
                     if (i + 1) % args.n_aux_grad_accum == 0:
                         nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                         optimizer.step()
+                        optimizer.zero_grad()  # This cannot be outside, else gradients won't accumulate
+
                 except RuntimeError:
                     raise Exception(
                         "if running out of CUDA memory, try a higher --n-aux-grad-accum, which trades more time for less gpu memory"

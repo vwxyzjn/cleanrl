@@ -2,8 +2,11 @@ site_name: CleanRL User Guide
 theme:
   name: material
   features:
-    - navigation.instant
+    # - navigation.instant
+    - navigation.tracking
     # - navigation.tabs
+    # - navigation.tabs.sticky
+    - navigation.sections
     - navigation.expand
     - navigation.top
     - search.suggest
@@ -72,26 +75,30 @@ nav:
     - get-started/basic-usage.md
     - get-started/experiment-tracking.md
     - get-started/examples.md
-  - Cloud Integration: 
-    - cloud/installation.md
-    - cloud/submit-experiments.md
+    - get-started/benchmark-utility.md
   - RL Algorithms:
     - rl-algorithms/overview.md
     - rl-algorithms/ppo.md
     - rl-algorithms/dqn.md
+    - rl-algorithms/c51.md
     - rl-algorithms/ddpg.md
-    - rl-algorithms/rnd.md
-  - Open RL Benchmark: open-rl-benchmark.md
+    - rl-algorithms/sac.md
+    - rl-algorithms/td3.md
+    - rl-algorithms/ppg.md
+  # - Open RL Benchmark: open-rl-benchmark.md
+  - Community:
+    - contribution.md
+    - made-with-cleanrl.md
   - Advanced:
     - advanced/resume-training.md
-  - Community: community.md
-  - Contribution: contribution.md
-  - made-with-cleanrl.md
+  - Cloud Integration: 
+    - cloud/installation.md
+    - cloud/submit-experiments.md
 #footer
 extra:
   social:
     - icon: fontawesome/solid/envelope
-      link: mailto:costa.huang@live.com
+      link: mailto:costa.huang@outlook.com
     - icon: fontawesome/brands/twitter
       link: https://twitter.com/vwxyzjn
     - icon: fontawesome/brands/github

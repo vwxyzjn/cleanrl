@@ -325,4 +325,4 @@ plt.clf()
 # analysis
 stats_df = pd.DataFrame(stats)
 g = stats_df.groupby(["env_id", "exp_name"]).agg(lambda x: f"{np.mean(x):.2f} ± {np.std(x):.2f}")
-print(g.reset_index().pivot("exp_name", "env_id", args.feature_of_interest).to_latex().replace("±", "$\pm$"))
+print(g.reset_index().pivot("exp_name", "env_id", args.feature_of_interest).to_latex().replace("±", r"$\pm$"))

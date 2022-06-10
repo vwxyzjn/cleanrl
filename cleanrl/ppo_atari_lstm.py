@@ -1,3 +1,4 @@
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_lstmpy
 import argparse
 import os
 import random
@@ -117,7 +118,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 class Agent(nn.Module):
     def __init__(self, envs):
-        super(Agent, self).__init__()
+        super().__init__()
         self.network = nn.Sequential(
             layer_init(nn.Conv2d(1, 32, 8, stride=4)),
             nn.ReLU(),

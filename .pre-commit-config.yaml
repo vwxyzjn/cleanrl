@@ -1,4 +1,10 @@
 repos:
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v2.31.1
+    hooks:
+      - id: pyupgrade
+        args: 
+          - --py37-plus
   - repo: https://github.com/PyCQA/isort
     rev: 5.10.1
     hooks:
@@ -6,6 +12,7 @@ repos:
         args:
           - --profile=black
           - --skip-glob=wandb/**/*
+          - --thirdparty=wandb
   - repo: https://github.com/myint/autoflake
     rev: v1.4
     hooks:
@@ -17,7 +24,7 @@ repos:
           - --remove-unused-variables
           - --remove-all-unused-imports
   - repo: https://github.com/python/black
-    rev: 22.1.0
+    rev: 22.3.0
     hooks:
       - id: black
         args:
