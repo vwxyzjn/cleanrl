@@ -110,9 +110,9 @@ Below are the average episodic returns for `ppg_procgen.py`, and comparison with
 | Bigfish (easy)   | 27.25 ± 7.55     | 22.21 ± 7.42     | 15.94 ± 10.80                          |
 
 
-???+ info
+???+ warning
 
-    Note that we have run the procgen experiments using the `easy` distribution for reducing the computational cost.
+    Note that we have run the procgen experiments using the `easy` distribution for reducing the computational cost. However, the original paper's results were condcuted with the `hard` distribution mode. For convenience, in the learning curves below, we compared the performance of the original code base (`openai/phasic-policy-gradient` the purple curve) in the `easy` distribution. 
 
 Learning curves:
 
@@ -127,9 +127,21 @@ Learning curves:
 <img src="../ppg/comparison/BigFish.png">
 </div>
 
+
+???+ info
+
+    Also note that our `ppo_procgen.py` which closely matches implementation details of `openai/baselines`' PPO which might not be the same as `openai/phasic-policy-gradient`'s PPO. We take the reported results from (Cobbe et al., 2020)[^1] and (Cobbe et al., 2021)[^2] and compared them in a [google sheet](https://docs.google.com/spreadsheets/d/1ZC_D2WPL6-PzhecM4ZFQWQ6nY6dkXeQDOIgRHVp1BNU/edit?usp=sharing) (screenshot shown below). As shown, the performance seems to diverge a bit. We also note that (Cobbe et al., 2020)[^1] used [`procgen==0.9.2`](https://github.com/openai/train-procgen/blob/1a2ae2194a61f76a733a39339530401c024c3ad8/environment.yml#L10) and (Cobbe et al., 2021)[^2] used [`procgen==0.10.4`](https://github.com/openai/phasic-policy-gradient/blob/7295473f0185c82f9eb9c1e17a373135edd8aacc/environment.yml#L10), which also could cause performance difference. It is for this reason, we ran our own `openai/phasic-policy-gradient` experiments on the `easy` distribution for comparison, but this does mean it's challenging to compare our results against those in the original PPG paper (Cobbe et al., 2021)[^2].
+
+    ![PPG's PPO compared to openai/baselines' PPO](../ppg/ppg-ppo.png)
+
 Tracked experiments and game play videos:
 
 
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Procgen-CleanRL-s-PPG--VmlldzoyMDc1MDMz" style="width:100%; height:500px" title="Procgen-CleanRL-s-PPG"></iframe>
 
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Procgen-CleanRL-s-PPG-vs-PPO-vs-openai-phasic-policy-gradient--VmlldzoyMDc1MDc3" style="width:100%; height:500px" title="Procgen-CleanRL-s-PPG-PPO-openai-phasic-policy-gradient"></iframe>
+
+
+[^1]: Cobbe, K., Hesse, C., Hilton, J., & Schulman, J. (2020, November). Leveraging procedural generation to benchmark reinforcement learning. In International conference on machine learning (pp. 2048-2056). PMLR.
+[^2]: Cobbe, K. W., Hilton, J., Klimov, O., & Schulman, J. (2021, July). Phasic policy gradient. In International Conference on Machine Learning (pp. 2020-2027). PMLR.
+
