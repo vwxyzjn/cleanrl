@@ -4,6 +4,7 @@
 [<img src="https://img.shields.io/badge/license-MIT-blue">](https://github.com/vwxyzjn/cleanrl)
 [![tests](https://github.com/vwxyzjn/cleanrl/actions/workflows/tests.yaml/badge.svg)](https://github.com/vwxyzjn/cleanrl/actions/workflows/tests.yaml)
 [![ci](https://github.com/vwxyzjn/cleanrl/actions/workflows/docs.yaml/badge.svg)](https://github.com/vwxyzjn/cleanrl/actions/workflows/docs.yaml)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fvwxyzjn%2Fcleanrl.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fvwxyzjn%2Fcleanrl?ref=badge_shield)
 [<img src="https://img.shields.io/discord/767863440248143916?label=discord">](https://discord.gg/D6RCjA6sVT)
 [<img src="https://img.shields.io/youtube/channel/views/UCDdC6BIFRI0jvcwuhi3aI6w?style=social">](https://www.youtube.com/channel/UCDdC6BIFRI0jvcwuhi3aI6w/videos)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -154,3 +155,7 @@ If you use CleanRL in your work, please cite our technical [paper](https://arxiv
     primaryClass={cs.LG}
 }
 ```
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fvwxyzjn%2Fcleanrl.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fvwxyzjn%2Fcleanrl?ref=badge_large)
