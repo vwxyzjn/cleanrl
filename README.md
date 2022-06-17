@@ -17,7 +17,7 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 
 * 📜 Single-file implementation
    * *Every detail about an algorithm variant is put into a single standalone file.* 
-   * For example, our `ppo_atari.py` only has 340 lines of code but contains all implementation details on how PPO works with Atari games, so it is a great reference implementation to read for folks who do not wish to read an entire modular library.
+   * For example, our `ppo_atari.py` only has 340 lines of code but contains all implementation details on how PPO works with Atari games, **so it is a great reference implementation to read for folks who do not wish to read an entire modular library**.
 * 📊 Benchmarked Implementation (7+ algorithms and 34+ games at https://benchmark.cleanrl.dev)
 * 📈 Tensorboard Logging
 * 🪛 Local Reproducibility via Seeding
