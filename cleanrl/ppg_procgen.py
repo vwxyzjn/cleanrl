@@ -473,10 +473,10 @@ if __name__ == "__main__":
                         optimizer.step()
                         optimizer.zero_grad()  # This cannot be outside, else gradients won't accumulate
 
-                except RuntimeError:
+                except RuntimeError as e:
                     raise Exception(
                         "if running out of CUDA memory, try a higher --n-aux-grad-accum, which trades more time for less gpu memory"
-                    )
+                    ) from e
 
                 del m_aux_obs, m_aux_returns
         writer.add_scalar("losses/aux/kl_loss", kl_loss.mean().item(), global_step)
