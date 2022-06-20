@@ -112,6 +112,11 @@ class Actor(nn.Module):
 
         return x * self.action_scale + self.action_bias
 
+    def to(self, device):
+        self.action_scale = self.action_scale.to(device)
+        self.action_bias = self.action_bias.to(device)
+        return super().to(device)
+
 
 if __name__ == "__main__":
     args = parse_args()
