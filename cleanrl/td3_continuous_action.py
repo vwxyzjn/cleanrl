@@ -106,7 +106,6 @@ class Actor(nn.Module):
         # action rescaling
         self.action_scale = torch.FloatTensor((env.action_space.high - env.action_space.low) / 2.0)
         self.action_bias = torch.FloatTensor((env.action_space.high + env.action_space.low) / 2.0)
-        
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
