@@ -73,7 +73,6 @@ def parse_args():
         help="TODO")
     parser.add_argument("--value-constraint", type=float, default=1.0,
         help="TODO")
-
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
@@ -177,27 +176,34 @@ if __name__ == "__main__":
 
     agent = Agent(envs, hidden_dim=args.hidden_dim).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
-    lr_scheduler = optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.0, total_iters=num_updates)
+
     # ALGO Logic: Storage setup
-    obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape, device=device)
-    actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape, device=device)
-    logprobs = torch.zeros(args.num_steps, args.num_envs, device=device)
-    rewards = torch.zeros(args.num_steps, args.num_envs, device=device)
-    dones = torch.zeros(args.num_steps, args.num_envs, device=device)
-    values = torch.zeros(args.num_steps, args.num_envs, device=device)
+    obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
+    actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
+    logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 
     # IMPORTANT: reward and value rate estimates, they are crucial for the APO algorithm
     reward_rate, value_rate = 0.0, 0.0
 
     # TRY NOT TO MODIFY: start the game
-    start_time, global_step = time.time(), 0
+    global_step = 0
+    start_time = time.time()
+    next_obs = torch.Tensor(envs.reset()).to(device)
+    next_done = torch.zeros(args.num_envs).to(device)
+    num_updates = args.total_timesteps // args.batch_size
 
-    next_obs = torch.tensor(envs.reset(), dtype=torch.float, device=device)
-    next_done = torch.zeros(args.num_envs, dtype=torch.float, device=device)
     for update in range(1, num_updates + 1):
-        for step in range(args.num_steps):
-            global_step += args.num_envs
+        # Annealing the rate if instructed to do so.
+        if args.anneal_lr:
+            frac = 1.0 - (update - 1.0) / num_updates
+            lrnow = frac * args.learning_rate
+            optimizer.param_groups[0]["lr"] = lrnow
 
+        for step in range(0, args.num_steps):
+            global_step += 1 * args.num_envs
             obs[step] = next_obs
             dones[step] = next_done
 
@@ -210,10 +216,8 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, done, info = envs.step(action.cpu().numpy())
-            rewards[step] = torch.tensor(reward, device=device).view(-1)
-
-            next_obs = torch.tensor(next_obs, dtype=torch.float, device=device)
-            next_done = torch.tensor(done, dtype=torch.float, device=device)
+            rewards[step] = torch.tensor(reward).to(device).view(-1)
+            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
 
             for item in info:
                 if "episode" in item.keys():
@@ -224,15 +228,13 @@ if __name__ == "__main__":
                     break
 
         # ALGO LOGIC: update reward and value rate estimates
-        mean_batch_value = values.mean().item()  # will be needed for logging also
+        mean_batch_value = values.mean().item()
         reward_rate = (1 - args.tau) * reward_rate + args.tau * rewards.mean().item()
         value_rate = (1 - args.tau) * value_rate + args.tau * mean_batch_value
 
-        # GAE computation (with gae_lambda==1 this will reduce to n-step-returns)
+        # bootstrap value if not done
         with torch.no_grad():
-            # bootstrap value if not done
             next_value = agent.get_value(next_obs).reshape(1, -1)
-
             advantages = torch.zeros_like(rewards).to(device)
             lastgaelam = 0
             for t in reversed(range(args.num_steps)):
@@ -249,11 +251,11 @@ if __name__ == "__main__":
             returns = advantages + values
 
         # flatten the batch
-        b_obs = obs.flatten(0, 1)
-        b_actions = actions.flatten(0, 1)
+        b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
         b_logprobs = logprobs.reshape(-1)
-        b_returns = returns.reshape(-1)
+        b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
+        b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
 
         # Optimizing the policy and value network
@@ -262,7 +264,8 @@ if __name__ == "__main__":
         for epoch in range(args.update_epochs):
             np.random.shuffle(b_inds)
             for start in range(0, args.batch_size, args.minibatch_size):
-                mb_inds = b_inds[start : start + args.minibatch_size]
+                end = start + args.minibatch_size
+                mb_inds = b_inds[start:end]
 
                 _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
                 assert newlogprob.shape == b_logprobs[mb_inds].shape
@@ -280,37 +283,27 @@ if __name__ == "__main__":
                     mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
                 # Policy loss
-                assert mb_advantages.shape == ratio.shape
-                pg_loss1 = mb_advantages * ratio
-                pg_loss2 = mb_advantages * torch.clip(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
-                assert pg_loss1.shape == pg_loss2.shape
-                pg_loss = -torch.minimum(pg_loss1, pg_loss2).mean()
-
-                # Entropy loss
-                entropy_loss = entropy.mean()
+                pg_loss1 = -mb_advantages * ratio
+                pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
+                pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
                 # Value loss
                 newvalue = newvalue.view(-1)
                 # IMPORTANT: average value constraint as it is called in the paper
                 target_return = b_returns[mb_inds] - args.value_constraint * value_rate
-                assert newvalue.shape == target_return.shape
-                v_loss = 0.5 * ((newvalue - target_return.detach()) ** 2).mean()
+                v_loss = 0.5 * ((newvalue - target_return) ** 2).mean()
 
-                # Total loss
-                loss = pg_loss + args.vf_coef * v_loss - args.ent_coef * entropy_loss
+                entropy_loss = entropy.mean()
+                loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
                 optimizer.zero_grad()
                 loss.backward()
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
 
-            # early stopping if KL divergence it to high
-            if args.target_kl is not None and approx_kl > args.target_kl:
-                break
-
-        # Annealing the learning rate if instructed to do so
-        if args.anneal_lr:
-            lr_scheduler.step()
+            if args.target_kl is not None:
+                if approx_kl > args.target_kl:
+                    break
 
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
         var_y = np.var(y_true)
@@ -325,8 +318,8 @@ if __name__ == "__main__":
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
-        writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
+        writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
         # APO specific metrics
         writer.add_scalar("losses/reward_rate", reward_rate, global_step)
         writer.add_scalar("losses/value_rate", value_rate, global_step)
