@@ -112,7 +112,6 @@ class Actor(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = torch.tanh(self.fc_mu(x))
-
         return x * self.action_scale + self.action_bias
 
     def to(self, device):
