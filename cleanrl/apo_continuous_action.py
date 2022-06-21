@@ -37,7 +37,7 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="HalfCheetahBulletEnv-v0",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=1000000,
+    parser.add_argument("--total-timesteps", type=int, default=1_000_000,
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=3e-4,
         help="the learning rate of the optimizer")
@@ -194,8 +194,8 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: start the game
     start_time, global_step = time.time(), 0
 
-    next_obs = torch.tensor(envs.reset(), device=device)
-    next_done = torch.zeros(args.num_envs, device=device)
+    next_obs = torch.tensor(envs.reset(), dtype=torch.float, device=device)
+    next_done = torch.zeros(args.num_envs, dtype=torch.float, device=device)
     for update in range(1, num_updates + 1):
         for step in range(args.num_steps):
             global_step += args.num_envs
@@ -213,7 +213,9 @@ if __name__ == "__main__":
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, done, info = envs.step(action.cpu().numpy())
             rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
+
+            next_obs = torch.tensor(next_obs, dtype=torch.float, device=device)
+            next_done = torch.tensor(done, dtype=torch.float, device=device)
 
             for item in info:
                 if "episode" in item.keys():
@@ -223,7 +225,7 @@ if __name__ == "__main__":
                     break
 
         # ALGO LOGIC: update reward and value rate estimates
-        mean_batch_value = value_rate.mean().item()  # will be needed for logging also
+        mean_batch_value = values.mean().item()  # will be needed for logging also
         reward_rate = (1 - args.tau) * reward_rate + args.tau * rewards.mean().item()
         value_rate = (1 - args.tau) * value_rate + args.tau * mean_batch_value
 
@@ -253,7 +255,7 @@ if __name__ == "__main__":
         b_logprobs = logprobs.reshape(-1)
         b_returns = returns.reshape(-1)
         b_advantages = advantages.reshape(-1)
-        b_values = value.reshape(-1)
+        b_values = values.reshape(-1)
 
         # Optimizing the policy and value network
         b_inds = np.arange(args.batch_size)
@@ -264,6 +266,7 @@ if __name__ == "__main__":
                 mb_inds = b_inds[start : start + args.minibatch_size]
 
                 _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions[mb_inds])
+                assert newlogprob.shape == b_logprobs[mb_inds].shape
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 
@@ -278,8 +281,10 @@ if __name__ == "__main__":
                     mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
                 # Policy loss
+                assert mb_advantages.shape == ratio.shape
                 pg_loss1 = mb_advantages * ratio
                 pg_loss2 = mb_advantages * torch.clip(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
+                assert pg_loss1.shape == pg_loss2.shape
                 pg_loss = -torch.minimum(pg_loss1, pg_loss2).mean()
 
                 # Entropy loss
@@ -289,6 +294,7 @@ if __name__ == "__main__":
                 newvalue = newvalue.view(-1)
                 # IMPORTANT: average value constraint as it is called in the paper
                 target_return = b_returns[mb_inds] - args.value_constraint * value_rate
+                assert newvalue.shape == target_return.shape
                 v_loss = 0.5 * ((newvalue - target_return) ** 2).mean()
 
                 # Total loss
@@ -308,6 +314,7 @@ if __name__ == "__main__":
             lr_scheduler.step()
 
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
+        print(y_pred.shape, y_true.shape)
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
