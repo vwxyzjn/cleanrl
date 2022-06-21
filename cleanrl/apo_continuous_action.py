@@ -45,7 +45,7 @@ def parse_args():
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=2048,
         help="the number of steps to run in each environment per policy rollout")
-    parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+    parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--hidden-dim", type=float, default=64,
         help="Actor & Critic networks hidden dimension")
@@ -63,7 +63,7 @@ def parse_args():
         help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=0.5,
         help="coefficient of the value function")
-    parser.add_argument("--max-grad-norm", type=float, default=0.5,
+    parser.add_argument("--max-grad-norm", type=float, default=1.0,
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
@@ -89,7 +89,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
             env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         env = gym.wrappers.ClipAction(env)
         env = gym.wrappers.NormalizeObservation(env)
-        env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
+        # env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
         # IMPORTANT: in average reward setting gamma is always 1.0
         env = gym.wrappers.NormalizeReward(env, gamma=1.0)
         env = gym.wrappers.TransformReward(env, lambda reward: np.clip(reward, -10, 10))
@@ -131,9 +131,7 @@ class Agent(nn.Module):
 
     def get_action_and_value(self, x, action=None):
         action_mean = self.actor_mean(x)
-        action_logstd = self.actor_logstd.expand_as(action_mean)
-        action_std = torch.exp(action_logstd)
-        probs = Normal(action_mean, action_std)
+        probs = Normal(action_mean, self.actor_logstd.exp())
         if action is None:
             action = probs.sample()
         return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
@@ -212,7 +210,7 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, done, info = envs.step(action.cpu().numpy())
-            rewards[step] = torch.tensor(reward).to(device).view(-1)
+            rewards[step] = torch.tensor(reward, device=device).view(-1)
 
             next_obs = torch.tensor(next_obs, dtype=torch.float, device=device)
             next_done = torch.tensor(done, dtype=torch.float, device=device)
@@ -222,6 +220,7 @@ if __name__ == "__main__":
                     print(f"global_step={global_step}, episodic_return={item['episode']['r']}")
                     writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
                     writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
+                    writer.add_scalar("charts/episodic_mean_reward", item["episode"]["r"] / item["episode"]["l"], global_step)
                     break
 
         # ALGO LOGIC: update reward and value rate estimates
@@ -295,7 +294,7 @@ if __name__ == "__main__":
                 # IMPORTANT: average value constraint as it is called in the paper
                 target_return = b_returns[mb_inds] - args.value_constraint * value_rate
                 assert newvalue.shape == target_return.shape
-                v_loss = 0.5 * ((newvalue - target_return) ** 2).mean()
+                v_loss = 0.5 * ((newvalue - target_return.detach()) ** 2).mean()
 
                 # Total loss
                 loss = pg_loss + args.vf_coef * v_loss - args.ent_coef * entropy_loss
@@ -314,7 +313,6 @@ if __name__ == "__main__":
             lr_scheduler.step()
 
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
-        print(y_pred.shape, y_true.shape)
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
