@@ -13,6 +13,7 @@ cleanrl/videos/*
 benchmark/**/*.svg
 benchmark/**/*.pkl
 mjkey.txt
+.idea
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
