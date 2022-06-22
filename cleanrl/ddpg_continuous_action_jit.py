@@ -123,11 +123,18 @@ class Agent(nn.Module):
         self.target_actor.load_state_dict(self.actor.state_dict())
 
     @torch.jit.export
-    def critic_loss(self, next_observations: torch.Tensor, rewards: torch.Tensor, dones: torch.Tensor, observations: torch.Tensor, actions: torch.Tensor, max_action: float, gamma: float):
+    def critic_loss(
+        self,
+        next_observations: torch.Tensor,
+        rewards: torch.Tensor,
+        dones: torch.Tensor,
+        observations: torch.Tensor,
+        actions: torch.Tensor,
+        max_action: float,
+        gamma: float,
+    ):
         with torch.no_grad():
-            next_state_actions = (self.target_actor(next_observations)).clamp(
-                -max_action, max_action
-            )
+            next_state_actions = (self.target_actor(next_observations)).clamp(-max_action, max_action)
             qf1_next_target = self.target_qf1(next_observations, next_state_actions)
             next_q_value = rewards.flatten() + (1 - dones.flatten()) * gamma * (qf1_next_target).view(-1)
 
@@ -139,6 +146,7 @@ class Agent(nn.Module):
     @torch.jit.export
     def actor_loss(self, observations: torch.Tensor):
         return -self.qf1(observations, self.actor(observations)).mean()
+
 
 if __name__ == "__main__":
     args = parse_args()
@@ -230,13 +238,14 @@ if __name__ == "__main__":
             if data is None:
                 data = rb.sample(args.batch_size)
                 print(data)
-            qf1_loss = agent.critic_loss(data.next_observations, data.rewards, data.dones, data.observations, data.actions, max_action, args.gamma)
+            qf1_loss = agent.critic_loss(
+                data.next_observations, data.rewards, data.dones, data.observations, data.actions, max_action, args.gamma
+            )
 
             # optimize the model
             q_optimizer.zero_grad()
             qf1_loss.backward()
             q_optimizer.step()
-            
 
             if global_step % args.policy_frequency == 0:
                 actor_loss = agent.actor_loss(data.observations)
