@@ -104,19 +104,14 @@ class Actor(nn.Module):
         self.fc2 = nn.Linear(256, 256)
         self.fc_mu = nn.Linear(256, np.prod(env.single_action_space.shape))
         # action rescaling
-        self.action_scale = torch.FloatTensor((env.action_space.high - env.action_space.low) / 2.0)
-        self.action_bias = torch.FloatTensor((env.action_space.high + env.action_space.low) / 2.0)
+        self.action_scale = self.register_buffer("action_scale", torch.FloatTensor((env.action_space.high - env.action_space.low) / 2.0))
+        self.action_bias = self.register_buffer("action_bias", torch.FloatTensor((env.action_space.high + env.action_space.low) / 2.0))
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = torch.tanh(self.fc_mu(x))
         return x * self.action_scale + self.action_bias
-
-    def to(self, device):
-        self.action_scale = self.action_scale.to(device)
-        self.action_bias = self.action_bias.to(device)
-        return super().to(device)
 
 
 if __name__ == "__main__":

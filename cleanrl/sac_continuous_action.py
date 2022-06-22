@@ -115,8 +115,8 @@ class Actor(nn.Module):
         self.fc_mean = nn.Linear(256, np.prod(env.single_action_space.shape))
         self.fc_logstd = nn.Linear(256, np.prod(env.single_action_space.shape))
         # action rescaling
-        self.action_scale = torch.FloatTensor((env.action_space.high - env.action_space.low) / 2.0)
-        self.action_bias = torch.FloatTensor((env.action_space.high + env.action_space.low) / 2.0)
+        self.action_scale = self.register_buffer("action_scale", torch.FloatTensor((env.action_space.high - env.action_space.low) / 2.0))
+        self.action_bias = self.register_buffer("action_bias", torch.FloatTensor((env.action_space.high + env.action_space.low) / 2.0))
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
@@ -141,11 +141,6 @@ class Actor(nn.Module):
         log_prob = log_prob.sum(1, keepdim=True)
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
         return action, log_prob, mean
-
-    def to(self, device):
-        self.action_scale = self.action_scale.to(device)
-        self.action_bias = self.action_bias.to(device)
-        return super().to(device)
 
 
 if __name__ == "__main__":
