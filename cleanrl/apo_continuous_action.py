@@ -61,16 +61,16 @@ def parse_args():
         help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=0.5,
         help="coefficient of the value function")
-    parser.add_argument("--max-grad-norm", type=float, default=1.0,
+    parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
 
     # APO specific arguments
     parser.add_argument("--tau", type=float, default=0.1,
-        help="TODO")
+        help="exponential moving average coefficient for reward and value rate estimates")
     parser.add_argument("--value-constraint", type=float, default=1.0,
-        help="TODO")
+        help="lagrangian multiplier, controls the bias in value estimation (average value constraint)")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
@@ -86,7 +86,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
             env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         env = gym.wrappers.ClipAction(env)
         env = gym.wrappers.NormalizeObservation(env)
-        # env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
+        env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
         # IMPORTANT: in average reward setting gamma is always 1.0
         env = gym.wrappers.NormalizeReward(env, gamma=1.0)
         env = gym.wrappers.TransformReward(env, lambda reward: np.clip(reward, -10, 10))
@@ -128,7 +128,9 @@ class Agent(nn.Module):
 
     def get_action_and_value(self, x, action=None):
         action_mean = self.actor_mean(x)
-        probs = Normal(action_mean, self.actor_logstd.exp())
+        action_logstd = self.actor_logstd.expand_as(action_mean)
+        action_std = torch.exp(action_logstd)
+        probs = Normal(action_mean, action_std)
         if action is None:
             action = probs.sample()
         return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
