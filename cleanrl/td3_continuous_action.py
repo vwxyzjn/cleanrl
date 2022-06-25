@@ -182,7 +182,7 @@ if __name__ == "__main__":
                 [
                     (
                         actions.tolist()[0]
-                        + np.random.normal(0, max_action * args.exploration_noise, size=envs.single_action_space.shape[0])
+                        + np.random.normal(actor.action_bias[0].cpu().numpy(), actor.action_scale[0].cpu().numpy() * args.exploration_noise, size=envs.single_action_space.shape[0])
                     ).clip(envs.single_action_space.low, envs.single_action_space.high)
                 ]
             )
