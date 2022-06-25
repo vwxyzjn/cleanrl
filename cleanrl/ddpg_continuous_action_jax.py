@@ -97,7 +97,6 @@ class QNetwork(nn.Module):
 
 class Actor(nn.Module):
     action_dim: Sequence[int]
-
     @nn.compact
     def __call__(self, x):
         x = nn.Dense(256)(x)
