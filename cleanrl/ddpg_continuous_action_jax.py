@@ -80,8 +80,6 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
-    obs_dim: Sequence[int]
-    action_dim: Sequence[int]
     @nn.compact
     def __call__(self, x: jnp.ndarray, a: jnp.ndarray):
         x = jnp.concatenate([x, a], -1)
@@ -134,7 +132,7 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
     np.random.seed(args.seed)
-    jaxRNG = jax.random.PRNGKey(0)
+    jaxRNG = jax.random.PRNGKey(args.seed)
 
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
@@ -153,7 +151,7 @@ if __name__ == "__main__":
     actor_parameters = actor.init(jaxRNG, obs)
     actor_target_parameters = actor.init(jaxRNG, obs)
     actor.apply = jax.jit(actor.apply)
-    qf1 = QNetwork(obs_dim=np.prod(envs.single_observation_space.shape), action_dim=np.prod(envs.single_action_space.shape))
+    qf1 = QNetwork()
     qf1_parameters = qf1.init(jaxRNG, obs, envs.action_space.sample())
     qf1_target_parameters = qf1.init(jaxRNG, obs, envs.action_space.sample())
     qf1.apply = jax.jit(qf1.apply)
