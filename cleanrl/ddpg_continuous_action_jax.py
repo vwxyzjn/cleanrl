@@ -11,7 +11,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-import torch
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
@@ -136,19 +135,13 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
     np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.backends.cudnn.deterministic = args.torch_deterministic
     jaxRNG = jax.random.PRNGKey(0)
-
-    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     max_action = float(envs.single_action_space.high[0])
-
-    # actor = Actor(envs).to(device)
 
     envs.single_observation_space.dtype = np.float32
     rb = ReplayBuffer(args.buffer_size, envs.single_observation_space, envs.single_action_space, device="cpu")
@@ -252,7 +245,7 @@ if __name__ == "__main__":
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
 
-        # # ALGO LOGIC: training.
+        # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
             qf1_loss_value, qf1_parameters, qf1_optimizer_state = update_critic(
