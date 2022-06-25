@@ -134,17 +134,8 @@ def forward(
     qf1_next_target = qf1.apply(qf1_target_parameters, next_observations, next_state_actions).reshape(-1)
     next_q_value = (rewards + (1 - dones) * gamma * (qf1_next_target)).reshape(-1)
 
-    # def mse_loss(qf1_parameters, observations, actions, next_q_value):
-    #     return ((qf1.apply(qf1_parameters, observations, actions) - next_q_value) ** 2).mean()
-
-    @jax.jit
     def mse_loss(qf1_parameters, observations, actions, next_q_value):
-        # Define the squared loss for a single pair (x,y)
-        def squared_error(x, a, y):
-            pred = qf1.apply(qf1_parameters, x, a)
-            return jnp.inner(y-pred, y-pred) / 2.0
-        # Vectorize the previous to compute the average of the loss on all samples.
-        return jnp.mean(jax.vmap(squared_error)(observations,actions, next_q_value), axis=0)
+        return ((qf1.apply(qf1_parameters, observations, actions).squeeze() - next_q_value) ** 2).mean()
 
     qf1_loss_value, grads = jax.value_and_grad(mse_loss)(qf1_parameters, observations, actions, next_q_value)
     updates, qf1_optimizer_state = qf1_optimizer.update(grads, qf1_optimizer_state)
