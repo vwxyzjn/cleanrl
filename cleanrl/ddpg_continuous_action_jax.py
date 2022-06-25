@@ -82,7 +82,6 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 class QNetwork(nn.Module):
     obs_dim: Sequence[int]
     action_dim: Sequence[int]
-
     @nn.compact
     def __call__(self, x: jnp.ndarray, a: jnp.ndarray):
         x = jnp.concatenate([x, a], -1)
