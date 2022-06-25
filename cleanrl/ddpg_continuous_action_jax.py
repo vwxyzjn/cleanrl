@@ -1,9 +1,7 @@
 import argparse
-import functools
 import os
 import random
 import time
-import copy
 from distutils.util import strtobool
 from typing import Sequence
 
@@ -85,6 +83,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 class QNetwork(nn.Module):
     obs_dim: Sequence[int]
     action_dim: Sequence[int]
+
     @nn.compact
     def __call__(self, x: jnp.ndarray, a: jnp.ndarray):
         x = jnp.concatenate([x, a], -1)
@@ -110,77 +109,9 @@ class Actor(nn.Module):
         return x
 
 
-@functools.partial(jax.jit, static_argnames=('actor', 'qf1', 'qf1', 'qf1_optimizer', 'actor_optimizer'))
-def forward(
-    actor,
-    actor_parameters,
-    actor_target_parameters,
-    qf1,
-    qf1_parameters,
-    qf1_target_parameters,
-    observations,
-    actions,
-    next_observations,
-    rewards,
-    dones,
-    gamma,
-    tau,
-    qf1_optimizer,
-    qf1_optimizer_state,
-    actor_optimizer,
-    actor_optimizer_state,
-):
-    next_state_actions = (actor.apply(actor_target_parameters, next_observations)).clip(-1, 1)
-    qf1_next_target = qf1.apply(qf1_target_parameters, next_observations, next_state_actions).reshape(-1)
-    next_q_value = (rewards + (1 - dones) * gamma * (qf1_next_target)).reshape(-1)
-
-    def mse_loss(qf1_parameters, observations, actions, next_q_value):
-        return ((qf1.apply(qf1_parameters, observations, actions).squeeze() - next_q_value) ** 2).mean()
-
-    qf1_loss_value, grads = jax.value_and_grad(mse_loss)(qf1_parameters, observations, actions, next_q_value)
-    updates, qf1_optimizer_state = qf1_optimizer.update(grads, qf1_optimizer_state)
-    qf1_parameters = optax.apply_updates(qf1_parameters, updates)
-
-    return qf1_loss_value, 0, qf1_parameters, qf1_target_parameters, qf1_optimizer_state, actor_parameters, actor_target_parameters, actor_optimizer_state
-
-
-@functools.partial(jax.jit, static_argnames=('actor', 'qf1', 'qf1', 'qf1_optimizer', 'actor_optimizer'))
-def forward2(
-    actor,
-    actor_parameters,
-    actor_target_parameters,
-    qf1,
-    qf1_parameters,
-    qf1_target_parameters,
-    observations,
-    actions,
-    next_observations,
-    rewards,
-    dones,
-    gamma,
-    tau,
-    qf1_optimizer,
-    qf1_optimizer_state,
-    actor_optimizer,
-    actor_optimizer_state,
-):
-    def actor_loss(actor_parameters, qf1_parameters, observations):
-        return -qf1.apply(qf1_parameters, observations, actor.apply(actor_parameters, observations)).mean()
-
-    actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_parameters, qf1_parameters, observations)
-    updates, actor_optimizer_state = actor_optimizer.update(grads, actor_optimizer_state)
-    actor_parameters = optax.apply_updates(actor_parameters, updates)
-
-    actor_target_parameters = update_target(actor_parameters, actor_target_parameters, tau)
-    qf1_target_parameters = update_target(qf1_parameters, qf1_target_parameters, tau)
-
-    return 0, actor_loss_value, qf1_parameters, qf1_target_parameters, qf1_optimizer_state, actor_parameters, actor_target_parameters, actor_optimizer_state
-
-
 def update_target(src, dst, tau):
-    return jax.tree_map(
-        lambda p, tp: p * tau + tp * (1 - tau), src, dst
-    )
+    return jax.tree_map(lambda p, tp: p * tau + tp * (1 - tau), src, dst)
+
 
 if __name__ == "__main__":
     args = parse_args()
@@ -242,7 +173,50 @@ if __name__ == "__main__":
     qf1_optimizer = optax.adam(learning_rate=args.learning_rate)
     qf1_optimizer_state = qf1_optimizer.init(qf1_parameters)
 
-    # raise
+    @jax.jit
+    def update_critic(
+        observations,
+        actions,
+        next_observations,
+        rewards,
+        dones,
+        actor_target_parameters,
+        qf1_parameters,
+        qf1_target_parameters,
+        qf1_optimizer_state,
+    ):
+        next_state_actions = (actor.apply(actor_target_parameters, next_observations)).clip(-1, 1)
+        qf1_next_target = qf1.apply(qf1_target_parameters, next_observations, next_state_actions).reshape(-1)
+        next_q_value = (rewards + (1 - dones) * args.gamma * (qf1_next_target)).reshape(-1)
+
+        def mse_loss(qf1_parameters, observations, actions, next_q_value):
+            return ((qf1.apply(qf1_parameters, observations, actions).squeeze() - next_q_value) ** 2).mean()
+
+        qf1_loss_value, grads = jax.value_and_grad(mse_loss)(qf1_parameters, observations, actions, next_q_value)
+        updates, qf1_optimizer_state = qf1_optimizer.update(grads, qf1_optimizer_state)
+        qf1_parameters = optax.apply_updates(qf1_parameters, updates)
+        return qf1_loss_value, qf1_parameters, qf1_optimizer_state
+
+    @jax.jit
+    def update_actor(
+        observations,
+        actor_parameters,
+        actor_target_parameters,
+        qf1_parameters,
+        qf1_target_parameters,
+        actor_optimizer_state,
+    ):
+        def actor_loss(actor_parameters, qf1_parameters, observations):
+            return -qf1.apply(qf1_parameters, observations, actor.apply(actor_parameters, observations)).mean()
+
+        actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_parameters, qf1_parameters, observations)
+        updates, actor_optimizer_state = actor_optimizer.update(grads, actor_optimizer_state)
+        actor_parameters = optax.apply_updates(actor_parameters, updates)
+
+        actor_target_parameters = update_target(actor_parameters, actor_target_parameters, args.tau)
+        qf1_target_parameters = update_target(qf1_parameters, qf1_target_parameters, args.tau)
+        return actor_loss_value, actor_parameters, actor_optimizer_state, actor_target_parameters, qf1_target_parameters
+
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
@@ -282,51 +256,34 @@ if __name__ == "__main__":
         # # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
-            qf1_loss_value, _, qf1_parameters, qf1_target_parameters, qf1_optimizer_state, actor_parameters, actor_target_parameters, actor_optimizer_state = forward(
-                actor,
-                actor_parameters,
-                actor_target_parameters,
-                qf1,
-                qf1_parameters,
-                qf1_target_parameters,
+            qf1_loss_value, qf1_parameters, qf1_optimizer_state = update_critic(
                 data.observations.numpy(),
                 data.actions.numpy(),
                 data.next_observations.numpy(),
                 data.rewards.flatten().numpy(),
                 data.dones.flatten().numpy(),
-                args.gamma,
-                args.tau,
-                qf1_optimizer,
+                actor_target_parameters,
+                qf1_parameters,
+                qf1_target_parameters,
                 qf1_optimizer_state,
-                actor_optimizer,
-                actor_optimizer_state,
             )
-
             if global_step % args.policy_frequency == 0:
-                _, actor_loss_value, qf1_parameters, qf1_target_parameters, qf1_optimizer_state, actor_parameters, actor_target_parameters, actor_optimizer_state = forward2(
-                    actor,
+                (
+                    actor_loss_value,
+                    actor_parameters,
+                    actor_optimizer_state,
+                    actor_target_parameters,
+                    qf1_target_parameters,
+                ) = update_actor(
+                    data.observations.numpy(),
                     actor_parameters,
                     actor_target_parameters,
-                    qf1,
                     qf1_parameters,
                     qf1_target_parameters,
-                    data.observations.numpy(),
-                    data.actions.numpy(),
-                    data.next_observations.numpy(),
-                    data.rewards.flatten().numpy(),
-                    data.dones.flatten().numpy(),
-                    args.gamma,
-                    args.tau,
-                    qf1_optimizer,
-                    qf1_optimizer_state,
-                    actor_optimizer,
                     actor_optimizer_state,
                 )
 
-            
-            # print(actor_parameters["params"]["Dense_0"]["kernel"].sum())
             if global_step % 100 == 0:
-                # print(qf1_target_parameters["params"]["Dense_0"]["kernel"].sum())
                 writer.add_scalar("losses/qf1_loss", qf1_loss_value.item(), global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss_value.item(), global_step)
                 # writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
