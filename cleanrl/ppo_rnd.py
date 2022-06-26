@@ -320,26 +320,26 @@ if __name__ == "__main__":
     discounted_reward = RewardForwardFilter(args.gamma)
 
     # ALGO Logic: Storage setup
-    obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
-    actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
-    logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    curiosity_rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    ext_values = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    int_values = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape, device=device)
+    actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape, device=device)
+    logprobs = torch.zeros((args.num_steps, args.num_envs), device=device)
+    rewards = torch.zeros((args.num_steps, args.num_envs), device=device)
+    curiosity_rewards = torch.zeros((args.num_steps, args.num_envs), device=device)
+    dones = torch.zeros((args.num_steps, args.num_envs), device=device)
+    ext_values = torch.zeros((args.num_steps, args.num_envs), device=device)
+    int_values = torch.zeros((args.num_steps, args.num_envs), device=device)
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
-    next_obs = torch.Tensor(envs.reset()).to(device)
-    next_done = torch.zeros(args.num_envs).to(device)
+    next_obs = torch.Tensor(envs.reset(), device=device)
+    next_done = torch.zeros(args.num_envs, device=device)
     num_updates = args.total_timesteps // args.batch_size
 
     print("Start to initialize observation normalization parameter.....")
     next_ob = []
     for step in range(args.num_steps * 50):
-        acs = torch.from_numpy(np.random.randint(0, envs.single_action_space.n, size=(args.num_envs,)))
+        acs = torch.randint(0, envs.single_action_space.n, size=(args.num_envs,))
         s, r, d, _ = envs.step(acs)
         next_ob += s[:, 3, :, :].reshape([-1, 1, 84, 84]).tolist()
 
@@ -375,8 +375,8 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, done, info = envs.step(action.cpu().numpy())
-            rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
+            rewards[step] = torch.tensor(reward, device=device).view(-1)
+            next_obs, next_done = torch.tensor(next_obs, device=device), torch.tensor(done, device=device)
             rnd_next_obs = (
                 (
                     (next_obs[:, 3, :, :].reshape(args.num_envs, 1, 84, 84) - torch.from_numpy(obs_rms.mean).to(device))
@@ -401,7 +401,7 @@ if __name__ == "__main__":
                     break
 
         curiosity_reward_per_env = np.array(
-            [discounted_reward.update(reward_per_step) for reward_per_step in curiosity_rewards.cpu().data.numpy().T]
+            [discounted_reward.update(reward_per_step) for reward_per_step in curiosity_rewards.data.cpu().numpy().T]
         )
         mean, std, count = (
             np.mean(curiosity_reward_per_env),
@@ -443,8 +443,8 @@ if __name__ == "__main__":
                 ext_returns = ext_advantages + ext_values
                 int_returns = int_advantages + int_values
             else:
-                ext_returns = torch.zeros_like(rewards).to(device)
-                int_returns = torch.zeros_like(curiosity_rewards).to(device)
+                ext_returns = torch.zeros_like(rewards, device=device)
+                int_returns = torch.zeros_like(curiosity_rewards, device=device)
                 for t in reversed(range(args.num_steps)):
                     if t == args.num_steps - 1:
                         ext_nextnonterminal = 1.0 - next_done
