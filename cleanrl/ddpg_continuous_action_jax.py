@@ -93,6 +93,7 @@ class QNetwork(nn.Module):
 
 class Actor(nn.Module):
     action_dim: Sequence[int]
+
     @nn.compact
     def __call__(self, x):
         x = nn.Dense(256)(x)
@@ -132,7 +133,8 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
     np.random.seed(args.seed)
-    jaxRNG = jax.random.PRNGKey(args.seed)
+    key = jax.random.PRNGKey(args.seed)
+    key, actor_key, qf1_key = jax.random.split(key, 3)
 
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
@@ -148,12 +150,12 @@ if __name__ == "__main__":
     obs = envs.reset()
 
     actor = Actor(action_dim=np.prod(envs.single_action_space.shape))
-    actor_parameters = actor.init(jaxRNG, obs)
-    actor_target_parameters = actor.init(jaxRNG, obs)
+    actor_parameters = actor.init(actor_key, obs)
+    actor_target_parameters = actor.init(actor_key, obs)
     actor.apply = jax.jit(actor.apply)
     qf1 = QNetwork()
-    qf1_parameters = qf1.init(jaxRNG, obs, envs.action_space.sample())
-    qf1_target_parameters = qf1.init(jaxRNG, obs, envs.action_space.sample())
+    qf1_parameters = qf1.init(qf1_key, obs, envs.action_space.sample())
+    qf1_target_parameters = qf1.init(qf1_key, obs, envs.action_space.sample())
     qf1.apply = jax.jit(qf1.apply)
     actor_target_parameters = update_target(actor_parameters, actor_target_parameters, 1.0)
     qf1_target_parameters = update_target(qf1_parameters, qf1_target_parameters, 1.0)
