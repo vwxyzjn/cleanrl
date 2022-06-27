@@ -366,7 +366,7 @@ if __name__ == "__main__":
         # print(agent_params.actor_params["params"]["Dense_0"]["kernel"].sum(), agent_params.critic_params["params"]["Dense_0"]["kernel"].sum())
 
         # # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/learning_rate", agent_optimizer_state[1].hyperparams["learning_rate"], global_step)
+        writer.add_scalar("charts/learning_rate", agent_optimizer_state[1].hyperparams["learning_rate"].item(), global_step)
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
         # writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
