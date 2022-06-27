@@ -221,8 +221,9 @@ if __name__ == "__main__":
     avg_returns = deque(maxlen=20)
 
     @jax.jit
-    def get_action_and_value(x, obs, actions, logprobs, values, step, agent_params, key):
+    def get_action_and_value(x, d, obs, dones, actions, logprobs, values, step, agent_params, key):
         obs = obs.at[step].set(x)  # inside jit() `x = x.at[idx].set(y)` is in-place.
+        dones = dones.at[step].set(d)
         action_mean, action_logstd = actor.apply(agent_params.actor_params, x)
         # action_logstd = (jnp.ones_like(action_mean) * action_logstd)
         action_std = jnp.exp(action_logstd)
@@ -234,7 +235,7 @@ if __name__ == "__main__":
         actions = actions.at[step].set(action)
         logprobs = logprobs.at[step].set(logprob.sum(1))
         values = values.at[step].set(value.squeeze())
-        return x, obs, actions, logprobs, values, action, logprob, entropy, value, key
+        return obs, dones, actions, logprobs, values, action, logprob, entropy, value, key
 
     @jax.jit
     def get_action_and_value2(x, action, agent_params):
@@ -242,7 +243,7 @@ if __name__ == "__main__":
         action_std = jnp.exp(action_logstd)
         logprob = -0.5 * ((action - action_mean) / action_std) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - action_logstd
         entropy = action_logstd + 0.5 * jnp.log(2.0 * jnp.pi * jnp.e)
-        value = critic.apply(agent_params.critic_params, x)
+        value = critic.apply(agent_params.critic_params, x).squeeze()
         return logprob.sum(1), entropy, value
 
     @jax.jit
@@ -334,8 +335,8 @@ if __name__ == "__main__":
 
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
-            next_obs, obs, actions, logprobs, values, action, logprob, entropy, value, key = get_action_and_value(
-                next_obs, obs, actions, logprobs, values, step, agent_params, key
+            obs, dones, actions, logprobs, values, action, logprob, entropy, value, key = get_action_and_value(
+                next_obs, next_done, obs, dones, actions, logprobs, values, step, agent_params, key
             )
 
             # TRY NOT TO MODIFY: execute the game and log data.
