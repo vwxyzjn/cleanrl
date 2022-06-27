@@ -292,7 +292,7 @@ if __name__ == "__main__":
             # entropy_loss = entropy.mean()
             # loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
             loss = pg_loss + v_loss * args.vf_coef
-            return loss, (pg_loss, v_loss, approx_kl)
+            return loss, (pg_loss, v_loss, jax.lax.stop_gradient(approx_kl))
 
         ppo_loss_grad_fn = jax.value_and_grad(ppo_loss, has_aux=True)
 
