@@ -10,12 +10,12 @@ from typing import Sequence
 import envpool
 import flax
 import flax.linen as nn
-from flax.linen.initializers import orthogonal, constant
 import gym
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+from flax.linen.initializers import constant, orthogonal
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -115,6 +115,7 @@ class RecordEpisodeStatistics(gym.Wrapper):
             infos,
         )
 
+
 class Critic(nn.Module):
     @nn.compact
     def __call__(self, x):
@@ -128,6 +129,7 @@ class Critic(nn.Module):
 
 class Actor(nn.Module):
     action_dim: Sequence[int]
+
     @nn.compact
     def __call__(self, x):
         actor_mean = nn.Dense(64, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(x)
@@ -135,7 +137,7 @@ class Actor(nn.Module):
         actor_mean = nn.Dense(64, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(actor_mean)
         actor_mean = nn.tanh(actor_mean)
         actor_mean = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0))(actor_mean)
-        actor_logstd = self.param('actor_logstd', constant(0.0), (1, self.action_dim))
+        actor_logstd = self.param("actor_logstd", constant(0.0), (1, self.action_dim))
         return actor_mean, actor_logstd
 
 
@@ -327,7 +329,7 @@ if __name__ == "__main__":
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
             lrnow = frac * args.learning_rate
-            agent_optimizer_state[1].hyperparams['learning_rate'] = lrnow
+            agent_optimizer_state[1].hyperparams["learning_rate"] = lrnow
             agent_optimizer.update(agent_params, agent_optimizer_state)
 
         for step in range(0, args.num_steps):
