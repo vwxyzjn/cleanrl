@@ -7,11 +7,10 @@ from collections import deque
 from distutils.util import strtobool
 from typing import Sequence
 
-from cv2 import log
-
 import envpool
 import flax
 import flax.linen as nn
+from flax.linen.initializers import orthogonal, constant
 import gym
 import jax
 import jax.numpy as jnp
@@ -41,7 +40,7 @@ def parse_args():
         help="weather to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="HalfCheetah-v4",
+    parser.add_argument("--env-id", type=str, default="Ant-v4",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=10000000,
         help="total timesteps of the experiments")
@@ -116,21 +115,14 @@ class RecordEpisodeStatistics(gym.Wrapper):
             infos,
         )
 
-
-# def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
-#     torch.nn.init.orthogonal_(layer.weight, std)
-#     torch.nn.init.constant_(layer.bias, bias_const)
-#     return layer
-
-
 class Critic(nn.Module):
     @nn.compact
     def __call__(self, x):
-        critic = nn.Dense(64)(x)
+        critic = nn.Dense(64, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(x)
         critic = nn.tanh(critic)
-        critic = nn.Dense(64)(critic)
+        critic = nn.Dense(64, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(critic)
         critic = nn.tanh(critic)
-        critic = nn.Dense(1)(critic)
+        critic = nn.Dense(1, kernel_init=orthogonal(1), bias_init=constant(0.0))(critic)
         return critic
 
 
@@ -138,18 +130,19 @@ class Actor(nn.Module):
     action_dim: Sequence[int]
     @nn.compact
     def __call__(self, x):
-        actor_mean = nn.Dense(64)(x)
+        actor_mean = nn.Dense(64, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(x)
         actor_mean = nn.tanh(actor_mean)
-        actor_mean = nn.Dense(64)(actor_mean)
+        actor_mean = nn.Dense(64, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(actor_mean)
         actor_mean = nn.tanh(actor_mean)
-        actor_mean = nn.Dense(self.action_dim)(actor_mean)
-        actor_logstd = jnp.zeros((1, self.action_dim))
+        actor_mean = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0))(actor_mean)
+        actor_logstd = self.param('actor_logstd', constant(0.0), (1, self.action_dim))
         return actor_mean, actor_logstd
+
 
 @flax.struct.dataclass
 class AgentParams:
-  actor_params: flax.core.FrozenDict
-  critic_params: flax.core.FrozenDict
+    actor_params: flax.core.FrozenDict
+    critic_params: flax.core.FrozenDict
 
 
 if __name__ == "__main__":
@@ -199,11 +192,16 @@ if __name__ == "__main__":
 
     actor = Actor(action_dim=np.prod(envs.single_action_space.shape))
     actor_params = actor.init(actor_key, envs.single_observation_space.sample())
+    print(actor.tabulate(jax.random.PRNGKey(0), envs.single_observation_space.sample()))
     actor.apply = jax.jit(actor.apply)
     critic = Critic()
     critic_params = critic.init(critic_key, envs.single_observation_space.sample())
     critic.apply = jax.jit(critic.apply)
-    agent_optimizer = optax.adam(learning_rate=args.learning_rate, eps=1e-5)
+
+    agent_optimizer = optax.chain(
+        optax.clip_by_global_norm(args.max_grad_norm),
+        optax.inject_hyperparams(optax.adam)(learning_rate=args.learning_rate, eps=1e-5),
+    )
     agent_params = AgentParams(
         actor_params,
         critic_params,
@@ -214,7 +212,7 @@ if __name__ == "__main__":
     obs = jnp.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape)
     actions = jnp.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape)
     logprobs = jnp.zeros((args.num_steps, args.num_envs))
-    rewards = jnp.zeros((args.num_steps, args.num_envs))
+    rewards = np.zeros((args.num_steps, args.num_envs))
     dones = jnp.zeros((args.num_steps, args.num_envs))
     values = jnp.zeros((args.num_steps, args.num_envs))
     advantages = jnp.zeros((args.num_steps, args.num_envs))
@@ -224,6 +222,7 @@ if __name__ == "__main__":
     def get_action_and_value(x, obs, actions, logprobs, values, step, agent_params, key):
         obs = obs.at[step].set(x)  # inside jit() `x = x.at[idx].set(y)` is in-place.
         action_mean, action_logstd = actor.apply(agent_params.actor_params, x)
+        # action_logstd = (jnp.ones_like(action_mean) * action_logstd)
         action_std = jnp.exp(action_logstd)
         key, subkey = jax.random.split(key)
         action = action_mean + action_std * jax.random.normal(subkey, shape=action_mean.shape)
@@ -246,7 +245,7 @@ if __name__ == "__main__":
 
     @jax.jit
     def compute_gae(next_obs, next_done, rewards, dones, values, advantages, agent_params):
-        advantages = advantages.at[:].set(0.0) # reset advantages
+        advantages = advantages.at[:].set(0.0)  # reset advantages
         next_value = critic.apply(agent_params.critic_params, next_obs).squeeze()
         lastgaelam = 0
         for t in reversed(range(args.num_steps)):
@@ -263,32 +262,22 @@ if __name__ == "__main__":
         return jax.lax.stop_gradient(advantages), jax.lax.stop_gradient(returns)
 
     @jax.jit
-    def update_ppo(
-        obs,
-        logprobs,
-        actions,
-        advantages,
-        returns,
-        values,
-        agent_params,
-        agent_optimizer_state,
-        key
-    ):
+    def update_ppo(obs, logprobs, actions, advantages, returns, values, agent_params, agent_optimizer_state, key):
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
         b_logprobs = logprobs.reshape(-1)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
         b_returns = returns.reshape(-1)
-        b_values = values.reshape(-1)
+        values.reshape(-1)
 
-        def ppo_loss(agent_params, x, a, logp, adv, ret):
+        def ppo_loss(agent_params, x, a, logp, mb_advantages, mb_returns):
             newlogprob, _, newvalue = get_action_and_value2(x, a, agent_params)
             logratio = newlogprob - logp
             ratio = jnp.exp(logratio)
+            approx_kl = ((ratio - 1) - logratio).mean()
 
-            mb_advantages = adv
-            # if args.norm_adv:
-            #     mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
+            if args.norm_adv:
+                mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
 
             # Policy loss
             pg_loss1 = -mb_advantages * ratio
@@ -296,13 +285,14 @@ if __name__ == "__main__":
             pg_loss = jnp.maximum(pg_loss1, pg_loss2).mean()
 
             # Value loss
-            v_loss = 0.5 * ((newvalue - ret) ** 2).mean()
+            v_loss = 0.5 * ((newvalue - mb_returns) ** 2).mean()
 
             # entropy_loss = entropy.mean()
             # loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
             loss = pg_loss + v_loss * args.vf_coef
-            return loss
-        ppo_loss_grad_fn = jax.value_and_grad(ppo_loss)
+            return loss, (pg_loss, v_loss, approx_kl)
+
+        ppo_loss_grad_fn = jax.value_and_grad(ppo_loss, has_aux=True)
 
         b_inds = jnp.arange(args.batch_size)
         # clipfracs = []
@@ -312,11 +302,18 @@ if __name__ == "__main__":
             for start in range(0, args.batch_size, args.minibatch_size):
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
-                loss, grads = ppo_loss_grad_fn(agent_params, b_obs[mb_inds], b_actions[mb_inds], b_logprobs[mb_inds], b_advantages[mb_inds], b_returns[mb_inds])
+                (loss, (pg_loss, v_loss, approx_kl)), grads = ppo_loss_grad_fn(
+                    agent_params,
+                    b_obs[mb_inds],
+                    b_actions[mb_inds],
+                    b_logprobs[mb_inds],
+                    b_advantages[mb_inds],
+                    b_returns[mb_inds],
+                )
                 updates, agent_optimizer_state = agent_optimizer.update(grads, agent_optimizer_state)
                 agent_params = optax.apply_updates(agent_params, updates)
-        
-        return loss, key, agent_params, agent_optimizer_state
+
+        return loss, pg_loss, v_loss, approx_kl, key, agent_params, agent_optimizer_state
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -327,10 +324,11 @@ if __name__ == "__main__":
 
     for update in range(1, num_updates + 1):
         # Annealing the rate if instructed to do so.
-        # if args.anneal_lr:
-        #     frac = 1.0 - (update - 1.0) / num_updates
-        #     lrnow = frac * args.learning_rate
-        #     optimizer.param_groups[0]["lr"] = lrnow
+        if args.anneal_lr:
+            frac = 1.0 - (update - 1.0) / num_updates
+            lrnow = frac * args.learning_rate
+            agent_optimizer_state[1].hyperparams['learning_rate'] = lrnow
+            agent_optimizer.update(agent_params, agent_optimizer_state)
 
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
@@ -347,11 +345,10 @@ if __name__ == "__main__":
                     writer.add_scalar("charts/avg_episodic_return", np.average(avg_returns), global_step)
                     writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
                     writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
+            rewards[step] = reward
 
         advantages, returns = compute_gae(next_obs, next_done, rewards, dones, values, advantages, agent_params)
-        # print(advantages.sum(), returns.sum())
-        # raise
-        loss, key, agent_params, agent_optimizer_state = update_ppo(
+        loss, pg_loss, v_loss, approx_kl, key, agent_params, agent_optimizer_state = update_ppo(
             obs,
             logprobs,
             actions,
@@ -363,16 +360,17 @@ if __name__ == "__main__":
             key,
         )
 
-        print(agent_params.actor_params["params"]["Dense_0"]["kernel"].sum(), agent_params.critic_params["params"]["Dense_0"]["kernel"].sum())
-
+        # print(agent_params.actor_params["params"])
+        # print(agent_params.actor_params['params']['actor_logstd'])
+        # print(agent_params.actor_params["params"]["Dense_0"]["kernel"].sum(), agent_params.critic_params["params"]["Dense_0"]["kernel"].sum())
 
         # # TRY NOT TO MODIFY: record rewards for plotting purposes
         # writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
-        # writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
-        # writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
+        writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
+        writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
         # writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
         # writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
-        # writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
+        writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         # writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/loss", loss.item(), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
