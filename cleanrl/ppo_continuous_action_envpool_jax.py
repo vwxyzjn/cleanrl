@@ -79,6 +79,7 @@ def parse_args():
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
+    args.num_updates = args.total_timesteps // args.batch_size
     # fmt: on
     return args
 
@@ -200,9 +201,14 @@ if __name__ == "__main__":
     critic_params = critic.init(critic_key, envs.single_observation_space.sample())
     critic.apply = jax.jit(critic.apply)
 
+    def linear_schedule(count):
+        # anneal learning rate linearly after one training iteration which contains 
+        # (args.num_minibatches * args.update_epochs) gradient updates
+        frac = 1.0 - (count // (args.num_minibatches * args.update_epochs)) / args.num_updates
+        return args.learning_rate * frac
     agent_optimizer = optax.chain(
         optax.clip_by_global_norm(args.max_grad_norm),
-        optax.inject_hyperparams(optax.adam)(learning_rate=args.learning_rate, eps=1e-5),
+        optax.inject_hyperparams(optax.adam)(learning_rate=linear_schedule, eps=1e-5),
     )
     agent_params = AgentParams(
         actor_params,
@@ -323,16 +329,8 @@ if __name__ == "__main__":
     start_time = time.time()
     next_obs = envs.reset()
     next_done = np.zeros(args.num_envs)
-    num_updates = args.total_timesteps // args.batch_size
 
-    for update in range(1, num_updates + 1):
-        # Annealing the rate if instructed to do so.
-        if args.anneal_lr:
-            frac = 1.0 - (update - 1.0) / num_updates
-            lrnow = frac * args.learning_rate
-            agent_optimizer_state[1].hyperparams["learning_rate"] = lrnow
-            agent_optimizer.update(agent_params, agent_optimizer_state)
-
+    for update in range(1, args.num_updates + 1):
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
             obs, dones, actions, logprobs, values, action, logprob, entropy, value, key = get_action_and_value(
@@ -368,7 +366,7 @@ if __name__ == "__main__":
         # print(agent_params.actor_params["params"]["Dense_0"]["kernel"].sum(), agent_params.critic_params["params"]["Dense_0"]["kernel"].sum())
 
         # # TRY NOT TO MODIFY: record rewards for plotting purposes
-        # writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
+        writer.add_scalar("charts/learning_rate", agent_optimizer_state[1].hyperparams["learning_rate"], global_step)
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
         # writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
