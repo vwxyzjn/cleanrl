@@ -1,7 +1,6 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/dqn/#dqnpy
 import argparse
 import os
-from pickletools import optimize
 import random
 import time
 from distutils.util import strtobool
@@ -84,6 +83,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
     action_dim: int
+
     @nn.compact
     def __call__(self, x: jnp.ndarray):
         x = nn.Dense(120)(x)
@@ -130,7 +130,6 @@ if __name__ == "__main__":
     key = jax.random.PRNGKey(args.seed)
     key, q_key = jax.random.split(key, 2)
 
-
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
@@ -156,15 +155,15 @@ if __name__ == "__main__":
 
     @jax.jit
     def update(observations, actions, next_observations, rewards, dones, q_params, target_params, optimizer_params):
-        q_next_target = q_network.apply(target_params, next_observations) # (batch_size, num_actions)
-        q_next_target = jnp.max(q_next_target, axis=-1) # (batch_size,)
-        next_q_value = (rewards + (1-dones) * args.gamma * q_next_target)
+        q_next_target = q_network.apply(target_params, next_observations)  # (batch_size, num_actions)
+        q_next_target = jnp.max(q_next_target, axis=-1)  # (batch_size,)
+        next_q_value = rewards + (1 - dones) * args.gamma * q_next_target
 
         def mse_loss(q_params, observations, actions, next_q_value):
-            q_pred = q_network.apply(q_params, observations) # (batch_size, num_actions)
-            q_pred = q_pred.max(axis=-1) # (batch_size,)
+            q_pred = q_network.apply(q_params, observations)  # (batch_size, num_actions)
+            q_pred = q_pred.max(axis=-1)  # (batch_size,)
             return ((q_pred - next_q_value) ** 2).mean(), q_pred
-      
+
         (loss_value, q_pred), grads = jax.value_and_grad(mse_loss, has_aux=True)(q_params, observations, actions, next_q_value)
         updates, optimizer_params = optimizer.update(grads, optimizer_params)
         q_params = optax.apply_updates(q_params, updates)
@@ -212,14 +211,14 @@ if __name__ == "__main__":
             data = rb.sample(args.batch_size)
             # perform a gradient-descent step
             loss, old_val, q_params, optimizer_state = update(
-                data.observations.numpy(), 
-                data.actions.numpy(), 
-                data.next_observations.numpy(), 
-                data.rewards.flatten().numpy(), 
-                data.dones.flatten().numpy(), 
-                q_params, 
-                target_params, 
-                optimizer_state
+                data.observations.numpy(),
+                data.actions.numpy(),
+                data.next_observations.numpy(),
+                data.rewards.flatten().numpy(),
+                data.dones.flatten().numpy(),
+                q_params,
+                target_params,
+                optimizer_state,
             )
 
             if global_step % 100 == 0:
