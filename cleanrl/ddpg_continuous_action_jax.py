@@ -4,15 +4,15 @@ import random
 import time
 from distutils.util import strtobool
 from typing import Sequence
-import flax
 
+import flax
 import flax.linen as nn
 import gym
 import jax
 import jax.numpy as jnp
-from flax.training.train_state import TrainState
 import numpy as np
 import optax
+from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
@@ -114,6 +114,7 @@ def update_target(src, dst, tau):
 class TrainState(TrainState):
     target_params: flax.core.FrozenDict
 
+
 if __name__ == "__main__":
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -155,20 +156,20 @@ if __name__ == "__main__":
     obs = envs.reset()
 
     actor = Actor(action_dim=np.prod(envs.single_action_space.shape))
-    actor_parameters = actor.init(actor_key, obs)
-    actor_target_parameters = actor.init(actor_key, obs)
     actor.apply = jax.jit(actor.apply)
     qf1 = QNetwork()
-    qf1_parameters = qf1.init(qf1_key, obs, envs.action_space.sample())
-    qf1_target_parameters = qf1.init(qf1_key, obs, envs.action_space.sample())
     qf1.apply = jax.jit(qf1.apply)
-    actor_optimizer = optax.adam(learning_rate=args.learning_rate)
-    qf1_optimizer = optax.adam(learning_rate=args.learning_rate)
     actor_state = TrainState.create(
-        apply_fn=actor.apply, params=actor_parameters, target_params=actor_target_parameters, tx=actor_optimizer
+        apply_fn=actor.apply,
+        params=actor.init(actor_key, obs),
+        target_params=actor.init(actor_key, obs),
+        tx=optax.adam(learning_rate=args.learning_rate),
     )
     qf1_state = TrainState.create(
-        apply_fn=qf1.apply, params=qf1_parameters, target_params=qf1_target_parameters, tx=qf1_optimizer
+        apply_fn=qf1.apply,
+        params=qf1.init(qf1_key, obs, envs.action_space.sample()),
+        target_params=qf1.init(qf1_key, obs, envs.action_space.sample()),
+        tx=optax.adam(learning_rate=args.learning_rate),
     )
 
     @jax.jit
@@ -181,11 +182,13 @@ if __name__ == "__main__":
         rewards: np.ndarray,
         dones: np.ndarray,
     ):
-        next_state_actions = (actor.apply(actor_state.target_params, next_observations)).clip(-1, 1) # TODO: proper clip
+        next_state_actions = (actor.apply(actor_state.target_params, next_observations)).clip(-1, 1)  # TODO: proper clip
         qf1_next_target = qf1.apply(qf1_state.target_params, next_observations, next_state_actions).reshape(-1)
         next_q_value = (rewards + (1 - dones) * args.gamma * (qf1_next_target)).reshape(-1)
+
         def mse_loss(params):
             return ((qf1.apply(params, observations, actions).squeeze() - next_q_value) ** 2).mean()
+
         qf1_loss_value, grads = jax.value_and_grad(mse_loss)(qf1_state.params)
         qf1_state = qf1_state.apply_gradients(grads=grads)
         return qf1_state, qf1_loss_value
@@ -198,6 +201,7 @@ if __name__ == "__main__":
     ):
         def actor_loss(params):
             return -qf1.apply(qf1_state.params, observations, actor.apply(params, observations)).mean()
+
         actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
         actor_state = actor_state.apply_gradients(grads=grads)
         actor_state = actor_state.replace(target_params=update_target(actor_state.params, actor_state.target_params, args.tau))
@@ -253,11 +257,7 @@ if __name__ == "__main__":
                 data.dones.flatten().numpy(),
             )
             if global_step % args.policy_frequency == 0:
-                (
-                    actor_state,
-                    qf1_state,
-                    actor_loss_value
-                ) = update_actor(
+                (actor_state, qf1_state, actor_loss_value) = update_actor(
                     actor_state,
                     qf1_state,
                     data.observations.numpy(),
