@@ -11,7 +11,6 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-
 from stable_baselines3.common.atari_wrappers import (
     ClipRewardEnv,
     EpisodicLifeEnv,
@@ -100,14 +99,15 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
     action_dim: int
+
     @nn.compact
     def __call__(self, x):
-        x = x/(255.0)
-        x = nn.Conv(32, kernel_size=(8,8), strides=4)(x)
+        x = x / (255.0)
+        x = nn.Conv(32, kernel_size=(8, 8), strides=4)(x)
         x = nn.relu(x)
-        x = nn.Conv(64, kernel_size=(4,4), strides=2)(x)
+        x = nn.Conv(64, kernel_size=(4, 4), strides=2)(x)
         x = nn.relu(x)
-        x = nn.Conv(64, kernel_size=(3,3), strides=1)(x)
+        x = nn.Conv(64, kernel_size=(3, 3), strides=1)(x)
         x = nn.relu(x)
         x = x.reshape((x.shape[0], -1))
         x = nn.Dense(512)(x)
@@ -180,14 +180,14 @@ if __name__ == "__main__":
 
         def mse_loss(q_params, observations, actions, next_q_value):
             q_pred = q_network.apply(q_params, observations)  # (batch_size, num_actions)
-            q_pred = q_pred[np.arange(q_pred.shape[0]),actions.squeeze()]  # (batch_size,)
+            q_pred = q_pred[np.arange(q_pred.shape[0]), actions.squeeze()]  # (batch_size,)
             return ((q_pred - next_q_value) ** 2).mean(), q_pred
 
         (loss_value, q_pred), grads = jax.value_and_grad(mse_loss, has_aux=True)(q_params, observations, actions, next_q_value)
         updates, optimizer_params = optimizer.update(grads, optimizer_params)
         q_params = optax.apply_updates(q_params, updates)
         return loss_value, q_pred, q_params, optimizer_params
-    
+
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
