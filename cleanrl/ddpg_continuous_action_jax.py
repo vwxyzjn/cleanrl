@@ -157,8 +157,6 @@ if __name__ == "__main__":
     qf1_parameters = qf1.init(qf1_key, obs, envs.action_space.sample())
     qf1_target_parameters = qf1.init(qf1_key, obs, envs.action_space.sample())
     qf1.apply = jax.jit(qf1.apply)
-    actor_target_parameters = update_target(actor_parameters, actor_target_parameters, 1.0)
-    qf1_target_parameters = update_target(qf1_parameters, qf1_target_parameters, 1.0)
     actor_optimizer = optax.adam(learning_rate=args.learning_rate)
     actor_optimizer_state = actor_optimizer.init(actor_parameters)
     qf1_optimizer = optax.adam(learning_rate=args.learning_rate)
