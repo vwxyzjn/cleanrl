@@ -4,11 +4,13 @@ import random
 import time
 from distutils.util import strtobool
 from typing import Sequence
+import flax
 
 import flax.linen as nn
 import gym
 import jax
 import jax.numpy as jnp
+from flax.training.train_state import TrainState
 import numpy as np
 import optax
 from stable_baselines3.common.buffers import ReplayBuffer
@@ -109,6 +111,9 @@ def update_target(src, dst, tau):
     return jax.tree_map(lambda p, tp: p * tau + tp * (1 - tau), src, dst)
 
 
+class TrainState(TrainState):
+    target_params: flax.core.FrozenDict
+
 if __name__ == "__main__":
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -158,60 +163,53 @@ if __name__ == "__main__":
     qf1_target_parameters = qf1.init(qf1_key, obs, envs.action_space.sample())
     qf1.apply = jax.jit(qf1.apply)
     actor_optimizer = optax.adam(learning_rate=args.learning_rate)
-    actor_optimizer_state = actor_optimizer.init(actor_parameters)
     qf1_optimizer = optax.adam(learning_rate=args.learning_rate)
-    qf1_optimizer_state = qf1_optimizer.init(qf1_parameters)
+    actor_state = TrainState.create(
+        apply_fn=actor.apply, params=actor_parameters, target_params=actor_target_parameters, tx=actor_optimizer
+    )
+    qf1_state = TrainState.create(
+        apply_fn=qf1.apply, params=qf1_parameters, target_params=qf1_target_parameters, tx=qf1_optimizer
+    )
 
     @jax.jit
     def update_critic(
-        observations,
-        actions,
-        next_observations,
-        rewards,
-        dones,
-        actor_target_parameters,
-        qf1_parameters,
-        qf1_target_parameters,
-        qf1_optimizer_state,
+        actor_state: TrainState,
+        qf1_state: TrainState,
+        observations: np.ndarray,
+        actions: np.ndarray,
+        next_observations: np.ndarray,
+        rewards: np.ndarray,
+        dones: np.ndarray,
     ):
-        next_state_actions = (actor.apply(actor_target_parameters, next_observations)).clip(-1, 1)
-        qf1_next_target = qf1.apply(qf1_target_parameters, next_observations, next_state_actions).reshape(-1)
+        next_state_actions = (actor.apply(actor_state.target_params, next_observations)).clip(-1, 1) # TODO: proper clip
+        qf1_next_target = qf1.apply(qf1_state.target_params, next_observations, next_state_actions).reshape(-1)
         next_q_value = (rewards + (1 - dones) * args.gamma * (qf1_next_target)).reshape(-1)
-
-        def mse_loss(qf1_parameters, observations, actions, next_q_value):
-            return ((qf1.apply(qf1_parameters, observations, actions).squeeze() - next_q_value) ** 2).mean()
-
-        qf1_loss_value, grads = jax.value_and_grad(mse_loss)(qf1_parameters, observations, actions, next_q_value)
-        updates, qf1_optimizer_state = qf1_optimizer.update(grads, qf1_optimizer_state)
-        qf1_parameters = optax.apply_updates(qf1_parameters, updates)
-        return qf1_loss_value, qf1_parameters, qf1_optimizer_state
+        def mse_loss(params):
+            return ((qf1.apply(params, observations, actions).squeeze() - next_q_value) ** 2).mean()
+        qf1_loss_value, grads = jax.value_and_grad(mse_loss)(qf1_state.params)
+        qf1_state = qf1_state.apply_gradients(grads=grads)
+        return qf1_state, qf1_loss_value
 
     @jax.jit
     def update_actor(
-        observations,
-        actor_parameters,
-        actor_target_parameters,
-        qf1_parameters,
-        qf1_target_parameters,
-        actor_optimizer_state,
+        actor_state: TrainState,
+        qf1_state: TrainState,
+        observations: np.ndarray,
     ):
-        def actor_loss(actor_parameters, qf1_parameters, observations):
-            return -qf1.apply(qf1_parameters, observations, actor.apply(actor_parameters, observations)).mean()
-
-        actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_parameters, qf1_parameters, observations)
-        updates, actor_optimizer_state = actor_optimizer.update(grads, actor_optimizer_state)
-        actor_parameters = optax.apply_updates(actor_parameters, updates)
-
-        actor_target_parameters = update_target(actor_parameters, actor_target_parameters, args.tau)
-        qf1_target_parameters = update_target(qf1_parameters, qf1_target_parameters, args.tau)
-        return actor_loss_value, actor_parameters, actor_optimizer_state, actor_target_parameters, qf1_target_parameters
+        def actor_loss(params):
+            return -qf1.apply(qf1_state.params, observations, actor.apply(params, observations)).mean()
+        actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
+        actor_state = actor_state.apply_gradients(grads=grads)
+        actor_state = actor_state.replace(target_params=update_target(actor_state.params, actor_state.target_params, args.tau))
+        qf1_state = qf1_state.replace(target_params=update_target(qf1_state.params, qf1_state.target_params, args.tau))
+        return actor_state, qf1_state, actor_loss_value
 
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            actions = actor.apply(actor_parameters, obs)
+            actions = actor.apply(actor_state.params, obs)
             actions = np.array(
                 [
                     (
@@ -245,31 +243,24 @@ if __name__ == "__main__":
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
-            qf1_loss_value, qf1_parameters, qf1_optimizer_state = update_critic(
+            qf1_state, qf1_loss_value = update_critic(
+                actor_state,
+                qf1_state,
                 data.observations.numpy(),
                 data.actions.numpy(),
                 data.next_observations.numpy(),
                 data.rewards.flatten().numpy(),
                 data.dones.flatten().numpy(),
-                actor_target_parameters,
-                qf1_parameters,
-                qf1_target_parameters,
-                qf1_optimizer_state,
             )
             if global_step % args.policy_frequency == 0:
                 (
-                    actor_loss_value,
-                    actor_parameters,
-                    actor_optimizer_state,
-                    actor_target_parameters,
-                    qf1_target_parameters,
+                    actor_state,
+                    qf1_state,
+                    actor_loss_value
                 ) = update_actor(
+                    actor_state,
+                    qf1_state,
                     data.observations.numpy(),
-                    actor_parameters,
-                    actor_target_parameters,
-                    qf1_parameters,
-                    qf1_target_parameters,
-                    actor_optimizer_state,
                 )
 
             if global_step % 100 == 0:
