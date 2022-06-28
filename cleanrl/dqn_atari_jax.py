@@ -4,6 +4,7 @@ import os
 import random
 import time
 from distutils.util import strtobool
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.7" # see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
 
 import flax.linen as nn
 import gym
