@@ -208,7 +208,8 @@ if __name__ == "__main__":
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor([done]).to(device)
             #print(info)
             if next_done:
-                next_obs = torch.Tensor(env.reset()).to(device)
+                env.reset()
+                break
             if "episode" in info.keys():
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
