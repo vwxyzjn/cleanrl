@@ -107,10 +107,6 @@ class Actor(nn.Module):
         return x
 
 
-def update_target(src, dst, tau):
-    return jax.tree_map(lambda p, tp: p * tau + tp * (1 - tau), src, dst)
-
-
 class TrainState(TrainState):
     target_params: flax.core.FrozenDict
 
@@ -156,9 +152,7 @@ if __name__ == "__main__":
     obs = envs.reset()
 
     actor = Actor(action_dim=np.prod(envs.single_action_space.shape))
-    actor.apply = jax.jit(actor.apply)
     qf1 = QNetwork()
-    qf1.apply = jax.jit(qf1.apply)
     actor_state = TrainState.create(
         apply_fn=actor.apply,
         params=actor.init(actor_key, obs),
@@ -171,6 +165,8 @@ if __name__ == "__main__":
         target_params=qf1.init(qf1_key, obs, envs.action_space.sample()),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
+    actor.apply = jax.jit(actor.apply)
+    qf1.apply = jax.jit(qf1.apply)
 
     @jax.jit
     def update_critic(
@@ -204,8 +200,12 @@ if __name__ == "__main__":
 
         actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
         actor_state = actor_state.apply_gradients(grads=grads)
-        actor_state = actor_state.replace(target_params=update_target(actor_state.params, actor_state.target_params, args.tau))
-        qf1_state = qf1_state.replace(target_params=update_target(qf1_state.params, qf1_state.target_params, args.tau))
+        actor_state = actor_state.replace(
+            target_params=optax.incremental_update(actor_state.params, actor_state.target_params, args.tau)
+        )
+        qf1_state = qf1_state.replace(
+            target_params=optax.incremental_update(qf1_state.params, qf1_state.target_params, args.tau)
+        )
         return actor_state, qf1_state, actor_loss_value
 
     for global_step in range(args.total_timesteps):
@@ -217,7 +217,7 @@ if __name__ == "__main__":
             actions = np.array(
                 [
                     (
-                        np.array(actions)[0]
+                        jax.device_get(actions)[0]
                         + np.random.normal(0, max_action * args.exploration_noise, size=envs.single_action_space.shape[0])
                     ).clip(envs.single_action_space.low, envs.single_action_space.high)
                 ]
