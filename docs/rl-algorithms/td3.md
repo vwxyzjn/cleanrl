@@ -64,6 +64,7 @@ Our [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/
 
 1. [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) uses a two separate objects `qf1` and `qf2` to represents the two Q functions in the Clipped Double Q-learning architecture, whereas  [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py)  (Fujimoto et al., 2018)[^2] uses a single `Critic` class that contains both Q networks. That said, these two implementations are virtually the same.
 
+1. [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) properly handles action space bounds ... TODO: fill this in.
 
 ### Experiment results
 
@@ -98,6 +99,12 @@ Learning curves:
 <img src="../td3/Walker2d-v2.png">
 
 <img src="../td3/Hopper-v2.png">
+
+<img src="../ddpg/InvertedPendulum-v2.png">
+
+<img src="../ddpg/Humanoid-v2.png">
+
+<img src="../ddpg/Pusher-v2.png">
 </div>
 
 
