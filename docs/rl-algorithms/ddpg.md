@@ -146,7 +146,36 @@ Our [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master
 
 1. [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses `--batch-size=256 --tau=0.005`, while (Lillicrap et al., 2016, see Appendix 7 EXPERIMENT DETAILS)[^1] uses `--batch-size=64 --tau=0.001`
 
-1. [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) properly handles action space bounds ... TODO: fill this in.
+1. [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py)  also adds support for handling continuous environments where the lower and higher bounds of the action space are not $[-1,1]$, or are asymmetric.
+The case where the bounds are not $[-1,1]$ is handled in [`DDPG.py`](https://github.com/sfujim/TD3/blob/385b33ac7de4767bab17eb02ade4a268d3e4e24f/DDPG.py#L15) (Fujimoto et al., 2018)[^2] as follows:
+```python
+class Actor(nn.Module):
+
+    ...
+
+	def forward(self, state):
+		a = F.relu(self.l1(state))
+		a = F.relu(self.l2(a))
+		return self.max_action * torch.tanh(self.l3(a)) # Scale from [-1,1] to [-action_high, action_high]
+```
+ On the other hand, in [`CleanRL's ddpg_continuous_action.py`](https://github.com/dosssman/cleanrl/blob/10b606e7bd9bd1b06e455e8ef542df2b7699a20c/cleanrl/ddpg_continuous_action.py#L98), the mean and the scale of the the action space are computed as `action_bias` and `action_scale` respectively.
+ Those scalars are in turn used to scale the output of a `tanh` activation function in the actor to the original action space range:
+```python
+class Actor(nn.Module):
+    def __init__(self, env):
+        ...
+        # action rescaling
+        self.register_buffer("action_scale", torch.FloatTensor((env.action_space.high - env.action_space.low) / 2.0))
+        self.register_buffer("action_bias", torch.FloatTensor((env.action_space.high + env.action_space.low) / 2.0))
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = torch.tanh(self.fc_mu(x))
+        return x * self.action_scale + self.action_bias # Scale from [-1,1] to [-action_low, action_high]
+```
+
+Additionally, when drawing exploration noise that is added to the actions produced by the actor, [`CleanRL's ddpg_continuous_action.py`](https://github.com/dosssman/cleanrl/blob/10b606e7bd9bd1b06e455e8ef542df2b7699a20c/cleanrl/ddpg_continuous_action.py#L175) centers the distribution the sampled from at `action_bias`, and the scale of the distribution is set to `action_scale * exploration_noise`.
 
 
 ### Experiment results
