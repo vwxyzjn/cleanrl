@@ -29,6 +29,8 @@ All our PPO implementations below are augmented with the same code-level optimiz
 | :material-github: [`ppo_atari_lstm.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_lstmpy) | For Atari games using LSTM without stacked frames. |
 | :material-github: [`ppo_atari_envpool.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_envpoolpy) | Uses the blazing fast Envpool Atari vectorized environment. |
 | :material-github: [`ppo_procgen.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_procgen.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_procgenpy) | For the procgen environments |
+| :material-github: [`ppo_atari_multigpu.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_multigpu.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_multigpupy)| For Atari environments leveraging multi-GPUs |
+| :material-github: [`ppo_pettingzoo_ma_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_pettingzoo_ma_atari.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_pettingzoo_ma_ataripy)| For Pettingzoo's multi-agent Atari environments |
 
 Below are our single-file implementations of PPO:
 
@@ -736,6 +738,140 @@ Under the same hardware, we see that `ppo_atari_multigpu.py` is about **30% fast
 Tracked experiments and game play videos:
 
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-MultiGPU--VmlldzoxOTM2NDUx" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
+
+
+
+
+
+## `ppo_pettingzoo_ma_atari.py`
+[ppo_pettingzoo_ma_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_pettingzoo_ma_atari.py) trains an agent to learn playing Atari games via selfplay. The selfplay environment is implemented as a vectorized environment from [PettingZoo.ml](https://www.pettingzoo.ml/atari). The basic idea is to create vectorized environment $E$ with `num_envs = N`, where $N$ is the number of players in the game. Say $N = 2$, then the 0-th sub environment of $E$ will return the observation for player 0 and 1-th sub environment will return the observation of player 1. Then the two environments takes a batch of 2 actions and execute them for player 0 and player 1, respectively. See "Vectorized architecture" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/) for more detail.
+
+`ppo_pettingzoo_ma_atari.py` has the following features:
+
+* For playing the pettingzoo's multi-agent Atari game.
+* Works with the pixel-based observation space
+* Works with the `Box` action space
+
+???+ warning
+
+    Note that `ppo_pettingzoo_ma_atari.py` does not work in Windows :fontawesome-brands-windows:. See [https://pypi.org/project/multi-agent-ale-py/#files](https://pypi.org/project/multi-agent-ale-py/#files)
+
+### Usage
+
+```bash
+poetry install -E "pettingzoo atari"
+poetry run AutoROM --accept-license
+python cleanrl/ppo_pettingzoo_ma_atari.py --help
+python cleanrl/ppo_pettingzoo_ma_atari.py --env-id pong_v3
+python cleanrl/ppo_pettingzoo_ma_atari.py --env-id surround_v2
+```
+
+See [https://www.pettingzoo.ml/atari](https://www.pettingzoo.ml/atari) for a full-list of supported environments such as `basketball_pong_v3`. Notice pettingzoo sometimes introduces breaking changes, so make sure to install the pinned dependencies via `poetry`.
+
+### Explanation of the logged metrics
+
+Additionally, it logs the following metrics
+
+* `charts/episodic_return-player0`: episodic return of the game for player 0
+* `charts/episodic_return-player1`: episodic return of the game for player 1
+* `charts/episodic_length-player0`: episodic length of the game for player 0
+* `charts/episodic_length-player1`: episodic length of the game for player 1
+
+See other logged metrics in the [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`.
+
+### Implementation details
+
+[ppo_pettingzoo_ma_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_pettingzoo_ma_atari.py) is based on `ppo_atari.py` (see its [related docs](/rl-algorithms/ppo/#implementation-details_1)).
+
+`ppo_pettingzoo_ma_atari.py` additionally has the following implementation details:
+
+1. **`supersuit` wrappers**:  uses preprocessing wrappers from `supersuit` instead of from `stable_baselines3`, which looks like the following. In particular note that the `supersuit` does not offer a wrapper similar to `NoopResetEnv`, and that it uses the `agent_indicator_v0` to add two channels indicating the which player the agent controls.
+
+    ```diff
+    -env = gym.make(env_id)
+    -env = NoopResetEnv(env, noop_max=30)
+    -env = MaxAndSkipEnv(env, skip=4)
+    -env = EpisodicLifeEnv(env)
+    -if "FIRE" in env.unwrapped.get_action_meanings():
+    -    env = FireResetEnv(env)
+    -env = ClipRewardEnv(env)
+    -env = gym.wrappers.ResizeObservation(env, (84, 84))
+    -env = gym.wrappers.GrayScaleObservation(env)
+    -env = gym.wrappers.FrameStack(env, 4)
+    +env = importlib.import_module(f"pettingzoo.atari.{args.env_id}").parallel_env()
+    +env = ss.max_observation_v0(env, 2)
+    +env = ss.frame_skip_v0(env, 4)
+    +env = ss.clip_reward_v0(env, lower_bound=-1, upper_bound=1)
+    +env = ss.color_reduction_v0(env, mode="B")
+    +env = ss.resize_v1(env, x_size=84, y_size=84)
+    +env = ss.frame_stack_v1(env, 4)
+    +env = ss.agent_indicator_v0(env, type_only=False)
+    +env = ss.pettingzoo_env_to_vec_env_v1(env)
+    +envs = ss.concat_vec_envs_v1(env, args.num_envs // 2, num_cpus=0, base_class="gym")
+    ```
+1. **A more detailed note on the `agent_indicator_v0` wrapper**: let's dig deeper into how `agent_indicator_v0` works. We do `print(envs.reset(), envs.reset().shape)`
+    ```python
+    [  0.,   0.,   0., 236.,   1,   0.]],
+
+    [[  0.,   0.,   0., 236.,   0.,   1.],
+    [  0.,   0.,   0., 236.,   0.,   1.],
+    [  0.,   0.,   0., 236.,   0.,   1.],
+    ...,
+    [  0.,   0.,   0., 236.,   0.,   1.],
+    [  0.,   0.,   0., 236.,   0.,   1.],
+    [  0.,   0.,   0., 236.,   0.,   1.]]]]) torch.Size([16, 84, 84, 6])
+    ```
+    
+    So the `agent_indicator_v0` adds the last two columns, where `[  0.,   0.,   0., 236.,   1,   0.]]` means this observation is for player 0, and `[  0.,   0.,   0., 236.,   0.,   1.]` is for player 1. Notice the observation still has the range of $[0, 255]$ but the agent indicator channel has the range of $[0,1]$, so we need to be careful when dividing the observation by 255. In particular, we would only divide the first four channels by 255 and leave the agent indicator channels untouched as follows:
+
+    ```py
+    def get_action_and_value(self, x, action=None):
+        x = x.clone()
+        x[:, :, :, [0, 1, 2, 3]] /= 255.0
+        hidden = self.network(x.permute((0, 3, 1, 2)))
+    ```
+
+
+### Experiment results
+
+
+
+To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F9b13d051cf8dd335d93b8b5a8c10e400e196e87f%2Fbenchmark%2Fppo.sh%23L53-L59&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+???+ info
+
+    Note that evaluation is usually tricker in in selfplay environments. The usual episodic return is not a good indicator of the agent's performance in zero-sum games because the episodic return converges to zero. To evaluate the agent's ability, an intuitive approach is to take a look at the videos of the agents playing the game (included below), visually inspect the agent's behavior. The best scheme, however, is rating systems like [Trueskill](https://www.microsoft.com/en-us/research/project/trueskill-ranking-system/) or [ELO scores](https://en.wikipedia.org/wiki/Elo_rating_system). However, they are more difficult to implement and are outside the scode of `ppo_pettingzoo_ma_atari.py`. 
+    
+    
+    For simplicity, we measure the **episodic length** instead, which in a sense measures how many "back and forth" the agent can create. In other words, the longer the agent can play the game, the better the agent can play. Empirically, we have found episodic length to be a good indicator of the agent's skill, especially in `pong_v3` and `surround_v2`. However, it is not the case for `tennis_v3` and we'd need to visually inspect the agents' game play videos.
+
+
+Below are the average **episodic length** for `ppo_pettingzoo_ma_atari.py`. To ensure no loss of sample efficiency, we compared the results against `ppo_atari.py`.
+
+| Environment      | `ppo_pettingzoo_ma_atari.py`  | 
+| ----------- | ----------- | 
+| pong_v3 | 4153.60 ± 190.80      | 
+| surround_v2 | 3055.33 ± 223.68  | 
+| tennis_v3 | 14538.02 ± 7005.54   | 
+
+
+Learning curves:
+
+<div class="grid-container">
+<img src="../ppo/pong_v3.png">
+
+<img src="../ppo/surround_v2.png">
+
+<img src="../ppo/tennis_v3.png">
+</div>
+
+
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Pettingzoo-s-Multi-agent-Atari-CleanRL-s-PPO--VmlldzoyMDkxNTE5" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
 
 
 
