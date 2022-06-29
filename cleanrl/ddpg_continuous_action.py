@@ -145,7 +145,6 @@ if __name__ == "__main__":
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
-    max_action = float(envs.single_action_space.high[0])
     actor = Actor(envs).to(device)
     qf1 = QNetwork(envs).to(device)
     qf1_target = QNetwork(envs).to(device)
@@ -177,7 +176,11 @@ if __name__ == "__main__":
                 [
                     (
                         actions.tolist()[0]
-                        + np.random.normal(0, max_action * args.exploration_noise, size=envs.single_action_space.shape[0])
+                        + np.random.normal(
+                            actor.action_bias[0].cpu().numpy(),
+                            actor.action_scale[0].cpu().numpy() * args.exploration_noise,
+                            size=envs.single_action_space.shape[0],
+                        )
                     ).clip(envs.single_action_space.low, envs.single_action_space.high)
                 ]
             )
