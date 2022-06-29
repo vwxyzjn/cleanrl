@@ -207,7 +207,7 @@ if __name__ == "__main__":
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor([done]).to(device)
             #print(info)
-            if next_done:
+            if next_done and step > args.num_steps * 0.1:
                 env.reset()
                 break
             if "episode" in info.keys():
