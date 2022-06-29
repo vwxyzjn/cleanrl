@@ -92,7 +92,7 @@ class QNetwork(nn.Module):
     n_atoms: int
     v_min: int
     v_max: int
-    
+
     @nn.compact
     def __call__(self, x):
         x = nn.Dense(120)(x)
@@ -175,11 +175,11 @@ if __name__ == "__main__":
         next_pmfs = next_pmfs[np.arange(next_pmfs.shape[0]), next_action]
         next_atoms = rewards + args.gamma * atoms * (1 - dones)
         # projection
-        delta_z = atoms[1]-atoms[0]
+        delta_z = atoms[1] - atoms[0]
         tz = jax.lax.clamp(jnp.float32(args.v_min), next_atoms, jnp.float32(args.v_max))
         b = (tz - args.v_min) / delta_z
-        l = jax.lax.clamp(0.0, jnp.floor(b), args.n_atoms-1.0)
-        u = jax.lax.clamp(0.0, jnp.ceil(b), args.n_atoms-1.0)
+        l = jax.lax.clamp(0.0, jnp.floor(b), args.n_atoms - 1.0)
+        u = jax.lax.clamp(0.0, jnp.ceil(b), args.n_atoms - 1.0)
         # (l == u).astype(jnp.float) handles the case where bj is exactly an integer
         # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
         d_m_l = (u + (l == u).astype(jnp.float32) - b) * next_pmfs
@@ -196,8 +196,8 @@ if __name__ == "__main__":
             # target_params = jnp.clip(target_pmfs, a_min=1e-5, a_max=1 - 1e-5)
             old_pmfs_l = jnp.clip(old_pmfs, a_min=1e-5, a_max=1 - 1e-5)
             loss = (-(target_pmfs * jnp.log(old_pmfs_l)).sum(-1)).mean()
-            return loss, (old_pmfs*atoms).sum(-1)
-            
+            return loss, (old_pmfs * atoms).sum(-1)
+
         (loss_value, old_values), grads = jax.value_and_grad(loss, has_aux=True)(q_params, observations, actions, target_pmfs)
         updates, optimizer_params = optimizer.update(grads, optimizer_params)
         q_params = optax.apply_updates(q_params, updates)
@@ -213,7 +213,7 @@ if __name__ == "__main__":
         if random.random() < epsilon:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            pmfs= q_network.apply(q_params, obs)
+            pmfs = q_network.apply(q_params, obs)
             q_vals = (pmfs * atoms).sum(axis=-1)
             actions = q_vals.argmax(axis=-1)
             actions = jax.device_get(actions)
