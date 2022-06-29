@@ -4,7 +4,10 @@ import os
 import random
 import time
 from distutils.util import strtobool
-os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.7" # see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
+
+os.environ[
+    "XLA_PYTHON_CLIENT_MEM_FRACTION"
+] = "0.7"  # see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
 
 import flax.linen as nn
 import gym
@@ -103,12 +106,13 @@ class QNetwork(nn.Module):
 
     @nn.compact
     def __call__(self, x):
+        x = jnp.transpose(x, (0, 2, 3, 1))
         x = x / (255.0)
-        x = nn.Conv(32, kernel_size=(8, 8), strides=4)(x)
+        x = nn.Conv(32, kernel_size=(8, 8), strides=(4, 4), padding="VALID")(x)
         x = nn.relu(x)
-        x = nn.Conv(64, kernel_size=(4, 4), strides=2)(x)
+        x = nn.Conv(64, kernel_size=(4, 4), strides=(2, 2), padding="VALID")(x)
         x = nn.relu(x)
-        x = nn.Conv(64, kernel_size=(3, 3), strides=1)(x)
+        x = nn.Conv(64, kernel_size=(3, 3), strides=(1, 1), padding="VALID")(x)
         x = nn.relu(x)
         x = x.reshape((x.shape[0], -1))
         x = nn.Dense(512)(x)
@@ -182,7 +186,7 @@ if __name__ == "__main__":
         def mse_loss(q_params, observations, actions, next_q_value):
             q_pred = q_network.apply(q_params, observations)  # (batch_size, num_actions)
             q_pred = q_pred[np.arange(q_pred.shape[0]), actions.squeeze()]  # (batch_size,)
-            return ((next_q_value - q_pred) ** 2).mean(), q_pred
+            return ((q_pred - next_q_value) ** 2).mean(), q_pred
 
         (loss_value, q_pred), grads = jax.value_and_grad(mse_loss, has_aux=True)(q_params, observations, actions, next_q_value)
         updates, optimizer_params = optimizer.update(grads, optimizer_params)
