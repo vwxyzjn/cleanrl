@@ -191,6 +191,12 @@ Learning curves:
 <img src="../ddpg/Walker2d-v2.png">
 
 <img src="../ddpg/Hopper-v2.png">
+
+<img src="../ddpg/InvertedPendulum-v2.png">
+
+<img src="../ddpg/Walker2d-v2.png">
+
+<img src="../ddpg/Pusher-v2.png">
 </div>
 
 
