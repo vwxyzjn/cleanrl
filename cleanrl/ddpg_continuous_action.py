@@ -172,18 +172,8 @@ if __name__ == "__main__":
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
             actions = actor(torch.Tensor(obs).to(device))
-            actions = np.array(
-                [
-                    (
-                        actions.tolist()[0]
-                        + np.random.normal(
-                            actor.action_bias[0].cpu().numpy(),
-                            actor.action_scale[0].cpu().numpy() * args.exploration_noise,
-                            size=envs.single_action_space.shape[0],
-                        )
-                    ).clip(envs.single_action_space.low, envs.single_action_space.high)
-                ]
-            )
+            actions += torch.normal(actor.action_bias, actor.action_scale * args.exploration_noise)
+            actions = actions.detach().cpu().numpy().clip(envs.single_action_space.low, envs.single_action_space.high)
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
