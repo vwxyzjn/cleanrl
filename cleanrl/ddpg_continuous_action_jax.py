@@ -95,6 +95,8 @@ class QNetwork(nn.Module):
 
 class Actor(nn.Module):
     action_dim: Sequence[int]
+    action_scale: Sequence[int]
+    action_bias: Sequence[int]
 
     @nn.compact
     def __call__(self, x):
@@ -104,6 +106,7 @@ class Actor(nn.Module):
         x = nn.relu(x)
         x = nn.Dense(self.action_dim)(x)
         x = nn.tanh(x)
+        x * self.action_scale + self.action_bias
         return x
 
 
@@ -143,15 +146,22 @@ if __name__ == "__main__":
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     max_action = float(envs.single_action_space.high[0])
-
     envs.single_observation_space.dtype = np.float32
-    rb = ReplayBuffer(args.buffer_size, envs.single_observation_space, envs.single_action_space, device="cpu")
-    start_time = time.time()
+    rb = ReplayBuffer(
+        args.buffer_size,
+        envs.single_observation_space,
+        envs.single_action_space,
+        device="cpu",
+        handle_timeout_termination=True,
+    )
 
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
-
-    actor = Actor(action_dim=np.prod(envs.single_action_space.shape))
+    actor = Actor(
+        action_dim=np.prod(envs.single_action_space.shape),
+        action_scale=jnp.array((envs.action_space.high - envs.action_space.low) / 2.0),
+        action_bias=jnp.array((envs.action_space.high + envs.action_space.low) / 2.0),
+    )
     qf1 = QNetwork()
     actor_state = TrainState.create(
         apply_fn=actor.apply,
@@ -209,6 +219,7 @@ if __name__ == "__main__":
         )
         return actor_state, qf1_state, actor_loss_value
 
+    start_time = time.time()
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
