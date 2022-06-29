@@ -162,7 +162,9 @@ Below are the average episodic returns for [`ddpg_continuous_action.py`](https:/
 | HalfCheetah      | 9382.32 ± 1395.52      |8577.29  | 3305.60|
 | Walker2d   | 1598.35 ± 862.66     |  3098.11 | 1843.85 |
 | Hopper   | 1313.43 ± 684.46         |  1860.02 | 2020.46 |
-
+| Humanoid |  897.74 ± 281.87      |  not available | 
+| Pusher |  -34.45 ± 4.47      |  not available | 
+| InvertedPendulum |    645.67 ± 270.31    | 1000.00 ± 0.00  | 
 
 
 ???+ info
@@ -182,11 +184,11 @@ Learning curves:
 
 <img src="../ddpg/Hopper-v2.png">
 
-<img src="../ddpg/InvertedPendulum-v2.png">
-
 <img src="../ddpg/Humanoid-v2.png">
 
 <img src="../ddpg/Pusher-v2.png">
+
+<img src="../ddpg/InvertedPendulum-v2.png">
 </div>
 
 

@@ -80,6 +80,9 @@ Below are the average episodic returns for [`td3_continuous_action.py`](https://
 | HalfCheetah      | 9018.31 ± 1078.31      |9636.95 ± 859.065  |
 | Walker2d   | 4246.07 ± 1210.84     |  4682.82 ± 539.64 | 
 | Hopper   | 3391.78 ± 232.21        |  3564.07 ± 114.74 | 
+| Humanoid |  4822.64 ± 321.85      |  not available | 
+| Pusher |  -42.24 ± 6.74      |  not available | 
+| InvertedPendulum |    964.59 ± 43.91    | 1000.00 ± 0.00  | 
 
 
 
@@ -100,11 +103,11 @@ Learning curves:
 
 <img src="../td3/Hopper-v2.png">
 
-<img src="../ddpg/InvertedPendulum-v2.png">
+<img src="../td3/Humanoid-v2.png">
 
-<img src="../ddpg/Humanoid-v2.png">
+<img src="../td3/Pusher-v2.png">
 
-<img src="../ddpg/Pusher-v2.png">
+<img src="../td3/InvertedPendulum-v2.png">
 </div>
 
 
