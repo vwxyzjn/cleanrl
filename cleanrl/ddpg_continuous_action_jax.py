@@ -183,11 +183,12 @@ if __name__ == "__main__":
         next_q_value = (rewards + (1 - dones) * args.gamma * (qf1_next_target)).reshape(-1)
 
         def mse_loss(params):
-            return ((qf1.apply(params, observations, actions).squeeze() - next_q_value) ** 2).mean()
+            qf1_a_values = qf1.apply(params, observations, actions).squeeze()
+            return ((qf1_a_values - next_q_value) ** 2).mean(), qf1_a_values.mean()
 
-        qf1_loss_value, grads = jax.value_and_grad(mse_loss)(qf1_state.params)
+        (qf1_loss_value, qf1_a_values), grads = jax.value_and_grad(mse_loss, has_aux=True)(qf1_state.params)
         qf1_state = qf1_state.apply_gradients(grads=grads)
-        return qf1_state, qf1_loss_value
+        return qf1_state, qf1_loss_value, qf1_a_values
 
     @jax.jit
     def update_actor(
@@ -247,7 +248,7 @@ if __name__ == "__main__":
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
-            qf1_state, qf1_loss_value = update_critic(
+            qf1_state, qf1_loss_value, qf1_a_values = update_critic(
                 actor_state,
                 qf1_state,
                 data.observations.numpy(),
@@ -257,7 +258,7 @@ if __name__ == "__main__":
                 data.dones.flatten().numpy(),
             )
             if global_step % args.policy_frequency == 0:
-                (actor_state, qf1_state, actor_loss_value) = update_actor(
+                actor_state, qf1_state, actor_loss_value = update_actor(
                     actor_state,
                     qf1_state,
                     data.observations.numpy(),
@@ -266,7 +267,7 @@ if __name__ == "__main__":
             if global_step % 100 == 0:
                 writer.add_scalar("losses/qf1_loss", qf1_loss_value.item(), global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss_value.item(), global_step)
-                # writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
+                writer.add_scalar("losses/qf1_values", qf1_a_values.item(), global_step)
                 print("SPS:", int(global_step / (time.time() - start_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
