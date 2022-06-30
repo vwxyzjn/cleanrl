@@ -5,12 +5,14 @@ import random
 import time
 from distutils.util import strtobool
 
+import flax
 import flax.linen as nn
 import gym
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
@@ -94,13 +96,13 @@ class QNetwork(nn.Module):
         return x
 
 
+class TrainState(TrainState):
+    target_params: flax.core.FrozenDict
+
+
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope = (end_e - start_e) / duration
     return max(slope * t + start_e, end_e)
-
-
-def update_target(src, dst, tau):
-    return jax.tree_map(lambda p, tp: p * tau + tp * (1 - tau), src, dst)
 
 
 if __name__ == "__main__":
@@ -137,13 +139,17 @@ if __name__ == "__main__":
     obs = envs.reset()
 
     q_network = QNetwork(action_dim=envs.single_action_space.n)
-    q_params = q_network.init(q_key, obs)
-    target_params = q_network.init(q_key, obs)
-    q_network.apply = jax.jit(q_network.apply)
-    target_params = optax.incremental_update(q_params, target_params, step_size=1)
 
-    optimizer = optax.adam(learning_rate=args.learning_rate)
-    optimizer_state = optimizer.init(q_params)
+    q_state = TrainState.create(
+        apply_fn=q_network.apply,
+        params=q_network.init(q_key, obs),
+        target_params=q_network.init(q_key, obs),
+        tx=optax.adam(learning_rate=args.learning_rate),
+    )
+
+    q_network.apply = jax.jit(q_network.apply)
+    # This step is not necessary as init called on same observation and key will always lead to same initializations
+    q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, 1))
 
     rb = ReplayBuffer(
         args.buffer_size,
@@ -154,20 +160,19 @@ if __name__ == "__main__":
     )
 
     @jax.jit
-    def update(observations, actions, next_observations, rewards, dones, q_params, target_params, optimizer_params):
-        q_next_target = q_network.apply(target_params, next_observations)  # (batch_size, num_actions)
+    def update(q_state, observations, actions, next_observations, rewards, dones):
+        q_next_target = q_network.apply(q_state.target_params, next_observations)  # (batch_size, num_actions)
         q_next_target = jnp.max(q_next_target, axis=-1)  # (batch_size,)
         next_q_value = rewards + (1 - dones) * args.gamma * q_next_target
 
-        def mse_loss(q_params, observations, actions, next_q_value):
-            q_pred = q_network.apply(q_params, observations)  # (batch_size, num_actions)
+        def mse_loss(params):
+            q_pred = q_network.apply(params, observations)  # (batch_size, num_actions)
             q_pred = q_pred[np.arange(q_pred.shape[0]), actions.squeeze()]  # (batch_size,)
-            return ((next_q_value - q_pred) ** 2).mean(), q_pred
+            return ((q_pred - next_q_value) ** 2).mean(), q_pred
 
-        (loss_value, q_pred), grads = jax.value_and_grad(mse_loss, has_aux=True)(q_params, observations, actions, next_q_value)
-        updates, optimizer_params = optimizer.update(grads, optimizer_params)
-        q_params = optax.apply_updates(q_params, updates)
-        return loss_value, q_pred, q_params, optimizer_params
+        (loss_value, q_pred), grads = jax.value_and_grad(mse_loss, has_aux=True)(q_state.params)
+        q_state = q_state.apply_gradients(grads=grads)
+        return loss_value, q_pred, q_state
 
     start_time = time.time()
 
@@ -179,8 +184,7 @@ if __name__ == "__main__":
         if random.random() < epsilon:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            # obs = jax.device_put(obs)
-            logits = q_network.apply(q_params, obs)
+            logits = q_network.apply(q_state.params, obs)
             actions = logits.argmax(axis=-1)
             actions = jax.device_get(actions)
 
@@ -210,15 +214,13 @@ if __name__ == "__main__":
         if global_step > args.learning_starts and global_step % args.train_frequency == 0:
             data = rb.sample(args.batch_size)
             # perform a gradient-descent step
-            loss, old_val, q_params, optimizer_state = update(
+            loss, old_val, q_state = update(
+                q_state,
                 data.observations.numpy(),
                 data.actions.numpy(),
                 data.next_observations.numpy(),
                 data.rewards.flatten().numpy(),
                 data.dones.flatten().numpy(),
-                q_params,
-                target_params,
-                optimizer_state,
             )
 
             if global_step % 100 == 0:
@@ -229,7 +231,7 @@ if __name__ == "__main__":
 
             # update the target network
             if global_step % args.target_network_frequency == 0:
-                target_params = optax.incremental_update(q_params, target_params, 1)
+                q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, 1))
 
     envs.close()
     writer.close()
