@@ -157,10 +157,12 @@ if __name__ == "__main__":
 
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
+    action_scale = np.array((envs.action_space.high - envs.action_space.low) / 2.0)
+    action_bias = np.array((envs.action_space.high + envs.action_space.low) / 2.0)
     actor = Actor(
         action_dim=np.prod(envs.single_action_space.shape),
-        action_scale=jnp.array((envs.action_space.high - envs.action_space.low) / 2.0),
-        action_bias=jnp.array((envs.action_space.high + envs.action_space.low) / 2.0),
+        action_scale=action_scale,
+        action_bias=action_bias,
     )
     qf1 = QNetwork()
     actor_state = TrainState.create(
@@ -229,8 +231,7 @@ if __name__ == "__main__":
             actions = np.array(
                 [
                     (
-                        jax.device_get(actions)[0]
-                        + np.random.normal(0, max_action * args.exploration_noise, size=envs.single_action_space.shape[0])
+                        jax.device_get(actions)[0] + np.random.normal(action_bias, action_scale * args.exploration_noise)[0]
                     ).clip(envs.single_action_space.low, envs.single_action_space.high)
                 ]
             )
