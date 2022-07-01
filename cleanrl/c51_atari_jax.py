@@ -126,7 +126,7 @@ class QNetwork(nn.Module):
         x = x.reshape((x.shape[0], -1))
         x = nn.Dense(512)(x)
         x = nn.relu(x)
-        x = nn.Dense(self.action_dim*self.n_atoms)(x)
+        x = nn.Dense(self.action_dim * self.n_atoms)(x)
         x = x.reshape((x.shape[0], self.action_dim, self.n_atoms))
         x = nn.softmax(x, axis=-1)  # pmfs
         return x
@@ -233,7 +233,7 @@ if __name__ == "__main__":
         )
         q_state = q_state.apply_gradients(grads=grads)
         return loss_value, old_values, q_state
-    
+
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
