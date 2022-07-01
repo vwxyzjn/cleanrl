@@ -92,8 +92,6 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 class QNetwork(nn.Module):
     action_dim: int
     n_atoms: int
-    v_min: int
-    v_max: int
 
     @nn.compact
     def __call__(self, x):
@@ -149,18 +147,15 @@ if __name__ == "__main__":
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     obs = envs.reset()
-
-    q_network = QNetwork(action_dim=envs.single_action_space.n, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max)
-
+    q_network = QNetwork(action_dim=envs.single_action_space.n, n_atoms=args.n_atoms)
     q_state = TrainState.create(
         apply_fn=q_network.apply,
         params=q_network.init(q_key, obs),
         target_params=q_network.init(q_key, obs),
         # directly using jnp.linspace leads to numerical errors
-        atoms = jnp.asarray(np.linspace(args.v_min, args.v_max, num=args.n_atoms)),
+        atoms=jnp.asarray(np.linspace(args.v_min, args.v_max, num=args.n_atoms)),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
-
     q_network.apply = jax.jit(q_network.apply)
     # This step is not necessary as init called on same observation and key will always lead to same initializations
     q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, 1))
@@ -183,7 +178,7 @@ if __name__ == "__main__":
         # projection
         delta_z = q_state.atoms[1] - q_state.atoms[0]
         tz = jnp.clip(next_atoms, a_min=(args.v_min), a_max=(args.v_max))
-        
+
         b = (tz - args.v_min) / delta_z
         l = jnp.clip(jnp.floor(b), a_min=0, a_max=args.n_atoms - 1)
         u = jnp.clip(jnp.ceil(b), a_min=0, a_max=args.n_atoms - 1)
@@ -194,8 +189,8 @@ if __name__ == "__main__":
         target_pmfs = jnp.zeros_like(next_pmfs)
 
         for i in range(target_pmfs.shape[0]):
-            target_pmfs = target_pmfs.at[i,l[i].astype(jnp.int32)].add(d_m_l[i])
-            target_pmfs = target_pmfs.at[i,u[i].astype(jnp.int32)].add(d_m_u[i])
+            target_pmfs = target_pmfs.at[i, l[i].astype(jnp.int32)].add(d_m_l[i])
+            target_pmfs = target_pmfs.at[i, u[i].astype(jnp.int32)].add(d_m_u[i])
 
         def loss(q_params, observations, actions, target_pmfs):
             pmfs = q_network.apply(q_params, observations)
@@ -205,7 +200,9 @@ if __name__ == "__main__":
             loss = (-(target_pmfs * jnp.log(old_pmfs_l)).sum(-1)).mean()
             return loss, (old_pmfs * q_state.atoms).sum(-1)
 
-        (loss_value, old_values), grads = jax.value_and_grad(loss, has_aux=True)(q_state.params, observations, actions, target_pmfs)
+        (loss_value, old_values), grads = jax.value_and_grad(loss, has_aux=True)(
+            q_state.params, observations, actions, target_pmfs
+        )
         q_state = q_state.apply_gradients(grads=grads)
         return loss_value, old_values, q_state
 
