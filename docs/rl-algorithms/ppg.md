@@ -105,9 +105,9 @@ Below are the average episodic returns for `ppg_procgen.py`, and comparison with
 
 | Environment      | `ppg_procgen.py` | `ppo_procgen.py` | `openai/phasic-policy-gradient` (easy) |
 |------------------|------------------|------------------|----------------------------------------|
-| Starpilot (easy) | 35.19 ± 13.07    | 33.15 ± 11.99    | 42.01 ± 9.59                           |
-| Bossfight (easy) | 10.34 ± 2.27     | 9.48 ± 2.42      | 10.71 ± 2.05                           |
-| Bigfish (easy)   | 27.25 ± 7.55     | 22.21 ± 7.42     | 15.94 ± 10.80                          |
+| Starpilot (easy) | 34.82 ± 13.77    | 32.47 ± 11.21    | 42.01 ± 9.59                           |
+| Bossfight (easy) | 10.78 ± 1.90     | 9.63 ± 2.35      | 10.71 ± 2.05                           |
+| Bigfish (easy)   | 24.23 ± 10.73    | 16.80 ± 9.49     | 15.94 ± 10.80                          |
 
 
 ???+ warning
