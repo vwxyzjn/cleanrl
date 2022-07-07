@@ -299,7 +299,6 @@ if __name__ == "__main__":
         actions: np.ndarray,
         advantages: np.ndarray,
         returns: np.ndarray,
-        values: np.ndarray,
         key: jax.random.PRNGKey,
     ):
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
@@ -307,7 +306,6 @@ if __name__ == "__main__":
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
         b_returns = returns.reshape(-1)
-        values.reshape(-1)
 
         def ppo_loss(params, x, a, logp, mb_advantages, mb_returns):
             newlogprob, _, newvalue = get_action_and_value2(params, x, a)
@@ -382,7 +380,6 @@ if __name__ == "__main__":
             actions,
             advantages,
             returns,
-            values,
             key,
         )
 
