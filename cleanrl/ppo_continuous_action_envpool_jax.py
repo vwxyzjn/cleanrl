@@ -15,6 +15,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+from flax.training.train_state import TrainState
 from flax.linen.initializers import constant, orthogonal
 from torch.utils.tensorboard import SummaryWriter
 
@@ -193,25 +194,27 @@ if __name__ == "__main__":
     envs = gym.wrappers.TransformReward(envs, lambda reward: np.clip(reward, -10, 10))
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
-    actor = Actor(action_dim=np.prod(envs.single_action_space.shape))
-    critic = Critic()
-    agent_params = AgentParams(
-        actor.init(actor_key, envs.single_observation_space.sample()),
-        critic.init(critic_key, envs.single_observation_space.sample()),
-    )
-    actor.apply = jax.jit(actor.apply)
-    critic.apply = jax.jit(critic.apply)
-
     def linear_schedule(count):
         # anneal learning rate linearly after one training iteration which contains 
         # (args.num_minibatches * args.update_epochs) gradient updates
         frac = 1.0 - (count // (args.num_minibatches * args.update_epochs)) / args.num_updates
         return args.learning_rate * frac
-    agent_optimizer = optax.chain(
-        optax.clip_by_global_norm(args.max_grad_norm),
-        optax.inject_hyperparams(optax.adam)(learning_rate=linear_schedule, eps=1e-5),
+
+    actor = Actor(action_dim=np.prod(envs.single_action_space.shape))
+    critic = Critic()
+    agent_state = TrainState.create(
+        apply_fn=None,
+        params=AgentParams(
+            actor.init(actor_key, envs.single_observation_space.sample()),
+            critic.init(critic_key, envs.single_observation_space.sample()),
+        ),
+        tx=optax.chain(
+            optax.clip_by_global_norm(args.max_grad_norm),
+            optax.inject_hyperparams(optax.adam)(learning_rate=linear_schedule, eps=1e-5),
+        ),
     )
-    agent_optimizer_state = agent_optimizer.init(agent_params)
+    actor.apply = jax.jit(actor.apply)
+    critic.apply = jax.jit(critic.apply)
 
     # ALGO Logic: Storage setup
     obs = jnp.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape)
@@ -224,35 +227,56 @@ if __name__ == "__main__":
     avg_returns = deque(maxlen=20)
 
     @jax.jit
-    def get_action_and_value(x, d, obs, dones, actions, logprobs, values, step, agent_params, key):
+    def get_action_and_value(
+        agent_state: TrainState,
+        x: np.ndarray, 
+        d: np.ndarray, 
+        obs: np.ndarray, 
+        dones: np.ndarray, 
+        actions: np.ndarray, 
+        logprobs: np.ndarray, 
+        values: np.ndarray, 
+        step: int, 
+        key: jax.random.PRNGKey,
+    ):
         obs = obs.at[step].set(x)  # inside jit() `x = x.at[idx].set(y)` is in-place.
         dones = dones.at[step].set(d)
-        action_mean, action_logstd = actor.apply(agent_params.actor_params, x)
-        # action_logstd = (jnp.ones_like(action_mean) * action_logstd)
+        action_mean, action_logstd = actor.apply(agent_state.params.actor_params, x)
         action_std = jnp.exp(action_logstd)
         key, subkey = jax.random.split(key)
         action = action_mean + action_std * jax.random.normal(subkey, shape=action_mean.shape)
         logprob = -0.5 * ((action - action_mean) / action_std) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - action_logstd
-        entropy = action_logstd + 0.5 * jnp.log(2.0 * jnp.pi * jnp.e)
-        value = critic.apply(agent_params.critic_params, x)
+        value = critic.apply(agent_state.params.critic_params, x)
         actions = actions.at[step].set(action)
         logprobs = logprobs.at[step].set(logprob.sum(1))
         values = values.at[step].set(value.squeeze())
-        return obs, dones, actions, logprobs, values, action, logprob, entropy, value, key
+        return obs, dones, actions, logprobs, values, action, key
 
     @jax.jit
-    def get_action_and_value2(x, action, agent_params):
-        action_mean, action_logstd = actor.apply(agent_params.actor_params, x)
+    def get_action_and_value2(
+        params: flax.core.FrozenDict,
+        x: np.ndarray,
+        action: np.ndarray,
+    ):
+        action_mean, action_logstd = actor.apply(params.actor_params, x)
         action_std = jnp.exp(action_logstd)
         logprob = -0.5 * ((action - action_mean) / action_std) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - action_logstd
         entropy = action_logstd + 0.5 * jnp.log(2.0 * jnp.pi * jnp.e)
-        value = critic.apply(agent_params.critic_params, x).squeeze()
+        value = critic.apply(params.critic_params, x).squeeze()
         return logprob.sum(1), entropy, value
 
     @jax.jit
-    def compute_gae(next_obs, next_done, rewards, dones, values, advantages, agent_params):
+    def compute_gae(
+        agent_state: TrainState,
+        next_obs: np.ndarray, 
+        next_done: np.ndarray, 
+        rewards: np.ndarray, 
+        dones: np.ndarray, 
+        values: np.ndarray, 
+        advantages: np.ndarray, 
+    ):
         advantages = advantages.at[:].set(0.0)  # reset advantages
-        next_value = critic.apply(agent_params.critic_params, next_obs).squeeze()
+        next_value = critic.apply(agent_state.params.critic_params, next_obs).squeeze()
         lastgaelam = 0
         for t in reversed(range(args.num_steps)):
             if t == args.num_steps - 1:
@@ -268,7 +292,16 @@ if __name__ == "__main__":
         return jax.lax.stop_gradient(advantages), jax.lax.stop_gradient(returns)
 
     @jax.jit
-    def update_ppo(obs, logprobs, actions, advantages, returns, values, agent_params, agent_optimizer_state, key):
+    def update_ppo(
+        agent_state: TrainState,
+        obs: np.ndarray,
+        logprobs: np.ndarray,
+        actions: np.ndarray,
+        advantages: np.ndarray,
+        returns: np.ndarray,
+        values: np.ndarray,
+        key: jax.random.PRNGKey,
+    ):
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
         b_logprobs = logprobs.reshape(-1)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
@@ -276,8 +309,8 @@ if __name__ == "__main__":
         b_returns = returns.reshape(-1)
         values.reshape(-1)
 
-        def ppo_loss(agent_params, x, a, logp, mb_advantages, mb_returns):
-            newlogprob, _, newvalue = get_action_and_value2(x, a, agent_params)
+        def ppo_loss(params, x, a, logp, mb_advantages, mb_returns):
+            newlogprob, _, newvalue = get_action_and_value2(params, x, a)
             logratio = newlogprob - logp
             ratio = jnp.exp(logratio)
             approx_kl = ((ratio - 1) - logratio).mean()
@@ -308,17 +341,15 @@ if __name__ == "__main__":
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
                 (loss, (pg_loss, v_loss, approx_kl)), grads = ppo_loss_grad_fn(
-                    agent_params,
+                    agent_state.params,
                     b_obs[mb_inds],
                     b_actions[mb_inds],
                     b_logprobs[mb_inds],
                     b_advantages[mb_inds],
                     b_returns[mb_inds],
                 )
-                updates, agent_optimizer_state = agent_optimizer.update(grads, agent_optimizer_state)
-                agent_params = optax.apply_updates(agent_params, updates)
-
-        return loss, pg_loss, v_loss, approx_kl, key, agent_params, agent_optimizer_state
+                agent_state = agent_state.apply_gradients(grads=grads)
+        return agent_state, loss, pg_loss, v_loss, approx_kl, key
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -329,12 +360,12 @@ if __name__ == "__main__":
     for update in range(1, args.num_updates + 1):
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
-            obs, dones, actions, logprobs, values, action, logprob, entropy, value, key = get_action_and_value(
-                next_obs, next_done, obs, dones, actions, logprobs, values, step, agent_params, key
+            obs, dones, actions, logprobs, values, action, key = get_action_and_value(
+                agent_state, next_obs, next_done, obs, dones, actions, logprobs, values, step, key
             )
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, next_done, info = envs.step(np.array(action))
+            next_obs, rewards[step], next_done, info = envs.step(np.array(action))
             for idx, d in enumerate(next_done):
                 if d:
                     print(f"global_step={global_step}, episodic_return={info['r'][idx]}")
@@ -342,23 +373,21 @@ if __name__ == "__main__":
                     writer.add_scalar("charts/avg_episodic_return", np.average(avg_returns), global_step)
                     writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
                     writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
-            rewards[step] = reward
 
-        advantages, returns = compute_gae(next_obs, next_done, rewards, dones, values, advantages, agent_params)
-        loss, pg_loss, v_loss, approx_kl, key, agent_params, agent_optimizer_state = update_ppo(
+        advantages, returns = compute_gae(agent_state, next_obs, next_done, rewards, dones, values, advantages)
+        agent_state, loss, pg_loss, v_loss, approx_kl, key = update_ppo(
+            agent_state,
             obs,
             logprobs,
             actions,
             advantages,
             returns,
             values,
-            agent_params,
-            agent_optimizer_state,
             key,
         )
 
         # # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/learning_rate", agent_optimizer_state[1].hyperparams["learning_rate"].item(), global_step)
+        writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"].item(), global_step)
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
         # writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
