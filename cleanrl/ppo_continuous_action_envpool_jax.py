@@ -194,11 +194,12 @@ if __name__ == "__main__":
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     actor = Actor(action_dim=np.prod(envs.single_action_space.shape))
-    actor_params = actor.init(actor_key, envs.single_observation_space.sample())
-    print(actor.tabulate(jax.random.PRNGKey(0), envs.single_observation_space.sample()))
-    actor.apply = jax.jit(actor.apply)
     critic = Critic()
-    critic_params = critic.init(critic_key, envs.single_observation_space.sample())
+    agent_params = AgentParams(
+        actor.init(actor_key, envs.single_observation_space.sample()),
+        critic.init(critic_key, envs.single_observation_space.sample()),
+    )
+    actor.apply = jax.jit(actor.apply)
     critic.apply = jax.jit(critic.apply)
 
     def linear_schedule(count):
@@ -209,10 +210,6 @@ if __name__ == "__main__":
     agent_optimizer = optax.chain(
         optax.clip_by_global_norm(args.max_grad_norm),
         optax.inject_hyperparams(optax.adam)(learning_rate=linear_schedule, eps=1e-5),
-    )
-    agent_params = AgentParams(
-        actor_params,
-        critic_params,
     )
     agent_optimizer_state = agent_optimizer.init(agent_params)
 
@@ -303,11 +300,10 @@ if __name__ == "__main__":
 
         ppo_loss_grad_fn = jax.value_and_grad(ppo_loss, has_aux=True)
 
-        b_inds = jnp.arange(args.batch_size)
         # clipfracs = []
         for _ in range(args.update_epochs):
             key, subkey = jax.random.split(key)
-            b_inds = jax.random.shuffle(subkey, b_inds)
+            b_inds = jax.random.permutation(subkey, args.batch_size, independent=True)
             for start in range(0, args.batch_size, args.minibatch_size):
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
