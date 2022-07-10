@@ -1,6 +1,7 @@
 import optuna
+
 from cleanrl_utils.tuner import Tuner
-    
+
 tuner = Tuner(
     script="cleanrl/ppo.py",
     metric="charts/episodic_return",

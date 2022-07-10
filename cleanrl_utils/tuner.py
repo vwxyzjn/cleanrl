@@ -1,32 +1,28 @@
-import argparse
-from distutils.util import strtobool
-from encodings import normalize_encoding
-import json
-from locale import normalize
 import os
 import runpy
+import sys
 import time
 from typing import Callable
+
 import numpy as np
-import sys
-import copy
-from rich import print
 import optuna
+from rich import print
 from tensorboard.backend.event_processing import event_accumulator
 
 
 class HiddenPrints:
     def __enter__(self):
         self._original_stdout = sys.stdout
-        sys.stdout = open(os.devnull, 'w')
+        sys.stdout = open(os.devnull, "w")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stdout.close()
         sys.stdout = self._original_stdout
 
+
 class Tuner:
     def __init__(
-        self, 
+        self,
         script: str,
         metric: str,
         target_scores: dict[str, list[int]],
@@ -50,7 +46,7 @@ class Tuner:
         if len(self.study_name) == 0:
             self.study_name = f"tuner_{int(time.time())}"
         self.wandb_kwargs = wandb_kwargs
-    
+
     def tune(self, num_trials: int, num_seeds: int) -> None:
         def objective(trial: optuna.Trial):
             params = self.params_fn(trial)
@@ -80,9 +76,16 @@ class Tuner:
                         f"runs/{experiment['run_name']}",
                     )
                     ea.Reload()
-                    metric_values = [scalar_event.value for scalar_event in ea.Scalars(self.metric)[-self.metric_last_n_average_window:]]
-                    print(f"The average episodic return on {env_id} is {np.average(metric_values)} averaged over the last {self.metric_last_n_average_window} episodes.")
-                    normalized_scores += [(np.average(metric_values) - self.target_scores[env_id][0]) / (self.target_scores[env_id][1] - self.target_scores[env_id][0])]
+                    metric_values = [
+                        scalar_event.value for scalar_event in ea.Scalars(self.metric)[-self.metric_last_n_average_window :]
+                    ]
+                    print(
+                        f"The average episodic return on {env_id} is {np.average(metric_values)} averaged over the last {self.metric_last_n_average_window} episodes."
+                    )
+                    normalized_scores += [
+                        (np.average(metric_values) - self.target_scores[env_id][0])
+                        / (self.target_scores[env_id][1] - self.target_scores[env_id][0])
+                    ]
                     if run:
                         run.log({f"{env_id}_return": np.average(metric_values)})
                 print(f"The normalized score is {np.average(normalized_scores)} with num_seeds={seed}")
@@ -91,7 +94,7 @@ class Tuner:
                     raise optuna.TrialPruned()
                 if run:
                     run.log({"normalized_scores": np.average(normalized_scores)})
-                    
+
             return np.average(normalized_scores)
 
         study = optuna.create_study(
@@ -108,6 +111,5 @@ class Tuner:
             objective,
             n_trials=num_trials,
         )
-        print(f"The best trial obtains a normalized score of {study.best_trial.value}",  study.best_trial.params)
+        print(f"The best trial obtains a normalized score of {study.best_trial.value}", study.best_trial.params)
         return study.best_trial
-
