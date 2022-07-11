@@ -20,8 +20,8 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-from flax.training.train_state import TrainState
 from flax.linen.initializers import constant, orthogonal
+from flax.training.train_state import TrainState
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -136,16 +136,37 @@ class RecordEpisodeStatistics(gym.Wrapper):
         )
 
 
-class Netowrk(nn.Module):
+class Network(nn.Module):
     @nn.compact
     def __call__(self, x):
         x = jnp.transpose(x, (0, 2, 3, 1))
         x = x / (255.0)
-        x = nn.Conv(32, kernel_size=(8, 8), strides=(4, 4), padding="VALID", kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(x)
+        x = nn.Conv(
+            32,
+            kernel_size=(8, 8),
+            strides=(4, 4),
+            padding="VALID",
+            kernel_init=orthogonal(np.sqrt(2)),
+            bias_init=constant(0.0),
+        )(x)
         x = nn.relu(x)
-        x = nn.Conv(64, kernel_size=(4, 4), strides=(2, 2), padding="VALID", kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(x)
+        x = nn.Conv(
+            64,
+            kernel_size=(4, 4),
+            strides=(2, 2),
+            padding="VALID",
+            kernel_init=orthogonal(np.sqrt(2)),
+            bias_init=constant(0.0),
+        )(x)
         x = nn.relu(x)
-        x = nn.Conv(64, kernel_size=(3, 3), strides=(1, 1), padding="VALID", kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(x)
+        x = nn.Conv(
+            64,
+            kernel_size=(3, 3),
+            strides=(1, 1),
+            padding="VALID",
+            kernel_init=orthogonal(np.sqrt(2)),
+            bias_init=constant(0.0),
+        )(x)
         x = nn.relu(x)
         x = x.reshape((x.shape[0], -1))
         x = nn.Dense(512, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(x)
@@ -218,12 +239,12 @@ if __name__ == "__main__":
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     def linear_schedule(count):
-        # anneal learning rate linearly after one training iteration which contains 
+        # anneal learning rate linearly after one training iteration which contains
         # (args.num_minibatches * args.update_epochs) gradient updates
         frac = 1.0 - (count // (args.num_minibatches * args.update_epochs)) / args.num_updates
         return args.learning_rate * frac
 
-    network = Netowrk()
+    network = Network()
     actor = Actor(action_dim=envs.single_action_space.n)
     critic = Critic()
     network_params = network.init(network_key, np.array([envs.single_observation_space.sample()]))
@@ -242,7 +263,7 @@ if __name__ == "__main__":
     network.apply = jax.jit(network.apply)
     actor.apply = jax.jit(actor.apply)
     critic.apply = jax.jit(critic.apply)
-    # print(Netowrk().tabulate(jax.random.PRNGKey(0), np.array([envs.single_observation_space.sample()])))
+    # print(Network().tabulate(jax.random.PRNGKey(0), np.array([envs.single_observation_space.sample()])))
     # print(Actor(action_dim=envs.single_action_space.n).tabulate(jax.random.PRNGKey(0), network.apply(network_params, np.array([envs.single_observation_space.sample()]))))
     # print(Critic().tabulate(jax.random.PRNGKey(0), network.apply(network_params, np.array([envs.single_observation_space.sample()]))))
     # raise
@@ -260,14 +281,14 @@ if __name__ == "__main__":
     @jax.jit
     def get_action_and_value(
         agent_state: TrainState,
-        x: np.ndarray, 
-        d: np.ndarray, 
-        obs: np.ndarray, 
-        dones: np.ndarray, 
-        actions: np.ndarray, 
-        logprobs: np.ndarray, 
-        values: np.ndarray, 
-        step: int, 
+        x: np.ndarray,
+        d: np.ndarray,
+        obs: np.ndarray,
+        dones: np.ndarray,
+        actions: np.ndarray,
+        logprobs: np.ndarray,
+        values: np.ndarray,
+        step: int,
         key: jax.random.PRNGKey,
     ):
         obs = obs.at[step].set(x)  # inside jit() `x = x.at[idx].set(y)` is in-place.
@@ -295,7 +316,7 @@ if __name__ == "__main__":
         hidden = network.apply(params.network_params, x)
         logits = actor.apply(params.actor_params, hidden)
         logprob = jax.nn.log_softmax(logits)[jnp.arange(action.shape[0]), action]
-    
+
         logits = logits - jax.scipy.special.logsumexp(logits, axis=-1, keepdims=True)
         logits = logits.clip(min=jnp.finfo(logits.dtype).min)
         p_log_p = logits * jax.nn.softmax(logits)
@@ -306,15 +327,17 @@ if __name__ == "__main__":
     @jax.jit
     def compute_gae(
         agent_state: TrainState,
-        next_obs: np.ndarray, 
-        next_done: np.ndarray, 
-        rewards: np.ndarray, 
-        dones: np.ndarray, 
-        values: np.ndarray, 
-        advantages: np.ndarray, 
+        next_obs: np.ndarray,
+        next_done: np.ndarray,
+        rewards: np.ndarray,
+        dones: np.ndarray,
+        values: np.ndarray,
+        advantages: np.ndarray,
     ):
         advantages = advantages.at[:].set(0.0)  # reset advantages
-        next_value = critic.apply(agent_state.params.critic_params, network.apply(agent_state.params.network_params, next_obs)).squeeze()
+        next_value = critic.apply(
+            agent_state.params.critic_params, network.apply(agent_state.params.network_params, next_obs)
+        ).squeeze()
         lastgaelam = 0
         for t in reversed(range(args.num_steps)):
             if t == args.num_steps - 1:
