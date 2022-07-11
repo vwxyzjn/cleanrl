@@ -208,6 +208,7 @@ if __name__ == "__main__":
         num_envs=args.num_envs,
         episodic_life=True,
         reward_clip=True,
+        seed=args.seed,
     )
     envs.num_envs = args.num_envs
     envs.single_action_space = envs.action_space
@@ -402,7 +403,7 @@ if __name__ == "__main__":
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, rewards[step], next_done, info = envs.step(np.array(action))
             for idx, d in enumerate(next_done):
-                if d:
+                if d and info["lives"][idx] == 0:
                     print(f"global_step={global_step}, episodic_return={info['r'][idx]}")
                     avg_returns.append(info["r"][idx])
                     writer.add_scalar("charts/avg_episodic_return", np.average(avg_returns), global_step)
