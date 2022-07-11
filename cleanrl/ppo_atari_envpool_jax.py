@@ -316,7 +316,6 @@ if __name__ == "__main__":
         hidden = network.apply(params.network_params, x)
         logits = actor.apply(params.actor_params, hidden)
         logprob = jax.nn.log_softmax(logits)[jnp.arange(action.shape[0]), action]
-
         logits = logits - jax.scipy.special.logsumexp(logits, axis=-1, keepdims=True)
         logits = logits.clip(min=jnp.finfo(logits.dtype).min)
         p_log_p = logits * jax.nn.softmax(logits)
