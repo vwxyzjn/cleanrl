@@ -72,8 +72,6 @@ def parse_args():
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.1,
         help="the surrogate clipping coefficient")
-    parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
     parser.add_argument("--ent-coef", type=float, default=0.01,
         help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=0.5,
@@ -257,7 +255,7 @@ if __name__ == "__main__":
         ),
         tx=optax.chain(
             optax.clip_by_global_norm(args.max_grad_norm),
-            optax.inject_hyperparams(optax.adam)(learning_rate=linear_schedule, eps=1e-5),
+            optax.inject_hyperparams(optax.adam)(learning_rate=linear_schedule if args.anneal_lr else args.learning_rate, eps=1e-5),
         ),
     )
     network.apply = jax.jit(network.apply)
@@ -276,7 +274,6 @@ if __name__ == "__main__":
     dones = jnp.zeros((args.num_steps, args.num_envs))
     values = jnp.zeros((args.num_steps, args.num_envs))
     advantages = jnp.zeros((args.num_steps, args.num_envs))
-    avg_returns = deque(maxlen=20)
 
     @jax.jit
     def get_action_and_value(
@@ -427,8 +424,6 @@ if __name__ == "__main__":
             for idx, d in enumerate(next_done):
                 if d and info["lives"][idx] == 0:
                     print(f"global_step={global_step}, episodic_return={info['r'][idx]}")
-                    avg_returns.append(info["r"][idx])
-                    writer.add_scalar("charts/avg_episodic_return", np.average(avg_returns), global_step)
                     writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
                     writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
 
