@@ -46,6 +46,8 @@ def parse_args():
         help="total timesteps of the experiments")
     parser.add_argument("--num-envs", type=int, default=32,
         help="the number of parallel game environments")
+    parser.add_argument("--envpool-num-threads", type=int, default=2,
+        help="the number of envpool worker threads")
     parser.add_argument("--num-steps", type=int, default=128,
         help="rollout horizon: the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
@@ -253,7 +255,8 @@ def main():
         args.env_id,
         env_type="gym",
         num_envs=args.num_envs,
-        #batch_size=args.batch_size,  # async
+        #batch_size=args.epoch_size,  # async
+        num_threads=args.envpool_num_threads,
         episodic_life=True,
         reward_clip=True,
     )
