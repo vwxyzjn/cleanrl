@@ -170,23 +170,21 @@ if __name__ == "__main__":
         target_params=actor.init(actor_key, obs),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
-    qf1 = QNetwork()
+    qf = QNetwork()
     qf1_state = TrainState.create(
-        apply_fn=qf1.apply,
-        params=qf1.init(qf1_key, obs, envs.action_space.sample()),
-        target_params=qf1.init(qf1_key, obs, envs.action_space.sample()),
+        apply_fn=qf.apply,
+        params=qf.init(qf1_key, obs, envs.action_space.sample()),
+        target_params=qf.init(qf1_key, obs, envs.action_space.sample()),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
-    qf2 = QNetwork()
     qf2_state = TrainState.create(
-        apply_fn=qf2.apply,
-        params=qf2.init(qf2_key, obs, envs.action_space.sample()),
-        target_params=qf2.init(qf2_key, obs, envs.action_space.sample()),
+        apply_fn=qf.apply,
+        params=qf.init(qf2_key, obs, envs.action_space.sample()),
+        target_params=qf.init(qf2_key, obs, envs.action_space.sample()),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
     actor.apply = jax.jit(actor.apply)
-    qf1.apply = jax.jit(qf1.apply)
-    qf2.apply = jax.jit(qf2.apply)
+    qf.apply = jax.jit(qf.apply)
 
     @jax.jit
     def update_critic(
@@ -198,8 +196,9 @@ if __name__ == "__main__":
         next_observations: np.ndarray,
         rewards: np.ndarray,
         dones: np.ndarray,
+        clipped_noise: np.ndarray,
     ):
-        next_state_actions = (actor.apply(actor_state.target_params, next_observations)).clip(-1, 1)  # TODO: proper clip
+        next_state_actions = (actor.apply(actor_state.target_params, next_observations) + + clipped_noise).clip(-1, 1)  # TODO: proper clip
         qf1_next_target = qf1.apply(qf1_state.target_params, next_observations, next_state_actions).reshape(-1)
         qf2_next_target = qf2.apply(qf2_state.target_params, next_observations, next_state_actions).reshape(-1)
         min_qf_next_target = jnp.min(qf1_next_target, qf2_next_target)
@@ -299,6 +298,7 @@ if __name__ == "__main__":
                 data.next_observations.numpy(),
                 data.rewards.flatten().numpy(),
                 data.dones.flatten().numpy(),
+                clipped_noise.numpy()
             )
             (qf1_loss_value, qf2_loss_value) = qf_losses
             (qf1_a_values, qf2_a_values) = qf_values
