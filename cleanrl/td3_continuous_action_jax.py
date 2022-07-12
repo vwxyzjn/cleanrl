@@ -198,9 +198,11 @@ if __name__ == "__main__":
         dones: np.ndarray,
         clipped_noise: np.ndarray,
     ):
-        next_state_actions = jnp.clip(actor.apply(actor_state.target_params, next_observations) + clipped_noise,
-                                    envs.single_action_space.low[0],
-                                    envs.single_action_space.high[0])
+        next_state_actions = jnp.clip(
+            actor.apply(actor_state.target_params, next_observations) + clipped_noise,
+            envs.single_action_space.low[0],
+            envs.single_action_space.high[0],
+        )
         qf1_next_target = qf.apply(qf1_state.target_params, next_observations, next_state_actions).reshape(-1)
         qf2_next_target = qf.apply(qf2_state.target_params, next_observations, next_state_actions).reshape(-1)
         min_qf_next_target = jnp.min(qf1_next_target, qf2_next_target)
@@ -210,10 +212,8 @@ if __name__ == "__main__":
             qf_a_values = qf.apply(params, observations, actions).squeeze()
             return ((qf_a_values - next_q_value) ** 2).mean(), qf_a_values.mean()
 
-        (qf1_loss_value, qf1_a_values), grads1 = jax.value_and_grad(mse_loss,
-                                                    has_aux=True)(qf1_state.params, qf)
-        (qf2_loss_value, qf2_a_values), grads2 = jax.value_and_grad(mse_loss,
-                                                    has_aux=True)(qf2_state.params, qf)
+        (qf1_loss_value, qf1_a_values), grads1 = jax.value_and_grad(mse_loss, has_aux=True)(qf1_state.params, qf)
+        (qf2_loss_value, qf2_a_values), grads2 = jax.value_and_grad(mse_loss, has_aux=True)(qf2_state.params, qf)
         qf1_state = qf1_state.apply_gradients(grads=grads1)
         qf2_state = qf2_state.apply_gradients(grads=grads2)
         return qf1_state, (qf1_loss_value, qf2_loss_value), (qf1_a_values, qf2_a_values)
@@ -233,7 +233,7 @@ if __name__ == "__main__":
         actor_state = actor_state.replace(
             target_params=optax.incremental_update(actor_state.params, actor_state.target_params, args.tau)
         )
-        #TODO maybe split this in 2 functions?
+        # TODO maybe split this in 2 functions?
         qf1_state = qf1_state.replace(
             target_params=optax.incremental_update(qf1_state.params, qf1_state.target_params, args.tau)
         )
@@ -285,12 +285,11 @@ if __name__ == "__main__":
             # TODO Maybe generate a lot of random keys right in the beginning
             # also check https://jax.readthedocs.io/en/latest/jax.random.html
             key, noise_key = jax.random.split(key, 2)
-            clipped_noise = jnp.clip((jax.random.normal(
-                                                        jnp.array(noise_key,
-                                                        actions[0].shape)
-                                                        ) * args.policy_noise), 
-                                    -args.noise_clip, 
-                                    args.noise_clip)
+            clipped_noise = jnp.clip(
+                (jax.random.normal(jnp.array(noise_key, actions[0].shape)) * args.policy_noise),
+                -args.noise_clip,
+                args.noise_clip,
+            )
             qf1_state, qf_losses, qf_values = update_critic(
                 actor_state,
                 qf1_state,
@@ -300,7 +299,7 @@ if __name__ == "__main__":
                 data.next_observations.numpy(),
                 data.rewards.flatten().numpy(),
                 data.dones.flatten().numpy(),
-                clipped_noise.numpy()
+                clipped_noise.numpy(),
             )
             (qf1_loss_value, qf2_loss_value) = qf_losses
             (qf1_a_values, qf2_a_values) = qf_values
