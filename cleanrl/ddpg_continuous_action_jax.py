@@ -1,3 +1,4 @@
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ddpg/#ddpg_continuous_action_jaxpy
 import argparse
 import os
 import random
@@ -106,7 +107,7 @@ class Actor(nn.Module):
         x = nn.relu(x)
         x = nn.Dense(self.action_dim)(x)
         x = nn.tanh(x)
-        x * self.action_scale + self.action_bias
+        x = x * self.action_scale + self.action_bias
         return x
 
 
