@@ -291,6 +291,7 @@ def main():
             frac = 1.0 - (update - 1.0) / num_updates
             policy_optimizer.param_groups[0]["lr"] = frac * args.policy_learning_rate
             value_optimizer.param_groups[0]["lr"] = frac * args.value_learning_rate
+            distill_optimizer.param_groups[0]["lr"] = frac * args.distill_learning_rate
 
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
@@ -431,6 +432,7 @@ def main():
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/policy_learning_rate", policy_optimizer.param_groups[0]["lr"], global_step)
         writer.add_scalar("charts/value_learning_rate", value_optimizer.param_groups[0]["lr"], global_step)
+        writer.add_scalar("charts/distill_learning_rate", distill_optimizer.param_groups[0]["lr"], global_step)
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
         writer.add_scalar("losses/distill_loss", distill_loss.item(), global_step)
