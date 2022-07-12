@@ -8,6 +8,7 @@ import numpy as np
 import optuna
 from rich import print
 from tensorboard.backend.event_processing import event_accumulator
+import wandb
 
 
 class HiddenPrints:
@@ -52,8 +53,6 @@ class Tuner:
             params = self.params_fn(trial)
             run = None
             if len(self.wandb_kwargs.keys()) > 0:
-                import wandb
-
                 run = wandb.init(
                     **self.wandb_kwargs,
                     config=params,
@@ -91,10 +90,12 @@ class Tuner:
                 print(f"The normalized score is {np.average(normalized_scores)} with num_seeds={seed}")
                 trial.report(np.average(normalized_scores), step=seed)
                 if trial.should_prune():
+                    run.finish(quiet=True)
                     raise optuna.TrialPruned()
                 if run:
                     run.log({"normalized_scores": np.average(normalized_scores)})
-
+            
+            run.finish(quiet=True)
             return np.average(normalized_scores)
 
         study = optuna.create_study(
