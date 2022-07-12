@@ -323,12 +323,14 @@ def main():
                     writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
 
         if args.norm_obs:
-            obs_mean = obs.view(-1, *obs.shape[2:]).mean(dim=0)
-            obs_std = obs.view(-1, *obs.shape[2:]).std(dim=0)
-            agent_policy.obs_mean.copy_(obs_mean)
-            agent_policy.obs_std.copy_(obs_std)
-            agent_value.obs_mean.copy_(obs_mean)
-            agent_value.obs_std.copy_(obs_std)
+            new_obs_mean = obs.view(-1, *obs.shape[2:]).mean(dim=0)
+            new_obs_std = obs.view(-1, *obs.shape[2:]).std(dim=0)
+            ema_obs_mean = 0.9 * agent_policy.obs_mean + 0.1 * new_obs_mean
+            ema_obs_std = 0.9 * agent_policy.obs_std + 0.1 * new_obs_std
+            agent_policy.obs_mean.copy_(ema_obs_mean)
+            agent_policy.obs_std.copy_(ema_obs_std)
+            agent_value.obs_mean.copy_(ema_obs_mean)
+            agent_value.obs_std.copy_(ema_obs_std)
 
         # bootstrap value if not done
         with torch.no_grad():
