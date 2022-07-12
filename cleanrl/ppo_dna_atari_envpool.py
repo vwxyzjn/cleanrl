@@ -259,6 +259,7 @@ def main():
         num_threads=args.envpool_num_threads,
         episodic_life=True,
         reward_clip=True,
+        seed=args.seed,
     )
     envs.num_envs = args.num_envs
     envs.single_action_space = envs.action_space
