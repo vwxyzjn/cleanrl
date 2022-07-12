@@ -199,8 +199,8 @@ if __name__ == "__main__":
         clipped_noise: np.ndarray,
     ):
         next_state_actions = (actor.apply(actor_state.target_params, next_observations) + + clipped_noise).clip(-1, 1)  # TODO: proper clip
-        qf1_next_target = qf1.apply(qf1_state.target_params, next_observations, next_state_actions).reshape(-1)
-        qf2_next_target = qf2.apply(qf2_state.target_params, next_observations, next_state_actions).reshape(-1)
+        qf1_next_target = qf.apply(qf1_state.target_params, next_observations, next_state_actions).reshape(-1)
+        qf2_next_target = qf.apply(qf2_state.target_params, next_observations, next_state_actions).reshape(-1)
         min_qf_next_target = jnp.min(qf1_next_target, qf2_next_target)
         next_q_value = (rewards + (1 - dones) * args.gamma * (min_qf_next_target)).reshape(-1)
 
@@ -209,9 +209,9 @@ if __name__ == "__main__":
             return ((qf_a_values - next_q_value) ** 2).mean(), qf_a_values.mean()
 
         (qf1_loss_value, qf1_a_values), grads1 = jax.value_and_grad(mse_loss,
-                                                    has_aux=True)(qf1_state.params, qf1)
+                                                    has_aux=True)(qf1_state.params, qf)
         (qf2_loss_value, qf2_a_values), grads2 = jax.value_and_grad(mse_loss,
-                                                    has_aux=True)(qf2_state.params, qf2)
+                                                    has_aux=True)(qf2_state.params, qf)
         qf1_state = qf1_state.apply_gradients(grads=grads1)
         qf2_state = qf2_state.apply_gradients(grads=grads2)
         return qf1_state, (qf1_loss_value, qf2_loss_value), (qf1_a_values, qf2_a_values)
@@ -224,7 +224,7 @@ if __name__ == "__main__":
         observations: np.ndarray,
     ):
         def actor_loss(params):
-            return -qf1.apply(qf1_state.params, observations, actor.apply(params, observations)).mean()
+            return -qf.apply(qf1_state.params, observations, actor.apply(params, observations)).mean()
 
         actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
         actor_state = actor_state.apply_gradients(grads=grads)
