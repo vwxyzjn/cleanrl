@@ -198,7 +198,9 @@ if __name__ == "__main__":
         dones: np.ndarray,
         clipped_noise: np.ndarray,
     ):
-        next_state_actions = (actor.apply(actor_state.target_params, next_observations) + + clipped_noise).clip(-1, 1)  # TODO: proper clip
+        next_state_actions = jnp.clip(actor.apply(actor_state.target_params, next_observations) + clipped_noise,
+                                    envs.single_action_space.low[0],
+                                    envs.single_action_space.high[0])
         qf1_next_target = qf.apply(qf1_state.target_params, next_observations, next_state_actions).reshape(-1)
         qf2_next_target = qf.apply(qf2_state.target_params, next_observations, next_state_actions).reshape(-1)
         min_qf_next_target = jnp.min(qf1_next_target, qf2_next_target)
