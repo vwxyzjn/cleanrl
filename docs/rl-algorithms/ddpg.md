@@ -243,7 +243,7 @@ Learning curves:
 
 The [ddpg_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) has the following features:
 
-* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  [ddpg_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) is roughly 4x faster than  [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py)
+* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  [ddpg_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) is roughly 2.5-4x faster than  [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py)
 * For continuous action space
 * Works with the `Box` observation space of low-level features
 * Works with the `Box` (continuous) action space
@@ -282,6 +282,11 @@ Below are the average episodic returns for [`ddpg_continuous_action_jax.py`](htt
 | HalfCheetah |  9910.53 ± 673.49     | 9382.32 ± 1395.52      |8577.29  |
 | Walker2d |  1397.60 ± 677.12  | 1598.35 ± 862     |  3098.11 | 
 | Hopper |  1603.5 ± 727.281  | 1313.43 ± 684.46         |  1860.02 | 
+
+
+???+ info
+
+    Note that we ran the [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) experiments with RTX 3060 Ti (~810 SPS) and [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) experiments with RTX 2060 (~241 SPS). Using RTX 3060 Ti w/ [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) brings the SPS from 241 to 325, meaning that under the same hardware, [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) would be **roughly 810/241=2.5x faster**.  However, because of the overhead of `--capture-video` that both scripts suffer, we suspect [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) would be 3x-4x faster when `--capture-video` is disabled.
 
 
 Learning curves:
