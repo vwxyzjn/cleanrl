@@ -234,6 +234,13 @@ if __name__ == "__main__":
         q_state = q_state.apply_gradients(grads=grads)
         return loss_value, old_values, q_state
 
+    @jax.jit
+    def get_action(q_state, obs):
+        pmfs = q_network.apply(q_state.params, obs)
+        q_vals = (pmfs * q_state.atoms).sum(axis=-1)
+        actions = q_vals.argmax(axis=-1)
+        return actions
+
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
@@ -244,9 +251,7 @@ if __name__ == "__main__":
         if random.random() < epsilon:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            pmfs = q_network.apply(q_state.params, obs)
-            q_vals = (pmfs * q_state.atoms).sum(axis=-1)
-            actions = q_vals.argmax(axis=-1)
+            actions = get_action(q_state, obs)
             actions = jax.device_get(actions)
 
         # TRY NOT TO MODIFY: execute the game and log data.
