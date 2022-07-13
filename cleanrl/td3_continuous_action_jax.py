@@ -8,11 +8,11 @@ from typing import Sequence
 import flax
 import flax.linen as nn
 import gym
-import pybullet_envs  # noqa
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+import pybullet_envs  # noqa
 from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
