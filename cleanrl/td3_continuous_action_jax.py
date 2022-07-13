@@ -8,6 +8,7 @@ from typing import Sequence
 import flax
 import flax.linen as nn
 import gym
+import pybullet_envs  # noqa
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -196,7 +197,7 @@ if __name__ == "__main__":
         next_observations: np.ndarray,
         rewards: np.ndarray,
         dones: np.ndarray,
-        clipped_noise: np.ndarray,
+        clipped_noise: jnp.ndarray,
     ):
         next_state_actions = jnp.clip(
             actor.apply(actor_state.target_params, next_observations) + clipped_noise,
@@ -205,7 +206,7 @@ if __name__ == "__main__":
         )
         qf1_next_target = qf.apply(qf1_state.target_params, next_observations, next_state_actions).reshape(-1)
         qf2_next_target = qf.apply(qf2_state.target_params, next_observations, next_state_actions).reshape(-1)
-        min_qf_next_target = jnp.min(qf1_next_target, qf2_next_target)
+        min_qf_next_target = jnp.minimum(qf1_next_target, qf2_next_target)
         next_q_value = (rewards + (1 - dones) * args.gamma * (min_qf_next_target)).reshape(-1)
 
         def mse_loss(params, qf):
@@ -286,7 +287,7 @@ if __name__ == "__main__":
             # also check https://jax.readthedocs.io/en/latest/jax.random.html
             key, noise_key = jax.random.split(key, 2)
             clipped_noise = jnp.clip(
-                (jax.random.normal(jnp.array(noise_key, actions[0].shape)) * args.policy_noise),
+                (jax.random.normal(noise_key, actions[0].shape) * args.policy_noise),
                 -args.noise_clip,
                 args.noise_clip,
             )
@@ -299,7 +300,7 @@ if __name__ == "__main__":
                 data.next_observations.numpy(),
                 data.rewards.flatten().numpy(),
                 data.dones.flatten().numpy(),
-                clipped_noise.numpy(),
+                clipped_noise,
             )
             (qf1_loss_value, qf2_loss_value) = qf_losses
             (qf1_a_values, qf2_a_values) = qf_values
