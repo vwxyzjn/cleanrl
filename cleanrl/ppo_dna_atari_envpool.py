@@ -44,7 +44,7 @@ def parse_args():
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=10_000_000,
         help="total timesteps of the experiments")
-    parser.add_argument("--num-envs", type=int, default=32,
+    parser.add_argument("--num-envs", type=int, default=128,
         help="the number of parallel game environments")
     parser.add_argument("--envpool-num-threads", type=int, default=2,
         help="the number of envpool worker threads")
