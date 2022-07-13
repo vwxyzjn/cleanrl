@@ -14,6 +14,7 @@ Reference resources:
 
 * :material-github: [sfujim/TD3](https://github.com/sfujim/TD3)
 * [Deep Deterministic Policy Gradient | Spinning Up in Deep RL](https://spinningup.openai.com/en/latest/algorithms/ddpg.html)
+* :material-github: [ikostrikov/jaxrl](https://github.com/ikostrikov/jaxrl) (helpful reference when implemented [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py))
 
 ## Implemented Variants
 
