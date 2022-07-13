@@ -1,17 +1,19 @@
-# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/td3/#td3_continuous_actionpy
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ddpg/#ddpg_continuous_action_jaxpy
 import argparse
 import os
 import random
 import time
 from distutils.util import strtobool
+from typing import Sequence
 
+import flax
+import flax.linen as nn
 import gym
+import jax
+import jax.numpy as jnp
 import numpy as np
-import pybullet_envs  # noqa
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
+import optax
+from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
@@ -37,7 +39,7 @@ def parse_args():
         help="weather to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="HopperBulletEnv-v0",
+    parser.add_argument("--env-id", type=str, default="HalfCheetah-v2",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -51,8 +53,6 @@ def parse_args():
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=256,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--policy-noise", type=float, default=0.2,
-        help="the scale of policy noise")
     parser.add_argument("--exploration-noise", type=float, default=0.1,
         help="the scale of exploration noise")
     parser.add_argument("--learning-starts", type=int, default=25e3,
@@ -83,35 +83,36 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
-    def __init__(self, env):
-        super().__init__()
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256)
-        self.fc2 = nn.Linear(256, 256)
-        self.fc3 = nn.Linear(256, 1)
-
-    def forward(self, x, a):
-        x = torch.cat([x, a], 1)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+    @nn.compact
+    def __call__(self, x: jnp.ndarray, a: jnp.ndarray):
+        x = jnp.concatenate([x, a], -1)
+        x = nn.Dense(256)(x)
+        x = nn.relu(x)
+        x = nn.Dense(256)(x)
+        x = nn.relu(x)
+        x = nn.Dense(1)(x)
         return x
 
 
 class Actor(nn.Module):
-    def __init__(self, env):
-        super().__init__()
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
-        self.fc2 = nn.Linear(256, 256)
-        self.fc_mu = nn.Linear(256, np.prod(env.single_action_space.shape))
-        # action rescaling
-        self.register_buffer("action_scale", torch.FloatTensor((env.action_space.high - env.action_space.low) / 2.0))
-        self.register_buffer("action_bias", torch.FloatTensor((env.action_space.high + env.action_space.low) / 2.0))
+    action_dim: Sequence[int]
+    action_scale: Sequence[int]
+    action_bias: Sequence[int]
 
-    def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = torch.tanh(self.fc_mu(x))
-        return x * self.action_scale + self.action_bias
+    @nn.compact
+    def __call__(self, x):
+        x = nn.Dense(256)(x)
+        x = nn.relu(x)
+        x = nn.Dense(256)(x)
+        x = nn.relu(x)
+        x = nn.Dense(self.action_dim)(x)
+        x = nn.tanh(x)
+        x = x * self.action_scale + self.action_bias
+        return x
+
+
+class TrainState(TrainState):
+    target_params: flax.core.FrozenDict
 
 
 if __name__ == "__main__":
@@ -138,48 +139,103 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
     np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.backends.cudnn.deterministic = args.torch_deterministic
-
-    device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    key = jax.random.PRNGKey(args.seed)
+    key, actor_key, qf1_key = jax.random.split(key, 3)
 
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
-    actor = Actor(envs).to(device)
-    qf1 = QNetwork(envs).to(device)
-    qf2 = QNetwork(envs).to(device)
-    qf1_target = QNetwork(envs).to(device)
-    qf2_target = QNetwork(envs).to(device)
-    target_actor = Actor(envs).to(device)
-    target_actor.load_state_dict(actor.state_dict())
-    qf1_target.load_state_dict(qf1.state_dict())
-    qf2_target.load_state_dict(qf2.state_dict())
-    q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.learning_rate)
-    actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.learning_rate)
-
+    max_action = float(envs.single_action_space.high[0])
     envs.single_observation_space.dtype = np.float32
     rb = ReplayBuffer(
         args.buffer_size,
         envs.single_observation_space,
         envs.single_action_space,
-        device,
+        device="cpu",
         handle_timeout_termination=True,
     )
-    start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
+    action_scale = np.array((envs.action_space.high - envs.action_space.low) / 2.0)
+    action_bias = np.array((envs.action_space.high + envs.action_space.low) / 2.0)
+    actor = Actor(
+        action_dim=np.prod(envs.single_action_space.shape),
+        action_scale=action_scale,
+        action_bias=action_bias,
+    )
+    qf1 = QNetwork()
+    actor_state = TrainState.create(
+        apply_fn=actor.apply,
+        params=actor.init(actor_key, obs),
+        target_params=actor.init(actor_key, obs),
+        tx=optax.adam(learning_rate=args.learning_rate),
+    )
+    qf1_state = TrainState.create(
+        apply_fn=qf1.apply,
+        params=qf1.init(qf1_key, obs, envs.action_space.sample()),
+        target_params=qf1.init(qf1_key, obs, envs.action_space.sample()),
+        tx=optax.adam(learning_rate=args.learning_rate),
+    )
+    actor.apply = jax.jit(actor.apply)
+    qf1.apply = jax.jit(qf1.apply)
+
+    @jax.jit
+    def update_critic(
+        actor_state: TrainState,
+        qf1_state: TrainState,
+        observations: np.ndarray,
+        actions: np.ndarray,
+        next_observations: np.ndarray,
+        rewards: np.ndarray,
+        dones: np.ndarray,
+    ):
+        next_state_actions = (actor.apply(actor_state.target_params, next_observations)).clip(-1, 1)  # TODO: proper clip
+        qf1_next_target = qf1.apply(qf1_state.target_params, next_observations, next_state_actions).reshape(-1)
+        next_q_value = (rewards + (1 - dones) * args.gamma * (qf1_next_target)).reshape(-1)
+
+        def mse_loss(params):
+            qf1_a_values = qf1.apply(params, observations, actions).squeeze()
+            return ((qf1_a_values - next_q_value) ** 2).mean(), qf1_a_values.mean()
+
+        (qf1_loss_value, qf1_a_values), grads = jax.value_and_grad(mse_loss, has_aux=True)(qf1_state.params)
+        qf1_state = qf1_state.apply_gradients(grads=grads)
+        return qf1_state, qf1_loss_value, qf1_a_values
+
+    @jax.jit
+    def update_actor(
+        actor_state: TrainState,
+        qf1_state: TrainState,
+        observations: np.ndarray,
+    ):
+        def actor_loss(params):
+            return -qf1.apply(qf1_state.params, observations, actor.apply(params, observations)).mean()
+
+        actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
+        actor_state = actor_state.apply_gradients(grads=grads)
+        actor_state = actor_state.replace(
+            target_params=optax.incremental_update(actor_state.params, actor_state.target_params, args.tau)
+        )
+        qf1_state = qf1_state.replace(
+            target_params=optax.incremental_update(qf1_state.params, qf1_state.target_params, args.tau)
+        )
+        return actor_state, qf1_state, actor_loss_value
+
+    start_time = time.time()
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            with torch.no_grad():
-                actions = actor(torch.Tensor(obs).to(device))
-                actions += torch.normal(actor.action_bias, actor.action_scale * args.exploration_noise)
-                actions = actions.cpu().numpy().clip(envs.single_action_space.low, envs.single_action_space.high)
+            actions = actor.apply(actor_state.params, obs)
+            actions = np.array(
+                [
+                    (
+                        jax.device_get(actions)[0] + np.random.normal(action_bias, action_scale * args.exploration_noise)[0]
+                    ).clip(envs.single_action_space.low, envs.single_action_space.high)
+                ]
+            )
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
@@ -205,51 +261,26 @@ if __name__ == "__main__":
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
-            with torch.no_grad():
-                clipped_noise = (torch.randn_like(torch.Tensor(actions[0])) * args.policy_noise).clamp(
-                    -args.noise_clip, args.noise_clip
-                )
-
-                next_state_actions = (target_actor(data.next_observations) + clipped_noise.to(device)).clamp(
-                    envs.single_action_space.low[0], envs.single_action_space.high[0]
-                )
-                qf1_next_target = qf1_target(data.next_observations, next_state_actions)
-                qf2_next_target = qf2_target(data.next_observations, next_state_actions)
-                min_qf_next_target = torch.min(qf1_next_target, qf2_next_target)
-                next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
-
-            qf1_a_values = qf1(data.observations, data.actions).view(-1)
-            qf2_a_values = qf2(data.observations, data.actions).view(-1)
-            qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
-            qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
-            qf_loss = qf1_loss + qf2_loss
-
-            # optimize the model
-            q_optimizer.zero_grad()
-            qf_loss.backward()
-            q_optimizer.step()
-
+            qf1_state, qf1_loss_value, qf1_a_values = update_critic(
+                actor_state,
+                qf1_state,
+                data.observations.numpy(),
+                data.actions.numpy(),
+                data.next_observations.numpy(),
+                data.rewards.flatten().numpy(),
+                data.dones.flatten().numpy(),
+            )
             if global_step % args.policy_frequency == 0:
-                actor_loss = -qf1(data.observations, actor(data.observations)).mean()
-                actor_optimizer.zero_grad()
-                actor_loss.backward()
-                actor_optimizer.step()
-
-                # update the target network
-                for param, target_param in zip(actor.parameters(), target_actor.parameters()):
-                    target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
-                for param, target_param in zip(qf1.parameters(), qf1_target.parameters()):
-                    target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
-                for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
-                    target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
+                actor_state, qf1_state, actor_loss_value = update_actor(
+                    actor_state,
+                    qf1_state,
+                    data.observations.numpy(),
+                )
 
             if global_step % 100 == 0:
-                writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
-                writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
-                writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
-                writer.add_scalar("losses/qf2_loss", qf2_loss.item(), global_step)
-                writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
-                writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
+                writer.add_scalar("losses/qf1_loss", qf1_loss_value.item(), global_step)
+                writer.add_scalar("losses/actor_loss", actor_loss_value.item(), global_step)
+                writer.add_scalar("losses/qf1_values", qf1_a_values.item(), global_step)
                 print("SPS:", int(global_step / (time.time() - start_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
