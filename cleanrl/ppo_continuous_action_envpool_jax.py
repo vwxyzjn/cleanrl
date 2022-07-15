@@ -149,6 +149,17 @@ class AgentParams:
     critic_params: flax.core.FrozenDict
 
 
+@flax.struct.dataclass
+class Storage:
+    obs: jnp.array
+    actions: jnp.array
+    logprobs: jnp.array
+    dones: jnp.array
+    values: jnp.array
+    advantages: jnp.array
+    returns: jnp.array
+
+
 if __name__ == "__main__":
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -217,40 +228,40 @@ if __name__ == "__main__":
     critic.apply = jax.jit(critic.apply)
 
     # ALGO Logic: Storage setup
-    obs = jnp.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape)
-    actions = jnp.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape)
-    logprobs = jnp.zeros((args.num_steps, args.num_envs))
-    rewards = np.zeros((args.num_steps, args.num_envs))
-    dones = jnp.zeros((args.num_steps, args.num_envs))
-    values = jnp.zeros((args.num_steps, args.num_envs))
-    advantages = jnp.zeros((args.num_steps, args.num_envs))
-    avg_returns = deque(maxlen=20)
+    storage = Storage(
+        obs=jnp.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape),
+        actions=jnp.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape),
+        logprobs=jnp.zeros((args.num_steps, args.num_envs)),
+        dones=jnp.zeros((args.num_steps, args.num_envs)),
+        values=jnp.zeros((args.num_steps, args.num_envs)),
+        advantages=jnp.zeros((args.num_steps, args.num_envs)),
+        returns=jnp.zeros((args.num_steps, args.num_envs)),
+    )
+    rewards=np.zeros((args.num_steps, args.num_envs))
 
     @jax.jit
     def get_action_and_value(
         agent_state: TrainState,
-        x: np.ndarray, 
-        d: np.ndarray, 
-        obs: np.ndarray, 
-        dones: np.ndarray, 
-        actions: np.ndarray, 
-        logprobs: np.ndarray, 
-        values: np.ndarray, 
+        next_obs: np.ndarray, 
+        next_done: np.ndarray, 
+        storage: Storage,
         step: int, 
         key: jax.random.PRNGKey,
     ):
-        obs = obs.at[step].set(x)  # inside jit() `x = x.at[idx].set(y)` is in-place.
-        dones = dones.at[step].set(d)
-        action_mean, action_logstd = actor.apply(agent_state.params.actor_params, x)
+        action_mean, action_logstd = actor.apply(agent_state.params.actor_params, next_obs)
         action_std = jnp.exp(action_logstd)
         key, subkey = jax.random.split(key)
         action = action_mean + action_std * jax.random.normal(subkey, shape=action_mean.shape)
         logprob = -0.5 * ((action - action_mean) / action_std) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - action_logstd
-        value = critic.apply(agent_state.params.critic_params, x)
-        actions = actions.at[step].set(action)
-        logprobs = logprobs.at[step].set(logprob.sum(1))
-        values = values.at[step].set(value.squeeze())
-        return obs, dones, actions, logprobs, values, action, key
+        value = critic.apply(agent_state.params.critic_params, next_obs)
+        storage = storage.replace(
+            obs=storage.obs.at[step].set(next_obs),
+            dones=storage.dones.at[step].set(next_done),
+            actions=storage.actions.at[step].set(action),
+            logprobs=storage.logprobs.at[step].set(logprob.sum(1)),
+            values=storage.values.at[step].set(value.squeeze()),
+        )
+        return storage, action, key
 
     @jax.jit
     def get_action_and_value2(
@@ -270,12 +281,12 @@ if __name__ == "__main__":
         agent_state: TrainState,
         next_obs: np.ndarray, 
         next_done: np.ndarray, 
-        rewards: np.ndarray, 
-        dones: np.ndarray, 
-        values: np.ndarray, 
-        advantages: np.ndarray, 
+        rewards: np.ndarray,
+        storage: Storage,
     ):
-        advantages = advantages.at[:].set(0.0)  # reset advantages
+        storage = storage.replace(
+            advantages=storage.advantages.at[:].set(0.0)
+        )
         next_value = critic.apply(agent_state.params.critic_params, next_obs).squeeze()
         lastgaelam = 0
         for t in reversed(range(args.num_steps)):
@@ -283,29 +294,29 @@ if __name__ == "__main__":
                 nextnonterminal = 1.0 - next_done
                 nextvalues = next_value
             else:
-                nextnonterminal = 1.0 - dones[t + 1]
-                nextvalues = values[t + 1]
-            delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
+                nextnonterminal = 1.0 - storage.dones[t + 1]
+                nextvalues = storage.values[t + 1]
+            delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - storage.values[t]
             lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
-            advantages = advantages.at[t].set(lastgaelam)
-        returns = advantages + values
-        return jax.lax.stop_gradient(advantages), jax.lax.stop_gradient(returns)
+            storage = storage.replace(
+                advantages=storage.advantages.at[t].set(lastgaelam)
+            )
+        storage = storage.replace(
+            returns=storage.advantages + storage.values
+        )
+        return storage
 
     @jax.jit
     def update_ppo(
         agent_state: TrainState,
-        obs: np.ndarray,
-        logprobs: np.ndarray,
-        actions: np.ndarray,
-        advantages: np.ndarray,
-        returns: np.ndarray,
+        storage: Storage,
         key: jax.random.PRNGKey,
     ):
-        b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
-        b_logprobs = logprobs.reshape(-1)
-        b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
-        b_advantages = advantages.reshape(-1)
-        b_returns = returns.reshape(-1)
+        b_obs = storage.obs.reshape((-1,) + envs.single_observation_space.shape)
+        b_logprobs = storage.logprobs.reshape(-1)
+        b_actions = storage.actions.reshape((-1,) + envs.single_action_space.shape)
+        b_advantages = storage.advantages.reshape(-1)
+        b_returns = storage.returns.reshape(-1)
 
         def ppo_loss(params, x, a, logp, mb_advantages, mb_returns):
             newlogprob, _, newvalue = get_action_and_value2(params, x, a)
@@ -356,10 +367,11 @@ if __name__ == "__main__":
     next_done = np.zeros(args.num_envs)
 
     for update in range(1, args.num_updates + 1):
+        update_time_start = time.time()
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
-            obs, dones, actions, logprobs, values, action, key = get_action_and_value(
-                agent_state, next_obs, next_done, obs, dones, actions, logprobs, values, step, key
+            storage, action, key = get_action_and_value(
+                agent_state, next_obs, next_done, storage, step, key
             )
 
             # TRY NOT TO MODIFY: execute the game and log data.
@@ -367,23 +379,17 @@ if __name__ == "__main__":
             for idx, d in enumerate(next_done):
                 if d:
                     print(f"global_step={global_step}, episodic_return={info['r'][idx]}")
-                    avg_returns.append(info["r"][idx])
-                    writer.add_scalar("charts/avg_episodic_return", np.average(avg_returns), global_step)
                     writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
                     writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
 
-        advantages, returns = compute_gae(agent_state, next_obs, next_done, rewards, dones, values, advantages)
+        storage = compute_gae(agent_state, next_obs, next_done, rewards, storage)
         agent_state, loss, pg_loss, v_loss, approx_kl, key = update_ppo(
             agent_state,
-            obs,
-            logprobs,
-            actions,
-            advantages,
-            returns,
+            storage,
             key,
         )
 
-        # # TRY NOT TO MODIFY: record rewards for plotting purposes
+        # # # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"].item(), global_step)
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
@@ -393,6 +399,8 @@ if __name__ == "__main__":
         # writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/loss", loss.item(), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
+        # print("update time:", time.time() - update_time_start)
+        writer.add_scalar("charts/update_time", time.time() - update_time_start, global_step)
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
     envs.close()
