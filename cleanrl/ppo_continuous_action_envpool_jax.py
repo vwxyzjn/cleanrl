@@ -192,6 +192,7 @@ if __name__ == "__main__":
         args.env_id,
         env_type="gym",
         num_envs=args.num_envs,
+        seed=args.seed,
     )
     envs.num_envs = args.num_envs
     envs.single_action_space = envs.action_space
