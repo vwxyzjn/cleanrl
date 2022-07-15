@@ -273,9 +273,10 @@ def main():
     value_optimizer = optim.Adam(agent_value.parameters(), lr=args.value_learning_rate, eps=1e-5)
     distill_optimizer = optim.Adam(agent_policy.parameters(), lr=args.distill_learning_rate, eps=1e-5)
 
-    # log gradients
-    wandb.watch(agent_policy)
-    wandb.watch(agent_value)
+    if args.track:
+        # log gradients
+        wandb.watch(agent_policy)
+        wandb.watch(agent_value)
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -457,11 +458,12 @@ def main():
     envs.close()
     writer.close()
 
-    # save final model
-    torch.save(agent_policy.state_dict(), "agent_policy.pt")
-    torch.save(agent_value.state_dict(), "agent_value.pt")
-    wandb.save("agent_policy.pt")
-    wandb.save("agent_value.pt")
+    if args.track:
+        # save final model
+        torch.save(agent_policy.state_dict(), "agent_policy.pt")
+        torch.save(agent_value.state_dict(), "agent_value.pt")
+        wandb.save("agent_policy.pt")
+        wandb.save("agent_value.pt")
 
 
 if __name__ == "__main__":
