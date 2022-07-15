@@ -289,6 +289,7 @@ def main():
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
+    env_step = 0
     start_time = time.time()
     next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
@@ -304,6 +305,7 @@ def main():
 
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
+            env_step += 4 * args.num_envs  # default Atari frame skip is 4
             obs[step] = next_obs
             dones[step] = next_done
 
@@ -322,7 +324,7 @@ def main():
 
             for idx, d in enumerate(done):
                 if d and info["lives"][idx] == 0:
-                    print(f"global_step={global_step}, episodic_return={info['r'][idx]}")
+                    print(f"global_step={global_step}, env_step={env_step}, episodic_return={info['r'][idx]}")
                     avg_returns.append(info["r"][idx])
                     writer.add_scalar("charts/avg_episodic_return", np.average(avg_returns), global_step)
                     writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
@@ -454,6 +456,7 @@ def main():
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+        writer.add_scalar("env_step", env_step, global_step)
 
     envs.close()
     writer.close()
