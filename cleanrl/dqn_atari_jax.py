@@ -4,15 +4,12 @@ import os
 import time
 from distutils.util import strtobool
 
-import gym
-import numpy as np
-
 import flax.linen as nn
+import gym
 import jax
 import jax.numpy as jnp
+import numpy as np
 import optax
-from torch.utils.tensorboard import SummaryWriter
-
 from stable_baselines3.common.atari_wrappers import (
     ClipRewardEnv,
     EpisodicLifeEnv,
@@ -21,6 +18,8 @@ from stable_baselines3.common.atari_wrappers import (
     NoopResetEnv,
 )
 from stable_baselines3.common.buffers import ReplayBuffer
+from torch.utils.tensorboard import SummaryWriter
+
 
 def parse_args():
     # fmt: off
@@ -76,6 +75,7 @@ def parse_args():
     # fmt: on
     return args
 
+
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         env = gym.make(env_id)
@@ -99,43 +99,47 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 
     return thunk
 
+
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
     action_dim: int
-    initializer: callable 
+    initializer: callable
+
     @nn.compact
     def __call__(self, x: jnp.ndarray):
         x = jnp.transpose(x, (1, 2, 0))
-        x = x.astype(jnp.float32) / 255.
-        x = nn.Conv(features=32, kernel_size=(8, 8), strides=(4, 4),
-                    kernel_init=self.initializer, padding='VALID')(x)
+        x = x.astype(jnp.float32) / 255.0
+        x = nn.Conv(features=32, kernel_size=(8, 8), strides=(4, 4), kernel_init=self.initializer, padding="VALID")(x)
         x = nn.relu(x)
-        x = nn.Conv(features=64, kernel_size=(4, 4), strides=(2, 2),
-                    kernel_init=self.initializer, padding='VALID')(x)
+        x = nn.Conv(features=64, kernel_size=(4, 4), strides=(2, 2), kernel_init=self.initializer, padding="VALID")(x)
         x = nn.relu(x)
-        x = nn.Conv(features=64, kernel_size=(3, 3), strides=(1, 1),
-                    kernel_init=self.initializer, padding='VALID')(x)
+        x = nn.Conv(features=64, kernel_size=(3, 3), strides=(1, 1), kernel_init=self.initializer, padding="VALID")(x)
         x = nn.relu(x)
         x = x.reshape(-1)  # flatten
         x = nn.Dense(features=512, kernel_init=self.initializer)(x)
         x = nn.relu(x)
-        q_values = nn.Dense(features=self.action_dim,
-                            kernel_init=self.initializer)(x)
+        q_values = nn.Dense(features=self.action_dim, kernel_init=self.initializer)(x)
         return q_values
-    
+
+
 @functools.partial(jax.jit, static_argnums=(1,))
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope = (end_e - start_e) / duration
     return jnp.maximum(slope * t + start_e, end_e)
 
+
 def mse(target, prediction):
-    return jnp.power((target-prediction), 2)
+    return jnp.power((target - prediction), 2)
+
 
 @functools.partial(jax.jit, static_argnums=(0, 3, 10))
-def train(network_def, online_params, target_params, optimizer, optimizer_state, next_obs, obs, rewards, dones, actions, gamma):
+def train(
+    network_def, online_params, target_params, optimizer, optimizer_state, next_obs, obs, rewards, dones, actions, gamma
+):
     def loss_fn(online_params, target_params, next_obs, obs, rewards, dones, actions):
         def q_val_fn(observations):
             return network_def.apply(online_params, observations)
+
         def t_val_fn(observations):
             return network_def.apply(target_params, observations)
 
@@ -152,10 +156,15 @@ def train(network_def, online_params, target_params, optimizer, optimizer_state,
     online_params = optax.apply_updates(online_params, updates)
     return loss, old_val, online_params, optimizer_state
 
+
 @functools.partial(jax.jit, static_argnums=(2, 3))
 def select_action(rng_seed, epsilon, num_actions, network_def, online_params, obs):
     rng, rng_1, rng_2 = jax.random.split(rng_seed, 3)
-    return rng, jnp.where(jax.random.uniform(rng_1) < epsilon, jax.random.randint(rng_2, (), 0, num_actions), jnp.argmax(network_def.apply(online_params, obs)))
+    return rng, jnp.where(
+        jax.random.uniform(rng_1) < epsilon,
+        jax.random.randint(rng_2, (), 0, num_actions),
+        jnp.argmax(network_def.apply(online_params, obs)),
+    )
 
 
 if __name__ == "__main__":
@@ -189,20 +198,20 @@ if __name__ == "__main__":
     obs = envs.reset()
     network_def = QNetwork(envs.single_action_space.n, nn.initializers.xavier_uniform())
     q_network_params = network_def.init(q_network_seed, x=obs.squeeze())
-    optimizer = optax.adam(args.learning_rate,  b1=0.99, b2=0.999)
+    optimizer = optax.adam(args.learning_rate, b1=0.99, b2=0.999)
     optimizer_state = optimizer.init(q_network_params)
     target_network_params = q_network_params
 
-    rb = ReplayBuffer(
-        args.buffer_size, envs.single_observation_space, envs.single_action_space, optimize_memory_usage=True
-    )
+    rb = ReplayBuffer(args.buffer_size, envs.single_observation_space, envs.single_action_space, optimize_memory_usage=True)
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
-        rng_seed, actions = select_action(rng_seed, epsilon, envs.single_action_space.n, network_def, q_network_params, obs.squeeze())
+        rng_seed, actions = select_action(
+            rng_seed, epsilon, envs.single_action_space.n, network_def, q_network_params, obs.squeeze()
+        )
         actions = np.array([actions])
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
@@ -222,10 +231,22 @@ if __name__ == "__main__":
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
-        # ALGO LOGIC: training.            
+        # ALGO LOGIC: training.
         if global_step > args.learning_starts and global_step % args.train_frequency == 0:
             data = rb.sample(args.batch_size)
-            loss, old_vals, q_network_params, optimizer_state = train(network_def, q_network_params, target_network_params, optimizer, optimizer_state, data.next_observations.numpy(), data.observations.numpy(), data.rewards.flatten().numpy(), data.dones.flatten().numpy(), data.actions.numpy(), args.gamma)
+            loss, old_vals, q_network_params, optimizer_state = train(
+                network_def,
+                q_network_params,
+                target_network_params,
+                optimizer,
+                optimizer_state,
+                data.next_observations.numpy(),
+                data.observations.numpy(),
+                data.rewards.flatten().numpy(),
+                data.dones.flatten().numpy(),
+                data.actions.numpy(),
+                args.gamma,
+            )
             if global_step % 100 == 0:
                 writer.add_scalar("losses/td_loss", np.asarray(loss), global_step)
                 writer.add_scalar("losses/q_values", np.asarray(old_vals).mean(), global_step)
@@ -237,5 +258,3 @@ if __name__ == "__main__":
 
     envs.close()
     writer.close()
-
-
