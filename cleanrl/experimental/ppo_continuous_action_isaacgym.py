@@ -237,7 +237,7 @@ if __name__ == "__main__":
             envs,
             f"videos/{run_name}",
             step_trigger=lambda step: step % args.record_video_step_frequency == 0,
-            video_length=100  # for each video record up to 100 steps
+            video_length=100,  # for each video record up to 100 steps
         )
     envs = ExtractObsWrapper(envs)
     envs = RecordEpisodeStatisticsTorch(envs, device)
@@ -292,8 +292,10 @@ if __name__ == "__main__":
                         print(f"global_step={global_step}, episodic_return={episodic_return}")
                         writer.add_scalar("charts/episodic_return", episodic_return, global_step)
                         writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
-                        if "consecutive_successes" in info: # ShadowHand and AllegroHand metric
-                            writer.add_scalar("charts/consecutive_successes", info["consecutive_successes"].item(), global_step)
+                        if "consecutive_successes" in info:  # ShadowHand and AllegroHand metric
+                            writer.add_scalar(
+                                "charts/consecutive_successes", info["consecutive_successes"].item(), global_step
+                            )
                         break
 
         # bootstrap value if not done
@@ -385,7 +387,6 @@ if __name__ == "__main__":
             if args.target_kl is not None:
                 if approx_kl > args.target_kl:
                     break
-
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
