@@ -201,7 +201,7 @@ class Agent(nn.Module):
     def normalize_obs(self, x):
         x = (x - self.obs_mean.unsqueeze(0)) / (self.obs_std.unsqueeze(0) + 1e-8)
         return torch.clip(x, -3, 3)
-        
+
     def get_value(self, x):
         return self.critic(self.network(self.normalize_obs(x))).squeeze(-1)
 
@@ -253,7 +253,7 @@ def main():
         args.env_id,
         env_type="gym",
         num_envs=args.num_envs,
-        #batch_size=args.epoch_size,  # async
+        # batch_size=args.epoch_size,  # async
         num_threads=args.envpool_num_threads,
         episodic_life=True,
         reward_clip=True,
@@ -342,7 +342,9 @@ def main():
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent_value.get_value(next_obs).reshape(1, -1)
-            advantages, _ = compute_advantages(rewards, dones, values, next_done, next_value, args.gamma, args.policy_gae_lambda)
+            advantages, _ = compute_advantages(
+                rewards, dones, values, next_done, next_value, args.gamma, args.policy_gae_lambda
+            )
             _, returns = compute_advantages(rewards, dones, values, next_done, next_value, args.gamma, args.value_gae_lambda)
 
         # flatten the batch
