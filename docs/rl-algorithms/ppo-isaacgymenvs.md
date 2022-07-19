@@ -46,13 +46,31 @@ The [ppo_continuous_action_isaacgym.py](https://github.com/vwxyzjn/cleanrl/blob/
 
 ### Usage
 
-Please go to [https://developer.nvidia.com/isaac-gym](https://developer.nvidia.com/isaac-gym) to download and install the latest version of Issac Gym. Make sure your python version is either 3.6, 3.7, or 3.8 (3.9 _not_ supported yet).
+The installation of `isaacgym` requires a bit of work since it's not a standard Python package.
+
+Please go to [https://developer.nvidia.com/isaac-gym](https://developer.nvidia.com/isaac-gym) to download and install the latest version of Issac Gym which should look like `IsaacGym_Preview_4_Package.tar.gz`. Put this `IsaacGym_Preview_4_Package.tar.gz` into the `cleanrl/ppo_continuous_action_isaacgym` folder. Make sure your python version is either 3.7, or 3.8 (3.9 _not_ supported yet).
 
 ```bash
-poetry run pip install path-to-isaac-gym
+# extract and move the content in `python` folder in the IsaacGym_Preview_4_Package.tar.gz
+# into the `cleanrl/ppo_continuous_action_isaacgym/isaacgym/` which has 
+cd cleanrl/ppo_continuous_action_isaacgym
+stat IsaacGym_Preview_4_Package.tar.gz
+mkdir temp_isaacgym
+tar -xf IsaacGym_Preview_4_Package.tar.gz -C temp_isaacgym
+mv temp_isaacgym/isaacgym/python/* isaacgym
+rm -rf temp_isaacgym
+
+poetry install -E isaacgym
+
 poetry install -E isaacgymenvs
 python cleanrl/experimental/ppo_continuous_action_isaacgym.py --help
 python cleanrl/experimental/ppo_continuous_action_isaacgym.py --env-id Ant
+```
+
+## debug 
+
+```
+python cleanrl/ppo_continuous_action_isaacgym/isaacgym/examples/joint_monkey.py 
 ```
 
 ???+ info
