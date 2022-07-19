@@ -1,4 +1,4 @@
-name: Poetry lock and export (MacOs host)
+name: Poetry lock and export (Ubuntu host)
 
 on:
   push:
@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  create-macos-lock-file:
-    runs-on: macos-latest
+  create-ubuntu-lock-file:
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       matrix:
