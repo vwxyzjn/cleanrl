@@ -416,7 +416,7 @@ def main():
         for epoch in range(args.distill_update_epochs):
             np.random.shuffle(b_inds)
             for start in range(0, args.epoch_size, args.distill_batch_size):
-                end = start + args.value_batch_size
+                end = start + args.distill_batch_size
                 mb_inds = b_inds[start:end]
 
                 # Compute policy and value targets
