@@ -303,7 +303,7 @@ def main():
 
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
-            env_step += 4 * args.num_envs  # default Atari frame skip is 4
+            env_step += envs.spec.config.frame_skip * args.num_envs
             obs[step] = next_obs
             dones[step] = next_done
 
