@@ -83,9 +83,9 @@ with the Bellman update target is $y = r + \gamma \, Q^{'}(s', a')$ and the repl
 
 ### Experiment results
 
-To run benchmark experiments, see :material-github: [benchmark/c51.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/c51.sh). Specifically, execute the following command:
+To run benchmark experiments, see :material-github: [benchmark/dqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/dqn.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F2e2dc9c6ede5e5e5df3eaea73c458bb9a83507d2%2Fbenchmark%2Fc51.sh%23L8-L13&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fe2d3c76b362b566798bfbb311f5bad467285504a%2Fbenchmark%2Fdqn.sh%23L9-L13&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 Below are the average episodic returns for `dqn_atari.py`. 
 
@@ -170,9 +170,9 @@ The [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py) shar
 
 ### Experiment results
 
-To run benchmark experiments, see :material-github: [benchmark/c51.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/c51.sh). Specifically, execute the following command:
+To run benchmark experiments, see :material-github: [benchmark/dqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/dqn.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F2e2dc9c6ede5e5e5df3eaea73c458bb9a83507d2%2Fbenchmark%2Fc51.sh%23L2-L6&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fe2d3c76b362b566798bfbb311f5bad467285504a%2Fbenchmark%2Fdqn.sh%23L2-L6&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 Below are the average episodic returns for `dqn.py`. 
 
