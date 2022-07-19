@@ -70,6 +70,7 @@ python cleanrl/experimental/ppo_continuous_action_isaacgym.py --env-id Ant
 ## debug 
 
 ```
+pip install --upgrade setuptools pip
 python cleanrl/ppo_continuous_action_isaacgym/isaacgym/examples/joint_monkey.py 
 ```
 
