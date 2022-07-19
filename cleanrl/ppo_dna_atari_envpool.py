@@ -289,7 +289,7 @@ def main():
     global_step = 0
     env_step = 0
     start_time = time.time()
-    next_obs = torch.Tensor(envs.reset()).to(device)
+    next_obs = torch.tensor(envs.reset(), dtype=torch.float32).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.epoch_size
 
@@ -317,8 +317,9 @@ def main():
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, done, info = envs.step(action.cpu().numpy())
-            rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
+            rewards[step] = torch.tensor(reward, dtype=torch.float32).to(device).view(-1)
+            next_obs = torch.tensor(next_obs, dtype=torch.float32).to(device)
+            next_done = torch.tensor(done, dtype=torch.float32).to(device)
 
             for idx, d in enumerate(done):
                 if d and info["lives"][idx] == 0:
