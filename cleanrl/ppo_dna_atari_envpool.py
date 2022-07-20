@@ -85,7 +85,7 @@ def parse_args():
         help="Toggles observation normalization")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
-    parser.add_argument("--ent-coef", type=float, default=0.001,
+    parser.add_argument("--ent-coef", type=float, default=0.01,
         help="coefficient of the entropy")
     parser.add_argument("--max-grad-norm", type=float, default=5.0,
         help="the maximum norm for the gradient clipping")
