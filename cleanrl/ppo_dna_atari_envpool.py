@@ -259,7 +259,6 @@ def main():
         # batch_size=args.epoch_size,  # async
         num_threads=args.envpool_num_threads,
         episodic_life=True,
-        reward_clip=True,
         seed=args.seed,
     )
     envs.is_vector_env = True
@@ -271,6 +270,8 @@ def main():
     #     envs = gym.wrappers.RecordVideo(envs, f"videos/{run_name}")
     envs = gym.wrappers.NormalizeObservation(envs)
     envs = gym.wrappers.TransformObservation(envs, lambda obs: np.clip(obs, -3, 3))
+    envs = gym.wrappers.NormalizeReward(envs, gamma=args.gamma)
+    envs = gym.wrappers.TransformReward(envs, lambda reward: np.clip(reward, -5, 5))
     assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent_policy = Agent(envs).to(device)
