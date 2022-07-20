@@ -52,17 +52,17 @@ See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `p
 Below are the average episodic returns for `ppo_dna_atari_envpool.py` compared to `ppo_atari_envpool.py`.
 
 
-| Environment      | `ppo_dna_atari_envpool.py` | `ppo_atari_envpool.py`
-| ----------- | ----------- | ----------- | ----------- |
-| BattleZone-v5 (40M steps) | 94800 ± 18300 | 28800 ± 6800
-| BeamRider-v5 (10M steps) | 5470 ± 850 | 1990 ± 560
-| Breakout-v5 (10M steps) | 321 ± 63 | 352 ± 52
-| DoubleDunk-v5 (40M steps) | -4.9 ± 0.3 | -2.0 ± 0.8
-| NameThisGame-v5 (40M steps) | 8500 ± 2600 | 4400 ± 1200
-| Phoenix-v5 (45M steps) | 184000 ± 58000 | 10200 ± 2700
-| Pong-v5 (3M steps) | 19.5 ± 1.1 | 16.6 ± 2.3
-| Qbert-v5 (45M steps) | 12600 ± 4600 | 10800 ± 3300
-| Tennis-v5 (10M steps) | 13.0 ± 2.3 | -12.4 ± 2.9
+| Environment      | `ppo_dna_atari_envpool.py` | `ppo_atari_envpool.py` |
+| ----------- | ----------- | ----------- | 
+| BattleZone-v5 (40M steps) | 94800 ± 18300 | 28800 ± 6800 |
+| BeamRider-v5 (10M steps) | 5470 ± 850 | 1990 ± 560 |
+| Breakout-v5 (10M steps) | 321 ± 63 | 352 ± 52 |
+| DoubleDunk-v5 (40M steps) | -4.9 ± 0.3 | -2.0 ± 0.8 |
+| NameThisGame-v5 (40M steps) | 8500 ± 2600 | 4400 ± 1200 |
+| Phoenix-v5 (45M steps) | 184000 ± 58000 | 10200 ± 2700 |
+| Pong-v5 (3M steps) | 19.5 ± 1.1 | 16.6 ± 2.3 |
+| Qbert-v5 (45M steps) | 12600 ± 4600 | 10800 ± 3300 |
+| Tennis-v5 (10M steps) | 13.0 ± 2.3 | -12.4 ± 2.9 |
 
 Learning curves:
 
