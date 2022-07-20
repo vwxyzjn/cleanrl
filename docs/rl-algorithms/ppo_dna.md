@@ -47,6 +47,9 @@ See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `p
 
 [ppo_dna_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_dna_atari_envpool.py) uses a customized `RecordEpisodeStatistics` to work with envpool but has the same other implementation details as `ppo_atari.py` (see [related docs](/rl-algorithms/ppo/#implementation-details_1)).
 
+Note that the original DNA implementation uses the `StickyAction` environment pre-processing wrapper (see (Machado et al., 2018)[^1]), but we did not implement it in [ppo_dna_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_dna_atari_envpool.py) because envpool for now does not support `StickyAction`.
+
+
 ### Experiment results
 
 Below are the average episodic returns for `ppo_dna_atari_envpool.py` compared to `ppo_atari_envpool.py`.
@@ -91,3 +94,8 @@ Learning curves:
 Tracked experiments:
 
 <iframe src="https://wandb.ai/jseppanen/cleanrl/reports/PPO-DNA-vs-PPO-on-Atari-Envpool--VmlldzoyMzM5Mjcw" style="width:100%; height:500px" title="PPO-DNA vs PPO on Atari Envpool"></iframe>
+
+
+
+
+[^1]: Machado, Marlos C., Marc G. Bellemare, Erik Talvitie, Joel Veness, Matthew Hausknecht, and Michael Bowling. "Revisiting the arcade learning environment: Evaluation protocols and open problems for general agents." Journal of Artificial Intelligence Research 61 (2018): 523-562.
