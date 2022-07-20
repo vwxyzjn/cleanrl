@@ -81,8 +81,6 @@ def parse_args():
 
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles advantages normalization")
-    parser.add_argument("--norm-obs", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Toggles observation normalization")
     parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
     parser.add_argument("--ent-coef", type=float, default=0.01,
@@ -181,8 +179,6 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 class Agent(nn.Module):
     def __init__(self, envs):
         super().__init__()
-        self.register_buffer("obs_mean", torch.zeros(envs.single_observation_space.shape))
-        self.register_buffer("obs_std", torch.full(envs.single_observation_space.shape, 255.0))
         self.network = nn.Sequential(
             layer_init(nn.Conv2d(4, 32, 8, stride=4)),
             nn.ReLU(),
@@ -197,13 +193,9 @@ class Agent(nn.Module):
         self.actor = layer_init(nn.Linear(512, envs.single_action_space.n), std=0.01)
         self.critic = layer_init(nn.Linear(512, 1), std=1)
 
-    def normalize_obs(self, x):
-        x = (x - self.obs_mean.unsqueeze(0)) / (self.obs_std.unsqueeze(0) + 1e-8)
-        return torch.clip(x, -3, 3)
-
     def forward(self, x):
         """Run policy and value functions."""
-        hidden = self.network(self.normalize_obs(x))
+        hidden = self.network(x)
         logits = self.actor(hidden)
         value = self.critic(hidden).squeeze(-1)
         return logits, value
@@ -266,10 +258,15 @@ def main():
         reward_clip=True,
         seed=args.seed,
     )
+    envs.is_vector_env = True
     envs.num_envs = args.num_envs
     envs.single_action_space = envs.action_space
     envs.single_observation_space = envs.observation_space
     envs = RecordEpisodeStatistics(envs)
+    # if args.capture_video:
+    #     envs = gym.wrappers.RecordVideo(envs, f"videos/{run_name}")
+    envs = gym.wrappers.NormalizeObservation(envs)
+    envs = gym.wrappers.TransformObservation(envs, lambda obs: np.clip(obs, -3, 3))
     assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent_policy = Agent(envs).to(device)
@@ -338,16 +335,6 @@ def main():
                     writer.add_scalar("charts/avg_episodic_return", np.average(avg_returns), global_step)
                     writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
                     writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
-
-        if args.norm_obs:
-            new_obs_mean = obs.view(-1, *obs.shape[2:]).mean(dim=0)
-            new_obs_std = obs.view(-1, *obs.shape[2:]).std(dim=0)
-            ema_obs_mean = 0.9 * agent_policy.obs_mean + 0.1 * new_obs_mean
-            ema_obs_std = 0.9 * agent_policy.obs_std + 0.1 * new_obs_std
-            agent_policy.obs_mean.copy_(ema_obs_mean)
-            agent_policy.obs_std.copy_(ema_obs_std)
-            agent_value.obs_mean.copy_(ema_obs_mean)
-            agent_value.obs_std.copy_(ema_obs_std)
 
         # bootstrap value if not done
         with torch.no_grad():
