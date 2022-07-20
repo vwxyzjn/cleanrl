@@ -48,9 +48,9 @@ def parse_args():
         help="the number of envpool worker threads")
     parser.add_argument("--num-steps", type=int, default=128,
         help="rollout horizon: the number of steps to run in each environment per policy rollout")
-    parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+    parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument("--gamma", type=float, default=0.99,
+    parser.add_argument("--gamma", type=float, default=0.999,
         help="the discount factor gamma")
 
     parser.add_argument("--policy-learning-rate", type=float, default=2.5e-4,
@@ -84,11 +84,11 @@ def parse_args():
         help="Toggles advantages normalization")
     parser.add_argument("--norm-obs", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles observation normalization")
-    parser.add_argument("--clip-coef", type=float, default=0.1,
+    parser.add_argument("--clip-coef", type=float, default=0.2,
         help="the surrogate clipping coefficient")
-    parser.add_argument("--ent-coef", type=float, default=0.01,
+    parser.add_argument("--ent-coef", type=float, default=0.001,
         help="coefficient of the entropy")
-    parser.add_argument("--max-grad-norm", type=float, default=0.5,
+    parser.add_argument("--max-grad-norm", type=float, default=5.0,
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
