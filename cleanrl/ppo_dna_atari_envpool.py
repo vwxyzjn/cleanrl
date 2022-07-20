@@ -239,6 +239,10 @@ def main():
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
+    # Fix multiplication precision on Ampere devices (30xx) prior to PyTorch 1.12
+    # https://pytorch.org/docs/stable/notes/cuda.html#tf32-on-ampere
+    torch.backends.cuda.matmul.allow_tf32 = False
+
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
     np.random.seed(args.seed)
