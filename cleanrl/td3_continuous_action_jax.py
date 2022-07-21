@@ -224,7 +224,7 @@ if __name__ == "__main__":
         (qf2_loss_value, qf2_a_values), grads2 = jax.value_and_grad(mse_loss, has_aux=True)(qf2_state.params)
         qf1_state = qf1_state.apply_gradients(grads=grads1)
         qf2_state = qf2_state.apply_gradients(grads=grads2)
-        
+
         return (qf1_state, qf2_state), (qf1_loss_value, qf2_loss_value), (qf1_a_values, qf2_a_values), key
 
     @jax.jit
@@ -303,7 +303,7 @@ if __name__ == "__main__":
                 data.dones.flatten().numpy(),
                 key,
             )
-            
+
             if global_step % args.policy_frequency == 0:
                 actor_state, (qf1_state, qf2_state), actor_loss_value = update_actor(
                     actor_state,
