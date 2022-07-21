@@ -239,7 +239,6 @@ if __name__ == "__main__":
 
         actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
         actor_state = actor_state.apply_gradients(grads=grads)
-        grad_norm = jax.tree_util.tree_map(jnp.linalg.norm, grads)
         actor_state = actor_state.replace(
             target_params=optax.incremental_update(actor_state.params, actor_state.target_params, args.tau)
         )
@@ -250,7 +249,7 @@ if __name__ == "__main__":
         qf2_state = qf2_state.replace(
             target_params=optax.incremental_update(qf2_state.params, qf2_state.target_params, args.tau)
         )
-        return actor_state, qf1_state, actor_loss_value, grad_norm
+        return actor_state, qf1_state, actor_loss_value
 
     start_time = time.time()
     for global_step in range(args.total_timesteps):
@@ -306,20 +305,19 @@ if __name__ == "__main__":
             )
             
             if global_step % args.policy_frequency == 0:
-                actor_state, qf1_state, actor_loss_value, g_norm = update_actor(
+                actor_state, qf1_state, actor_loss_value = update_actor(
                     actor_state,
                     qf1_state,
                     qf2_state,
                     data.observations.numpy(),
                 )
-                print("actor gradient norm: ", g_norm)
             if global_step % 100 == 0:
                 writer.add_scalar("losses/qf1_loss", qf1_loss_value.item(), global_step)
                 writer.add_scalar("losses/qf2_loss", qf2_loss_value.item(), global_step)
                 writer.add_scalar("losses/qf1_values", qf1_a_values.item(), global_step)
                 writer.add_scalar("losses/qf2_values", qf2_a_values.item(), global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss_value.item(), global_step)
-                # print("SPS:", int(global_step / (time.time() - start_time)))
+                print("SPS:", int(global_step / (time.time() - start_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
     envs.close()
