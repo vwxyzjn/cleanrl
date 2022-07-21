@@ -44,6 +44,8 @@ The [ppo_continuous_action_isaacgym.py](https://github.com/vwxyzjn/cleanrl/blob/
     * Trifinger
     * Ingenuity Quadcopter
 
+    🔥 we need contributors to work on supporting and tuning our PPO implementation in these envs. If you are interested, please read our [contribution guide](https://github.com/vwxyzjn/cleanrl/blob/master/CONTRIBUTING.md) and reach out!
+
 ### Usage
 
 The installation of `isaacgym` requires a bit of work since it's not a standard Python package.
@@ -61,16 +63,10 @@ mv temp_isaacgym/isaacgym/python/* isaacgym
 rm -rf temp_isaacgym
 
 poetry install -E isaacgym
-python cleanrl/experimental/ppo_continuous_action_isaacgym.py --help
-python cleanrl/experimental/ppo_continuous_action_isaacgym.py --env-id Ant
+python ppo_continuous_action_isaacgym.py --help
+python ppo_continuous_action_isaacgym.py --env-id Ant
 ```
 
-## debug 
-
-```
-pip install --upgrade setuptools pip
-python cleanrl/ppo_continuous_action_isaacgym/isaacgym/examples/joint_monkey.py 
-```
 
 ???+ info
 
@@ -157,24 +153,25 @@ Below are the average episodic returns for `ppo_continuous_action_isaacgym.py`. 
 
 | Environment (training time) | `ppo_continuous_action_isaacgym.py` | [Denys88/rl_games](https://github.com/Denys88/rl_games) |
 | --------------------------- | ----------------------------------- | ------------------------------------------------------- |
-| Cartpole (40s)              | 440.70 ± 19.75                      | 417.49 (30s)                                            |
-| Ant (180s)                  | 4000.61 ± 793.18                    | 5873.05                                                 |
-| Humanoid (22m)              | 4751.03 ± 851.21                    | 6254.73                                                 |
-| Anymal (12m)                | 51.19 ± 12.72                       | 62.76                                                   |
-| BallBalance (140s)          | 176.37 ± 58.42                      | 319.76                                                  |
-| ShadowHand (100m)           | 1746.37 ± 179.02                    | 5713.74                                                 |
-| AllegroHand (110m)          | 1308.33 ± 440.81                    | 3479.85                                                 |
+| Cartpole (40s)              | 413.66 ± 120.93                     | 417.49 (30s)                                            |
+| Ant (240s)                  | 3953.30 ± 667.086                   | 5873.05                                                 |
+| Humanoid (22m)              | 2987.95 ± 257.60                    | 6254.73                                                 |
+| Anymal (12m)                | 29.34 ± 17.80                       | 62.76                                                   |
+| BallBalance (140s)          | 161.92 ± 89.20                      | 319.76                                                  |
 
 Learning curves:
 
 <div class="grid-container">
 <img src="../ppo/isaacgymenvs/Cartpole.png">
+<img src="../ppo/isaacgymenvs/Cartpole-time.png">
 <img src="../ppo/isaacgymenvs/Ant.png">
+<img src="../ppo/isaacgymenvs/Ant-time.png">
 <img src="../ppo/isaacgymenvs/Humanoid.png">
+<img src="../ppo/isaacgymenvs/Humanoid-time.png">
 <img src="../ppo/isaacgymenvs/BallBalance.png">
+<img src="../ppo/isaacgymenvs/BallBalance-time.png">
 <img src="../ppo/isaacgymenvs/Anymal.png">
-<img src="../ppo/isaacgymenvs/AllegroHand.png">
-<img src="../ppo/isaacgymenvs/ShadowHand.png">
+<img src="../ppo/isaacgymenvs/Anymal-time.png">
 </div>
 
 ???+ info
@@ -186,7 +183,27 @@ Learning curves:
 
     While it should be possible to obtain higher scores with more tuning, the purpose of `ppo_continuous_action_isaacgym.py` is to hit a balance between simplicity and performance. I think `ppo_continuous_action_isaacgym.py` has relatively good performance with a concise codebase, which should be easy to modify and extend for practitioners.
 
-<!-- Tracked experiments and game play videos:
+
+Tracked experiments and game play videos:
 
 
-Not available yet. -->
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Isaac-Gym-CleanRL-s-PPO--VmlldzoyMzQzNzMz" style="width:100%; height:500px" title="Isaac-Gym-CleanRL-s-PPO"></iframe>
+
+
+Old Learning curves w/ Isaac Gym Preview 3 (no longer available in Nvidia's website for download):
+
+<div class="grid-container">
+<img src="../ppo/isaacgymenvs/old/Cartpole.png">
+<img src="../ppo/isaacgymenvs/old/Ant.png">
+<img src="../ppo/isaacgymenvs/old/Humanoid.png">
+<img src="../ppo/isaacgymenvs/old/BallBalance.png">
+<img src="../ppo/isaacgymenvs/old/Anymal.png">
+<img src="../ppo/isaacgymenvs/old/AllegroHand.png">
+<img src="../ppo/isaacgymenvs/old/ShadowHand.png">
+</div>
+
+???+ info
+
+    Note the `AllegroHand` and `ShadowHand` experiments used the following command `ppo_continuous_action_isaacgym.py --track --capture-video --num-envs 8192 --num-steps 8 --update-epochs 5 --reward-scaler 0.01 --total-timesteps 600000000 --record-video-step-frequency 3660`.
+
+

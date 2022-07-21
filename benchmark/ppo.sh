@@ -57,3 +57,12 @@ xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --command "poetry run python cleanrl/ppo_pettingzoo_ma_atari.py --track --capture-video" \
     --num-seeds 3 \
     --workers 3
+
+# IMPORTANT: see specific Isaac Gym installation at
+# https://docs.cleanrl.dev/rl-algorithms/ppo/#usage_8
+poetry install -E "isaacgym"
+xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
+    --env-ids Cartpole Ant Humanoid BallBalance Anymal  \
+    --command "poetry run python cleanrl/ppo_continuous_action_isaacgym/ppo_continuous_action_isaacgym.py --track --capture-video" \
+    --num-seeds 3 \
+    --workers 1
