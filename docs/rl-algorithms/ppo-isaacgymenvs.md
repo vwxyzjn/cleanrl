@@ -61,8 +61,6 @@ mv temp_isaacgym/isaacgym/python/* isaacgym
 rm -rf temp_isaacgym
 
 poetry install -E isaacgym
-
-poetry install -E isaacgymenvs
 python cleanrl/experimental/ppo_continuous_action_isaacgym.py --help
 python cleanrl/experimental/ppo_continuous_action_isaacgym.py --env-id Ant
 ```

@@ -776,7 +776,7 @@ termcolor = "^1.1.0"
 type = "git"
 url = "https://github.com/vwxyzjn/IsaacGymEnvs.git"
 reference = "poetry"
-resolved_reference = "5af73d1a3b4273e8733c599632490ca283b81d98"
+resolved_reference = "27cc130a811b2305056c2f03f5f4cc0819b7867c"
 
 [[package]]
 name = "jax"
