@@ -23,7 +23,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
         help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=np.random.randint(2 ** 31),
+    parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
     parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, `torch.backends.cudnn.deterministic=False`")
@@ -39,14 +39,12 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="Pong-v5",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=10_000_000,
+    parser.add_argument("--total-timesteps", type=int, default=10000000,
         help="total timesteps of the experiments")
     parser.add_argument("--num-envs", type=int, default=128,
         help="the number of parallel game environments")
-    parser.add_argument("--envpool-num-threads", type=int, default=2,
-        help="the number of envpool worker threads")
     parser.add_argument("--num-steps", type=int, default=128,
-        help="rollout horizon: the number of steps to run in each environment per policy rollout")
+        help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--gamma", type=float, default=0.999,
@@ -194,7 +192,6 @@ class Agent(nn.Module):
         self.critic = layer_init(nn.Linear(512, 1), std=1)
 
     def forward(self, x):
-        """Run policy and value functions."""
         hidden = self.network(x)
         logits = self.actor(hidden)
         value = self.critic(hidden).squeeze(-1)
@@ -239,10 +236,6 @@ def main():
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
-    # Fix multiplication precision on Ampere devices (30xx) prior to PyTorch 1.12
-    # https://pytorch.org/docs/stable/notes/cuda.html#tf32-on-ampere
-    torch.backends.cuda.matmul.allow_tf32 = False
-
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
     np.random.seed(args.seed)
@@ -266,8 +259,6 @@ def main():
     envs.single_action_space = envs.action_space
     envs.single_observation_space = envs.observation_space
     envs = RecordEpisodeStatistics(envs)
-    # if args.capture_video:
-    #     envs = gym.wrappers.RecordVideo(envs, f"videos/{run_name}")
     envs = gym.wrappers.NormalizeObservation(envs)
     envs = gym.wrappers.TransformObservation(envs, lambda obs: np.clip(obs, -3, 3))
     envs = gym.wrappers.NormalizeReward(envs, gamma=args.gamma)
@@ -279,11 +270,6 @@ def main():
     policy_optimizer = optim.Adam(agent_policy.parameters(), lr=args.policy_learning_rate, eps=1e-5)
     value_optimizer = optim.Adam(agent_value.parameters(), lr=args.value_learning_rate, eps=1e-5)
     distill_optimizer = optim.Adam(agent_policy.parameters(), lr=args.distill_learning_rate, eps=1e-5)
-
-    if args.track:
-        # log gradients
-        wandb.watch(agent_policy)
-        wandb.watch(agent_value)
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -297,7 +283,6 @@ def main():
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
-    env_step = 0
     start_time = time.time()
     next_obs = torch.tensor(envs.reset(), dtype=torch.float32).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
@@ -313,7 +298,6 @@ def main():
 
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
-            env_step += envs.spec.config.frame_skip * args.num_envs
             obs[step] = next_obs
             dones[step] = next_done
 
@@ -335,7 +319,7 @@ def main():
 
             for idx, d in enumerate(done):
                 if d and info["lives"][idx] == 0:
-                    print(f"global_step={global_step}, env_step={env_step}, episodic_return={info['r'][idx]}")
+                    print(f"global_step={global_step}, episodic_return={info['r'][idx]}")
                     avg_returns.append(info["r"][idx])
                     writer.add_scalar("charts/avg_episodic_return", np.average(avg_returns), global_step)
                     writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
@@ -451,17 +435,9 @@ def main():
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
-        writer.add_scalar("env_step", env_step, global_step)
 
     envs.close()
     writer.close()
-
-    if args.track:
-        # save final model
-        torch.save(agent_policy.state_dict(), "agent_policy.pt")
-        torch.save(agent_value.state_dict(), "agent_value.pt")
-        wandb.save("agent_policy.pt")
-        wandb.save("agent_value.pt")
 
 
 if __name__ == "__main__":
