@@ -1,0 +1,2457 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.3.1, mkdocs-material-8.3.9">
+    
+    
+      
+        <title>Proximal Policy Gradient (PPO) - CleanRL User Guide</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.1d29e8d0.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.cbb835fc.min.css">
+        
+      
+      
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="light-green">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#proximal-policy-gradient-ppo" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="CleanRL User Guide" class="md-header__button md-logo" aria-label="CleanRL User Guide" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            CleanRL User Guide
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Proximal Policy Gradient (PPO)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      <form class="md-header__option" data-md-component="palette">
+        
+          
+          
+          <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="light-green"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+          
+            <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_2" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7M9 21a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-1H9v1Z"/></svg>
+            </label>
+          
+        
+          
+          
+          <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="green" data-md-color-accent="deep-orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_2">
+          
+            <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 0 1 7-7M9 21v-1h6v1a1 1 0 0 1-1 1h-4a1 1 0 0 1-1-1m3-17a5 5 0 0 0-5 5c0 2.05 1.23 3.81 3 4.58V16h4v-2.42c1.77-.77 3-2.53 3-4.58a5 5 0 0 0-5-5Z"/></svg>
+            </label>
+          
+        
+      </form>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/vwxyzjn/cleanrl" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    vwxyzjn/cleanrl
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="CleanRL User Guide" class="md-nav__button md-logo" aria-label="CleanRL User Guide" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    CleanRL User Guide
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/vwxyzjn/cleanrl" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    vwxyzjn/cleanrl
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+      
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_2" type="checkbox" id="__nav_2" checked>
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_2">
+          Get Started
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Get Started" data-md-level="1">
+        <label class="md-nav__title" for="__nav_2">
+          <span class="md-nav__icon md-icon"></span>
+          Get Started
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../get-started/installation/" class="md-nav__link">
+        Installation
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../get-started/basic-usage/" class="md-nav__link">
+        Basic Usage
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../get-started/experiment-tracking/" class="md-nav__link">
+        Experiment tracking
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../get-started/examples/" class="md-nav__link">
+        Examples
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../get-started/benchmark-utility/" class="md-nav__link">
+        Benchmark Utility
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3" type="checkbox" id="__nav_3" checked>
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3">
+          RL Algorithms
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="RL Algorithms" data-md-level="1">
+        <label class="md-nav__title" for="__nav_3">
+          <span class="md-nav__icon md-icon"></span>
+          RL Algorithms
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../overview/" class="md-nav__link">
+        Overview
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Proximal Policy Gradient (PPO)
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Proximal Policy Gradient (PPO)
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    Overview
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implemented-variants" class="md-nav__link">
+    Implemented Variants
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppopy" class="md-nav__link">
+    ppo.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video-tutorial" class="md-nav__link">
+    Video tutorial
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_ataripy" class="md-nav__link">
+    ppo_atari.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_atari.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_1" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_1" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_1" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_1" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video-tutorial_1" class="md-nav__link">
+    Video tutorial
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_continuous_actionpy" class="md-nav__link">
+    ppo_continuous_action.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_continuous_action.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_2" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_2" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_2" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_2" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video-tutorial_2" class="md-nav__link">
+    Video tutorial
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_atari_lstmpy" class="md-nav__link">
+    ppo_atari_lstm.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_atari_lstm.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_3" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_3" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_3" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_3" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_atari_envpoolpy" class="md-nav__link">
+    ppo_atari_envpool.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_atari_envpool.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_4" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_4" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_4" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_4" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_procgenpy" class="md-nav__link">
+    ppo_procgen.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_procgen.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_5" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_5" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_5" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_5" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_atari_multigpupy" class="md-nav__link">
+    ppo_atari_multigpu.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_atari_multigpu.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_6" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_6" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_6" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_6" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_pettingzoo_ma_ataripy" class="md-nav__link">
+    ppo_pettingzoo_ma_atari.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_pettingzoo_ma_atari.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_7" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_7" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_7" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_7" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dqn/" class="md-nav__link">
+        Deep Q-Learning (DQN)
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../c51/" class="md-nav__link">
+        Categorical DQN (C51)
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ddpg/" class="md-nav__link">
+        Deep Deterministic Policy Gradient (DDPG)
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sac/" class="md-nav__link">
+        Soft Actor-Critic (SAC)
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../td3/" class="md-nav__link">
+        Twin Delayed Deep Deterministic Policy Gradient (TD3)
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ppg/" class="md-nav__link">
+        Phasic Policy Gradient (PPG)
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+      
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_4" type="checkbox" id="__nav_4" checked>
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4">
+          Community
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Community" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          Community
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../contribution/" class="md-nav__link">
+        Contribution
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../made-with-cleanrl/" class="md-nav__link">
+        Made with CleanRL
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+      
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_5" type="checkbox" id="__nav_5" checked>
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5">
+          Advanced
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Advanced" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          Advanced
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../advanced/resume-training/" class="md-nav__link">
+        Resume Training
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+      
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" data-md-toggle="__nav_6" type="checkbox" id="__nav_6" checked>
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_6">
+          Cloud Integration
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Cloud Integration" data-md-level="1">
+        <label class="md-nav__title" for="__nav_6">
+          <span class="md-nav__icon md-icon"></span>
+          Cloud Integration
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cloud/installation/" class="md-nav__link">
+        Installation
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cloud/submit-experiments/" class="md-nav__link">
+        Submit Experiments
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    Overview
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#implemented-variants" class="md-nav__link">
+    Implemented Variants
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppopy" class="md-nav__link">
+    ppo.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video-tutorial" class="md-nav__link">
+    Video tutorial
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_ataripy" class="md-nav__link">
+    ppo_atari.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_atari.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_1" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_1" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_1" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_1" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video-tutorial_1" class="md-nav__link">
+    Video tutorial
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_continuous_actionpy" class="md-nav__link">
+    ppo_continuous_action.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_continuous_action.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_2" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_2" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_2" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_2" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#video-tutorial_2" class="md-nav__link">
+    Video tutorial
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_atari_lstmpy" class="md-nav__link">
+    ppo_atari_lstm.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_atari_lstm.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_3" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_3" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_3" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_3" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_atari_envpoolpy" class="md-nav__link">
+    ppo_atari_envpool.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_atari_envpool.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_4" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_4" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_4" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_4" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_procgenpy" class="md-nav__link">
+    ppo_procgen.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_procgen.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_5" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_5" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_5" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_5" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_atari_multigpupy" class="md-nav__link">
+    ppo_atari_multigpu.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_atari_multigpu.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_6" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_6" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_6" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_6" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ppo_pettingzoo_ma_ataripy" class="md-nav__link">
+    ppo_pettingzoo_ma_atari.py
+  </a>
+  
+    <nav class="md-nav" aria-label="ppo_pettingzoo_ma_atari.py">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_7" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#explanation-of-the-logged-metrics_7" class="md-nav__link">
+    Explanation of the logged metrics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details_7" class="md-nav__link">
+    Implementation details
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#experiment-results_7" class="md-nav__link">
+    Experiment results
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+  <a href="https://github.com/vwxyzjn/cleanrl/edit/master/docs/rl-algorithms/ppo.md" title="Edit this page" class="md-content__button md-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25Z"/></svg>
+  </a>
+
+
+
+<h1 id="proximal-policy-gradient-ppo">Proximal Policy Gradient (PPO)</h1>
+<h2 id="overview">Overview</h2>
+<p>PPO is one of the most popular DRL algorithms. It runs reasonably fast by leveraging vector (parallel) environments and naturally works well with different action spaces, therefore supporting a variety of games. It also has good sample efficiency compared to algorithms such as DQN.</p>
+<p>Original paper: </p>
+<ul>
+<li><a href="https://arxiv.org/abs/1707.06347">Proximal Policy Optimization Algorithms</a></li>
+</ul>
+<p>Reference resources:</p>
+<ul>
+<li><a href="https://arxiv.org/abs/2005.12729">Implementation Matters in Deep Policy Gradients: A Case Study on PPO and TRPO</a></li>
+<li><a href="https://arxiv.org/abs/2006.05990">What Matters In On-Policy Reinforcement Learning? A Large-Scale Empirical Study</a></li>
+<li>⭐ <a href="https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/">The 37 Implementation Details of Proximal Policy Optimization</a></li>
+</ul>
+<p>All our PPO implementations below are augmented with the same code-level optimizations presented in <code>openai/baselines</code>'s <a href="https://github.com/openai/baselines/tree/master/baselines/ppo2">PPO</a>. To achieve this, see how we matched the implementation details in our blog post <a href="https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/">The 37 Implementation Details of Proximal Policy Optimization</a>.</p>
+<h2 id="implemented-variants">Implemented Variants</h2>
+<table>
+<thead>
+<tr>
+<th>Variants Implemented</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py"><code>ppo.py</code></a>, <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h5.5L13 3.5V9M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4c0-1.11.89-2 2-2m9 16v-2H6v2h9m3-4v-2H6v2h12Z"/></svg></span> <a href="/rl-algorithms/ppo/#ppopy">docs</a></td>
+<td>For classic control tasks like <code>CartPole-v1</code>.</td>
+</tr>
+<tr>
+<td><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py"><code>ppo_atari.py</code></a>, <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h5.5L13 3.5V9M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4c0-1.11.89-2 2-2m9 16v-2H6v2h9m3-4v-2H6v2h12Z"/></svg></span> <a href="/rl-algorithms/ppo/#ppo_ataripy">docs</a></td>
+<td>For Atari games. It uses convolutional layers and common atari-based pre-processing techniques.</td>
+</tr>
+<tr>
+<td><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py"><code>ppo_continuous_action.py</code></a>, <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h5.5L13 3.5V9M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4c0-1.11.89-2 2-2m9 16v-2H6v2h9m3-4v-2H6v2h12Z"/></svg></span> <a href="/rl-algorithms/ppo/#ppo_continuous_actionpy">docs</a></td>
+<td>For continuous action space. Also implemented Mujoco-specific code-level optimizations</td>
+</tr>
+<tr>
+<td><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py"><code>ppo_atari_lstm.py</code></a>, <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h5.5L13 3.5V9M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4c0-1.11.89-2 2-2m9 16v-2H6v2h9m3-4v-2H6v2h12Z"/></svg></span> <a href="/rl-algorithms/ppo/#ppo_atari_lstmpy">docs</a></td>
+<td>For Atari games using LSTM without stacked frames.</td>
+</tr>
+<tr>
+<td><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool.py"><code>ppo_atari_envpool.py</code></a>, <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h5.5L13 3.5V9M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4c0-1.11.89-2 2-2m9 16v-2H6v2h9m3-4v-2H6v2h12Z"/></svg></span> <a href="/rl-algorithms/ppo/#ppo_atari_envpoolpy">docs</a></td>
+<td>Uses the blazing fast Envpool Atari vectorized environment.</td>
+</tr>
+<tr>
+<td><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_procgen.py"><code>ppo_procgen.py</code></a>, <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h5.5L13 3.5V9M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4c0-1.11.89-2 2-2m9 16v-2H6v2h9m3-4v-2H6v2h12Z"/></svg></span> <a href="/rl-algorithms/ppo/#ppo_procgenpy">docs</a></td>
+<td>For the procgen environments</td>
+</tr>
+<tr>
+<td><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_multigpu.py"><code>ppo_atari_multigpu.py</code></a>,  <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h5.5L13 3.5V9M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4c0-1.11.89-2 2-2m9 16v-2H6v2h9m3-4v-2H6v2h12Z"/></svg></span> <a href="/rl-algorithms/ppo/#ppo_atari_multigpupy">docs</a></td>
+<td>For Atari environments leveraging multi-GPUs</td>
+</tr>
+<tr>
+<td><span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_pettingzoo_ma_atari.py"><code>ppo_pettingzoo_ma_atari.py</code></a>,  <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 9h5.5L13 3.5V9M6 2h8l6 6v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4c0-1.11.89-2 2-2m9 16v-2H6v2h9m3-4v-2H6v2h12Z"/></svg></span> <a href="/rl-algorithms/ppo/#ppo_pettingzoo_ma_ataripy">docs</a></td>
+<td>For Pettingzoo's multi-agent Atari environments</td>
+</tr>
+</tbody>
+</table>
+<p>Below are our single-file implementations of PPO:</p>
+<h2 id="ppopy"><code>ppo.py</code></h2>
+<p>The <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py">ppo.py</a> has the following features:</p>
+<ul>
+<li>Works with the <code>Box</code> observation space of low-level features</li>
+<li>Works with the <code>Discrete</code> action space</li>
+<li>Works with envs like <code>CartPole-v1</code></li>
+</ul>
+<h3 id="usage">Usage</h3>
+<div class="highlight"><pre><span></span><code>poetry install
+python cleanrl/ppo.py --help
+python cleanrl/ppo.py --env-id CartPole-v1
+</code></pre></div>
+<h3 id="explanation-of-the-logged-metrics">Explanation of the logged metrics</h3>
+<p>Running <code>python cleanrl/ppo.py</code> will automatically record various metrics such as actor or value losses in Tensorboard. Below is the documentation for these metrics:</p>
+<ul>
+<li><code>charts/episodic_return</code>: episodic return of the game</li>
+<li><code>charts/episodic_length</code>: episodic length of the game</li>
+<li><code>charts/SPS</code>: number of steps per second</li>
+<li><code>charts/learning_rate</code>: the current learning rate</li>
+<li><code>losses/value_loss</code>: the mean value loss across all data points</li>
+<li><code>losses/policy_loss</code>: the mean policy loss across all data points</li>
+<li><code>losses/entropy</code>: the mean entropy value across all data points</li>
+<li><code>losses/old_approx_kl</code>: the approximate Kullback–Leibler divergence, measured by <code>(-logratio).mean()</code>, which corresponds to the k1 estimator in John Schulman’s blog post on <a href="http://joschu.net/blog/kl-approx.html">approximating KL</a></li>
+<li><code>losses/approx_kl</code>: better alternative to <code>olad_approx_kl</code> measured by <code>(logratio.exp() - 1) - logratio</code>, which corresponds to the k3 estimator in <a href="http://joschu.net/blog/kl-approx.html">approximating KL</a></li>
+<li><code>losses/clipfrac</code>: the fraction of the training data that triggered the clipped objective</li>
+<li><code>losses/explained_variance</code>: the explained variance for the value function</li>
+</ul>
+<h3 id="implementation-details">Implementation details</h3>
+<p><a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py">ppo.py</a> is based on the "13 core implementation details" in <a href="https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/">The 37 Implementation Details of Proximal Policy Optimization</a>, which are as follows:</p>
+<ol>
+<li>Vectorized architecture (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/cmd_util.py#L22">common/cmd_util.py#L22</a>)</li>
+<li>Orthogonal Initialization of Weights and Constant Initialization of biases (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L58">a2c/utils.py#L58)</a>)</li>
+<li>The Adam Optimizer's Epsilon Parameter (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L100">ppo2/model.py#L100</a>)</li>
+<li>Adam Learning Rate Annealing (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/ppo2.py#L133-L135">ppo2/ppo2.py#L133-L135</a>)</li>
+<li>Generalized Advantage Estimation (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/runner.py#L56-L65">ppo2/runner.py#L56-L65</a>)</li>
+<li>Mini-batch Updates (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/ppo2.py#L157-L166">ppo2/ppo2.py#L157-L166</a>)</li>
+<li>Normalization of Advantages (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L139">ppo2/model.py#L139</a>)</li>
+<li>Clipped surrogate objective (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L81-L86">ppo2/model.py#L81-L86</a>)</li>
+<li>Value Function Loss Clipping (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L68-L75">ppo2/model.py#L68-L75</a>)</li>
+<li>Overall Loss and Entropy Bonus (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L91">ppo2/model.py#L91</a>)</li>
+<li>Global Gradient Clipping (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L102-L108">ppo2/model.py#L102-L108</a>)</li>
+<li>Debug variables (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/ppo2/model.py#L115-L116">ppo2/model.py#L115-L116</a>)</li>
+<li>Separate MLP networks for policy and value functions (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/policies.py#L156-L160">common/policies.py#L156-L160</a>, <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/models.py#L75-L103">baselines/common/models.py#L75-L103</a>)</li>
+</ol>
+<h3 id="experiment-results">Experiment results</h3>
+<p>To run benchmark experiments, see <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh">benchmark/ppo.sh</a>. Specifically, execute the following command:</p>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5184afc2b7d5032b56e6689175a17b7bad172771%2Fbenchmark%2Fppo.sh%23L4-L9&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+<p>Below are the average episodic returns for <code>ppo.py</code>. To ensure the quality of the implementation, we compared the results against <code>openai/baselies</code>' PPO.</p>
+<table>
+<thead>
+<tr>
+<th>Environment</th>
+<th><code>ppo.py</code></th>
+<th><code>openai/baselies</code>' PPO (Huang et al., 2022)<sup id="fnref5:1"><a class="footnote-ref" href="#fn:1">1</a></sup></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CartPole-v1</td>
+<td>492.40 ± 13.05</td>
+<td>497.54 ± 4.02</td>
+</tr>
+<tr>
+<td>Acrobot-v1</td>
+<td>-89.93 ± 6.34</td>
+<td>-81.82 ± 5.58</td>
+</tr>
+<tr>
+<td>MountainCar-v0</td>
+<td>-200.00 ± 0.00</td>
+<td>-200.00 ± 0.00</td>
+</tr>
+</tbody>
+</table>
+<p>Learning curves:</p>
+<div class="grid-container">
+<img src="../ppo/CartPole-v1.png">
+
+<img src="../ppo/Acrobot-v1.png">
+
+<img src="../ppo/MountainCar-v0.png">
+</div>
+
+<p>Tracked experiments and game play videos:</p>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Classic-Control-CleanRL-s-PPO--VmlldzoxODU5MDY1" style="width:100%; height:500px" title="Classic-Control-CleanRL-s-PPO"></iframe>
+
+<h3 id="video-tutorial">Video tutorial</h3>
+<p>If you'd like to learn <code>ppo.py</code> in-depth, consider checking out the following video tutorial:</p>
+<div style="text-align: center;"><iframe width="560" height="315" src="https://www.youtube.com/embed/MEt6rrxH8W4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+
+<h2 id="ppo_ataripy"><code>ppo_atari.py</code></h2>
+<p>The <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py">ppo_atari.py</a> has the following features:</p>
+<ul>
+<li>For Atari games. It uses convolutional layers and common atari-based pre-processing techniques.</li>
+<li>Works with the Atari's pixel <code>Box</code> observation space of shape <code>(210, 160, 3)</code></li>
+<li>Works with the <code>Discrete</code> action space</li>
+</ul>
+<h3 id="usage_1">Usage</h3>
+<div class="highlight"><pre><span></span><code>poetry install -E atari
+python cleanrl/ppo_atari.py --help
+python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
+</code></pre></div>
+<h3 id="explanation-of-the-logged-metrics_1">Explanation of the logged metrics</h3>
+<p>See <a href="/rl-algorithms/ppo/#explanation-of-the-logged-metrics">related docs</a> for <code>ppo.py</code>.</p>
+<h3 id="implementation-details_1">Implementation details</h3>
+<p><a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py">ppo_atari.py</a> is based on the "9 Atari implementation details" in <a href="https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/">The 37 Implementation Details of Proximal Policy Optimization</a>, which are as follows:</p>
+<ol>
+<li>The Use of <code>NoopResetEnv</code> (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/atari_wrappers.py#L12">common/atari_wrappers.py#L12</a>) </li>
+<li>The Use of <code>MaxAndSkipEnv</code> (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/atari_wrappers.py#L97">common/atari_wrappers.py#L97</a>) </li>
+<li>The Use of <code>EpisodicLifeEnv</code> (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/atari_wrappers.py#L61">common/atari_wrappers.py#L61</a>) </li>
+<li>The Use of <code>FireResetEnv</code> (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/atari_wrappers.py#L41">common/atari_wrappers.py#L41</a>) </li>
+<li>The Use of <code>WarpFrame</code> (Image transformation) <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/atari_wrappers.py#L134">common/atari_wrappers.py#L134</a> </li>
+<li>The Use of <code>ClipRewardEnv</code> (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/atari_wrappers.py#L125">common/atari_wrappers.py#L125</a>) </li>
+<li>The Use of <code>FrameStack</code> (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/atari_wrappers.py#L188">common/atari_wrappers.py#L188</a>) </li>
+<li>Shared Nature-CNN network for the policy and value functions (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/policies.py#L157">common/policies.py#L157</a>, <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/models.py#L15-L26">common/models.py#L15-L26</a>)</li>
+<li>Scaling the Images to Range [0, 1] (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/9b68103b737ac46bc201dfb3121cfa5df2127e53/baselines/common/models.py#L19">common/models.py#L19</a>)</li>
+</ol>
+<h3 id="experiment-results_1">Experiment results</h3>
+<p>To run benchmark experiments, see <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh">benchmark/ppo.sh</a>. Specifically, execute the following command:</p>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fppo.sh%23L11-L16&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+<p>Below are the average episodic returns for <code>ppo_atari.py</code>. To ensure the quality of the implementation, we compared the results against <code>openai/baselies</code>' PPO.</p>
+<table>
+<thead>
+<tr>
+<th>Environment</th>
+<th><code>ppo_atari.py</code></th>
+<th><code>openai/baselies</code>' PPO (Huang et al., 2022)<sup id="fnref4:1"><a class="footnote-ref" href="#fn:1">1</a></sup></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BreakoutNoFrameskip-v4</td>
+<td>416.31 ± 43.92</td>
+<td>406.57 ± 31.554</td>
+</tr>
+<tr>
+<td>PongNoFrameskip-v4</td>
+<td>20.59 ± 0.35</td>
+<td>20.512 ± 0.50</td>
+</tr>
+<tr>
+<td>BeamRiderNoFrameskip-v4</td>
+<td>2445.38 ± 528.91</td>
+<td>2642.97 ± 670.37</td>
+</tr>
+</tbody>
+</table>
+<p>Learning curves:</p>
+<div class="grid-container">
+<img src="../ppo/BreakoutNoFrameskip-v4.png">
+
+<img src="../ppo/PongNoFrameskip-v4.png">
+
+<img src="../ppo/BeamRiderNoFrameskip-v4.png">
+</div>
+
+<p>Tracked experiments and game play videos:</p>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO--VmlldzoxNjk3NjYy" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
+
+<h3 id="video-tutorial_1">Video tutorial</h3>
+<p>If you'd like to learn <code>ppo_atari.py</code> in-depth, consider checking out the following video tutorial:</p>
+<div style="text-align: center;"><iframe width="560" height="315" src="https://www.youtube.com/embed/05RMTj-2K_Y" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+
+<h2 id="ppo_continuous_actionpy"><code>ppo_continuous_action.py</code></h2>
+<p>The <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py">ppo_continuous_action.py</a> has the following features:</p>
+<ul>
+<li>For continuous action space. Also implemented Mujoco-specific code-level optimizations</li>
+<li>Works with the <code>Box</code> observation space of low-level features</li>
+<li>Works with the <code>Box</code> (continuous) action space</li>
+</ul>
+<h3 id="usage_2">Usage</h3>
+<div class="highlight"><pre><span></span><code>poetry install -E atari
+python cleanrl/ppo_continuous_action.py --help
+python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
+</code></pre></div>
+<h3 id="explanation-of-the-logged-metrics_2">Explanation of the logged metrics</h3>
+<p>See <a href="/rl-algorithms/ppo/#explanation-of-the-logged-metrics">related docs</a> for <code>ppo.py</code>.</p>
+<h3 id="implementation-details_2">Implementation details</h3>
+<p><a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py">ppo_continuous_action.py</a> is based on the "9 details for continuous action domains (e.g. Mujoco)" in <a href="https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/">The 37 Implementation Details of Proximal Policy Optimization</a>, which are as follows:</p>
+<ol>
+<li>Continuous actions via normal distributions (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/9b68103b737ac46bc201dfb3121cfa5df2127e53/baselines/common/distributions.py#L103-L104">common/distributions.py#L103-L104</a>)</li>
+<li>State-independent log standard deviation (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/9b68103b737ac46bc201dfb3121cfa5df2127e53/baselines/common/distributions.py#L104">common/distributions.py#L104</a>)</li>
+<li>Independent action components (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/9b68103b737ac46bc201dfb3121cfa5df2127e53/baselines/common/distributions.py#L238-L246">common/distributions.py#L238-L246</a>)</li>
+<li>Separate MLP networks for policy and value functions (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/policies.py#L160">common/policies.py#L160</a>, <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/models.py#L75-L103">baselines/common/models.py#L75-L103</a></li>
+<li>Handling of action clipping to valid range and storage (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/cmd_util.py#L99-L100">common/cmd_util.py#L99-L100</a>) </li>
+<li>Normalization of Observation (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/vec_env/vec_normalize.py#L4">common/vec_env/vec_normalize.py#L4</a>)</li>
+<li>Observation Clipping (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/vec_env/vec_normalize.py#L39">common/vec_env/vec_normalize.py#L39</a>)</li>
+<li>Reward Scaling (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/vec_env/vec_normalize.py#L28">common/vec_env/vec_normalize.py#L28</a>)</li>
+<li>Reward Clipping (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/vec_env/vec_normalize.py#L32">common/vec_env/vec_normalize.py#L32</a>)</li>
+</ol>
+<h3 id="experiment-results_2">Experiment results</h3>
+<p>To run benchmark experiments, see <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh">benchmark/ppo.sh</a>. Specifically, execute the following command:</p>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5184afc2b7d5032b56e6689175a17b7bad172771%2Fbenchmark%2Fppo.sh%23L32-L38&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+<p>Below are the average episodic returns for <code>ppo_continuous_action.py</code>. To ensure the quality of the implementation, we compared the results against <code>openai/baselies</code>' PPO.</p>
+<table>
+<thead>
+<tr>
+<th>Environment</th>
+<th><code>ppo_continuous_action.py</code></th>
+<th><code>openai/baselies</code>' PPO (Huang et al., 2022)<sup id="fnref3:1"><a class="footnote-ref" href="#fn:1">1</a></sup></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hopper-v2</td>
+<td>2231.12 ± 656.72</td>
+<td>2518.95 ± 850.46</td>
+</tr>
+<tr>
+<td>Walker2d-v2</td>
+<td>3050.09 ± 1136.21</td>
+<td>3208.08 ± 1264.37</td>
+</tr>
+<tr>
+<td>HalfCheetah-v2</td>
+<td>1822.82 ± 928.11</td>
+<td>2152.26 ± 1159.84</td>
+</tr>
+</tbody>
+</table>
+<p>Learning curves:</p>
+<div class="grid-container">
+<img src="../ppo/Hopper-v2.png">
+
+<img src="../ppo/Walker2d-v2.png">
+
+<img src="../ppo/HalfCheetah-v2.png">
+</div>
+
+<p>Tracked experiments and game play videos:</p>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-PPO--VmlldzoxODAwNjkw" style="width:100%; height:500px" title="MuJoCo-CleanRL-s-PPO"></iframe>
+
+<h3 id="video-tutorial_2">Video tutorial</h3>
+<p>If you'd like to learn <code>ppo_continuous_action.py</code> in-depth, consider checking out the following video tutorial:</p>
+<div style="text-align: center;"><iframe width="560" height="315" src="https://www.youtube.com/embed/BvZvx7ENZBw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
+
+<h2 id="ppo_atari_lstmpy"><code>ppo_atari_lstm.py</code></h2>
+<p>The <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py">ppo_atari_lstm.py</a> has the following features:</p>
+<ul>
+<li>For Atari games using LSTM without stacked frames. It uses convolutional layers and common atari-based pre-processing techniques.</li>
+<li>Works with the Atari's pixel <code>Box</code> observation space of shape <code>(210, 160, 3)</code></li>
+<li>Works with the <code>Discrete</code> action space</li>
+</ul>
+<h3 id="usage_3">Usage</h3>
+<div class="highlight"><pre><span></span><code>poetry install -E atari
+python cleanrl/ppo_atari_lstm.py --help
+python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
+</code></pre></div>
+<h3 id="explanation-of-the-logged-metrics_3">Explanation of the logged metrics</h3>
+<p>See <a href="/rl-algorithms/ppo/#explanation-of-the-logged-metrics">related docs</a> for <code>ppo.py</code>.</p>
+<h3 id="implementation-details_3">Implementation details</h3>
+<p><a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py">ppo_atari_lstm.py</a> is based on the "5 LSTM implementation details" in <a href="https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/">The 37 Implementation Details of Proximal Policy Optimization</a>, which are as follows:</p>
+<ol>
+<li>Layer initialization for LSTM layers (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L84-L86">a2c/utils.py#L84-L86</a>)</li>
+<li>Initialize the LSTM states to be zeros (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/models.py#L179">common/models.py#L179</a>)</li>
+<li>Reset LSTM states at the end of the episode (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/models.py#L141">common/models.py#L141</a>)</li>
+<li>Prepare sequential rollouts in mini-batches (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L81">a2c/utils.py#L81</a>)</li>
+<li>Reconstruct LSTM states during training (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L81">a2c/utils.py#L81</a>)</li>
+</ol>
+<p>To help test out the memory, we remove the 4 stacked frames from the observation (i.e., using <code>env = gym.wrappers.FrameStack(env, 1)</code> instead of <code>env = gym.wrappers.FrameStack(env, 4)</code> like in <code>ppo_atari.py</code> )</p>
+<h3 id="experiment-results_3">Experiment results</h3>
+<p>To run benchmark experiments, see <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh">benchmark/ppo.sh</a>. Specifically, execute the following command:</p>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5184afc2b7d5032b56e6689175a17b7bad172771%2Fbenchmark%2Fppo.sh%23L18-L23&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+<p>Below are the average episodic returns for <code>ppo_atari_lstm.py</code>. To ensure the quality of the implementation, we compared the results against <code>openai/baselies</code>' PPO.</p>
+<table>
+<thead>
+<tr>
+<th>Environment</th>
+<th><code>ppo_atari_lstm.py</code></th>
+<th><code>openai/baselies</code>' PPO (Huang et al., 2022)<sup id="fnref2:1"><a class="footnote-ref" href="#fn:1">1</a></sup></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BreakoutNoFrameskip-v4</td>
+<td>128.92 ± 31.10</td>
+<td>138.98 ± 50.76</td>
+</tr>
+<tr>
+<td>PongNoFrameskip-v4</td>
+<td>19.78 ± 1.58</td>
+<td>19.79 ± 0.67</td>
+</tr>
+<tr>
+<td>BeamRiderNoFrameskip-v4</td>
+<td>1536.20 ± 612.21</td>
+<td>1591.68 ± 372.95</td>
+</tr>
+</tbody>
+</table>
+<p>Learning curves:</p>
+<div class="grid-container">
+<img src="../ppo/lstm/BreakoutNoFrameskip-v4.png">
+
+<img src="../ppo/lstm/PongNoFrameskip-v4.png">
+
+<img src="../ppo/lstm/BeamRiderNoFrameskip-v4.png">
+</div>
+
+<p>Tracked experiments and game play videos:</p>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-LSTM--VmlldzoxODcxMzE4" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-LSTM"></iframe>
+
+<h2 id="ppo_atari_envpoolpy"><code>ppo_atari_envpool.py</code></h2>
+<p>The <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool.py">ppo_atari_envpool.py</a> has the following features:</p>
+<ul>
+<li>Uses the blazing fast <a href="https://github.com/sail-sg/envpool">Envpool</a> vectorized environment.</li>
+<li>For Atari games. It uses convolutional layers and common atari-based pre-processing techniques.</li>
+<li>Works with the Atari's pixel <code>Box</code> observation space of shape <code>(210, 160, 3)</code></li>
+<li>Works with the <code>Discrete</code> action space</li>
+</ul>
+<details class="warning" open="open">
+<summary>Warning</summary>
+<p>Note that <code>ppo_atari_envpool.py</code> does not work in Windows <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="m0 93.7 183.6-25.3v177.4H0V93.7zm0 324.6 183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg></span> and MacOs <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg></span>. See envpool's built wheels here: <a href="https://pypi.org/project/envpool/#files">https://pypi.org/project/envpool/#files</a></p>
+</details>
+<h3 id="usage_4">Usage</h3>
+<div class="highlight"><pre><span></span><code>poetry install -E envpool
+python cleanrl/ppo_atari_envpool.py --help
+python cleanrl/ppo_atari_envpool.py --env-id Breakout-v5
+</code></pre></div>
+<h3 id="explanation-of-the-logged-metrics_4">Explanation of the logged metrics</h3>
+<p>See <a href="/rl-algorithms/ppo/#explanation-of-the-logged-metrics">related docs</a> for <code>ppo.py</code>.</p>
+<h3 id="implementation-details_4">Implementation details</h3>
+<p><a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool.py">ppo_atari_envpool.py</a> uses a customized <code>RecordEpisodeStatistics</code> to work with envpool but has the same other implementation details as <code>ppo_atari.py</code> (see <a href="/rl-algorithms/ppo/#implementation-details_1">related docs</a>).</p>
+<h3 id="experiment-results_4">Experiment results</h3>
+<p>To run benchmark experiments, see <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh">benchmark/ppo.sh</a>. Specifically, execute the following command:</p>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5184afc2b7d5032b56e6689175a17b7bad172771%2Fbenchmark%2Fppo.sh%23L25-L30&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+<p>Below are the average episodic returns for <code>ppo_atari_envpool.py</code>. Notice it has the same sample efficiency as <code>ppo_atari.py</code>, but runs about 3x faster.</p>
+<table>
+<thead>
+<tr>
+<th>Environment</th>
+<th><code>ppo_atari_envpool.py</code> (~80 mins)</th>
+<th><code>ppo_atari.py</code> (~220 mins)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BreakoutNoFrameskip-v4</td>
+<td>389.57 ± 29.62</td>
+<td>416.31 ± 43.92</td>
+</tr>
+<tr>
+<td>PongNoFrameskip-v4</td>
+<td>20.55 ± 0.37</td>
+<td>20.59 ± 0.35</td>
+</tr>
+<tr>
+<td>BeamRiderNoFrameskip-v4</td>
+<td>2039.83 ± 1146.62</td>
+<td>2445.38 ± 528.91</td>
+</tr>
+</tbody>
+</table>
+<p>Learning curves:</p>
+<div class="grid-container">
+<img src="../ppo/Breakout.png">
+<img src="../ppo/Breakout-time.png">
+
+<img src="../ppo/Pong.png">
+<img src="../ppo/Pong-time.png">
+
+<img src="../ppo/BeamRider.png">
+<img src="../ppo/BeamRider-time.png">
+</div>
+
+<p>Tracked experiments and game play videos:</p>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-Envpool--VmlldzoxODcxMzI3" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool"></iframe>
+
+<h2 id="ppo_procgenpy"><code>ppo_procgen.py</code></h2>
+<p>The <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_procgen.py">ppo_procgen.py</a> has the following features:</p>
+<ul>
+<li>For the procgen environments</li>
+<li>Uses IMPALA-style neural network</li>
+<li>Works with the <code>Discrete</code> action space</li>
+</ul>
+<h3 id="usage_5">Usage</h3>
+<div class="highlight"><pre><span></span><code>poetry install -E procgen
+python cleanrl/ppo_procgen.py --help
+python cleanrl/ppo_procgen.py --env-id starpilot
+</code></pre></div>
+<h3 id="explanation-of-the-logged-metrics_5">Explanation of the logged metrics</h3>
+<p>See <a href="/rl-algorithms/ppo/#explanation-of-the-logged-metrics">related docs</a> for <code>ppo.py</code>.</p>
+<h3 id="implementation-details_5">Implementation details</h3>
+<p><a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_procgen.py">ppo_procgen.py</a> is based on the details in "Appendix" in <a href="https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/">The 37 Implementation Details of Proximal Policy Optimization</a>, which are as follows:</p>
+<ol>
+<li>IMPALA-style Neural Network (<span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/models.py#L28">common/models.py#L28</a>)</li>
+<li>Use the same <code>gamma</code> parameter in the <code>NormalizeReward</code> wrapper. Note that the original implementation from <a href="https://github.com/openai/train-procgen">openai/train-procgen</a> uses the default <code>gamma=0.99</code> in <a href="https://github.com/openai/train-procgen/blob/1a2ae2194a61f76a733a39339530401c024c3ad8/train_procgen/train.py#L43">the <code>VecNormalize</code> wrapper</a> but <code>gamma=0.999</code> as PPO's parameter. The mismatch between the <code>gamma</code>s is technically incorrect. See <a href="https://github.com/vwxyzjn/cleanrl/pull/209">#209</a></li>
+</ol>
+<h3 id="experiment-results_5">Experiment results</h3>
+<p>To run benchmark experiments, see <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh">benchmark/ppo.sh</a>. Specifically, execute the following command:</p>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5184afc2b7d5032b56e6689175a17b7bad172771%2Fbenchmark%2Fppo.sh%23L40-L45&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+<p>We try to match the default setting in <a href="https://github.com/openai/train-procgen">openai/train-procgen</a> except that we use the <code>easy</code> distribution mode and <code>total_timesteps=25e6</code> to save compute. Notice <a href="https://github.com/openai/train-procgen">openai/train-procgen</a> has the following settings:</p>
+<ol>
+<li>Learning rate annealing is turned off by default</li>
+<li>Reward scaling and reward clipping is used</li>
+</ol>
+<p>Below are the average episodic returns for <code>ppo_procgen.py</code>. To ensure the quality of the implementation, we compared the results against <code>openai/baselies</code>' PPO.</p>
+<table>
+<thead>
+<tr>
+<th>Environment</th>
+<th><code>ppo_procgen.py</code></th>
+<th><code>openai/baselies</code>' PPO (Huang et al., 2022)<sup id="fnref:1"><a class="footnote-ref" href="#fn:1">1</a></sup></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>StarPilot (easy)</td>
+<td>32.47 ± 11.21</td>
+<td>33.97 ± 7.86</td>
+</tr>
+<tr>
+<td>BossFight (easy)</td>
+<td>9.63 ± 2.35</td>
+<td>9.35 ± 2.04</td>
+</tr>
+<tr>
+<td>BigFish  (easy)</td>
+<td>16.80 ± 9.49</td>
+<td>20.06 ± 5.34</td>
+</tr>
+</tbody>
+</table>
+<details class="info" open="open">
+<summary>Info</summary>
+<p>Note that we have run the procgen experiments using the <code>easy</code> distribution for reducing the computational cost.</p>
+</details>
+<p>Learning curves:</p>
+<div class="grid-container">
+<img src="../ppo/StarPilot.png">
+
+<img src="../ppo/BossFight.png">
+
+<img src="../ppo/BigFish.png">
+</div>
+
+<p>Tracked experiments and game play videos:</p>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Procgen-CleanRL-s-PPO--VmlldzoxODcxMzUy" style="width:100%; height:500px" title="Procgen-CleanRL-s-PPO"></iframe>
+
+<h2 id="ppo_atari_multigpupy"><code>ppo_atari_multigpu.py</code></h2>
+<p>The <a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_multigpu.py">ppo_atari_multigpu.py</a> leverages data parallelism to speed up training time <em>at no cost of sample efficiency</em>. </p>
+<p><code>ppo_atari_multigpu.py</code> has the following features:</p>
+<ul>
+<li>Allows the users to use do training leveraging data parallelism</li>
+<li>For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.</li>
+<li>Works with the Atari's pixel <code>Box</code> observation space of shape <code>(210, 160, 3)</code></li>
+<li>Works with the <code>Discrete</code> action space</li>
+</ul>
+<details class="warning" open="open">
+<summary>Warning</summary>
+<p>Note that <code>ppo_atari_multigpu.py</code> does not work in Windows <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="m0 93.7 183.6-25.3v177.4H0V93.7zm0 324.6 183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg></span> and MacOs <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg></span>. It will error out with <code>NOTE: Redirects are currently not supported in Windows or MacOs.</code> See <a href="https://github.com/pytorch/pytorch/issues/20380">pytorch/pytorch#20380</a></p>
+</details>
+<h3 id="usage_6">Usage</h3>
+<div class="highlight"><pre><span></span><code>poetry install -E atari
+python cleanrl/ppo_atari_multigpu.py --help
+
+<span class="c1"># `--nproc_per_node=2` specifies how many subprocesses we spawn for training with data parallelism</span>
+<span class="c1"># note it is possible to run this with a *single GPU*: each process will simply share the same GPU</span>
+torchrun --standalone --nnodes<span class="o">=</span><span class="m">1</span> --nproc_per_node<span class="o">=</span><span class="m">2</span> cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4
+
+<span class="c1"># by default we use the `gloo` backend, but you can use the `nccl` backend for better multi-GPU performance</span>
+torchrun --standalone --nnodes<span class="o">=</span><span class="m">1</span> --nproc_per_node<span class="o">=</span><span class="m">2</span> cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --backend nccl
+
+<span class="c1"># it is possible to spawn more processes than the amount of GPUs you have via `--device-ids`</span>
+<span class="c1"># e.g., the command below spawns two processes using GPU 0 and two processes using GPU 1</span>
+torchrun --standalone --nnodes<span class="o">=</span><span class="m">1</span> --nproc_per_node<span class="o">=</span><span class="m">2</span> cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --device-ids <span class="m">0</span> <span class="m">0</span> <span class="m">1</span> <span class="m">1</span>
+</code></pre></div>
+<h3 id="explanation-of-the-logged-metrics_6">Explanation of the logged metrics</h3>
+<p>See <a href="/rl-algorithms/ppo/#explanation-of-the-logged-metrics">related docs</a> for <code>ppo.py</code>.</p>
+<h3 id="implementation-details_6">Implementation details</h3>
+<p><a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_multigpu.py">ppo_atari_multigpu.py</a> is based on <code>ppo_atari.py</code> (see its <a href="/rl-algorithms/ppo/#implementation-details_1">related docs</a>).</p>
+<p>We use <a href="https://pytorch.org/tutorials/intermediate/dist_tuto.html">Pytorch's distributed API</a> to implement the data parallelism paradigm. The basic idea is that the user can spawn <span class="arithmatex">\(N\)</span> processes each holding a copy of the model, step the environments, and averages their gradients together for the backward pass. Here are a few note-worthy implementation details.</p>
+<ol>
+<li><strong>Shard the environments</strong>: by default, <code>ppo_atari_multigpu.py</code> uses <code>--num-envs=8</code>. When calling <code>torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4</code>, it spawns <span class="arithmatex">\(N=2\)</span> (by <code>--nproc_per_node=2</code>) subprocesses and shard the environments across these 2 subprocesses. In particular, each subprocess will have <code>8/2=4</code> environments. Implementation wise, we do <code>args.num_envs = int(args.num_envs / world_size)</code>. Here <code>world_size=2</code> refers to the size of the <strong>world</strong>, which means the group of subprocesses. We also need to adjust various variables as follows:<ul>
+<li><strong>batch size</strong>: by default it is <code>(num_envs * num_steps) = 8 * 128 = 1024</code> and we adjust it to <code>(num_envs / world_size * num_steps) = (4 * 128) = 512</code>. </li>
+<li><strong>minibatch size</strong>: by default it is <code>(num_envs * num_steps) / num_minibatches = (8 * 128) / 4 = 256</code> and we adjust it to <code>(num_envs / world_size * num_steps) / num_minibatches = (4 * 128) / 4 = 128</code>. </li>
+<li><strong>number of updates</strong>: by default it is <code>total_timesteps // batch_size = 10000000 // (8 * 128) = 9765</code> and we adjust it to   <code>total_timesteps // (batch_size * world_size) = 10000000 // (8 * 128 * 2) = 4882</code>.</li>
+<li><strong>global step increment</strong>: by default it is <code>num_envs</code>  and we adjust it to <code>num_envs * world_size</code>.</li>
+</ul>
+</li>
+<li>
+<p><strong>Adjust seed per process</strong>: we need be very careful with seeding: we could have used the exact same seed for each subprocess. To ensure this does not happen, we do the following</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># CRUCIAL: note that we needed to pass a different seed for each data parallelism worker</span>
+<span class="hll"><span class="n">args</span><span class="o">.</span><span class="n">seed</span> <span class="o">+=</span> <span class="n">local_rank</span>
+</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+<span class="hll"><span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">seed</span> <span class="o">-</span> <span class="n">local_rank</span><span class="p">)</span>
+</span><span class="n">torch</span><span class="o">.</span><span class="n">backends</span><span class="o">.</span><span class="n">cudnn</span><span class="o">.</span><span class="n">deterministic</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">torch_deterministic</span>
+
+<span class="c1"># ...</span>
+
+<span class="n">envs</span> <span class="o">=</span> <span class="n">gym</span><span class="o">.</span><span class="n">vector</span><span class="o">.</span><span class="n">SyncVectorEnv</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">make_env</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">env_id</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">seed</span> <span class="o">+</span> <span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">capture_video</span><span class="p">,</span> <span class="n">run_name</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">num_envs</span><span class="p">)]</span>
+<span class="p">)</span>
+<span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">envs</span><span class="o">.</span><span class="n">single_action_space</span><span class="p">,</span> <span class="n">gym</span><span class="o">.</span><span class="n">spaces</span><span class="o">.</span><span class="n">Discrete</span><span class="p">),</span> <span class="s2">&quot;only discrete action space is supported&quot;</span>
+
+<span class="n">agent</span> <span class="o">=</span> <span class="n">Agent</span><span class="p">(</span><span class="n">envs</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="hll"><span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">seed</span><span class="p">)</span>
+</span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">optim</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="n">agent</span><span class="o">.</span><span class="n">parameters</span><span class="p">(),</span> <span class="n">lr</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span>
+</code></pre></div>
+<p>Notice that we adjust the seed with <code>args.seed += local_rank</code> (line 2), where <code>local_rank</code> is the index of the subprocesses. This ensures we seed packages and envs with uncorrealted seeds. However, we do need to use the same <code>torch</code> seed for all process to initialize same weights for the <code>agent</code> (line 5), after which we can use a different seed for <code>torch</code> (line 16).
+1. <strong>Efficient gradient averaging</strong>: PyTorch recommends to average the gradient across the whole world via the following (see <a href="https://pytorch.org/tutorials/intermediate/dist_tuto.html#distributed-training">docs</a>)</p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">agent</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="n">dist</span><span class="o">.</span><span class="n">all_reduce</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">dist</span><span class="o">.</span><span class="n">ReduceOp</span><span class="o">.</span><span class="n">SUM</span><span class="p">)</span>
+    <span class="n">param</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">data</span> <span class="o">/=</span> <span class="n">world_size</span>
+</code></pre></div>
+<p>However, <a href="https://github.com/cswinter">@cswinter</a> introduces a more efficient gradient averaging scheme with proper batching (see <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/entity-neural-network/incubator/pull/220">entity-neural-network/incubator#220</a>), which looks like:</p>
+<div class="highlight"><pre><span></span><code><span class="n">all_grads_list</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">agent</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">all_grads_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">view</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+<span class="n">all_grads</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">all_grads_list</span><span class="p">)</span>
+<span class="n">dist</span><span class="o">.</span><span class="n">all_reduce</span><span class="p">(</span><span class="n">all_grads</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">dist</span><span class="o">.</span><span class="n">ReduceOp</span><span class="o">.</span><span class="n">SUM</span><span class="p">)</span>
+<span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
+<span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">agent</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+    <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">grad</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">param</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">copy_</span><span class="p">(</span>
+            <span class="n">all_grads</span><span class="p">[</span><span class="n">offset</span> <span class="p">:</span> <span class="n">offset</span> <span class="o">+</span> <span class="n">param</span><span class="o">.</span><span class="n">numel</span><span class="p">()]</span><span class="o">.</span><span class="n">view_as</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">data</span><span class="p">)</span> <span class="o">/</span> <span class="n">world_size</span>
+        <span class="p">)</span>
+        <span class="n">offset</span> <span class="o">+=</span> <span class="n">param</span><span class="o">.</span><span class="n">numel</span><span class="p">()</span>
+</code></pre></div>
+<p>In our previous empirical testing (see <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/pull/162#issuecomment-1107909696">vwxyzjn/cleanrl#162</a>), we have found <a href="https://github.com/cswinter">@cswinter</a>'s implementation to be faster, hence we adopt it in our implementation.</p>
+</li>
+</ol>
+<p>We can see how <code>ppo_atari_multigpu.py</code> can result in no loss of sample efficiency. In this example, the <code>ppo_atari.py</code>'s minibatch size is <code>256</code> and the <code>ppo_atari_multigpu.py</code>'s minibatch size is <code>128</code> with world size 2. Because we average gradient across the world, the gradient under  <code>ppo_atari_multigpu.py</code> should be virtually the same as the gradient under <code>ppo_atari.py</code>.</p>
+<!-- 
+
+<script src="https://unpkg.com/monaco-editor@latest/min/vs/loader.js"></script>
+
+
+<div style="padding-bottom: 20px;">
+    <div
+    id="ppo_shared"
+    style="width: 100%; height: 600px; border: 1px solid grey"
+    ></div>
+</div>
+
+<script>
+  require.config({
+    paths: { vs: "https://unpkg.com/monaco-editor@latest/min/vs" },
+  });
+  window.MonacoEnvironment = { getWorkerUrl: () => proxy };
+
+  let proxy = URL.createObjectURL(
+    new Blob(
+      [
+        `
+    self.MonacoEnvironment = {
+        baseUrl: 'https://unpkg.com/monaco-editor@latest/min/'
+    };
+    importScripts('https://unpkg.com/monaco-editor@latest/min/vs/base/worker/workerMain.js');
+`,
+      ],
+      { type: "text/javascript" }
+    )
+  );
+
+  require(["vs/editor/editor.main"], function () {
+    var diffEditor = monaco.editor.createDiffEditor(
+      document.getElementById("ppo_shared")
+    );
+
+
+    Promise.all([
+        xhr("https://raw.githubusercontent.com/vwxyzjn/cleanrl/master/cleanrl/ppo_atari.py"),
+        xhr("https://raw.githubusercontent.com/vwxyzjn/cleanrl/master/cleanrl/ppo_atari.py")
+    ]).then(function (r) {
+      var originalTxt = r[0].responseText;
+      var modifiedTxt = r[1].responseText;
+
+      diffEditor.setModel({
+        original: monaco.editor.createModel(originalTxt, "python"),
+        modified: monaco.editor.createModel(modifiedTxt, "python"),
+        startLineNumber: 104,
+      });
+      diffEditor.revealPositionInCenter({ lineNumber: 115, column: 0 });
+    });
+  });
+</script>
+<script>
+  function xhr(url) {
+    var req = null;
+    return new Promise(
+      function (c, e) {
+        req = new XMLHttpRequest();
+        req.onreadystatechange = function () {
+          if (req._canceled) {
+            return;
+          }
+
+          if (req.readyState === 4) {
+            if (
+              (req.status >= 200 && req.status < 300) ||
+              req.status === 1223
+            ) {
+              c(req);
+            } else {
+              e(req);
+            }
+            req.onreadystatechange = function () {};
+          }
+        };
+
+        req.open("GET", url, true);
+        req.responseType = "";
+
+        req.send(null);
+      },
+      function () {
+        req._canceled = true;
+        req.abort();
+      }
+    );
+  }
+</script> -->
+
+<h3 id="experiment-results_6">Experiment results</h3>
+<p>To run benchmark experiments, see <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh">benchmark/ppo.sh</a>. Specifically, execute the following command:</p>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fc8fe88b7d7daf5be5324c00735885efddb40a252%2Fbenchmark%2Fppo.sh%23L47-L52&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+<p>Below are the average episodic returns for <code>ppo_atari_multigpu.py</code>. To ensure no loss of sample efficiency, we compared the results against <code>ppo_atari.py</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Environment</th>
+<th><code>ppo_atari_multigpu.py</code> (in ~160 mins)</th>
+<th><code>ppo_atari.py</code> (in ~215 mins)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>BreakoutNoFrameskip-v4</td>
+<td>429.06 ± 52.09</td>
+<td>416.31 ± 43.92</td>
+</tr>
+<tr>
+<td>PongNoFrameskip-v4</td>
+<td>20.40 ± 0.46</td>
+<td>20.59 ± 0.35</td>
+</tr>
+<tr>
+<td>BeamRiderNoFrameskip-v4</td>
+<td>2454.54 ± 740.49</td>
+<td>2445.38 ± 528.91</td>
+</tr>
+</tbody>
+</table>
+<p>Learning curves:</p>
+<div class="grid-container">
+<img src="../ppo/BreakoutNoFrameskip-v4multigpu.png">
+<img src="../ppo/BreakoutNoFrameskip-v4multigpu-time.png">
+
+<img src="../ppo/PongNoFrameskip-v4multigpu.png">
+<img src="../ppo/PongNoFrameskip-v4multigpu-time.png">
+
+<img src="../ppo/BeamRiderNoFrameskip-v4multigpu.png">
+<img src="../ppo/BeamRiderNoFrameskip-v4multigpu-time.png">
+</div>
+
+<p>Under the same hardware, we see that <code>ppo_atari_multigpu.py</code> is about <strong>30% faster</strong> than <code>ppo_atari.py</code> with no loss of sample efficiency. </p>
+<details class="info" open="open">
+<summary>Info</summary>
+<p>Although <code>ppo_atari_multigpu.py</code> is 30% faster than <code>ppo_atari.py</code>, <code>ppo_atari_multigpu.py</code> is still slower than <code>ppo_atari_envpool.py</code>, as shown below.  This comparison really highlights the different kinds of optimization possible.</p>
+<p><div class="grid-container">
+    <img src="../ppo/Breakout-a.png">
+    <img src="../ppo/Breakout-time-a.png">
+</div></p>
+<p>The purpose of <code>ppo_atari_multigpu.py</code> is not (yet) to achieve the fastest PPO + Atari example. Rather, its purpose is to <em>rigorously validate data paralleism does provide performance benefits</em>. We could do something like <code>ppo_atari_multigpu_envpool.py</code> to possibly obtain the fastest PPO + Atari possible, but that is for another day. Note we may need <code>numba</code> to pin the threads <code>envpool</code> is using in each subprocess to avoid threads fighting each other and lowering the throughput.</p>
+</details>
+<p>Tracked experiments and game play videos:</p>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-MultiGPU--VmlldzoxOTM2NDUx" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
+
+<h2 id="ppo_pettingzoo_ma_ataripy"><code>ppo_pettingzoo_ma_atari.py</code></h2>
+<p><a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_pettingzoo_ma_atari.py">ppo_pettingzoo_ma_atari.py</a> trains an agent to learn playing Atari games via selfplay. The selfplay environment is implemented as a vectorized environment from <a href="https://www.pettingzoo.ml/atari">PettingZoo.ml</a>. The basic idea is to create vectorized environment <span class="arithmatex">\(E\)</span> with <code>num_envs = N</code>, where <span class="arithmatex">\(N\)</span> is the number of players in the game. Say <span class="arithmatex">\(N = 2\)</span>, then the 0-th sub environment of <span class="arithmatex">\(E\)</span> will return the observation for player 0 and 1-th sub environment will return the observation of player 1. Then the two environments takes a batch of 2 actions and execute them for player 0 and player 1, respectively. See "Vectorized architecture" in <a href="https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/">The 37 Implementation Details of Proximal Policy Optimization</a> for more detail.</p>
+<p><code>ppo_pettingzoo_ma_atari.py</code> has the following features:</p>
+<ul>
+<li>For playing the pettingzoo's multi-agent Atari game.</li>
+<li>Works with the pixel-based observation space</li>
+<li>Works with the <code>Box</code> action space</li>
+</ul>
+<details class="warning" open="open">
+<summary>Warning</summary>
+<p>Note that <code>ppo_pettingzoo_ma_atari.py</code> does not work in Windows <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="m0 93.7 183.6-25.3v177.4H0V93.7zm0 324.6 183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg></span>. See <a href="https://pypi.org/project/multi-agent-ale-py/#files">https://pypi.org/project/multi-agent-ale-py/#files</a></p>
+</details>
+<h3 id="usage_7">Usage</h3>
+<div class="highlight"><pre><span></span><code>poetry install -E <span class="s2">&quot;pettingzoo atari&quot;</span>
+poetry run AutoROM --accept-license
+python cleanrl/ppo_pettingzoo_ma_atari.py --help
+python cleanrl/ppo_pettingzoo_ma_atari.py --env-id pong_v3
+python cleanrl/ppo_pettingzoo_ma_atari.py --env-id surround_v2
+</code></pre></div>
+<p>See <a href="https://www.pettingzoo.ml/atari">https://www.pettingzoo.ml/atari</a> for a full-list of supported environments such as <code>basketball_pong_v3</code>. Notice pettingzoo sometimes introduces breaking changes, so make sure to install the pinned dependencies via <code>poetry</code>.</p>
+<h3 id="explanation-of-the-logged-metrics_7">Explanation of the logged metrics</h3>
+<p>Additionally, it logs the following metrics</p>
+<ul>
+<li><code>charts/episodic_return-player0</code>: episodic return of the game for player 0</li>
+<li><code>charts/episodic_return-player1</code>: episodic return of the game for player 1</li>
+<li><code>charts/episodic_length-player0</code>: episodic length of the game for player 0</li>
+<li><code>charts/episodic_length-player1</code>: episodic length of the game for player 1</li>
+</ul>
+<p>See other logged metrics in the <a href="/rl-algorithms/ppo/#explanation-of-the-logged-metrics">related docs</a> for <code>ppo.py</code>.</p>
+<h3 id="implementation-details_7">Implementation details</h3>
+<p><a href="https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_pettingzoo_ma_atari.py">ppo_pettingzoo_ma_atari.py</a> is based on <code>ppo_atari.py</code> (see its <a href="/rl-algorithms/ppo/#implementation-details_1">related docs</a>).</p>
+<p><code>ppo_pettingzoo_ma_atari.py</code> additionally has the following implementation details:</p>
+<ol>
+<li>
+<p><strong><code>supersuit</code> wrappers</strong>:  uses preprocessing wrappers from <code>supersuit</code> instead of from <code>stable_baselines3</code>, which looks like the following. In particular note that the <code>supersuit</code> does not offer a wrapper similar to <code>NoopResetEnv</code>, and that it uses the <code>agent_indicator_v0</code> to add two channels indicating the which player the agent controls.</p>
+<p><div class="highlight"><pre><span></span><code><span class="gd">-env = gym.make(env_id)</span><span class="w"></span>
+<span class="gd">-env = NoopResetEnv(env, noop_max=30)</span><span class="w"></span>
+<span class="gd">-env = MaxAndSkipEnv(env, skip=4)</span><span class="w"></span>
+<span class="gd">-env = EpisodicLifeEnv(env)</span><span class="w"></span>
+<span class="gd">-if &quot;FIRE&quot; in env.unwrapped.get_action_meanings():</span><span class="w"></span>
+<span class="gd">-    env = FireResetEnv(env)</span><span class="w"></span>
+<span class="gd">-env = ClipRewardEnv(env)</span><span class="w"></span>
+<span class="gd">-env = gym.wrappers.ResizeObservation(env, (84, 84))</span><span class="w"></span>
+<span class="gd">-env = gym.wrappers.GrayScaleObservation(env)</span><span class="w"></span>
+<span class="gd">-env = gym.wrappers.FrameStack(env, 4)</span><span class="w"></span>
+<span class="gi">+env = importlib.import_module(f&quot;pettingzoo.atari.{args.env_id}&quot;).parallel_env()</span><span class="w"></span>
+<span class="gi">+env = ss.max_observation_v0(env, 2)</span><span class="w"></span>
+<span class="gi">+env = ss.frame_skip_v0(env, 4)</span><span class="w"></span>
+<span class="gi">+env = ss.clip_reward_v0(env, lower_bound=-1, upper_bound=1)</span><span class="w"></span>
+<span class="gi">+env = ss.color_reduction_v0(env, mode=&quot;B&quot;)</span><span class="w"></span>
+<span class="gi">+env = ss.resize_v1(env, x_size=84, y_size=84)</span><span class="w"></span>
+<span class="gi">+env = ss.frame_stack_v1(env, 4)</span><span class="w"></span>
+<span class="gi">+env = ss.agent_indicator_v0(env, type_only=False)</span><span class="w"></span>
+<span class="gi">+env = ss.pettingzoo_env_to_vec_env_v1(env)</span><span class="w"></span>
+<span class="gi">+envs = ss.concat_vec_envs_v1(env, args.num_envs // 2, num_cpus=0, base_class=&quot;gym&quot;)</span><span class="w"></span>
+</code></pre></div>
+1. <strong>A more detailed note on the <code>agent_indicator_v0</code> wrapper</strong>: let's dig deeper into how <code>agent_indicator_v0</code> works. We do <code>print(envs.reset(), envs.reset().shape)</code>
+<div class="highlight"><pre><span></span><code><span class="p">[</span>  <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span> <span class="mf">236.</span><span class="p">,</span>   <span class="mi">1</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">]],</span>
+
+<span class="p">[[</span>  <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span> <span class="mf">236.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span>   <span class="mf">1.</span><span class="p">],</span>
+<span class="p">[</span>  <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span> <span class="mf">236.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span>   <span class="mf">1.</span><span class="p">],</span>
+<span class="p">[</span>  <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span> <span class="mf">236.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span>   <span class="mf">1.</span><span class="p">],</span>
+<span class="o">...</span><span class="p">,</span>
+<span class="p">[</span>  <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span> <span class="mf">236.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span>   <span class="mf">1.</span><span class="p">],</span>
+<span class="p">[</span>  <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span> <span class="mf">236.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span>   <span class="mf">1.</span><span class="p">],</span>
+<span class="p">[</span>  <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span> <span class="mf">236.</span><span class="p">,</span>   <span class="mf">0.</span><span class="p">,</span>   <span class="mf">1.</span><span class="p">]]]])</span> <span class="n">torch</span><span class="o">.</span><span class="n">Size</span><span class="p">([</span><span class="mi">16</span><span class="p">,</span> <span class="mi">84</span><span class="p">,</span> <span class="mi">84</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
+</code></pre></div></p>
+<p>So the <code>agent_indicator_v0</code> adds the last two columns, where <code>[  0.,   0.,   0., 236.,   1,   0.]]</code> means this observation is for player 0, and <code>[  0.,   0.,   0., 236.,   0.,   1.]</code> is for player 1. Notice the observation still has the range of <span class="arithmatex">\([0, 255]\)</span> but the agent indicator channel has the range of <span class="arithmatex">\([0,1]\)</span>, so we need to be careful when dividing the observation by 255. In particular, we would only divide the first four channels by 255 and leave the agent indicator channels untouched as follows:</p>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">get_action_and_value</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">clone</span><span class="p">()</span>
+    <span class="n">x</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:,</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]]</span> <span class="o">/=</span> <span class="mf">255.0</span>
+    <span class="n">hidden</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">network</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">permute</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)))</span>
+</code></pre></div>
+</li>
+</ol>
+<h3 id="experiment-results_7">Experiment results</h3>
+<p>To run benchmark experiments, see <span class="twemoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2Z"/></svg></span> <a href="https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh">benchmark/ppo.sh</a>. Specifically, execute the following command:</p>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F9b13d051cf8dd335d93b8b5a8c10e400e196e87f%2Fbenchmark%2Fppo.sh%23L53-L59&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+<details class="info" open="open">
+<summary>Info</summary>
+<p>Note that evaluation is usually tricker in in selfplay environments. The usual episodic return is not a good indicator of the agent's performance in zero-sum games because the episodic return converges to zero. To evaluate the agent's ability, an intuitive approach is to take a look at the videos of the agents playing the game (included below), visually inspect the agent's behavior. The best scheme, however, is rating systems like <a href="https://www.microsoft.com/en-us/research/project/trueskill-ranking-system/">Trueskill</a> or <a href="https://en.wikipedia.org/wiki/Elo_rating_system">ELO scores</a>. However, they are more difficult to implement and are outside the scode of <code>ppo_pettingzoo_ma_atari.py</code>. </p>
+<p>For simplicity, we measure the <strong>episodic length</strong> instead, which in a sense measures how many "back and forth" the agent can create. In other words, the longer the agent can play the game, the better the agent can play. Empirically, we have found episodic length to be a good indicator of the agent's skill, especially in <code>pong_v3</code> and <code>surround_v2</code>. However, it is not the case for <code>tennis_v3</code> and we'd need to visually inspect the agents' game play videos.</p>
+</details>
+<p>Below are the average <strong>episodic length</strong> for <code>ppo_pettingzoo_ma_atari.py</code>. To ensure no loss of sample efficiency, we compared the results against <code>ppo_atari.py</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Environment</th>
+<th><code>ppo_pettingzoo_ma_atari.py</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>pong_v3</td>
+<td>4153.60 ± 190.80</td>
+</tr>
+<tr>
+<td>surround_v2</td>
+<td>3055.33 ± 223.68</td>
+</tr>
+<tr>
+<td>tennis_v3</td>
+<td>14538.02 ± 7005.54</td>
+</tr>
+</tbody>
+</table>
+<p>Learning curves:</p>
+<div class="grid-container">
+<img src="../ppo/pong_v3.png">
+
+<img src="../ppo/surround_v2.png">
+
+<img src="../ppo/tennis_v3.png">
+</div>
+
+<p>Tracked experiments and game play videos:</p>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Pettingzoo-s-Multi-agent-Atari-CleanRL-s-PPO--VmlldzoyMDkxNTE5" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
+
+<div class="footnote">
+<hr />
+<ol>
+<li id="fn:1">
+<p>Huang, Shengyi; Dossa, Rousslan Fernand Julien; Raffin, Antonin; Kanervisto, Anssi; Wang, Weixun (2022). The 37 Implementation Details of Proximal Policy Optimization. ICLR 2022 Blog Track https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/&#160;<a class="footnote-backref" href="#fnref:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref2:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref3:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref4:1" title="Jump back to footnote 1 in the text">&#8617;</a><a class="footnote-backref" href="#fnref5:1" title="Jump back to footnote 1 in the text">&#8617;</a></p>
+</li>
+</ol>
+</div>
+
+              
+            </article>
+            
+          </div>
+        </div>
+        
+          <a href="#" class="md-top md-icon" data-md-component="top" hidden>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+            Back to top
+          </a>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+    <nav class="md-footer__inner md-grid" aria-label="Footer" >
+      
+        
+        <a href="../overview/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Overview" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              Overview
+            </div>
+          </div>
+        </a>
+      
+      
+        
+        <a href="../dqn/" class="md-footer__link md-footer__link--next" aria-label="Next: Deep Q-Learning (DQN)" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Deep Q-Learning (DQN)
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+          </div>
+        </a>
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2021, CleanRL. All rights reserved.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    <a href="mailto:costa.huang@outlook.com" target="_blank" rel="noopener" title="" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M464 64c26.5 0 48 21.49 48 48 0 15.1-7.1 29.3-19.2 38.4L275.2 313.6a32.1 32.1 0 0 1-38.4 0L19.2 150.4C7.113 141.3 0 127.1 0 112c0-26.51 21.49-48 48-48h416zM217.6 339.2a63.9 63.9 0 0 0 76.8 0L512 176v208c0 35.3-28.7 64-64 64H64c-35.35 0-64-28.7-64-64V176l217.6 163.2z"/></svg>
+    </a>
+  
+    
+    
+      
+      
+    
+    <a href="https://twitter.com/vwxyzjn" target="_blank" rel="noopener" title="twitter.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M459.37 151.716c.325 4.548.325 9.097.325 13.645 0 138.72-105.583 298.558-298.558 298.558-59.452 0-114.68-17.219-161.137-47.106 8.447.974 16.568 1.299 25.34 1.299 49.055 0 94.213-16.568 130.274-44.832-46.132-.975-84.792-31.188-98.112-72.772 6.498.974 12.995 1.624 19.818 1.624 9.421 0 18.843-1.3 27.614-3.573-48.081-9.747-84.143-51.98-84.143-102.985v-1.299c13.969 7.797 30.214 12.67 47.431 13.319-28.264-18.843-46.781-51.005-46.781-87.391 0-19.492 5.197-37.36 14.294-52.954 51.655 63.675 129.3 105.258 216.365 109.807-1.624-7.797-2.599-15.918-2.599-24.04 0-57.828 46.782-104.934 104.934-104.934 30.213 0 57.502 12.67 76.67 33.137 23.715-4.548 46.456-13.32 66.599-25.34-7.798 24.366-24.366 44.833-46.132 57.827 21.117-2.273 41.584-8.122 60.426-16.243-14.292 20.791-32.161 39.308-52.628 54.253z"/></svg>
+    </a>
+  
+    
+    
+      
+      
+    
+    <a href="https://github.com/vwxyzjn/cleanrl" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.tracking", "navigation.sections", "navigation.expand", "navigation.top", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.b97dbffb.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.6c7ad80a.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
