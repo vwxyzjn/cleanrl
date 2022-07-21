@@ -1,6 +1,4 @@
-# DNA: Proximal Policy Optimization with a Dual Network Architecture
-# https://arxiv.org/abs/2206.10027
-
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo_dna/#ppo_dna_atari_envpoolpy
 import argparse
 import os
 import random
@@ -51,6 +49,7 @@ def parse_args():
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
 
+    # DNA policy network optimization hyperparams
     parser.add_argument("--policy-learning-rate", type=float, default=2.5e-4,
         help="the learning rate of the policy optimizer")
     parser.add_argument("--policy-batch-size", type=int, default=2048,
@@ -60,6 +59,7 @@ def parse_args():
     parser.add_argument("--policy-update-epochs", type=int, default=2,
         help="the K epochs to update the policy")
 
+    # DNA value network optimization hyperparams
     parser.add_argument("--value-learning-rate", type=float, default=2.5e-4,
         help="the learning rate of the value function optimizer")
     parser.add_argument("--value-batch-size", type=int, default=512,
@@ -69,6 +69,7 @@ def parse_args():
     parser.add_argument("--value-update-epochs", type=int, default=1,
         help="the K epochs to update the value function")
 
+    # DNA value network to policy network distillation hyperparams
     parser.add_argument("--distill-learning-rate", type=float, default=2.5e-4,
         help="the learning rate of the distillation optimizer")
     parser.add_argument("--distill-batch-size", type=int, default=512,
@@ -195,18 +196,14 @@ class Agent(nn.Module):
     def get_value(self, x):
         return self.critic(self.network(x)).squeeze(-1)
 
-    def get_action(self, x, action=None):
-        probs, _ = self.get_action_distribution_and_value(x)
-        if action is None:
-            action = probs.sample()
-        return action, probs.log_prob(action), probs.entropy()
-
-    def get_action_distribution_and_value(self, x):
+    def get_action_and_value(self, x, action=None):
         hidden = self.network(x)
         logits = self.actor(hidden)
         probs = Categorical(logits=logits)
         value = self.critic(hidden).squeeze(-1)
-        return probs, value
+        if action is None:
+            action = probs.sample()
+        return action, probs.log_prob(action), probs.entropy(), probs, value
 
 
 def main():
@@ -243,8 +240,6 @@ def main():
         args.env_id,
         env_type="gym",
         num_envs=args.num_envs,
-        # batch_size=args.epoch_size,  # async
-        num_threads=args.envpool_num_threads,
         episodic_life=True,
         seed=args.seed,
     )
@@ -277,7 +272,7 @@ def main():
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
-    next_obs = torch.tensor(envs.reset(), dtype=torch.float32).to(device)
+    next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.epoch_size
 
@@ -296,7 +291,7 @@ def main():
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                action, logprob, _ = agent_policy.get_action(next_obs)
+                action, logprob, _, _, _ = agent_policy.get_action_and_value(next_obs)
                 value = agent_value.get_value(next_obs)
                 values[step] = value
             actions[step] = action
@@ -304,9 +299,8 @@ def main():
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, done, info = envs.step(action.cpu().numpy())
-            rewards[step] = torch.tensor(reward, dtype=torch.float32).to(device).view(-1)
-            next_obs = torch.tensor(next_obs, dtype=torch.float32).to(device)
-            next_done = torch.tensor(done, dtype=torch.float32).to(device)
+            rewards[step] = torch.tensor(reward).to(device).view(-1)
+            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
 
             for idx, d in enumerate(done):
                 if d and info["lives"][idx] == 0:
@@ -341,7 +335,7 @@ def main():
                 end = start + args.policy_batch_size
                 mb_inds = b_inds[start:end]
 
-                _, newlogprob, entropy = agent_policy.get_action(b_obs[mb_inds], b_actions.long()[mb_inds])
+                _, newlogprob, entropy, _, _ = agent_policy.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 
@@ -401,14 +395,14 @@ def main():
 
                 # Compute policy and value targets
                 with torch.no_grad():
-                    old_action_dist, _ = old_agent_policy.get_action_distribution_and_value(b_obs[mb_inds])
+                    _, _, _, old_action_dist, _ = old_agent_policy.get_action_and_value(b_obs[mb_inds])
                     value_target = agent_value.get_value(b_obs[mb_inds])
 
-                new_action_dist, new_value = agent_policy.get_action_distribution_and_value(b_obs[mb_inds])
+                _, _, _, new_action_dist, new_value = agent_policy.get_action_and_value(b_obs[mb_inds])
 
                 # Distillation loss
                 policy_kl_loss = kl_divergence(old_action_dist, new_action_dist).mean()
-                value_loss = 0.5 * ((new_value - value_target) ** 2).mean()
+                value_loss = 0.5 * (new_value - value_target).square().mean()
                 distill_loss = value_loss + args.distill_beta * policy_kl_loss
 
                 distill_optimizer.zero_grad()
