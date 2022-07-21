@@ -291,7 +291,7 @@ if __name__ == "__main__":
                 -args.noise_clip,
                 args.noise_clip,
             )
-            qf1_state, qf_losses, qf_values = update_critic(
+            qf1_state, (qf1_loss_value, qf2_loss_value), (qf1_a_values, qf2_a_values) = update_critic(
                 actor_state,
                 qf1_state,
                 qf2_state,
@@ -302,8 +302,6 @@ if __name__ == "__main__":
                 data.dones.flatten().numpy(),
                 clipped_noise,
             )
-            (qf1_loss_value, qf2_loss_value) = qf_losses
-            (qf1_a_values, qf2_a_values) = qf_values
 
             if global_step % args.policy_frequency == 0:
                 actor_state, qf1_state, actor_loss_value = update_actor(
