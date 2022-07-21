@@ -6,6 +6,7 @@ import os
 import random
 import time
 from collections import deque
+from copy import deepcopy
 from distutils.util import strtobool
 
 import envpool
@@ -191,28 +192,21 @@ class Agent(nn.Module):
         self.actor = layer_init(nn.Linear(512, envs.single_action_space.n), std=0.01)
         self.critic = layer_init(nn.Linear(512, 1), std=1)
 
-    def forward(self, x):
+    def get_value(self, x):
+        return self.critic(self.network(x)).squeeze(-1)
+
+    def get_action(self, x, action=None):
+        probs, _ = self.get_action_distribution_and_value(x)
+        if action is None:
+            action = probs.sample()
+        return action, probs.log_prob(action), probs.entropy()
+
+    def get_action_distribution_and_value(self, x):
         hidden = self.network(x)
         logits = self.actor(hidden)
+        probs = Categorical(logits=logits)
         value = self.critic(hidden).squeeze(-1)
-        return logits, value
-
-    @staticmethod
-    def sample_action(logits):
-        probs = Categorical(logits=logits)
-        action = probs.sample()
-        return action, probs.log_prob(action)
-
-    @staticmethod
-    def action_log_prob(logits, action):
-        probs = Categorical(logits=logits)
-        return probs.log_prob(action), probs.entropy()
-
-    @staticmethod
-    def action_kl_divergence(old_logits, new_logits):
-        old_probs = Categorical(logits=old_logits)
-        new_probs = Categorical(logits=new_logits)
-        return kl_divergence(old_probs, new_probs).mean()
+        return probs, value
 
 
 def main():
@@ -273,7 +267,6 @@ def main():
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
-    action_logits = torch.zeros((args.num_steps, args.num_envs, envs.single_action_space.n)).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
@@ -303,13 +296,11 @@ def main():
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                logit, _ = agent_policy(next_obs)
-                _, value = agent_value(next_obs)
-                action, logprob = Agent.sample_action(logit)
-            action_logits[step] = logit
+                action, logprob, _ = agent_policy.get_action(next_obs)
+                value = agent_value.get_value(next_obs)
+                values[step] = value
             actions[step] = action
             logprobs[step] = logprob
-            values[step] = value
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, done, info = envs.step(action.cpu().numpy())
@@ -327,41 +318,22 @@ def main():
 
         # bootstrap value if not done
         with torch.no_grad():
-            _, next_value = agent_value(next_obs)
+            next_value = agent_value.get_value(next_obs).reshape(1, -1)
             advantages, _ = compute_advantages(
                 rewards, dones, values, next_done, next_value, args.gamma, args.policy_gae_lambda
             )
             _, returns = compute_advantages(rewards, dones, values, next_done, next_value, args.gamma, args.value_gae_lambda)
 
-        # flatten the epoch
+        # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
         b_logprobs = logprobs.reshape(-1)
-        b_action_logits = action_logits.reshape(-1, envs.single_action_space.n)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
-        b_inds = np.arange(args.epoch_size)
-
-        # Value network to policy network distillation
-        for epoch in range(args.distill_update_epochs):
-            np.random.shuffle(b_inds)
-            for start in range(0, args.epoch_size, args.distill_batch_size):
-                end = start + args.distill_batch_size
-                mb_inds = b_inds[start:end]
-
-                # Distillation loss
-                new_logit, new_value = agent_policy(b_obs[mb_inds])
-                policy_kl_loss = Agent.action_kl_divergence(b_action_logits[mb_inds], new_logit)
-                value_loss = 0.5 * (new_value - b_values[mb_inds]).square().mean()
-                distill_loss = value_loss + args.distill_beta * policy_kl_loss
-
-                distill_optimizer.zero_grad()
-                distill_loss.backward()
-                nn.utils.clip_grad_norm_(agent_policy.parameters(), args.max_grad_norm)
-                distill_optimizer.step()
 
         # Policy network optimization
+        b_inds = np.arange(args.epoch_size)
         clipfracs = []
         for epoch in range(args.policy_update_epochs):
             np.random.shuffle(b_inds)
@@ -369,8 +341,7 @@ def main():
                 end = start + args.policy_batch_size
                 mb_inds = b_inds[start:end]
 
-                logit, _ = agent_policy(b_obs[mb_inds])
-                newlogprob, entropy = Agent.action_log_prob(logit, b_actions.long()[mb_inds])
+                _, newlogprob, entropy = agent_policy.get_action(b_obs[mb_inds], b_actions.long()[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 
@@ -408,14 +379,42 @@ def main():
                 end = start + args.value_batch_size
                 mb_inds = b_inds[start:end]
 
+                newvalue = agent_value.get_value(b_obs[mb_inds])
+
                 # Value loss
-                _, newvalue = agent_value(b_obs[mb_inds])
-                v_loss = 0.5 * (newvalue - b_returns[mb_inds]).square().mean()
+                v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
                 value_optimizer.zero_grad()
                 v_loss.backward()
                 nn.utils.clip_grad_norm_(agent_value.parameters(), args.max_grad_norm)
                 value_optimizer.step()
+
+        # Value network to policy network distillation
+        agent_policy.zero_grad(True)  # don't clone gradients
+        old_agent_policy = deepcopy(agent_policy)
+        old_agent_policy.eval()
+        for epoch in range(args.distill_update_epochs):
+            np.random.shuffle(b_inds)
+            for start in range(0, args.epoch_size, args.distill_batch_size):
+                end = start + args.distill_batch_size
+                mb_inds = b_inds[start:end]
+
+                # Compute policy and value targets
+                with torch.no_grad():
+                    old_action_dist, _ = old_agent_policy.get_action_distribution_and_value(b_obs[mb_inds])
+                    value_target = agent_value.get_value(b_obs[mb_inds])
+
+                new_action_dist, new_value = agent_policy.get_action_distribution_and_value(b_obs[mb_inds])
+
+                # Distillation loss
+                policy_kl_loss = kl_divergence(old_action_dist, new_action_dist).mean()
+                value_loss = 0.5 * ((new_value - value_target) ** 2).mean()
+                distill_loss = value_loss + args.distill_beta * policy_kl_loss
+
+                distill_optimizer.zero_grad()
+                distill_loss.backward()
+                nn.utils.clip_grad_norm_(agent_policy.parameters(), args.max_grad_norm)
+                distill_optimizer.step()
 
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
         var_y = np.var(y_true)
