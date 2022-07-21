@@ -225,7 +225,7 @@ if __name__ == "__main__":
         qf1_state = qf1_state.apply_gradients(grads=grads1)
         qf2_state = qf2_state.apply_gradients(grads=grads2)
         
-        return qf1_state, (qf1_loss_value, qf2_loss_value), (qf1_a_values, qf2_a_values), key
+        return (qf1_state, qf2_state), (qf1_loss_value, qf2_loss_value), (qf1_a_values, qf2_a_values), key
 
     @jax.jit
     def update_actor(
@@ -249,7 +249,7 @@ if __name__ == "__main__":
         qf2_state = qf2_state.replace(
             target_params=optax.incremental_update(qf2_state.params, qf2_state.target_params, args.tau)
         )
-        return actor_state, qf1_state, actor_loss_value
+        return actor_state, (qf1_state, qf2_state), actor_loss_value
 
     start_time = time.time()
     for global_step in range(args.total_timesteps):
@@ -292,7 +292,7 @@ if __name__ == "__main__":
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
 
-            qf1_state, (qf1_loss_value, qf2_loss_value), (qf1_a_values, qf2_a_values), key = update_critic(
+            (qf1_state, qf2_state), (qf1_loss_value, qf2_loss_value), (qf1_a_values, qf2_a_values), key = update_critic(
                 actor_state,
                 qf1_state,
                 qf2_state,
@@ -305,7 +305,7 @@ if __name__ == "__main__":
             )
             
             if global_step % args.policy_frequency == 0:
-                actor_state, qf1_state, actor_loss_value = update_actor(
+                actor_state, (qf1_state, qf2_state), actor_loss_value = update_actor(
                     actor_state,
                     qf1_state,
                     qf2_state,
