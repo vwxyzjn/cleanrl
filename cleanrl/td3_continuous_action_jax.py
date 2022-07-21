@@ -109,7 +109,7 @@ class Actor(nn.Module):
         x = nn.relu(x)
         x = nn.Dense(self.action_dim)(x)
         x = nn.tanh(x)
-        x * self.action_scale + self.action_bias
+        x = x * self.action_scale + self.action_bias
         return x
 
 
@@ -209,7 +209,7 @@ if __name__ == "__main__":
         min_qf_next_target = jnp.minimum(qf1_next_target, qf2_next_target)
         next_q_value = (rewards + (1 - dones) * args.gamma * (min_qf_next_target)).reshape(-1)
 
-        def mse_loss(params, qf):
+        def mse_loss(params):
             qf_a_values = qf.apply(params, observations, actions).squeeze()
             return ((qf_a_values - next_q_value) ** 2).mean(), qf_a_values.mean()
 
