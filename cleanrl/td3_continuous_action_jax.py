@@ -108,7 +108,7 @@ class Actor(nn.Module):
         x = nn.relu(x)
         x = nn.Dense(self.action_dim)(x)
         x = nn.tanh(x)
-        x * self.action_scale + self.action_bias
+        x = x * self.action_scale + self.action_bias
         return x
 
 
@@ -208,7 +208,7 @@ if __name__ == "__main__":
         min_qf_next_target = jnp.minimum(qf1_next_target, qf2_next_target)
         next_q_value = (rewards + (1 - dones) * args.gamma * (min_qf_next_target)).reshape(-1)
 
-        def mse_loss(params, qf):
+        def mse_loss(params):
             qf_a_values = qf.apply(params, observations, actions).squeeze()
             return ((qf_a_values - next_q_value) ** 2).mean(), qf_a_values.mean()
 
@@ -290,7 +290,7 @@ if __name__ == "__main__":
                 -args.noise_clip,
                 args.noise_clip,
             )
-            qf1_state, qf_losses, qf_values = update_critic(
+            qf1_state, (qf1_loss_value, qf2_loss_value), (qf1_a_values, qf2_a_values) = update_critic(
                 actor_state,
                 qf1_state,
                 qf2_state,
@@ -301,8 +301,6 @@ if __name__ == "__main__":
                 data.dones.flatten().numpy(),
                 clipped_noise,
             )
-            (qf1_loss_value, qf2_loss_value) = qf_losses
-            (qf1_a_values, qf2_a_values) = qf_values
 
             if global_step % args.policy_frequency == 0:
                 actor_state, qf1_state, actor_loss_value = update_actor(
