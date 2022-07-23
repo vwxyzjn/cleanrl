@@ -82,24 +82,27 @@ poetry run python cleanrl/ppo_continuous_action_isaacgym/ppo_continuous_action_i
 
 See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`.
 
+Additionally, `charts/consecutive_successes` means the number of consecutive episodes that the agent has successfully manipulating the rubix cube to the desired state.
+
 ### Implementation details
 
 [ppo_continuous_action_isaacgym.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experimental/ppo_continuous_action_isaacgym.py) is based on `ppo_continuous_action.py` (see related [docs](/rl-algorithms/ppo/#ppo_continuous_actionpy)), with a few modifications:
 
 1. **Different set of hyperparameters**: `ppo_continuous_action_isaacgym.py` uses hyperparameters primarily derived from [rl-games](https://github.com/Denys88/rl_games)' configuration (see [example](https://github.com/NVIDIA-Omniverse/IsaacGymEnvs/blob/main/isaacgymenvs/cfg/train/AntPPO.yaml)). The basic spirit is to run more `total_timesteps`, with larger `num_envs` and smaller `num_steps`.
 
-| arguments         | `ppo_continuous_action.py` | `ppo_continuous_action_isaacgym.py` |
-| ----------------- | -------------------------- | ----------------------------------- |
-| --total-timesteps | 1000000                    | 30000000                            |
-| --learning-rate   | 3e-4                       | 0.0026                              |
-| --num-envs        | 1                          | 4096                                |
-| --num-steps       | 2048                       | 16                                  |
-| --anneal-lr       | True                       | False                               |
-| --num-minibatches | 32                         | 2                                   |
-| --update-epochs   | 10                         | 4                                   |
-| --clip-vloss      | True                       | False                               |
-| --vf-coef         | 0.5                        | 2                                   |
-| --max-grad-norm   | 0.5                        | 1                                   |
+| arguments         | `ppo_continuous_action.py` | `ppo_continuous_action_isaacgym.py` | `ppo_continuous_action_isaacgym.py` (for `ShadowHand` and `AllegroHand`) |
+| ----------------- | -------------------------- | ----------------------------------- | ----------------------------------- |
+| --total-timesteps | 1000000                    | 30000000                            | 600000000                           |
+| --learning-rate   | 3e-4                       | 0.0026                              | 0.0026                              |
+| --num-envs        | 1                          | 4096                                | 8192                                |
+| --num-steps       | 2048                       | 16                                  | 8                                   |
+| --anneal-lr       | True                       | False                               | False                               |
+| --num-minibatches | 32                         | 2                                   | 4                                   |
+| --update-epochs   | 10                         | 4                                   | 5                                   |
+| --clip-vloss      | True                       | False                               | False                               |
+| --vf-coef         | 0.5                        | 2                                   | 2                                   |
+| --max-grad-norm   | 0.5                        | 1                                   | 1                                   |
+| --reward-scaler   | N/A                        | 1                                   | 0.01                                |
 
 1. **Slightly larger NN**: `ppo_continuous_action.py` uses the following NN:
    ```python
@@ -135,7 +138,7 @@ See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `p
        layer_init(nn.Linear(256, np.prod(envs.single_action_space.shape)), std=0.01),
    )
    ```
-1. **No normalization and clipping**: `ppo_continuous_action_isaacgym.py` does _not_ do observation and reward normalization and clipping for simplicity. It does however offer an option to scale the rewards via `--reward-scaler 0.1`, which multiplies all the rewards obtained by `0.1` as an example.
+1. **No normalization and clipping**: `ppo_continuous_action_isaacgym.py` does _not_ do observation and reward normalization and clipping for simplicity. It does however optionally offer an option to scale the rewards via `--reward-scaler x`, which multiplies all the rewards obtained by `x` as an example.
 1. **Remove all CPU-related code**: `ppo_continuous_action_isaacgym.py` needs to remove all CPU-related code (e.g. `action.cpu().numpy()`). This is because almost everything in IsaacGymEnvs happens in GPU. To do this, the major modifications include the following:
    1. Create a custom `RecordEpisodeStatisticsTorch` wrapper that records statstics using GPU tensors instead of `numpy` arrays.
    1. Avoid transferring the tensors to CPU. The related code in `ppo_continuous_action.py` looks like
@@ -161,9 +164,11 @@ Below are the average episodic returns for `ppo_continuous_action_isaacgym.py`. 
 | --------------------------- | ----------------------------------- | ------------------------------------------------------- |
 | Cartpole (40s)              | 413.66 ± 120.93                     | 417.49 (30s)                                            |
 | Ant (240s)                  | 3953.30 ± 667.086                   | 5873.05                                                 |
-| Humanoid (22m)              | 2987.95 ± 257.60                    | 6254.73                                                 |
-| Anymal (12m)                | 29.34 ± 17.80                       | 62.76                                                   |
-| BallBalance (140s)          | 161.92 ± 89.20                      | 319.76                                                  |
+| Humanoid (350s)             | 2987.95 ± 257.60                    | 6254.73                                                 |
+| Anymal (317s)               | 29.34 ± 17.80                       | 62.76                                                   |
+| BallBalance (160s)          | 161.92 ± 89.20                      | 319.76                                                  |
+| AllegroHand (200m)          | 762.93 ± 427.92                     | 3479.85                                                 |
+| ShadowHand (130m)           | 427.16 ± 161.79                     | 5713.74                                                 |
 
 Learning curves:
 
@@ -178,6 +183,14 @@ Learning curves:
 <img src="../ppo/isaacgymenvs/BallBalance-time.png">
 <img src="../ppo/isaacgymenvs/Anymal.png">
 <img src="../ppo/isaacgymenvs/Anymal-time.png">
+<img src="../ppo/isaacgymenvs/AllegroHand.png">
+<img src="../ppo/isaacgymenvs/AllegroHand-time.png">
+<img src="../ppo/isaacgymenvs/AllegroHand-c.png">
+<img src="../ppo/isaacgymenvs/AllegroHand-c-time.png">
+<img src="../ppo/isaacgymenvs/ShadowHand.png">
+<img src="../ppo/isaacgymenvs/ShadowHand-time.png">
+<img src="../ppo/isaacgymenvs/ShadowHand-c.png">
+<img src="../ppo/isaacgymenvs/ShadowHand-c-time.png">
 </div>
 
 ???+ info
@@ -210,6 +223,6 @@ Old Learning curves w/ Isaac Gym Preview 3 (no longer available in Nvidia's webs
 
 ???+ info
 
-    Note the `AllegroHand` and `ShadowHand` experiments used the following command `ppo_continuous_action_isaacgym.py --track --capture-video --num-envs 16384 --num-steps 8 --update-epochs 5 --reward-scaler 0.01 --total-timesteps 600000000 --record-video-step-frequency 3660`. Costa: I was able to run this during my internship at NVIDIA, but in my home setup, the computer has less GPU memory which makes it hard to replicate the results.
+    Note the `AllegroHand` and `ShadowHand` experiments used the following command `ppo_continuous_action_isaacgym.py --track --capture-video --num-envs 16384 --num-steps 8 --update-epochs 5 --reward-scaler 0.01 --total-timesteps 600000000 --record-video-step-frequency 3660`. Costa: I was able to run this during my internship at NVIDIA, but in my home setup, the computer has less GPU memory which makes it hard to replicate the results w/ `--num-envs 16384`.
 
 
