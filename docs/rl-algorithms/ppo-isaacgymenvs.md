@@ -50,22 +50,28 @@ The [ppo_continuous_action_isaacgym.py](https://github.com/vwxyzjn/cleanrl/blob/
 
 The installation of `isaacgym` requires a bit of work since it's not a standard Python package.
 
-Please go to [https://developer.nvidia.com/isaac-gym](https://developer.nvidia.com/isaac-gym) to download and install the latest version of Issac Gym which should look like `IsaacGym_Preview_4_Package.tar.gz`. Put this `IsaacGym_Preview_4_Package.tar.gz` into the `cleanrl/ppo_continuous_action_isaacgym` folder. Make sure your python version is either 3.7, or 3.8 (3.9 _not_ supported yet).
+Please go to [https://developer.nvidia.com/isaac-gym](https://developer.nvidia.com/isaac-gym) to download and install the latest version of Issac Gym which should look like `IsaacGym_Preview_4_Package.tar.gz`. Put this `IsaacGym_Preview_4_Package.tar.gz` into the `~/Downloads/` folder. Make sure your python version is either 3.7, or 3.8 (3.9 _not_ supported yet).
 
 ```bash
 # extract and move the content in `python` folder in the IsaacGym_Preview_4_Package.tar.gz
-# into the `cleanrl/ppo_continuous_action_isaacgym/isaacgym/` which has 
-cd cleanrl/ppo_continuous_action_isaacgym
+# into the `cleanrl/ppo_continuous_action_isaacgym/isaacgym/` folder
+cp ~/Downloads/IsaacGym_Preview_4_Package.tar.gz IsaacGym_Preview_4_Package.tar.gz 
 stat IsaacGym_Preview_4_Package.tar.gz
 mkdir temp_isaacgym
 tar -xf IsaacGym_Preview_4_Package.tar.gz -C temp_isaacgym
-mv temp_isaacgym/isaacgym/python/* isaacgym
+mv temp_isaacgym/isaacgym/python/* cleanrl/ppo_continuous_action_isaacgym/isaacgym
 rm -rf temp_isaacgym
 
+# if your global python version is not either 3.7 nor 3.8, you need to tell poetry specifically to use a 3.7 or 3.8 python
+# e.g., `poetry env use /home/costa/.pyenv/versions/3.7.8/bin/python`
 poetry install -E isaacgym
-python ppo_continuous_action_isaacgym.py --help
-python ppo_continuous_action_isaacgym.py --env-id Ant
+# if you are using NVIDIA's 30xx GPU, you need to specifically install cuda 11.3 wheels
+# `poetry run pip install torch --upgrade --extra-index-url https://download.pytorch.org/whl/cu113`
+poetry run python cleanrl/ppo_continuous_action_isaacgym/ppo_continuous_action_isaacgym.py --help
+poetry run python cleanrl/ppo_continuous_action_isaacgym/ppo_continuous_action_isaacgym.py --env-id Ant
 ```
+
+<script id="asciicast-510341" src="https://asciinema.org/a/510341.js" async></script>
 
 
 ???+ info
