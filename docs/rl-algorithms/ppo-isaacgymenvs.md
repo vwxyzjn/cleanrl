@@ -35,6 +35,10 @@ The [ppo_continuous_action_isaacgym.py](https://github.com/vwxyzjn/cleanrl/blob/
 
 ???+ info
 
+    Note that **Isaac Gym** is the underlying core physics engine, and **IssacGymEnvs** is a collection of environments built on Isaac Gym.
+
+???+ info
+
     `ppo_continuous_action_isaacgym.py` works with most environments in IsaacGymEnvs but it does not work with the following environments yet:
 
     * AnymalTerrain
@@ -74,9 +78,32 @@ poetry run python cleanrl/ppo_continuous_action_isaacgym/ppo_continuous_action_i
 <script id="asciicast-510341" src="https://asciinema.org/a/510341.js" async></script>
 
 
-???+ info
+???+ warning
 
-    Note that **Isaac Gym** is the underlying core physics engine, and **IssacGymEnvs** is a collection of environments built on Isaac Gym.
+    If you encounter the following installation error
+    
+    ```bash
+    Python.h: No such file or directory
+    #include <Python.h>
+    ```
+
+    or 
+
+    ```bash
+    libpython3.8.so.1.0: cannot open shared object file: No such file or directory
+    ```
+
+    It usually means your python distribution does not include the shared library files. If you are ubuntu, you can install the following packages:
+    
+    ```bash
+    sudo apt-get install libpython3.8-dev # or sudo apt-get install libpython3.7-dev
+    ```
+
+    If you are using [pyenv](https://github.com/pyenv/pyenv), you may try the following:
+    
+    ```bash
+    env PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install 3.7.8
+    ```
 
 ### Explanation of the logged metrics
 
