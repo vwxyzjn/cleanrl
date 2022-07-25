@@ -27,5 +27,6 @@ If you are adding new algorithms or your change could result in performance diff
     - [ ] I have created a table comparing my results against those from reputable sources (i.e., the original paper or other reference implementation).
     - [ ] I have added the learning curves (in PNG format with `width=500` and `height=300`).
     - [ ] I have added links to the tracked experiments.
+    - [ ] I have updated the overview sections at the [docs](https://docs.cleanrl.dev/rl-algorithms/overview/) and the [repo](https://github.com/vwxyzjn/cleanrl#overview)
 - [ ] I have updated the tests accordingly (if applicable).
 
