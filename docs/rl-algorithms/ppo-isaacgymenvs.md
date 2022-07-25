@@ -25,7 +25,7 @@
 
 :octicons-beaker-24: Experimental
 
-The [ppo_continuous_action_isaacgym.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experimental/ppo_continuous_action_isaacgym.py) has the following features:
+The [ppo_continuous_action_isaacgym.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action_isaacgym/ppo_continuous_action_isaacgym.py) has the following features:
 
 - Works with IsaacGymEnvs.
 - Works with the `Box` observation space of low-level features
@@ -113,7 +113,7 @@ Additionally, `charts/consecutive_successes` means the number of consecutive epi
 
 ### Implementation details
 
-[ppo_continuous_action_isaacgym.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/experimental/ppo_continuous_action_isaacgym.py) is based on `ppo_continuous_action.py` (see related [docs](/rl-algorithms/ppo/#ppo_continuous_actionpy)), with a few modifications:
+[ppo_continuous_action_isaacgym.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action_isaacgym/ppo_continuous_action_isaacgym.py) is based on `ppo_continuous_action.py` (see related [docs](/rl-algorithms/ppo/#ppo_continuous_actionpy)), with a few modifications:
 
 1. **Different set of hyperparameters**: `ppo_continuous_action_isaacgym.py` uses hyperparameters primarily derived from [rl-games](https://github.com/Denys88/rl_games)' configuration (see [example](https://github.com/NVIDIA-Omniverse/IsaacGymEnvs/blob/main/isaacgymenvs/cfg/train/AntPPO.yaml)). The basic spirit is to run more `total_timesteps`, with larger `num_envs` and smaller `num_steps`.
 
