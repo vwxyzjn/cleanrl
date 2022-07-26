@@ -121,6 +121,7 @@ class QNetwork(nn.Module):
         return q_values
 
 
+
 def mse(target, prediction):
     return jnp.power((target - prediction), 2)
 
