@@ -211,7 +211,7 @@ Tracked experiments and game play videos:
 
 The [dqn_atari_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari_jax.py) has the following features:
 
-* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  [dqn_atari_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari_jax.py) is roughly 2.5-4x faster than  [dqn_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py)
+* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  [dqn_atari_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari_jax.py) is roughly 25%-50% faster than  [dqn_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py)
 * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
 * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
 * Works with the `Discrete` action space
@@ -252,7 +252,7 @@ Below are the average episodic returns for [`dqn_atari_jax.py`](https://github.c
 
 ???+ info
     
-    We observe a speedup of `~25%` in ['dqn_atari_jax.py'](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari_jax.py) compared to ['dqn_atari.py'](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py). This could be because the training loop is tightly integrated with the experience collection loop. We run a training loop every `4` environment steps by default. So more time is utilised in collecting experience than training the network. We observe much more speed-ups in algorithms which run a training step for each environment step. E.g., [DDPG](rl-algorithms/ddpg/#experiment-results_1)
+    We observe a speedup of `~25%` in ['dqn_atari_jax.py'](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari_jax.py) compared to ['dqn_atari.py'](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py). This could be because the training loop is tightly integrated with the experience collection loop. We run a training loop every `4` environment steps by default. So more time is utilised in collecting experience than training the network. We observe much more speed-ups in algorithms which run a training step for each environment step. E.g., [DDPG](/rl-algorithms/ddpg/#experiment-results_1)
 
 Learning curves:
 
