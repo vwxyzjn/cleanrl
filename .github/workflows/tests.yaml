@@ -31,7 +31,7 @@ jobs:
 
       # classic control tests
       - name: Install core dependencies
-        run: poetry install -E pytest
+        run: poetry install -E "pytest jax"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run core tests
@@ -57,7 +57,7 @@ jobs:
 
       # atari tests
       - name: Install atari dependencies
-        run: poetry install -E "pytest atari"
+        run: poetry install -E "pytest atari jax"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run atari tests
@@ -136,7 +136,7 @@ jobs:
         with:
           poetry-version: ${{ matrix.poetry-version }}
 
-      # pybullet tests
+      # mujoco tests
       - name: Install core dependencies
         run: poetry install -E pytest
       - name: Install pybullet dependencies
