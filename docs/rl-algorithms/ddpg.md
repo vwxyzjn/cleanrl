@@ -260,6 +260,10 @@ poetry install -E mujoco # only works in Linux
 python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v3
 ```
 
+???+ warning
+
+    Note that JAX does not work in Windows :fontawesome-brands-windows:. The official [docs](https://github.com/google/jax#installation) recommends using Windows Subsystem for Linux (WSL) to install JAX.
+
 ### Explanation of the logged metrics
 
 See [related docs](/rl-algorithms/ddpg/#explanation-of-the-logged-metrics) for `ddpg_continuous_action.py`.

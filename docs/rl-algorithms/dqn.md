@@ -225,6 +225,10 @@ python cleanrl/dqn_atari_jax.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/dqn_atari_jax.py --env-id PongNoFrameskip-v4
 ```
 
+???+ warning
+
+    Note that JAX does not work in Windows :fontawesome-brands-windows:. The official [docs](https://github.com/google/jax#installation) recommends using Windows Subsystem for Linux (WSL) to install JAX.
+
 ### Explanation of the logged metrics
 
 See [related docs](/rl-algorithms/dqn/#explanation-of-the-logged-metrics) for `dqn_atari.py`.
