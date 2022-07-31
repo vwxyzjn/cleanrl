@@ -57,37 +57,37 @@ Below are the average episodic returns for `ppo_dna_atari_envpool.py` compared t
 
 | Environment      | `ppo_dna_atari_envpool.py` | `ppo_atari_envpool.py` |
 | ----------- | ----------- | ----------- | 
-| BattleZone-v5 (40M steps) | 94800 ± 18300 | 28800 ± 6800 |
-| BeamRider-v5 (10M steps) | 5470 ± 850 | 1990 ± 560 |
-| Breakout-v5 (10M steps) | 321 ± 63 | 352 ± 52 |
-| DoubleDunk-v5 (40M steps) | -4.9 ± 0.3 | -2.0 ± 0.8 |
-| NameThisGame-v5 (40M steps) | 8500 ± 2600 | 4400 ± 1200 |
-| Phoenix-v5 (45M steps) | 184000 ± 58000 | 10200 ± 2700 |
-| Pong-v5 (3M steps) | 19.5 ± 1.1 | 16.6 ± 2.3 |
-| Qbert-v5 (45M steps) | 12600 ± 4600 | 10800 ± 3300 |
-| Tennis-v5 (10M steps) | 13.0 ± 2.3 | -12.4 ± 2.9 |
+| BattleZone-v5 (40M steps) | 74000 ± 15300 | 28700 ± 6300 |
+| BeamRider-v5 (10M steps) | 5200 ± 900 | 1900 ± 530 |
+| Breakout-v5 (10M steps) | 319 ± 63 | 349 ± 42 |
+| DoubleDunk-v5 (40M steps) | -4.1 ± 1.0 | -2.0 ± 0.8 |
+| NameThisGame-v5 (40M steps) | 19100 ± 2300 | 4400 ± 1200 |
+| Phoenix-v5 (45M steps) | 186000 ± 67000 | 9900 ± 2700 |
+| Pong-v5 (3M steps) | 19.5 ± 1.0 | 16.6 ± 2.4 |
+| Qbert-v5 (45M steps) | 12800 ± 4200 | 11400 ± 3600 |
+| Tennis-v5 (10M steps) | 19.6 ± 0.0 | -12.4 ± 2.9 |
 
 Learning curves:
 
 <div class="grid-container">
-<img src="../ppo_dna/BattleZone-v5-steps.png">
-<img src="../ppo_dna/BattleZone-v5-time.png">
-<img src="../ppo_dna/BeamRider-v5-steps.png">
-<img src="../ppo_dna/BeamRider-v5-time.png">
-<img src="../ppo_dna/Breakout-v5-steps.png">
-<img src="../ppo_dna/Breakout-v5-time.png">
-<img src="../ppo_dna/DoubleDunk-v5-steps.png">
-<img src="../ppo_dna/DoubleDunk-v5-time.png">
-<img src="../ppo_dna/NameThisGame-v5-steps.png">
-<img src="../ppo_dna/NameThisGame-v5-time.png">
-<img src="../ppo_dna/Phoenix-v5-steps.png">
-<img src="../ppo_dna/Phoenix-v5-time.png">
-<img src="../ppo_dna/Pong-v5-steps.png">
-<img src="../ppo_dna/Pong-v5-time.png">
-<img src="../ppo_dna/Qbert-v5-steps.png">
-<img src="../ppo_dna/Qbert-v5-time.png">
-<img src="../ppo_dna/Tennis-v5-steps.png">
-<img src="../ppo_dna/Tennis-v5-time.png">
+<img src="../ppo_dna/BattleZone-v5-50m-steps.png">
+<img src="../ppo_dna/BattleZone-v5-50m-time.png">
+<img src="../ppo_dna/BeamRider-v5-10m-steps.png">
+<img src="../ppo_dna/BeamRider-v5-10m-time.png">
+<img src="../ppo_dna/Breakout-v5-10m-steps.png">
+<img src="../ppo_dna/Breakout-v5-10m-time.png">
+<img src="../ppo_dna/DoubleDunk-v5-50m-steps.png">
+<img src="../ppo_dna/DoubleDunk-v5-50m-time.png">
+<img src="../ppo_dna/NameThisGame-v5-50m-steps.png">
+<img src="../ppo_dna/NameThisGame-v5-50m-time.png">
+<img src="../ppo_dna/Phoenix-v5-50m-steps.png">
+<img src="../ppo_dna/Phoenix-v5-50m-time.png">
+<img src="../ppo_dna/Pong-v5-3m-steps.png">
+<img src="../ppo_dna/Pong-v5-3m-time.png">
+<img src="../ppo_dna/Qbert-v5-50m-steps.png">
+<img src="../ppo_dna/Qbert-v5-50m-time.png">
+<img src="../ppo_dna/Tennis-v5-10m-steps.png">
+<img src="../ppo_dna/Tennis-v5-10m-time.png">
 </div>
 
 
