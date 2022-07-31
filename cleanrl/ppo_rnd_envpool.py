@@ -2,8 +2,10 @@ import argparse
 import os
 import random
 import time
+from collections import deque
 from distutils.util import strtobool
 
+import envpool
 import gym
 import numpy as np
 import torch
@@ -12,14 +14,6 @@ import torch.optim as optim
 from gym.wrappers.normalize import RunningMeanStd
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
-
-from stable_baselines3.common.atari_wrappers import (  # isort:skip
-    ClipRewardEnv,
-    EpisodicLifeEnv,
-    FireResetEnv,
-    MaxAndSkipEnv,
-    NoopResetEnv,
-)
 
 
 def parse_args():
@@ -114,30 +108,50 @@ def parse_args():
     return args
 
 
-def make_env(env_id, seed, idx, capture_video, run_name):
-    def thunk():
-        env = gym.make(env_id)
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env = NoopResetEnv(env, noop_max=30)
-        env = MaxAndSkipEnv(env, skip=4)
-        if args.sticky_action:
-            env = StickyAction(env)
-        env = EpisodicLifeEnv(env)
-        if "FIRE" in env.unwrapped.get_action_meanings():
-            env = FireResetEnv(env)
-        env = ClipRewardEnv(env)
-        env = gym.wrappers.ResizeObservation(env, 84)
-        env = gym.wrappers.GrayScaleObservation(env)
-        env = gym.wrappers.FrameStack(env, 4)
-        env.seed(seed)
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
-        return env
+class RecordEpisodeStatistics(gym.Wrapper):
+    def __init__(self, env, deque_size=100):
+        super().__init__(env)
+        self.num_envs = getattr(env, "num_envs", 1)
+        self.episode_returns = None
+        self.episode_lengths = None
+        # get if the env has lives
+        self.has_lives = False
+        env.reset()
+        info = env.step(np.zeros(self.num_envs, dtype=int))[-1]
+        if info["lives"].sum() > 0:
+            self.has_lives = True
+            print("env has lives")
 
-    return thunk
+    def reset(self, **kwargs):
+        observations = super().reset(**kwargs)
+        self.episode_returns = np.zeros(self.num_envs, dtype=np.float32)
+        self.episode_lengths = np.zeros(self.num_envs, dtype=np.int32)
+        self.lives = np.zeros(self.num_envs, dtype=np.int32)
+        self.returned_episode_returns = np.zeros(self.num_envs, dtype=np.float32)
+        self.returned_episode_lengths = np.zeros(self.num_envs, dtype=np.int32)
+        return observations
+
+    def step(self, action):
+        observations, rewards, dones, infos = super().step(action)
+        self.episode_returns += infos["reward"]
+        self.episode_lengths += 1
+        self.returned_episode_returns[:] = self.episode_returns
+        self.returned_episode_lengths[:] = self.episode_lengths
+        all_lives_exhausted = infos["lives"] == 0
+        if self.has_lives:
+            self.episode_returns *= 1 - all_lives_exhausted
+            self.episode_lengths *= 1 - all_lives_exhausted
+        else:
+            self.episode_returns *= 1 - dones
+            self.episode_lengths *= 1 - dones
+        infos["r"] = self.returned_episode_returns
+        infos["l"] = self.returned_episode_lengths
+        return (
+            observations,
+            rewards,
+            dones,
+            infos,
+        )
 
 
 # ALGO LOGIC: initialize agent here:
@@ -302,10 +316,19 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
-    envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
+    envs = envpool.make(
+        args.env_id,
+        env_type="gym",
+        num_envs=args.num_envs,
+        episodic_life=True,
+        reward_clip=True,
+        repeat_action_probability=0.25,
     )
-    assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
+    envs.num_envs = args.num_envs
+    envs.single_action_space = envs.action_space
+    envs.single_observation_space = envs.observation_space
+    envs = RecordEpisodeStatistics(envs)
+    assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent = Agent(envs).to(device)
     rnd_model = RNDModel(4, envs.single_action_space.n).to(device)
@@ -317,7 +340,7 @@ if __name__ == "__main__":
 
     reward_rms = RunningMeanStd()
     obs_rms = RunningMeanStd(shape=(1, 1, 84, 84))
-    discounted_reward = RewardForwardFilter(args.gamma)
+    discounted_reward = RewardForwardFilter(args.int_gamma)
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -328,6 +351,7 @@ if __name__ == "__main__":
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     ext_values = torch.zeros((args.num_steps, args.num_envs)).to(device)
     int_values = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    avg_returns = deque(maxlen=20)
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -339,7 +363,7 @@ if __name__ == "__main__":
     print("Start to initialize observation normalization parameter.....")
     next_ob = []
     for step in range(args.num_steps * 50):
-        acs = torch.from_numpy(np.random.randint(0, envs.single_action_space.n, size=(args.num_envs,)))
+        acs = np.random.randint(0, envs.single_action_space.n, size=(args.num_envs,))
         s, r, d, _ = envs.step(acs)
         next_ob += s[:, 3, :, :].reshape([-1, 1, 84, 84]).tolist()
 
@@ -375,8 +399,8 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, done, info = envs.step(action.cpu().numpy())
-            rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
+            rewards[step] = torch.tensor(reward, device=device).view(-1)
+            next_obs, next_done = torch.tensor(next_obs, device=device), torch.tensor(done, device=device, dtype=torch.float32)
             rnd_next_obs = (
                 (
                     (next_obs[:, 3, :, :].reshape(args.num_envs, 1, 84, 84) - torch.from_numpy(obs_rms.mean).to(device))
@@ -386,19 +410,21 @@ if __name__ == "__main__":
             target_next_feature = rnd_model.target(rnd_next_obs)
             predict_next_feature = rnd_model.predictor(rnd_next_obs)
             curiosity_rewards[step] = ((target_next_feature - predict_next_feature).pow(2).sum(1) / 2).data
-            for idx, item in enumerate(info):
-                if "episode" in item.keys():
+            for idx, d in enumerate(done):
+                if d and info["lives"][idx] == 0:
+                    avg_returns.append(info["r"][idx])
+                    epi_ret = np.average(avg_returns)
                     print(
-                        f"global_step={global_step}, episodic_return={item['episode']['r']}, curiosity_reward={np.mean(curiosity_rewards[step].cpu().numpy())}"
+                        f"global_step={global_step}, episodic_return={info['r'][idx]}, curiosity_reward={np.mean(curiosity_rewards[step].cpu().numpy())}"
                     )
-                    writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
+                    writer.add_scalar("charts/avg_episodic_return", epi_ret, global_step)
+                    writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
                     writer.add_scalar(
                         "charts/episode_curiosity_reward",
                         curiosity_rewards[step][idx],
                         global_step,
                     )
-                    writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
-                    break
+                    writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
 
         curiosity_reward_per_env = np.array(
             [discounted_reward.update(reward_per_step) for reward_per_step in curiosity_rewards.cpu().data.numpy().T]
@@ -414,11 +440,11 @@ if __name__ == "__main__":
 
         # bootstrap reward if not done. reached the batch limit
         with torch.no_grad():
-            last_value_ext, last_value_int = agent.get_value(next_obs.to(device))
+            last_value_ext, last_value_int = agent.get_value(next_obs)
             last_value_ext, last_value_int = last_value_ext.reshape(1, -1), last_value_int.reshape(1, -1)
             if args.gae:
-                ext_advantages = torch.zeros_like(rewards).to(device)
-                int_advantages = torch.zeros_like(curiosity_rewards).to(device)
+                ext_advantages = torch.zeros_like(rewards, device=device)
+                int_advantages = torch.zeros_like(curiosity_rewards, device=device)
                 ext_lastgaelam = 0
                 int_lastgaelam = 0
                 for t in reversed(range(args.num_steps)):
@@ -443,8 +469,8 @@ if __name__ == "__main__":
                 ext_returns = ext_advantages + ext_values
                 int_returns = int_advantages + int_values
             else:
-                ext_returns = torch.zeros_like(rewards).to(device)
-                int_returns = torch.zeros_like(curiosity_rewards).to(device)
+                ext_returns = torch.zeros_like(rewards, device=device)
+                int_returns = torch.zeros_like(curiosity_rewards, device=device)
                 for t in reversed(range(args.num_steps)):
                     if t == args.num_steps - 1:
                         ext_nextnonterminal = 1.0 - next_done
@@ -496,10 +522,11 @@ if __name__ == "__main__":
                 predict_next_state_feature, target_next_state_feature = rnd_model(rnd_next_obs[mb_inds])
                 forward_loss = forward_mse(predict_next_state_feature, target_next_state_feature.detach()).mean(-1)
 
-                mask = torch.rand(len(forward_loss)).to(device)
+                mask = torch.rand(len(forward_loss), device=device)
                 mask = (mask < args.update_proportion).type(torch.FloatTensor).to(device)
-                forward_loss = (forward_loss * mask).sum() / torch.max(mask.sum(), torch.Tensor([1]).to(device))
-
+                forward_loss = (forward_loss * mask).sum() / torch.max(
+                    mask.sum(), torch.tensor([1], device=device, dtype=torch.float32)
+                )
                 _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
