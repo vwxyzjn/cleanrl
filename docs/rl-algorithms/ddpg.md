@@ -278,16 +278,18 @@ To run benchmark experiments, see :material-github: [benchmark/ddpg.sh](https://
 
 Below are the average episodic returns for [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
 
-| Environment      | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py)  | [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018, Table 1)[^2]    |
-| ----------- | ----------- | ----------- | ----------- |
-| HalfCheetah |  9910.53 ± 673.49     | 9382.32 ± 1395.52      |8577.29  |
-| Walker2d |  1397.60 ± 677.12  | 1598.35 ± 862     |  3098.11 | 
-| Hopper |  1603.5 ± 727.281  | 1313.43 ± 684.46         |  1860.02 | 
+| Environment      | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (RTX 3060 TI) | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (VM w/ TPU) | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) (RTX 2060) | [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018, Table 1)[^2]    |
+| ----------- | ----------- | ----------- | ----------- | ----------- |
+| HalfCheetah |  9910.53 ± 673.49 | 9790.72 ± 1494.85   | 9382.32 ± 1395.52      |8577.29  |
+| Walker2d |  1397.60 ± 677.12  | 1314.83 ± 689.71 | 1598.35 ± 862     |  3098.11 | 
+| Hopper |  1603.5 ± 727.281  | 1602.20 ± 696.11 | 1313.43 ± 684.46         |  1860.02 | 
 
 
 ???+ info
 
-    Note that we ran the [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) experiments with RTX 3060 Ti (~810 SPS) and [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) experiments with RTX 2060 (~241 SPS). Using RTX 3060 Ti w/ [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) brings the SPS from 241 to 325, according to [this report](https://wandb.ai/costa-huang/cleanRL/reports/Torch-DDPG-2060-vs-3060ti---VmlldzoyMzA1NDYy) meaning that under the same hardware, [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) would be **roughly 810/241=2.5x faster**.  However, because of the overhead of `--capture-video` that both scripts suffer, we suspect [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) would be 3x-4x faster when `--capture-video` is disabled.
+    Note that the experiments were conducted on different hardwares, so your mileage might vary. This inconsistency is because 1) re-running expeirments on the same hardware is computationally expensive and 2) requiring the same hardware is not inclusive nor feasible to other contributors who might have different hardwares.
+
+    That said, we roughly expect to see a 2-4x speed improvement from using [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) under the same hardware. And if you disable the `--capture-video` overhead, the speed improvement will be even higher.
 
 
 Learning curves:
