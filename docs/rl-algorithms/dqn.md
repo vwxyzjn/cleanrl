@@ -116,7 +116,7 @@ Learning curves:
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-DQN--VmlldzoxNjk3NjYx" style="width:100%; height:500px" title="CleanRL DQN Tracked Experiments"></iframe>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-DQN--VmlldzoxNjk3NjYx" style="width:100%; height:500px" title="CleanRL DQN + Atari Tracked Experiments"></iframe>
 
 
 ## `dqn.py`
@@ -273,7 +273,7 @@ Learning curves:
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-DQN-JAX--VmlldzoyMzM3MDg1" style="width:100%; height:500px" title="CleanRL DQN Tracked Experiments"></iframe>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-DQN-JAX--VmlldzoyMzM3MDg1" style="width:100%; height:500px" title="CleanRL DQN + JAX + Atari Tracked Experiments"></iframe>
 
 
 
@@ -299,8 +299,37 @@ See [related docs](/rl-algorithms/dqn/#implementation-details_1) for `dqn.py`.
 
 ### Experiment results
 
-To run benchmark experiments, see :material-github: [benchmark/dqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/dqn.sh).
+To run benchmark experiments, see :material-github: [benchmark/dqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/dqn.sh). Specifically, execute the following command:
 
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fkinalmehta%2Fcleanrl%2Fblob%2Fb18f980c844240f20238c70ecfff2c9e831956eb%2Fbenchmark%2Fdqn.sh%23L15-L21&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+Below are the average episodic returns for [`dqn_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_jax.py) (3 random seeds).
+
+
+
+| Environment    | `dqn_jax.py`   | `dqn.py`  | 
+| ----------- | ----------- | ----------- | 
+| CartPole-v1    |  499.84 ± 0.24 | 488.69 ± 16.11      |
+| Acrobot-v1 | -89.17 ± 8.79 | -91.54 ± 7.20     | 
+| MountainCar-v0 | -173.71 ± 29.14  | -194.95 ± 8.48        | 
+
+
+
+<div class="grid-container">
+<img src="../dqn/jax/CartPole-v1.png">
+<img src="../dqn/jax/CartPole-v1-time.png">
+
+<img src="../dqn/jax/Acrobot-v1.png">
+<img src="../dqn/jax/Acrobot-v1-time.png">
+
+<img src="../dqn/jax/MountainCar-v0.png">
+<img src="../dqn/jax/MountainCar-v0-time.png">
+</div>
+
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/-WIP-Classic-Control-CleanRL-s-DQN-JAX--VmlldzoyMzg5OTg2" style="width:100%; height:500px" title="CleanRL DQN + JAX Tracked Experiments"></iframe>
 
 
 
