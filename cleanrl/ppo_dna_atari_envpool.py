@@ -206,7 +206,7 @@ class Agent(nn.Module):
         return action, probs.log_prob(action), probs.entropy(), probs, value
 
 
-def main():
+if __name__ == "__main__":
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
@@ -431,7 +431,3 @@ def main():
 
     envs.close()
     writer.close()
-
-
-if __name__ == "__main__":
-    main()
