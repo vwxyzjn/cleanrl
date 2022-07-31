@@ -9,8 +9,6 @@ os.environ[
     "XLA_PYTHON_CLIENT_MEM_FRACTION"
 ] = "0.7"  # see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
 
-import functools
-
 import flax
 import flax.linen as nn
 import gym
@@ -129,23 +127,9 @@ class TrainState(TrainState):
     target_params: flax.core.FrozenDict
 
 
-@functools.partial(jax.jit, static_argnums=(1, 2, 3, 5, 6, 7))
-def select_action(rng_seed, start_e, end_e, duration, t, num_actions, num_envs, network_def, online_params, obs):
-    def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
-        slope = (end_e - start_e) / duration
-        return jnp.maximum(slope * t + start_e, end_e)
-
-    epsilon = linear_schedule(start_e, end_e, duration, t)
-    rng, rng_1, rng_2 = jax.random.split(rng_seed, 3)
-    return (
-        rng,
-        jnp.where(
-            jax.random.uniform(rng_1) < epsilon,
-            jax.random.randint(rng_2, (num_envs,), 0, num_actions),
-            network_def.apply(online_params, obs).argmax(axis=-1),
-        ),
-        epsilon,
-    )
+def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
+    slope = (end_e - start_e) / duration
+    return max(slope * t + start_e, end_e)
 
 
 if __name__ == "__main__":
@@ -173,7 +157,7 @@ if __name__ == "__main__":
     random.seed(args.seed)
     np.random.seed(args.seed)
     key = jax.random.PRNGKey(args.seed)
-    key, q_key, act_key = jax.random.split(key, 3)
+    key, q_key = jax.random.split(key, 2)
 
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
@@ -190,6 +174,7 @@ if __name__ == "__main__":
         tx=optax.adam(learning_rate=args.learning_rate),
     )
 
+    q_network.apply = jax.jit(q_network.apply)
     # This step is not necessary as init called on same observation and key will always lead to same initializations
     q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, 1))
 
@@ -223,19 +208,14 @@ if __name__ == "__main__":
     obs = envs.reset()
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
-        act_key, actions, epsilon = select_action(
-            act_key,
-            args.start_e,
-            args.end_e,
-            args.exploration_fraction * args.total_timesteps,
-            global_step,
-            envs.single_action_space.n,
-            envs.num_envs,
-            q_network,
-            q_state.params,
-            obs,
-        )
-        actions = jax.device_get(actions)
+        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
+        if random.random() < epsilon:
+            actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
+        else:
+            # obs = jax.device_put(obs)
+            logits = q_network.apply(q_state.params, obs)
+            actions = logits.argmax(axis=-1)
+            actions = jax.device_get(actions)
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
@@ -246,7 +226,7 @@ if __name__ == "__main__":
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                writer.add_scalar("charts/epsilon", jax.device_get(epsilon), global_step)
+                writer.add_scalar("charts/epsilon", epsilon, global_step)
                 break
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
