@@ -90,7 +90,7 @@ def parse_args():
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
     args = parser.parse_args()
-    args.epoch_size = int(args.num_envs * args.num_steps)
+    args.batch_size = int(args.num_envs * args.num_steps)
     # fmt: on
     return args
 
@@ -194,16 +194,15 @@ class Agent(nn.Module):
         self.critic = layer_init(nn.Linear(512, 1), std=1)
 
     def get_value(self, x):
-        return self.critic(self.network(x)).squeeze(-1)
+        return self.critic(self.network(x))
 
     def get_action_and_value(self, x, action=None):
         hidden = self.network(x)
         logits = self.actor(hidden)
         probs = Categorical(logits=logits)
-        value = self.critic(hidden).squeeze(-1)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action), probs.entropy(), probs, value
+        return action, probs.log_prob(action), probs.entropy(), probs, self.critic(hidden)
 
 
 if __name__ == "__main__":
@@ -274,7 +273,7 @@ if __name__ == "__main__":
     start_time = time.time()
     next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
-    num_updates = args.total_timesteps // args.epoch_size
+    num_updates = args.total_timesteps // args.batch_size
 
     for update in range(1, num_updates + 1):
         # Annealing the rate if instructed to do so.
@@ -293,7 +292,7 @@ if __name__ == "__main__":
             with torch.no_grad():
                 action, logprob, _, _, _ = agent_policy.get_action_and_value(next_obs)
                 value = agent_value.get_value(next_obs)
-                values[step] = value
+                values[step] = value.flatten()
             actions[step] = action
             logprobs[step] = logprob
 
@@ -327,11 +326,11 @@ if __name__ == "__main__":
         b_values = values.reshape(-1)
 
         # Policy network optimization
-        b_inds = np.arange(args.epoch_size)
+        b_inds = np.arange(args.batch_size)
         clipfracs = []
         for epoch in range(args.policy_update_epochs):
             np.random.shuffle(b_inds)
-            for start in range(0, args.epoch_size, args.policy_batch_size):
+            for start in range(0, args.batch_size, args.policy_batch_size):
                 end = start + args.policy_batch_size
                 mb_inds = b_inds[start:end]
 
@@ -369,7 +368,7 @@ if __name__ == "__main__":
         # Value network optimization
         for epoch in range(args.value_update_epochs):
             np.random.shuffle(b_inds)
-            for start in range(0, args.epoch_size, args.value_batch_size):
+            for start in range(0, args.batch_size, args.value_batch_size):
                 end = start + args.value_batch_size
                 mb_inds = b_inds[start:end]
 
@@ -389,7 +388,7 @@ if __name__ == "__main__":
         old_agent_policy.eval()
         for epoch in range(args.distill_update_epochs):
             np.random.shuffle(b_inds)
-            for start in range(0, args.epoch_size, args.distill_batch_size):
+            for start in range(0, args.batch_size, args.distill_batch_size):
                 end = start + args.distill_batch_size
                 mb_inds = b_inds[start:end]
 
@@ -402,7 +401,7 @@ if __name__ == "__main__":
 
                 # Distillation loss
                 policy_kl_loss = kl_divergence(old_action_dist, new_action_dist).mean()
-                value_loss = 0.5 * (new_value - value_target).square().mean()
+                value_loss = 0.5 * (new_value.view(-1) - value_target).square().mean()
                 distill_loss = value_loss + args.distill_beta * policy_kl_loss
 
                 distill_optimizer.zero_grad()
