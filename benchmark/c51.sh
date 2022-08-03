@@ -11,3 +11,10 @@ OMP_NUM_THREADS=1 xvfb-run -a python -m cleanrl_utils.benchmark \
     --command "poetry run python cleanrl/c51_atari.py --track --capture-video" \
     --num-seeds 3 \
     --workers 1
+
+export WANDB_ENTITY=openrlbenchmark
+xvfb-run -a python -m cleanrl_utils.benchmark \
+    --env-ids CartPole-v1 Acrobot-v1 MountainCar-v0 \
+    --command "poetry run python cleanrl/c51_jax.py --track --capture-video" \
+    --num-seeds 3 \
+    --workers 1
