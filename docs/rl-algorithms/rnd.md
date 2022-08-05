@@ -12,7 +12,48 @@ Original paper:
 
 Our single-file implementations of DQN:
 
-* [ppo_rnd.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd.py)
+* [ppo_rnd_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py)
+    * Uses the blazing fast [Envpool](https://github.com/sail-sg/envpool) vectorized environment.
     * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
     * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
     * Works with the `Discerete` action space
+
+???+ warning
+
+    Note that `ppo_rnd_envpool.py` does not work in Windows :fontawesome-brands-windows: and MacOs :fontawesome-brands-apple:. See envpool's built wheels here: [https://pypi.org/project/envpool/#files](https://pypi.org/project/envpool/#files)
+
+
+### Usage
+
+```bash
+poetry install -E envpool
+python cleanrl/ppo_rnd_envpool.py --help
+python cleanrl/ppo_rnd_envpool.py --env-id MontezumaRevenge-v5
+```
+
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`.
+Below is the additional metric for RND:
+
+* `charts/episode_curiosity_reward`: episodic intrinsic rewards.
+
+### Implementation details
+
+[ppo_rnd_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py) uses a customized `RecordEpisodeStatistics` to work with envpool but has the same other implementation details as `ppo_atari.py` (see [related docs](/rl-algorithms/ppo/#implementation-details_1)).
+
+### Experiment results
+
+To run benchmark experiments, see :material-github: [benchmark/rnd.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/rnd.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F1bd0d18978c81dd64e7987a4e19cfa31bf5b7199%2Fbenchmark%2Frnd.sh&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+Below are the average episodic returns for `ppo_rnd_envpool.py`. To ensure the quality of the implementation, we compared the results against `openai/random-network-distillation`' PPO.
+
+| Environment      | `ppo_rnd_envpool.py` | (Burda et al., 2019, Figure 7)[^1] 2000M steps
+| ----------- | ----------- | ----------- |
+| MontezumaRevengeNoFrameSkip-v4      | 7100     | 8152   |
+
+Note the MontezumaRevengeNoFrameSkip-v4 has same setting to MontezumaRevenge-v5.
+
+[^1]:Burda, Yuri, et al. "Exploration by random network distillation." Seventh International Conference on Learning Representations. 2019.
