@@ -10,7 +10,7 @@ Original paper:
 
 * [Exploration by Random Network Distillation](https://arxiv.org/abs/1810.12894)
 
-Our single-file implementations of DQN:
+Our single-file implementations of RND:
 
 * [ppo_rnd_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py)
     * Uses the blazing fast [Envpool](https://github.com/sail-sg/envpool) vectorized environment.
@@ -52,8 +52,9 @@ Below are the average episodic returns for `ppo_rnd_envpool.py`. To ensure the q
 
 | Environment      | `ppo_rnd_envpool.py` | (Burda et al., 2019, Figure 7)[^1] 2000M steps
 | ----------- | ----------- | ----------- |
-| MontezumaRevengeNoFrameSkip-v4      | 7100     | 8152   |
+| MontezumaRevengeNoFrameSkip-v4      | 7100 (1 seed)    | 8152 (3 seeds)  |
 
 Note the MontezumaRevengeNoFrameSkip-v4 has same setting to MontezumaRevenge-v5.
+Our benchmark has one seed due to limited compute resource and extreme long run time.
 
 [^1]:Burda, Yuri, et al. "Exploration by random network distillation." Seventh International Conference on Learning Representations. 2019.
