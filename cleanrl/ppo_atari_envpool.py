@@ -197,6 +197,7 @@ if __name__ == "__main__":
         num_envs=args.num_envs,
         episodic_life=True,
         reward_clip=True,
+        seed=args.seed,
     )
     envs.num_envs = args.num_envs
     envs.single_action_space = envs.action_space

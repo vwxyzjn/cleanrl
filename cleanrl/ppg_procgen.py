@@ -249,7 +249,7 @@ if __name__ == "__main__":
     envs = gym.wrappers.RecordEpisodeStatistics(envs)
     if args.capture_video:
         envs = gym.wrappers.RecordVideo(envs, f"videos/{run_name}")
-    envs = gym.wrappers.NormalizeReward(envs)
+    envs = gym.wrappers.NormalizeReward(envs, gamma=args.gamma)
     envs = gym.wrappers.TransformReward(envs, lambda reward: np.clip(reward, -10, 10))
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
@@ -473,10 +473,10 @@ if __name__ == "__main__":
                         optimizer.step()
                         optimizer.zero_grad()  # This cannot be outside, else gradients won't accumulate
 
-                except RuntimeError:
+                except RuntimeError as e:
                     raise Exception(
                         "if running out of CUDA memory, try a higher --n-aux-grad-accum, which trades more time for less gpu memory"
-                    )
+                    ) from e
 
                 del m_aux_obs, m_aux_returns
         writer.add_scalar("losses/aux/kl_loss", kl_loss.mean().item(), global_step)
