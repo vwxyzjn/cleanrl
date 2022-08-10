@@ -33,14 +33,6 @@ def parse_args():
         help="the wandb's project name")
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
-    parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="weather to capture videos of the agent performances (check out `videos` folder)")
-    parser.add_argument(
-        "--video-interval",
-        type=int,
-        default=50,
-        help="the episode interval for capturing video",
-    )
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4",
@@ -272,21 +264,6 @@ class RewardForwardFilter:
         return self.rewems
 
 
-class StickyAction(gym.Wrapper):
-    def __init__(self, env, sticky_action=True, p=0.25):
-        gym.Wrapper.__init__(self, env)
-        self.sticky_action = sticky_action
-        self.last_action = 0
-        self.p = p
-
-    def step(self, action):
-        if self.sticky_action:
-            if np.random.rand() <= self.p:
-                action = self.last_action
-            self.last_action = action
-        return self.env.step(action)
-
-
 if __name__ == "__main__":
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -316,12 +293,14 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
+    # env setup
     envs = envpool.make(
         args.env_id,
         env_type="gym",
         num_envs=args.num_envs,
         episodic_life=True,
         reward_clip=True,
+        seed=args.seed,
         repeat_action_probability=0.25,
     )
     envs.num_envs = args.num_envs
