@@ -163,11 +163,11 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 
 class Agent(nn.Module):
-    def __init__(self, envs, frames=4):
+    def __init__(self, envs):
         super().__init__()
         self.network = nn.Sequential(
             Scale(1 / 255),
-            layer_init(nn.Conv2d(frames, 32, 8, stride=4)),
+            layer_init(nn.Conv2d(4, 32, 8, stride=4)),
             nn.ReLU(),
             layer_init(nn.Conv2d(32, 64, 4, stride=2)),
             nn.ReLU(),
