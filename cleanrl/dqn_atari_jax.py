@@ -212,7 +212,6 @@ if __name__ == "__main__":
         if random.random() < epsilon:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            # obs = jax.device_put(obs)
             q_values = q_network.apply(q_state.params, obs)
             actions = q_values.argmax(axis=-1)
             actions = jax.device_get(actions)
