@@ -77,6 +77,7 @@ PPG specific:
             * Fully connected layer after last conv later - 1.4
             * Convolutional layers - Approximately 0.638
 1. The Adam Optimizer's Epsilon Parameter -(:material-github: [phasic_policy_gradient/ppg.py#L239](https://github.com/openai/phasic-policy-gradient/blob/c789b00be58aa704f7223b6fc8cd28a5aaa2e101/phasic_policy_gradient/ppg.py#L239)) - Set to torch default of 1e-8 instead of 1e-5 which is used in PPO.
+1. Use the same `gamma` parameter in the `NormalizeReward` wrapper. Note that the original implementation from [openai/train-procgen](https://github.com/openai/train-procgen) uses the default `gamma=0.99` in [the `VecNormalize` wrapper](https://github.com/openai/train-procgen/blob/1a2ae2194a61f76a733a39339530401c024c3ad8/train_procgen/train.py#L43) but `gamma=0.999` as PPO's parameter. The mismatch between the `gamma`s is technically incorrect. See [#209](https://github.com/vwxyzjn/cleanrl/pull/209)
 
 Here are some additional notes:
 
@@ -105,9 +106,9 @@ Below are the average episodic returns for `ppg_procgen.py`, and comparison with
 
 | Environment      | `ppg_procgen.py` | `ppo_procgen.py` | `openai/phasic-policy-gradient` (easy) |
 |------------------|------------------|------------------|----------------------------------------|
-| Starpilot (easy) | 35.19 ± 13.07    | 33.15 ± 11.99    | 42.01 ± 9.59                           |
-| Bossfight (easy) | 10.34 ± 2.27     | 9.48 ± 2.42      | 10.71 ± 2.05                           |
-| Bigfish (easy)   | 27.25 ± 7.55     | 22.21 ± 7.42     | 15.94 ± 10.80                          |
+| Starpilot (easy) | 34.82 ± 13.77    | 32.47 ± 11.21    | 42.01 ± 9.59                           |
+| Bossfight (easy) | 10.78 ± 1.90     | 9.63 ± 2.35      | 10.71 ± 2.05                           |
+| Bigfish (easy)   | 24.23 ± 10.73    | 16.80 ± 9.49     | 15.94 ± 10.80                          |
 
 
 ???+ warning

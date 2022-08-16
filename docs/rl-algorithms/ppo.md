@@ -444,7 +444,7 @@ See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `p
 [ppo_procgen.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_procgen.py) is based on the details in "Appendix" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/), which are as follows:
 
 1. IMPALA-style Neural Network (:material-github: [common/models.py#L28](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/models.py#L28))
-
+1. Use the same `gamma` parameter in the `NormalizeReward` wrapper. Note that the original implementation from [openai/train-procgen](https://github.com/openai/train-procgen) uses the default `gamma=0.99` in [the `VecNormalize` wrapper](https://github.com/openai/train-procgen/blob/1a2ae2194a61f76a733a39339530401c024c3ad8/train_procgen/train.py#L43) but `gamma=0.999` as PPO's parameter. The mismatch between the `gamma`s is technically incorrect. See [#209](https://github.com/vwxyzjn/cleanrl/pull/209)
 
 ### Experiment results
 
@@ -465,9 +465,9 @@ Below are the average episodic returns for `ppo_procgen.py`. To ensure the quali
 
 | Environment      | `ppo_procgen.py` | `openai/baselies`' PPO (Huang et al., 2022)[^1]
 | ----------- | ----------- | ----------- |
-| StarPilot (easy)      | 31.40 ± 11.73     | 33.97 ± 7.86  |
-| BossFight (easy)   | 9.09 ± 2.35    |  9.35 ± 2.04 |
-| BigFish  (easy)  | 21.44 ± 6.73         | 20.06 ± 5.34 |
+| StarPilot (easy)      | 32.47 ± 11.21      | 33.97 ± 7.86  |
+| BossFight (easy)   | 9.63 ± 2.35    |  9.35 ± 2.04 |
+| BigFish  (easy)  | 16.80 ± 9.49         | 20.06 ± 5.34 |
 
 
 ???+ info
@@ -874,5 +874,7 @@ Tracked experiments and game play videos:
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Pettingzoo-s-Multi-agent-Atari-CleanRL-s-PPO--VmlldzoyMDkxNTE5" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
 
 
+
+{!rl-algorithms/ppo-isaacgymenvs.md!}
 
 [^1]: Huang, Shengyi; Dossa, Rousslan Fernand Julien; Raffin, Antonin; Kanervisto, Anssi; Wang, Weixun (2022). The 37 Implementation Details of Proximal Policy Optimization. ICLR 2022 Blog Track https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/

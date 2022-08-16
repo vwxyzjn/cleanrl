@@ -64,6 +64,53 @@ Our [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/
 
 1. [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) uses a two separate objects `qf1` and `qf2` to represents the two Q functions in the Clipped Double Q-learning architecture, whereas  [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py)  (Fujimoto et al., 2018)[^2] uses a single `Critic` class that contains both Q networks. That said, these two implementations are virtually the same.
 
+2. [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) also adds support for handling continuous environments where the lower and higher bounds of the action space are not $[-1,1]$, or are asymmetric.
+The case where the bounds are not $[-1,1]$ is handled in [`TD3.py`](https://github.com/sfujim/TD3/blob/385b33ac7de4767bab17eb02ade4a268d3e4e24f/TD3.py#L28) (Fujimoto et al., 2018)[^2] as follows:
+```python
+class Actor(nn.Module):
+
+    ...
+
+	def forward(self, state):
+		a = F.relu(self.l1(state))
+		a = F.relu(self.l2(a))
+		return self.max_action * torch.tanh(self.l3(a)) # Scale from [-1,1] to [-action_high, action_high]
+```
+ On the other hand, in [`CleanRL's td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py), the mean and the scale of the action space are computed as `action_bias` and `action_scale` respectively.
+ Those scalars are in turn used to scale the output of a `tanh` activation function in the actor to the original action space range:
+```python
+class Actor(nn.Module):
+    def __init__(self, env):
+        ...
+        # action rescaling
+        self.register_buffer("action_scale", torch.FloatTensor((env.action_space.high - env.action_space.low) / 2.0))
+        self.register_buffer("action_bias", torch.FloatTensor((env.action_space.high + env.action_space.low) / 2.0))
+
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = torch.tanh(self.fc_mu(x))
+        return x * self.action_scale + self.action_bias # Scale from [-1,1] to [-action_low, action_high]
+```
+
+Additionally, when drawing exploration noise that is added to the actions produced by the actor, [`CleanRL's td3_continuous_action.py`](https://github.com/dosssman/cleanrl/blob/10b606e7bd9bd1b06e455e8ef542df2b7699a20c/cleanrl/td3_continuous_action.py#L180) centers the distribution the sampled from at `action_bias`, and the scale of the distribution is set to `action_scale * exploration_noise`.
+
+???+ info
+
+    Note that `Humanoid-v2`, `InvertedPendulum-v2`, `Pusher-v2` have action space bounds that are not the standard `[-1, 1]`. See below and :material-github: [PR #196](https://github.com/vwxyzjn/cleanrl/issues/196)
+
+    ```
+    Ant-v2 Observation space: Box(-inf, inf, (111,), float64) Action space: Box(-1.0, 1.0, (8,), float32)
+    HalfCheetah-v2 Observation space: Box(-inf, inf, (17,), float64) Action space: Box(-1.0, 1.0, (6,), float32)
+    Hopper-v2 Observation space: Box(-inf, inf, (11,), float64) Action space: Box(-1.0, 1.0, (3,), float32)
+    Humanoid-v2 Observation space: Box(-inf, inf, (376,), float64) Action space: Box(-0.4, 0.4, (17,), float32)
+    InvertedDoublePendulum-v2 Observation space: Box(-inf, inf, (11,), float64) Action space: Box(-1.0, 1.0, (1,), float32)
+    InvertedPendulum-v2 Observation space: Box(-inf, inf, (4,), float64) Action space: Box(-3.0, 3.0, (1,), float32)
+    Pusher-v2 Observation space: Box(-inf, inf, (23,), float64) Action space: Box(-2.0, 2.0, (7,), float32)
+    Reacher-v2 Observation space: Box(-inf, inf, (11,), float64) Action space: Box(-1.0, 1.0, (2,), float32)
+    Swimmer-v2 Observation space: Box(-inf, inf, (8,), float64) Action space: Box(-1.0, 1.0, (2,), float32)
+    Walker2d-v2 Observation space: Box(-inf, inf, (17,), float64) Action space: Box(-1.0, 1.0, (6,), float32)
+    ```
 
 ### Experiment results
 
@@ -79,6 +126,9 @@ Below are the average episodic returns for [`td3_continuous_action.py`](https://
 | HalfCheetah      | 9018.31 ± 1078.31      |9636.95 ± 859.065  |
 | Walker2d   | 4246.07 ± 1210.84     |  4682.82 ± 539.64 | 
 | Hopper   | 3391.78 ± 232.21        |  3564.07 ± 114.74 | 
+| Humanoid |  4822.64 ± 321.85      |  not available | 
+| Pusher |  -42.24 ± 6.74      |  not available | 
+| InvertedPendulum |    964.59 ± 43.91    | 1000.00 ± 0.00  | 
 
 
 
@@ -98,6 +148,12 @@ Learning curves:
 <img src="../td3/Walker2d-v2.png">
 
 <img src="../td3/Hopper-v2.png">
+
+<img src="../td3/Humanoid-v2.png">
+
+<img src="../td3/Pusher-v2.png">
+
+<img src="../td3/InvertedPendulum-v2.png">
 </div>
 
 
@@ -105,6 +161,80 @@ Tracked experiments and game play videos:
 
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-TD3--VmlldzoxNjk4Mzk5" style="width:100%; height:500px" title="MuJoCo: CleanRL's TD3"></iframe>
 
+
+
+
+## `td3_continuous_action_jax.py`
+
+The [td3_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) has the following features:
+
+* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  [td3_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) is roughly 2.5-4x faster than  [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py)
+* For continuous action space
+* Works with the `Box` observation space of low-level features
+* Works with the `Box` (continuous) action space
+
+### Usage
+
+```bash
+poetry install -E "mujoco jax"
+poetry run pip install --upgrade "jax[cuda]==0.3.14" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+poetry run python -c "import mujoco_py"
+python cleanrl/td3_continuous_action_jax.py --help
+poetry install -E mujoco # only works in Linux
+python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v3
+```
+
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/td3/#explanation-of-the-logged-metrics) for `td3_continuous_action.py`.
+
+
+### Implementation details
+
+See [related docs](/rl-algorithms/td3/#implementation-details) for `td3_continuous_action.py`.
+
+
+### Experiment results
+
+To run benchmark experiments, see :material-github: [benchmark/ddpg.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ddpg.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5bfdd4574d25474d641278ef5c47a97932b5b9e2%2Fbenchmark%2Ftd3.sh%23L9-L16&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+Below are the average episodic returns for [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
+
+| Environment      | [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) (RTX 3060 Ti) | [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) (VM w/ TPU) | [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) (RTX 2060) | [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py) (Fujimoto et al., 2018, Table 1)[^2]  |
+| ----------- | ----------- | ----------- | ----------- |  ----------- | 
+| HalfCheetah |  9099.93 ± 1171.83  | 9127.81 ± 965.42  | 9018.31 ± 1078.31      |9636.95 ± 859.065  |
+| Walker2d |  2874.39 ± 1684.57 | 3519.38 ± 368.02 | 4246.07 ± 1210.84     |  4682.82 ± 539.64 | 
+| Hopper |   3382.66 ± 242.52 | 3126.40 ± 558.93 | 3391.78 ± 232.21        |  3564.07 ± 114.74 | 
+
+
+
+???+ info
+
+    Note that the experiments were conducted on different hardwares, so your mileage might vary. This inconsistency is because 1) re-running expeirments on the same hardware is computationally expensive and 2) requiring the same hardware is not inclusive nor feasible to other contributors who might have different hardwares.
+
+    That said, we roughly expect to see a 2-4x speed improvement from using [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) under the same hardware. And if you disable the `--capture-video` overhead, the speed improvement will be even higher.
+
+
+Learning curves:
+
+<div class="grid-container">
+<img src="../td3-jax/HalfCheetah-v2.png">
+<img src="../td3-jax/HalfCheetah-v2-time.png">
+
+<img src="../td3-jax/Walker2d-v2.png">
+<img src="../td3-jax/Walker2d-v2-time.png">
+
+<img src="../td3-jax/Hopper-v2.png">
+<img src="../td3-jax/Hopper-v2-time.png">
+</div>
+
+
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-TD3-JAX--VmlldzoyMzU1OTA4" style="width:100%; height:500px" title="MuJoCo: CleanRL's TD3 + JAX"></iframe>
 
 [^1]:Lillicrap, T.P., Hunt, J.J., Pritzel, A., Heess, N.M., Erez, T., Tassa, Y., Silver, D., & Wierstra, D. (2016). Continuous control with deep reinforcement learning. CoRR, abs/1509.02971. https://arxiv.org/abs/1509.02971
 
