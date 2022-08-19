@@ -10,6 +10,7 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from gym.wrappers.normalize import RunningMeanStd
 from torch.distributions.categorical import Categorical
@@ -35,13 +36,13 @@ def parse_args():
         help="the entity (team) of wandb's project")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4",
+    parser.add_argument("--env-id", type=str, default="MontezumaRevenge-v5",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=10000000,
+    parser.add_argument("--total-timesteps", type=int, default=2000000000,
         help="total timesteps of the experiments")
-    parser.add_argument("--learning-rate", type=float, default=2.5e-4,
+    parser.add_argument("--learning-rate", type=float, default=1e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=8,
+    parser.add_argument("--num-envs", type=int, default=128,
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=128,
         help="the number of steps to run in each environment per policy rollout")
@@ -49,7 +50,7 @@ def parse_args():
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--gae", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Use GAE for advantage computation")
-    parser.add_argument("--gamma", type=float, default=0.999,
+    parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
@@ -63,7 +64,7 @@ def parse_args():
         help="the surrogate clipping coefficient")
     parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
-    parser.add_argument("--ent-coef", type=float, default=0.01,
+    parser.add_argument("--ent-coef", type=float, default=0.001,
         help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=0.5,
         help="coefficient of the value function")
@@ -89,7 +90,7 @@ def parse_args():
         help="coefficient of intrinsic reward"
     )
     parser.add_argument(
-        "--int-gamma", type=float, default=0.99,
+        "--int-gamma", type=float, default=0.999,
         help="Intrinsic reward discount rate"
     )
 
@@ -147,15 +148,6 @@ class RecordEpisodeStatistics(gym.Wrapper):
 
 
 # ALGO LOGIC: initialize agent here:
-class Scale(nn.Module):
-    def __init__(self, scale):
-        super().__init__()
-        self.scale = scale
-
-    def forward(self, x):
-        return x * self.scale
-
-
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
@@ -166,7 +158,6 @@ class Agent(nn.Module):
     def __init__(self, envs):
         super().__init__()
         self.network = nn.Sequential(
-            Scale(1 / 255),
             layer_init(nn.Conv2d(4, 32, 8, stride=4)),
             nn.ReLU(),
             layer_init(nn.Conv2d(32, 64, 4, stride=2)),
@@ -188,19 +179,25 @@ class Agent(nn.Module):
         self.critic_ext = layer_init(nn.Linear(448, 1), std=0.01)
         self.critic_int = layer_init(nn.Linear(448, 1), std=0.01)
 
-    def forward(self, x):
-        return self.network(x)
-
     def get_action_and_value(self, x, action=None):
-        logits = self.actor(self.forward(x))
+        hidden = self.forward(x / 255.0)
+        logits = self.actor(hidden)
         probs = Categorical(logits=logits)
+        features = self.extra_layer(hidden)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action), probs.entropy(), self.get_value(x)
+        return (
+            action,
+            probs.log_prob(action),
+            probs.entropy(),
+            self.critic_ext(features + hidden),
+            self.critic_int(features + hidden),
+        )
 
     def get_value(self, x):
-        features = self.forward(x)
-        return self.critic_ext(self.extra_layer(features) + features), self.critic_int(self.extra_layer(features) + features)
+        hidden = self.forward(x / 255.0)
+        features = self.extra_layer(hidden)
+        return self.critic_ext(features + hidden), self.critic_int(features + hidden)
 
 
 class RNDModel(nn.Module):
@@ -419,8 +416,8 @@ if __name__ == "__main__":
 
         # bootstrap reward if not done. reached the batch limit
         with torch.no_grad():
-            last_value_ext, last_value_int = agent.get_value(next_obs)
-            last_value_ext, last_value_int = last_value_ext.reshape(1, -1), last_value_int.reshape(1, -1)
+            next_value_ext, next_value_int = agent.get_value(next_obs)
+            next_value_ext, next_value_int = next_value_ext.reshape(1, -1), next_value_int.reshape(1, -1)
             if args.gae:
                 ext_advantages = torch.zeros_like(rewards, device=device)
                 int_advantages = torch.zeros_like(curiosity_rewards, device=device)
@@ -430,8 +427,8 @@ if __name__ == "__main__":
                     if t == args.num_steps - 1:
                         ext_nextnonterminal = 1.0 - next_done
                         int_nextnonterminal = 1.0
-                        ext_nextvalues = last_value_ext
-                        int_nextvalues = last_value_int
+                        ext_nextvalues = next_value_ext
+                        int_nextvalues = next_value_int
                     else:
                         ext_nextnonterminal = 1.0 - dones[t + 1]
                         int_nextnonterminal = 1.0
@@ -454,8 +451,8 @@ if __name__ == "__main__":
                     if t == args.num_steps - 1:
                         ext_nextnonterminal = 1.0 - next_done
                         int_nextnonterminal = 1.0
-                        ext_next_return = last_value_ext
-                        int_next_return = last_value_int
+                        ext_next_return = next_value_ext
+                        int_next_return = next_value_int
                     else:
                         ext_nextnonterminal = 1.0 - dones[t + 1]
                         int_nextnonterminal = 1.0
@@ -481,7 +478,6 @@ if __name__ == "__main__":
         obs_rms.update(b_obs[:, 3, :, :].reshape(-1, 1, 84, 84).cpu().numpy())
 
         # Optimizing the policy and value network
-        forward_mse = nn.MSELoss(reduction="none")
         b_inds = np.arange(args.batch_size)
 
         rnd_next_obs = (
@@ -499,7 +495,9 @@ if __name__ == "__main__":
                 mb_inds = b_inds[start:end]
 
                 predict_next_state_feature, target_next_state_feature = rnd_model(rnd_next_obs[mb_inds])
-                forward_loss = forward_mse(predict_next_state_feature, target_next_state_feature.detach()).mean(-1)
+                forward_loss = F.mse_loss(
+                    predict_next_state_feature, target_next_state_feature.detach(), reduction="none"
+                ).mean(-1)
 
                 mask = torch.rand(len(forward_loss), device=device)
                 mask = (mask < args.update_proportion).type(torch.FloatTensor).to(device)
