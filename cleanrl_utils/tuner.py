@@ -6,9 +6,9 @@ from typing import Callable
 
 import numpy as np
 import optuna
+import wandb
 from rich import print
 from tensorboard.backend.event_processing import event_accumulator
-import wandb
 
 
 class HiddenPrints:
@@ -94,7 +94,7 @@ class Tuner:
                     raise optuna.TrialPruned()
                 if run:
                     run.log({"normalized_scores": np.average(normalized_scores)})
-            
+
             run.finish(quiet=True)
             return np.average(normalized_scores)
 
