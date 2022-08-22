@@ -44,7 +44,7 @@ Here is what happened:
 
 1. The `tuner_example.py` launches `num_trials=100` *trials* to find the best single set of hyperparameters for `CartPole-v1` in `script="cleanrl/ppo.py"`.
 1. Each *trial* uses a set of hyperparameters sampled from the `params_fn` to run `num_seeds=3` *experiments* with different random seeds, mitigating the impact of randomness on the results. 
-    * In each *experiment*, `tuner_example.py` averages the last `metric_last_n_average_window=50` reported  `metric="charts/episodic_return"` to a number $x_i$ and calculate a normalized score  $z_i = (x_i - 0) / (500 - 0)$ according to `target_scores`. 
+    * In each *experiment*, `tuner_example.py` averages the last `metric_last_n_average_window=50` reported  `metric="charts/episodic_return"` to a number $x_i$ and calculate a normalized score  $z_i = (x_i - 0) / (500 - 0)$ according to `target_scores`, where $0$ and $500$ are the minimum and maximum values of the `metric` for `CartPole-v1`.
 1. Each *trial* then averages the normalized scores $z_i$ of the three *experiments* to a number $z$ and the tuner optimizes $z$ according `direction="maximize"`.
 
 
