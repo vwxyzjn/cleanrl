@@ -1,12 +1,9 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/sac/#sac_continuous_actionpy
 import argparse
-import math
 import os
 import random
 import time
-import typing as t
 from distutils.util import strtobool
-from types import SimpleNamespace
 
 import gym
 import numpy as np
@@ -17,7 +14,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
-
 
 PAPER_N_QUANTILES_TO_DROP = {
     "Hopper-v3": 5,
@@ -117,32 +113,19 @@ def quantile_huber_loss(
     quantiles: torch.Tensor,
     samples: torch.Tensor,
 ) -> torch.Tensor:
-    pairwise_delta = (
-        samples[:, None, None, :] - quantiles[:, :, :, None]  # type: ignore
-    )  # batch x nets x quantiles x samples
+    pairwise_delta = samples[:, None, None, :] - quantiles[:, :, :, None]  # type: ignore  # batch x nets x quantiles x samples
     abs_pairwise_delta = torch.abs(pairwise_delta)
-    huber_loss = torch.where(
-        abs_pairwise_delta > 1, abs_pairwise_delta - 0.5, pairwise_delta**2 * 0.5
-    )
+    huber_loss = torch.where(abs_pairwise_delta > 1, abs_pairwise_delta - 0.5, pairwise_delta**2 * 0.5)
 
     n_quantiles = quantiles.shape[2]
-    taus = (
-        torch.arange(n_quantiles, device=quantiles.device).float().unsqueeze(0)
-        / n_quantiles
-        + 1 / 2 / n_quantiles
-    )
-    elementwise_loss = (
-        torch.abs(taus[:, None, :, None] - (pairwise_delta < 0).float())  # type: ignore
-        * huber_loss
-    )
+    taus = torch.arange(n_quantiles, device=quantiles.device).float().unsqueeze(0) / n_quantiles + 1 / 2 / n_quantiles
+    elementwise_loss = torch.abs(taus[:, None, :, None] - (pairwise_delta < 0).float()) * huber_loss  # type: ignore
     return elementwise_loss.mean()
 
 
 # ALGO LOGIC: initialize agent here:
 class QuantileCritics(nn.Module):
-    def __init__(
-        self, envs: gym.vector.VectorEnv, n_quantiles: int, n_critics: int
-    ) -> None:
+    def __init__(self, envs: gym.vector.VectorEnv, n_quantiles: int, n_critics: int) -> None:
         super().__init__()
         state_dim = np.prod(envs.single_observation_space.shape)
         action_dim = np.prod(envs.single_action_space.shape)
@@ -196,9 +179,7 @@ class Actor(nn.Module):
         mean = self.fc_mean(x)
         log_std = self.fc_logstd(x)
         log_std = torch.tanh(log_std)
-        log_std = LOG_STD_MIN + 0.5 * (LOG_STD_MAX - LOG_STD_MIN) * (
-            log_std + 1
-        )  # From SpinUp / Denis Yarats
+        log_std = LOG_STD_MIN + 0.5 * (LOG_STD_MAX - LOG_STD_MIN) * (log_std + 1)  # From SpinUp / Denis Yarats
 
         return mean, log_std
 
@@ -235,8 +216,7 @@ if __name__ == "__main__":
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
         "hyperparameters",
-        "|param|value|\n|-|-|\n%s"
-        % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
+        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
     # TRY NOT TO MODIFY: seeding
@@ -248,20 +228,14 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, args.seed, 0, args.capture_video, run_name)]
-    )
-    assert isinstance(
-        envs.single_action_space, gym.spaces.Box
-    ), "only continuous action space is supported"
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
+    assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     max_action = float(envs.single_action_space.high[0])
 
     if args.use_paper_n_quantiles_to_drop and args.env_id in PAPER_N_QUANTILES_TO_DROP:
         args.n_quantiles_to_drop = PAPER_N_QUANTILES_TO_DROP[args.env_id]
-        print(
-            f"Using paper n_quantiles_to_drop: {args.n_quantiles_to_drop} for env: {args.env_id}"
-        )
+        print(f"Using paper n_quantiles_to_drop: {args.n_quantiles_to_drop} for env: {args.env_id}")
     actor = Actor(envs).to(device)
     critics = QuantileCritics(envs, args.n_quantiles, args.n_critics).to(device)
     args.n_top_quantiles_to_drop = args.n_quantiles_to_drop * critics.n_critics
@@ -273,9 +247,7 @@ if __name__ == "__main__":
     target_critics.requires_grad_(False)
 
     # Automatic entropy tuning
-    target_entropy = -torch.prod(
-        torch.Tensor(envs.single_action_space.shape).to(device)
-    ).item()
+    target_entropy = -torch.prod(torch.Tensor(envs.single_action_space.shape).to(device)).item()
     log_alpha = torch.zeros(1, requires_grad=True, device=device)
     alpha_optimizer = optim.Adam([log_alpha], lr=args.alpha_adam_lr)
 
@@ -294,9 +266,7 @@ if __name__ == "__main__":
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
-            actions = np.array(
-                [envs.single_action_space.sample() for _ in range(envs.num_envs)]
-            )
+            actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
             actions, _, _ = actor.get_action(torch.Tensor(obs).to(device))
             actions = actions.detach().cpu().numpy()
@@ -307,15 +277,9 @@ if __name__ == "__main__":
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         for info in infos:
             if "episode" in info.keys():
-                print(
-                    f"global_step={global_step}, episodic_return={info['episode']['r']}"
-                )
-                writer.add_scalar(
-                    "charts/episodic_return", info["episode"]["r"], global_step
-                )
-                writer.add_scalar(
-                    "charts/episodic_length", info["episode"]["l"], global_step
-                )
+                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 break
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
@@ -337,24 +301,16 @@ if __name__ == "__main__":
             # --- Q loss ---
             with torch.no_grad():
                 # get policy action
-                sampled_next_actions, next_log_pi, _ = actor.get_action(
-                    sample_batch.next_observations
-                )
+                sampled_next_actions, next_log_pi, _ = actor.get_action(sample_batch.next_observations)
 
                 # compute and cut quantiles at the next state
                 # batch x nets x quantiles
-                next_z = target_critics(
-                    sample_batch.next_observations, sampled_next_actions
-                )
+                next_z = target_critics(sample_batch.next_observations, sampled_next_actions)
                 sorted_z, _ = torch.sort(next_z.reshape(batch_size, -1))
-                sorted_z_part = sorted_z[
-                    :, : critics.n_total_quantiles - args.n_top_quantiles_to_drop
-                ]
+                sorted_z_part = sorted_z[:, : critics.n_total_quantiles - args.n_top_quantiles_to_drop]
 
                 # compute target
-                target = sample_batch.rewards + (
-                    1 - sample_batch.dones
-                ) * args.gamma * (sorted_z_part - alpha * next_log_pi)
+                target = sample_batch.rewards + (1 - sample_batch.dones) * args.gamma * (sorted_z_part - alpha * next_log_pi)
                 assert target.shape == (
                     batch_size,
                     critics.n_total_quantiles - args.n_top_quantiles_to_drop,
@@ -374,10 +330,7 @@ if __name__ == "__main__":
             # --- Policy update ---
             sampled_actions, log_pi, _ = actor.get_action(sample_batch.observations)
             actor_loss = (
-                alpha * log_pi
-                - critics(sample_batch.observations, sampled_actions)
-                .mean(2)
-                .mean(1, keepdim=True)
+                alpha * log_pi - critics(sample_batch.observations, sampled_actions).mean(2).mean(1, keepdim=True)
             ).mean()
             actor_optimizer.zero_grad()
             actor_loss.backward()
@@ -387,12 +340,8 @@ if __name__ == "__main__":
             alpha_optimizer.zero_grad()
             alpha_loss.backward()
             alpha_optimizer.step()
-            for param, target_param in zip(
-                critics.parameters(), target_critics.parameters()
-            ):
-                target_param.data.copy_(
-                    args.tau * param.data + (1 - args.tau) * target_param.data
-                )
+            for param, target_param in zip(critics.parameters(), target_critics.parameters()):
+                target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
             if global_step % 100 == 0:
                 writer.add_scalar("losses/cur_z", cur_z.mean().item(), global_step)
