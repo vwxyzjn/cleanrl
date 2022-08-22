@@ -249,7 +249,7 @@ if __name__ == "__main__":
     envs = gym.wrappers.RecordEpisodeStatistics(envs)
     if args.capture_video:
         envs = gym.wrappers.RecordVideo(envs, f"videos/{run_name}")
-    envs = gym.wrappers.NormalizeReward(envs)
+    envs = gym.wrappers.NormalizeReward(envs, gamma=args.gamma)
     envs = gym.wrappers.TransformReward(envs, lambda reward: np.clip(reward, -10, 10))
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 

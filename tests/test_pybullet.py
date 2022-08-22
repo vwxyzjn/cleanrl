@@ -2,9 +2,6 @@ import subprocess
 
 
 def test_pybullet():
-    """
-    Test classic control
-    """
     subprocess.run(
         "python cleanrl/ppo_continuous_action.py --num-envs 1 --num-steps 64 --total-timesteps 256",
         shell=True,
