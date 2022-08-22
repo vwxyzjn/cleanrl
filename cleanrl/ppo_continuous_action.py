@@ -5,6 +5,8 @@ import random
 import time
 from distutils.util import strtobool
 
+import motion_imitation
+from motion_imitation.robots import a1
 import gym
 import numpy as np
 import pybullet_envs  # noqa
