@@ -87,40 +87,6 @@ def parse_args():
     return args
 
 
-class RecordEpisodeStatistics(gym.Wrapper):
-    def __init__(self, env, deque_size=100):
-        super().__init__(env)
-        self.num_envs = getattr(env, "num_envs", 1)
-        self.episode_returns = None
-        self.episode_lengths = None
-
-    def reset(self, **kwargs):
-        observations = super().reset(**kwargs)
-        self.episode_returns = np.zeros(self.num_envs, dtype=np.float32)
-        self.episode_lengths = np.zeros(self.num_envs, dtype=np.int32)
-        self.lives = np.zeros(self.num_envs, dtype=np.int32)
-        self.returned_episode_returns = np.zeros(self.num_envs, dtype=np.float32)
-        self.returned_episode_lengths = np.zeros(self.num_envs, dtype=np.int32)
-        return observations
-
-    def step(self, action):
-        observations, rewards, dones, infos = super().step(action)
-        self.episode_returns += infos["reward"]
-        self.episode_lengths += 1
-        self.returned_episode_returns[:] = self.episode_returns
-        self.returned_episode_lengths[:] = self.episode_lengths
-        self.episode_returns *= 1 - infos["terminated"]
-        self.episode_lengths *= 1 - infos["terminated"]
-        infos["r"] = self.returned_episode_returns
-        infos["l"] = self.returned_episode_lengths
-        return (
-            observations,
-            rewards,
-            dones,
-            infos,
-        )
-
-
 class Network(nn.Module):
     @nn.compact
     def __call__(self, x):
@@ -189,6 +155,15 @@ class Storage:
     values: jnp.array
     advantages: jnp.array
     returns: jnp.array
+    rewards: jnp.array
+
+
+@flax.struct.dataclass
+class EpisodeStatistics:
+    episode_returns: jnp.array
+    episode_lengths: jnp.array
+    returned_episode_returns: jnp.array
+    returned_episode_lengths: jnp.array
 
 
 if __name__ == "__main__":
@@ -231,7 +206,27 @@ if __name__ == "__main__":
     envs.single_action_space = envs.action_space
     envs.single_observation_space = envs.observation_space
     envs.is_vector_env = True
-    envs = RecordEpisodeStatistics(envs)
+    episode_stats = EpisodeStatistics(
+        episode_returns=jnp.zeros(args.num_envs, dtype=jnp.float32),
+        episode_lengths=jnp.zeros(args.num_envs, dtype=jnp.int32),
+        returned_episode_returns=jnp.zeros(args.num_envs, dtype=jnp.float32),
+        returned_episode_lengths=jnp.zeros(args.num_envs, dtype=jnp.int32),
+    )
+    handle, recv, send, step_env = envs.xla()
+
+    def step_env_wrappeed(episode_stats, handle, action):
+        handle, (next_obs, reward, next_done, info) = step_env(handle, action)
+        new_episode_return = episode_stats.episode_returns + info["reward"]
+        new_episode_length = episode_stats.episode_lengths + 1
+        episode_stats = episode_stats.replace(
+            episode_returns=(new_episode_return) * (1 - info["terminated"]) * (1 - info["TimeLimit.truncated"]),
+            episode_lengths=(new_episode_length) * (1 - info["terminated"]) * (1 - info["TimeLimit.truncated"]),
+            # only update the `returned_episode_returns` if the episode is done
+            returned_episode_returns=jnp.where(info["terminated"]+info["TimeLimit.truncated"], new_episode_return, episode_stats.returned_episode_returns),
+            returned_episode_lengths=jnp.where(info["terminated"]+info["TimeLimit.truncated"], new_episode_length, episode_stats.returned_episode_lengths),
+        )
+        return episode_stats, handle, (next_obs, reward, next_done, info)
+
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     def linear_schedule(count):
@@ -271,8 +266,8 @@ if __name__ == "__main__":
         values=jnp.zeros((args.num_steps, args.num_envs)),
         advantages=jnp.zeros((args.num_steps, args.num_envs)),
         returns=jnp.zeros((args.num_steps, args.num_envs)),
+        rewards=jnp.zeros((args.num_steps, args.num_envs)),
     )
-    rewards = np.zeros((args.num_steps, args.num_envs))
 
     @jax.jit
     def get_action_and_value(
@@ -322,7 +317,6 @@ if __name__ == "__main__":
         agent_state: TrainState,
         next_obs: np.ndarray,
         next_done: np.ndarray,
-        rewards: np.ndarray,
         storage: Storage,
     ):
         storage = storage.replace(advantages=storage.advantages.at[:].set(0.0))
@@ -337,7 +331,7 @@ if __name__ == "__main__":
             else:
                 nextnonterminal = 1.0 - storage.dones[t + 1]
                 nextvalues = storage.values[t + 1]
-            delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - storage.values[t]
+            delta = storage.rewards[t] + args.gamma * nextvalues * nextnonterminal - storage.values[t]
             lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
             storage = storage.replace(advantages=storage.advantages.at[t].set(lastgaelam))
         storage = storage.replace(returns=storage.advantages + storage.values)
@@ -402,27 +396,35 @@ if __name__ == "__main__":
     next_obs = envs.reset()
     next_done = np.zeros(args.num_envs)
 
-    for update in range(1, args.num_updates + 1):
+    @jax.jit
+    def rollout(agent_state, episode_stats, next_obs, next_done, storage, key, handle, global_step):
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
             storage, action, key = get_action_and_value(agent_state, next_obs, next_done, storage, step, key)
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, rewards[step], next_done, info = envs.step(np.array(action))
-            for idx, d in enumerate(next_done):
-                if d and info["terminated"][idx] == 1:
-                    print(f"global_step={global_step}, episodic_return={info['r'][idx]}")
-                    writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
-                    writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
+            episode_stats, handle, (next_obs, reward, next_done, _) = step_env_wrappeed(episode_stats, handle, action)
+            storage = storage.replace(rewards=storage.rewards.at[step].set(reward))
+        return agent_state, episode_stats, next_obs, next_done, storage, key, handle, global_step
 
-        storage = compute_gae(agent_state, next_obs, next_done, rewards, storage)
+    for update in range(1, args.num_updates + 1):
+        update_time_start = time.time()
+        agent_state, episode_stats, next_obs, next_done, storage, key, handle, global_step = rollout(
+            agent_state, episode_stats, next_obs, next_done, storage, key, handle, global_step
+        )
+        storage = compute_gae(agent_state, next_obs, next_done, storage)
         agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, key = update_ppo(
             agent_state,
             storage,
             key,
         )
+        avg_episodic_return = np.mean(episode_stats.returned_episode_returns)
+        print(f"global_step={global_step}, avg_episodic_return={avg_episodic_return}")
+        print(episode_stats)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
+        writer.add_scalar("charts/avg_episodic_return", avg_episodic_return, global_step)
+        writer.add_scalar("charts/avg_episodic_length", np.mean(episode_stats.returned_episode_lengths), global_step)
         writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"].item(), global_step)
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
@@ -430,8 +432,10 @@ if __name__ == "__main__":
         # writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         # writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
+        writer.add_scalar("losses/loss", loss.item(), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+        writer.add_scalar("charts/SPS_update", int(args.num_envs * args.num_steps / (time.time() - update_time_start)), global_step)
 
     envs.close()
     writer.close()
