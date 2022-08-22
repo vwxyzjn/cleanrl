@@ -94,7 +94,9 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 class SoftQNetwork(nn.Module):
     def __init__(self, env, num_skills):
         super().__init__()
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape)+num_skills, 256)
+        self.fc1 = nn.Linear(
+            np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape) + num_skills, 256
+        )
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
@@ -131,7 +133,7 @@ class SoftQNetwork(nn.Module):
 #         self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
 #         self.fc2 = nn.Linear(256, 256)
 #         self.fc3 = nn.Linear(256, num_skills)
-    
+
 #     def forward(self, x):
 #         x = F.relu(self.fc1(x))
 #         x = F.relu(self.fc2(x))
@@ -145,7 +147,7 @@ class Discriminator(nn.Module):
         self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, num_skills)
-    
+
     def forward(self, x):
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
@@ -160,7 +162,7 @@ LOG_STD_MIN = -5
 class Actor(nn.Module):
     def __init__(self, env, num_skills):
         super().__init__()
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod()+num_skills, 256)
+        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + num_skills, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc_mean = nn.Linear(256, np.prod(env.single_action_space.shape))
         self.fc_logstd = nn.Linear(256, np.prod(env.single_action_space.shape))
@@ -197,6 +199,7 @@ def aug_obs_z(obs, skill_one_hot):
     obs = np.asarray(obs)
     aug_obs = np.hstack((obs, skill_one_hot))
     return aug_obs
+
 
 def split_aug_obs(aug_obs, num_skills):
     assert type(aug_obs) in [torch.Tensor, np.ndarray] and type(num_skills) is int, "invalid input type"
@@ -274,10 +277,9 @@ if __name__ == "__main__":
     )
     start_time = time.time()
 
-
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
-    
+
     # sampling new skill z at the start of an episode
     z = [np.random.randint(args.num_skills) for _ in range(envs.num_envs)]
     one_hot_z = np.zeros((envs.num_envs, args.num_skills), dtype=np.float32)
@@ -302,21 +304,21 @@ if __name__ == "__main__":
         for idx, info in enumerate(infos):
             if "episode" in info.keys():
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return/"+str(z[idx]), info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length/"+str(z[idx]), info["episode"]["l"], global_step)
+                writer.add_scalar("charts/episodic_return/" + str(z[idx]), info["episode"]["r"], global_step)
+                writer.add_scalar("charts/episodic_length/" + str(z[idx]), info["episode"]["l"], global_step)
                 break
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
         real_z_aug_obs_next = z_aug_obs_next.copy()
         for idx, d in enumerate(dones):
             if d:
-                real_z_aug_obs_next[idx, :-args.num_skills] = infos[idx]["terminal_observation"]
+                real_z_aug_obs_next[idx, : -args.num_skills] = infos[idx]["terminal_observation"]
                 # if episode ends, update the sampled skill z for the next episode
                 z[idx] = np.random.randint(args.num_skills)
                 one_hot_skill = np.zeros(args.num_skills)
                 one_hot_skill[z[idx]] = 1
                 one_hot_z[idx] = one_hot_skill
-                z_aug_obs_next[idx, -args.num_skills:] = one_hot_skill
+                z_aug_obs_next[idx, -args.num_skills :] = one_hot_skill
         rb.add(z_aug_obs, real_z_aug_obs_next, actions, rewards, dones, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
@@ -338,7 +340,7 @@ if __name__ == "__main__":
                 qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 # use diayn rewards instead of environment rewards
-                diayn_reward = predicted_z_log_probs.detach() - np.log(1/args.num_skills)
+                diayn_reward = predicted_z_log_probs.detach() - np.log(1 / args.num_skills)
                 next_q_value = diayn_reward.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
