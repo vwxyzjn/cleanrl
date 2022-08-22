@@ -116,11 +116,11 @@ tuner.tune(
     ```
 
 
-## Work w/ pruners
+## Work w/ pruners and samplers
 
-You can use `Tuner` with any pruner from `optuna` to prune less promising experiments:
+You can use `Tuner` with any [pruner](https://optuna.readthedocs.io/en/stable/reference/pruners.html) from `optuna` to prune less promising experiments or [samplers](https://optuna.readthedocs.io/en/stable/reference/samplers.html) to sample new hyperparameters. If you don't specify them explicitly, the script will use the [default ones](https://optuna.readthedocs.io/en/stable/reference/generated/optuna.create_study.html).
 
-```python title="tuner_example_pruner.py" hl_lines="1 22"
+```python title="tuner_example_pruner.py" hl_lines="1 22 23"
 import optuna
 from cleanrl_utils.tuner import Tuner
 tuner = Tuner(
@@ -143,6 +143,7 @@ tuner = Tuner(
         "num-envs": 16,
     },
     pruner=optuna.pruners.MedianPruner(n_startup_trials=5),
+    sampler=optuna.samplers.TPESampler(),
 )
 tuner.tune(
     num_trials=100,
@@ -156,7 +157,7 @@ tuner.tune(
 The `Tuner` can track all the experiments into [Weights and Biases](https://wandb.ai) to help you visualize the progress of the tuning.
 
 
-```python title="tuner_example.py" hl_lines="23"
+```python title="tuner_example.py" hl_lines="24"
 import optuna
 from cleanrl_utils.tuner import Tuner
 tuner = Tuner(
@@ -179,6 +180,7 @@ tuner = Tuner(
         "num-envs": 16,
     },
     pruner=optuna.pruners.MedianPruner(n_startup_trials=5),
+    sampler=optuna.samplers.TPESampler(),
     wandb_kwargs={"project": "cleanrl"},
 )
 tuner.tune(
