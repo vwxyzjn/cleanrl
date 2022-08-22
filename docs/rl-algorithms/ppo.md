@@ -875,4 +875,6 @@ Tracked experiments and game play videos:
 
 
 
+{!rl-algorithms/ppo-isaacgymenvs.md!}
+
 [^1]: Huang, Shengyi; Dossa, Rousslan Fernand Julien; Raffin, Antonin; Kanervisto, Anssi; Wang, Weixun (2022). The 37 Implementation Details of Proximal Policy Optimization. ICLR 2022 Blog Track https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/
