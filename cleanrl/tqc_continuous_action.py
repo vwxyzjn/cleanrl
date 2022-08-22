@@ -65,6 +65,9 @@ def parse_args():
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=256,
         help="the batch size of sample from the reply memory")
+    parser.add_argument("--handle-timeout-termination",
+        type=lambda x: bool(strtobool(x)), default=False,
+        help="treat TimeLimit.truncated == True as done == False")
     parser.add_argument("--n-quantiles", type=int, default=25,
         help="the number of quantiles used for each Q Network")
     parser.add_argument("--n-critics", type=int, default=5,
@@ -257,7 +260,7 @@ if __name__ == "__main__":
         envs.single_observation_space,
         envs.single_action_space,
         device,
-        handle_timeout_termination=True,
+        handle_timeout_termination=args.handle_timeout_termination,
     )
     start_time = time.time()
 
