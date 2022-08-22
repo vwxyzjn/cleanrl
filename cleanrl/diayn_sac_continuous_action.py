@@ -68,6 +68,8 @@ def parse_args():
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=False, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
     parser.add_argument("--num-skills", type=int, default=50)
+    parser.add_argument("--discriminator_lr", type=float, default=1e-3,
+        help="the learning rate of the discriminator network")
     args = parser.parse_args()
     # fmt: on
     return args
@@ -90,9 +92,9 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 
 # ALGO LOGIC: initialize agent here:
 class SoftQNetwork(nn.Module):
-    def __init__(self, env):
+    def __init__(self, env, num_skills):
         super().__init__()
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256)
+        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape)+num_skills, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
@@ -104,14 +106,61 @@ class SoftQNetwork(nn.Module):
         return x
 
 
+# INFO: some implementations use separate network for V and Q
+# as cleanrl doesn't use a separate V network, we'll follow same structure for DIAYN
+# class ValueNetwork(nn.Module):
+#     def __init__(self, env):
+#         super().__init__()
+#         self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
+#         self.fc2 = nn.Linear(256, 256)
+#         self.fc3 = nn.Linear(256, 1)
+
+#     def forward(self, x):
+#         x = F.relu(self.fc1(x))
+#         x = F.relu(self.fc2(x))
+#         x = self.fc3(x)
+#         return x
+
+
+# INFO: don't need to use OptionsPolicy as it is not used in the paper.
+# Instead skill is uniformly sampled from the skills space.
+# This can be used later to use pretrained skills to optimize for a specific reward function.
+# class OptionsPolicy(nn.Module):
+#     def __init__(self, env, num_skills):
+#         super().__init__()
+#         self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
+#         self.fc2 = nn.Linear(256, 256)
+#         self.fc3 = nn.Linear(256, num_skills)
+    
+#     def forward(self, x):
+#         x = F.relu(self.fc1(x))
+#         x = F.relu(self.fc2(x))
+#         x = self.fc3(x)
+#         return OneHotCategorical(logits = x)
+
+
+class Discriminator(nn.Module):
+    def __init__(self, env, num_skills):
+        super().__init__()
+        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, num_skills)
+    
+    def forward(self, x):
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+
 LOG_STD_MAX = 2
 LOG_STD_MIN = -5
 
 
 class Actor(nn.Module):
-    def __init__(self, env):
+    def __init__(self, env, num_skills):
         super().__init__()
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
+        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod()+num_skills, 256)
         self.fc2 = nn.Linear(256, 256)
         self.fc_mean = nn.Linear(256, np.prod(env.single_action_space.shape))
         self.fc_logstd = nn.Linear(256, np.prod(env.single_action_space.shape))
@@ -142,6 +191,17 @@ class Actor(nn.Module):
         log_prob = log_prob.sum(1, keepdim=True)
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
         return action, log_prob, mean
+
+
+def aug_obs_z(obs, skill_one_hot):
+    obs = np.asarray(obs)
+    aug_obs = np.hstack((obs, skill_one_hot))
+    return aug_obs
+
+def split_aug_obs(aug_obs, num_skills):
+    assert type(aug_obs) in [torch.Tensor, np.ndarray] and type(num_skills) is int, "invalid input type"
+    obs, skill_one_hot = aug_obs[:, :-num_skills], aug_obs[:, -num_skills:]
+    return obs, skill_one_hot
 
 
 if __name__ == "__main__":
@@ -179,15 +239,18 @@ if __name__ == "__main__":
 
     max_action = float(envs.single_action_space.high[0])
 
-    actor = Actor(envs).to(device)
-    qf1 = SoftQNetwork(envs).to(device)
-    qf2 = SoftQNetwork(envs).to(device)
-    qf1_target = SoftQNetwork(envs).to(device)
-    qf2_target = SoftQNetwork(envs).to(device)
+    actor = Actor(envs, args.num_skills).to(device)
+    qf1 = SoftQNetwork(envs, args.num_skills).to(device)
+    qf2 = SoftQNetwork(envs, args.num_skills).to(device)
+    qf1_target = SoftQNetwork(envs, args.num_skills).to(device)
+    qf2_target = SoftQNetwork(envs, args.num_skills).to(device)
     qf1_target.load_state_dict(qf1.state_dict())
     qf2_target.load_state_dict(qf2.state_dict())
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
+
+    discriminator = Discriminator(envs, args.num_skills).to(device)
+    discriminator_optimizer = optim.Adam(list(discriminator.parameters()), lr=args.discriminator_lr)
 
     # Automatic entropy tuning
     if args.autotune:
@@ -199,55 +262,84 @@ if __name__ == "__main__":
         alpha = args.alpha
 
     envs.single_observation_space.dtype = np.float32
+    low = np.hstack([envs.single_observation_space.low, np.full(args.num_skills, 0)])
+    high = np.hstack([envs.single_observation_space.high, np.full(args.num_skills, 1)])
+    aug_obs_space = gym.spaces.Box(low=low, high=high)
     rb = ReplayBuffer(
         args.buffer_size,
-        envs.single_observation_space,
+        aug_obs_space,
         envs.single_action_space,
         device,
         handle_timeout_termination=True,
     )
     start_time = time.time()
 
+
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
+    
+    # sampling new skill z at the start of an episode
+    z = [np.random.randint(args.num_skills) for _ in range(envs.num_envs)]
+    one_hot_z = np.zeros((envs.num_envs, args.num_skills), dtype=np.float32)
+    for idx in range(envs.num_envs):
+        one_hot_z[idx, z[idx]] = 1
+    # augmenting observation with skill one hot vector
+    z_aug_obs = aug_obs_z(obs, one_hot_z)
+
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            actions, _, _ = actor.get_action(torch.Tensor(obs).to(device))
+            actions, _, _ = actor.get_action(torch.Tensor(z_aug_obs).to(device))
             actions = actions.detach().cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
+        z_aug_obs_next = aug_obs_z(next_obs, one_hot_z)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        for info in infos:
+        for idx, info in enumerate(infos):
             if "episode" in info.keys():
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                writer.add_scalar("charts/episodic_return/"+str(z[idx]), info["episode"]["r"], global_step)
+                writer.add_scalar("charts/episodic_length/"+str(z[idx]), info["episode"]["l"], global_step)
                 break
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
-        real_next_obs = next_obs.copy()
+        real_z_aug_obs_next = z_aug_obs_next.copy()
         for idx, d in enumerate(dones):
             if d:
-                real_next_obs[idx] = infos[idx]["terminal_observation"]
-        rb.add(obs, real_next_obs, actions, rewards, dones, infos)
+                real_z_aug_obs_next[idx, :-args.num_skills] = infos[idx]["terminal_observation"]
+                # if episode ends, update the sampled skill z for the next episode
+                z[idx] = np.random.randint(args.num_skills)
+                one_hot_skill = np.zeros(args.num_skills)
+                one_hot_skill[z[idx]] = 1
+                one_hot_z[idx] = one_hot_skill
+                z_aug_obs_next[idx, -args.num_skills:] = one_hot_skill
+        rb.add(z_aug_obs, real_z_aug_obs_next, actions, rewards, dones, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
+        z_aug_obs = z_aug_obs_next
         obs = next_obs
 
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
+
+            # skill prediction from discriminator
+            next_observations, sampled_skills = split_aug_obs(data.next_observations, args.num_skills)
+            pred_z = discriminator(next_observations)
+            predicted_z_log_probs = F.cross_entropy(pred_z, sampled_skills, reduction="none")
+
             with torch.no_grad():
                 next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
                 qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                 qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+                # use diayn rewards instead of environment rewards
+                diayn_reward = predicted_z_log_probs.detach() - np.log(1/args.num_skills)
+                next_q_value = diayn_reward.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
             qf2_a_values = qf2(data.observations, data.actions).view(-1)
@@ -258,6 +350,11 @@ if __name__ == "__main__":
             q_optimizer.zero_grad()
             qf_loss.backward()
             q_optimizer.step()
+
+            discriminator_loss = predicted_z_log_probs.mean()
+            discriminator_optimizer.zero_grad()
+            discriminator_loss.backward()
+            discriminator_optimizer.step()
 
             if global_step % args.policy_frequency == 0:  # TD 3 Delayed update support
                 for _ in range(
@@ -298,6 +395,7 @@ if __name__ == "__main__":
                 writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                 writer.add_scalar("losses/alpha", alpha, global_step)
+                writer.add_scalar("losses/discriminator_loss", discriminator_loss.item(), global_step)
                 print("SPS:", int(global_step / (time.time() - start_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
                 if args.autotune:
