@@ -222,8 +222,12 @@ if __name__ == "__main__":
             episode_returns=(new_episode_return) * (1 - info["terminated"]) * (1 - info["TimeLimit.truncated"]),
             episode_lengths=(new_episode_length) * (1 - info["terminated"]) * (1 - info["TimeLimit.truncated"]),
             # only update the `returned_episode_returns` if the episode is done
-            returned_episode_returns=jnp.where(info["terminated"]+info["TimeLimit.truncated"], new_episode_return, episode_stats.returned_episode_returns),
-            returned_episode_lengths=jnp.where(info["terminated"]+info["TimeLimit.truncated"], new_episode_length, episode_stats.returned_episode_lengths),
+            returned_episode_returns=jnp.where(
+                info["terminated"] + info["TimeLimit.truncated"], new_episode_return, episode_stats.returned_episode_returns
+            ),
+            returned_episode_lengths=jnp.where(
+                info["terminated"] + info["TimeLimit.truncated"], new_episode_length, episode_stats.returned_episode_lengths
+            ),
         )
         return episode_stats, handle, (next_obs, reward, next_done, info)
 
@@ -435,7 +439,9 @@ if __name__ == "__main__":
         writer.add_scalar("losses/loss", loss.item(), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
-        writer.add_scalar("charts/SPS_update", int(args.num_envs * args.num_steps / (time.time() - update_time_start)), global_step)
+        writer.add_scalar(
+            "charts/SPS_update", int(args.num_envs * args.num_steps / (time.time() - update_time_start)), global_step
+        )
 
     envs.close()
     writer.close()
