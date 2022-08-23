@@ -40,11 +40,10 @@ Below is the additional metric for RND:
 
 ### Implementation details
 
-[ppo_rnd_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py) uses a customized `RecordEpisodeStatistics` to work with envpool but has the same other implementation details as `ppo_atari.py` (see [related docs](/rl-algorithms/ppo/#implementation-details_1)).
+[ppo_rnd_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py) uses a customized `RecordEpisodeStatistics` to work with envpool but has the same other implementation details as `ppo_atari.py` (see [related docs](/rl-algorithms/ppo/#implementation-details_1)). Additionally, it has the following additional details:
 
-We initialize the normalization parameters by stepping a random agent in the environment by 50*args.num_steps. 50 comes from the [original implementation](https://github.com/openai/random-network-distillation/blob/f75c0f1efa473d5109d487062fd8ed49ddce6634/run_atari.py#L69).
-
-We uses sticky action from [envpool](https://envpool.readthedocs.io/en/latest/env/atari.html?highlight=repeat_action_probability%20#options) to facilitate the exploration.
+1. We initialize the normalization parameters by stepping a random agent in the environment by 50*args.num_steps. 50 comes from the [original implementation](https://github.com/openai/random-network-distillation/blob/f75c0f1efa473d5109d487062fd8ed49ddce6634/run_atari.py#L69).
+1. We uses sticky action from [envpool](https://envpool.readthedocs.io/en/latest/env/atari.html?highlight=repeat_action_probability%20#options) to facilitate the exploration like done in the paper.
 
 ### Experiment results
 
