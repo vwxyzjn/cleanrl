@@ -22,7 +22,8 @@ tuner = Tuner(
         "num-envs": 16,
     },
     pruner=optuna.pruners.MedianPruner(n_startup_trials=5),
-    wandb_kwargs={"project": "cleanrl"},
+    sampler=optuna.samplers.TPESampler(),
+    # wandb_kwargs={"project": "cleanrl"},
 )
 tuner.tune(
     num_trials=10,

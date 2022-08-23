@@ -2,7 +2,7 @@ import os
 import runpy
 import sys
 import time
-from typing import Callable
+from typing import Callable, Dict, List, Optional
 
 import numpy as np
 import optuna
@@ -26,22 +26,42 @@ class Tuner:
         self,
         script: str,
         metric: str,
-        target_scores: dict[str, list[int]],
-        params_fn: Callable[[optuna.Trial], dict],
+        target_scores: Dict[str, Optional[List[float]]],
+        params_fn: Callable[[optuna.Trial], Dict],
         direction: str = "maximize",
+        aggregation_type: str = "average",
         metric_last_n_average_window: int = 50,
-        pruner: optuna.pruners.BasePruner = None,
+        sampler: Optional[optuna.samplers.BaseSampler] = None,
+        pruner: Optional[optuna.pruners.BasePruner] = None,
         storage: str = "sqlite:///cleanrl_hpopt.db",
         study_name: str = "",
-        wandb_kwargs: dict[str, any] = {},
+        wandb_kwargs: Dict[str, any] = {},
     ) -> None:
         self.script = script
         self.metric = metric
         self.target_scores = target_scores
+        if len(self.target_scores) > 1:
+            if self.target_scores.values()[0] is None:
+                raise ValueError(
+                    "If there are multiple environments, the target scores must be specified for each environment."
+                )
+
         self.params_fn = params_fn
         self.direction = direction
+        self.aggregation_type = aggregation_type
+        if self.aggregation_type == "average":
+            self.aggregation_fn = np.average
+        elif self.aggregation_type == "median":
+            self.aggregation_fn = np.median
+        elif self.aggregation_type == "max":
+            self.aggregation_fn = np.max
+        elif self.aggregation_type == "min":
+            self.aggregation_fn = np.min
+        else:
+            raise ValueError(f"Unknown aggregation type {self.aggregation_type}")
         self.metric_last_n_average_window = metric_last_n_average_window
         self.pruner = pruner
+        self.sampler = sampler
         self.storage = storage
         self.study_name = study_name
         if len(self.study_name) == 0:
@@ -63,8 +83,9 @@ class Tuner:
                 )
 
             algo_command = [f"--{key}={value}" for key, value in params.items()]
-            normalized_scores = []
+            normalized_scoress = []
             for seed in range(num_seeds):
+                normalized_scores = []
                 for env_id in self.target_scores.keys():
                     sys.argv = algo_command + [f"--env-id={env_id}", f"--seed={seed}", "--track=False"]
                     with HiddenPrints():
@@ -81,28 +102,39 @@ class Tuner:
                     print(
                         f"The average episodic return on {env_id} is {np.average(metric_values)} averaged over the last {self.metric_last_n_average_window} episodes."
                     )
-                    normalized_scores += [
-                        (np.average(metric_values) - self.target_scores[env_id][0])
-                        / (self.target_scores[env_id][1] - self.target_scores[env_id][0])
-                    ]
+                    if self.target_scores[env_id] is not None:
+                        normalized_scores += [
+                            (np.average(metric_values) - self.target_scores[env_id][0])
+                            / (self.target_scores[env_id][1] - self.target_scores[env_id][0])
+                        ]
+                    else:
+                        normalized_scores += [np.average(metric_values)]
                     if run:
                         run.log({f"{env_id}_return": np.average(metric_values)})
-                print(f"The normalized score is {np.average(normalized_scores)} with num_seeds={seed}")
-                trial.report(np.average(normalized_scores), step=seed)
-                if trial.should_prune():
-                    run.finish(quiet=True)
-                    raise optuna.TrialPruned()
-                if run:
-                    run.log({"normalized_scores": np.average(normalized_scores)})
 
-            run.finish(quiet=True)
-            return np.average(normalized_scores)
+                normalized_scoress += [normalized_scores]
+                aggregated_normalized_score = self.aggregation_fn(normalized_scores)
+                print(f"The {self.aggregation_type} normalized score is {aggregated_normalized_score} with num_seeds={seed}")
+                trial.report(aggregated_normalized_score, step=seed)
+                if run:
+                    run.log({"aggregated_normalized_score": aggregated_normalized_score})
+                if trial.should_prune():
+                    if run:
+                        run.finish(quiet=True)
+                    raise optuna.TrialPruned()
+
+            if run:
+                run.finish(quiet=True)
+            return np.average(
+                self.aggregation_fn(normalized_scoress, axis=1)
+            )  # we alaways return the average of the aggregated normalized scores
 
         study = optuna.create_study(
             study_name=self.study_name,
             direction=self.direction,
             storage=self.storage,
             pruner=self.pruner,
+            sampler=self.sampler,
         )
         print("==========================================================================================")
         print("run another tuner with the following command:")
