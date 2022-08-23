@@ -308,8 +308,9 @@ if __name__ == "__main__":
 
     agent = Agent(envs).to(device)
     rnd_model = RNDModel(4, envs.single_action_space.n).to(device)
+    combined_parameters = list(agent.parameters()) + list(rnd_model.predictor.parameters())
     optimizer = optim.Adam(
-        list(agent.parameters()) + list(rnd_model.predictor.parameters()),
+        combined_parameters,
         lr=args.learning_rate,
         eps=1e-5,
     )
@@ -414,7 +415,7 @@ if __name__ == "__main__":
 
         curiosity_rewards /= np.sqrt(reward_rms.var)
 
-        # bootstrap reward if not done. reached the batch limit
+        # bootstrap value if not done
         with torch.no_grad():
             next_value_ext, next_value_int = agent.get_value(next_obs)
             next_value_ext, next_value_int = next_value_ext.reshape(1, -1), next_value_int.reshape(1, -1)
@@ -549,7 +550,7 @@ if __name__ == "__main__":
                 loss.backward()
                 if args.max_grad_norm:
                     nn.utils.clip_grad_norm_(
-                        list(agent.parameters()) + list(rnd_model.predictor.parameters()),
+                        combined_parameters,
                         args.max_grad_norm,
                     )
                 optimizer.step()
@@ -567,6 +568,7 @@ if __name__ == "__main__":
         writer.add_scalar("losses/fwd_loss", forward_loss.item(), global_step)
         writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
+        print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
     envs.close()
