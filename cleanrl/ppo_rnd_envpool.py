@@ -180,7 +180,7 @@ class Agent(nn.Module):
         self.critic_int = layer_init(nn.Linear(448, 1), std=0.01)
 
     def get_action_and_value(self, x, action=None):
-        hidden = self.forward(x / 255.0)
+        hidden = self.network(x / 255.0)
         logits = self.actor(hidden)
         probs = Categorical(logits=logits)
         features = self.extra_layer(hidden)
@@ -195,7 +195,7 @@ class Agent(nn.Module):
         )
 
     def get_value(self, x):
-        hidden = self.forward(x / 255.0)
+        hidden = self.network(x / 255.0)
         features = self.extra_layer(hidden)
         return self.critic_ext(features + hidden), self.critic_int(features + hidden)
 
@@ -368,7 +368,7 @@ if __name__ == "__main__":
                     value_ext.flatten(),
                     value_int.flatten(),
                 )
-                action, logprob, _, _ = agent.get_action_and_value(obs[step])
+                action, logprob, _, _, _ = agent.get_action_and_value(obs[step])
 
             actions[step] = action
             logprobs[step] = logprob
@@ -504,7 +504,9 @@ if __name__ == "__main__":
                 forward_loss = (forward_loss * mask).sum() / torch.max(
                     mask.sum(), torch.tensor([1], device=device, dtype=torch.float32)
                 )
-                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                _, newlogprob, entropy, new_ext_values, new_int_values = agent.get_action_and_value(
+                    b_obs[mb_inds], b_actions.long()[mb_inds]
+                )
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 
@@ -524,7 +526,6 @@ if __name__ == "__main__":
                 pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
                 # Value loss
-                new_ext_values, new_int_values = newvalue
                 new_ext_values, new_int_values = new_ext_values.view(-1), new_int_values.view(-1)
                 if args.clip_vloss:
                     ext_v_loss_unclipped = (new_ext_values - b_ext_returns[mb_inds]) ** 2
