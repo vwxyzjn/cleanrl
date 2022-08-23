@@ -1,3 +1,4 @@
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo-rnd/#ppo_rnd_envpoolpy
 import argparse
 import os
 import random

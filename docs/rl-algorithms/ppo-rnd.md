@@ -23,6 +23,18 @@ Our single-file implementations of RND:
     Note that `ppo_rnd_envpool.py` does not work in Windows :fontawesome-brands-windows: and MacOs :fontawesome-brands-apple:. See envpool's built wheels here: [https://pypi.org/project/envpool/#files](https://pypi.org/project/envpool/#files)
 
 
+## Implemented Variants
+
+
+| Variants Implemented      | Description |
+| ----------- | ----------- |
+| :material-github: [`ppo_rnd_envpool.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py), :material-file-document: [docs](/rl-algorithms/ppo-rnd/#ppo_rnd_envpoolpy) | For continuous action space |
+
+
+Below are our single-file implementations of TD3:
+
+## `ppo_rnd_envpool.py`
+
 ### Usage
 
 ```bash
