@@ -57,7 +57,7 @@ Running `python tuner_example.py` will create a sqlite database containing all o
 poetry run optuna-dashboard sqlite:///cleanrl_hpopt.db
 ```
 
-You can use a different database by passing `Tuner(..., storage="mysql://root@localhost/example")` to use a more persistant storage.
+You can use a different database by passing `Tuner(..., storage="mysql://root@localhost/example")` to use a more persistent storage.
 ![](./optuna-dashboard.png)
 
 
