@@ -41,7 +41,7 @@ class Tuner:
         self.metric = metric
         self.target_scores = target_scores
         if len(self.target_scores) > 1:
-            if self.target_scores.values()[0] is None:
+            if None in self.target_scores.values():
                 raise ValueError(
                     "If there are multiple environments, the target scores must be specified for each environment."
                 )
