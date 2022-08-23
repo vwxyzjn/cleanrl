@@ -73,26 +73,19 @@ def parse_args():
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
     parser.add_argument("--sticky-action", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Toggles whether or not to use sticky action.",
-    )
+        help="if toggled, sticky action will be used")
 
     # RND arguments
-    parser.add_argument(
-        "--update-proportion", type=float, default=0.25,
-        help="proportion of exp used for predictor update",
-    )
-    parser.add_argument(
-        "--int-coef", type=float, default=1.0,
-        help="coefficient of extrinsic reward"
-    )
-    parser.add_argument(
-        "--ext-coef", type=float, default=2.0,
-        help="coefficient of intrinsic reward"
-    )
-    parser.add_argument(
-        "--int-gamma", type=float, default=0.999,
-        help="Intrinsic reward discount rate"
-    )
+    parser.add_argument("--update-proportion", type=float, default=0.25,
+        help="proportion of exp used for predictor update")
+    parser.add_argument("--int-coef", type=float, default=1.0,
+        help="coefficient of extrinsic reward")
+    parser.add_argument("--ext-coef", type=float, default=2.0,
+        help="coefficient of intrinsic reward")
+    parser.add_argument("--int-gamma", type=float, default=0.999,
+        help="Intrinsic reward discount rate")
+    parser.add_argument("--num-iterations-obs-norm-init", type=int, default=50,
+        help="number of iterations to initialize the observations normalization parameters")
 
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
@@ -339,7 +332,7 @@ if __name__ == "__main__":
 
     print("Start to initialize observation normalization parameter.....")
     next_ob = []
-    for step in range(args.num_steps * 50):
+    for step in range(args.num_steps * args.num_iterations_obs_norm_init):
         acs = np.random.randint(0, envs.single_action_space.n, size=(args.num_envs,))
         s, r, d, _ = envs.step(acs)
         next_ob += s[:, 3, :, :].reshape([-1, 1, 84, 84]).tolist()
