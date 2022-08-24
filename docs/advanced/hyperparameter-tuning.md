@@ -105,7 +105,7 @@ Note that we are using 3 random seeds for each environment in `["CartPole-v1","A
 
 ???+ info
 
-    When optimizing Atari games, you can put the human normalized scores in `target_scores` (Mnih et al., 2015, Extended Data Table 2)[^1], as done in the following example. The first number for each environment is the score obtained by random play and the second number is the score obtained by professional game testers.
+    When optimizing Atari games, you can put the human normalized scores in `target_scores` (Mnih et al., 2015, Extended Data Table 2)[^1], as done in the following example. The first number for each environment is the score obtained by random play and the second number is the score obtained by professional game testers. Note here we using `aggregation_type="median"`, this means we will optimize for the *median* of the human normalized scores *averaged* over the `num_seeds=3` *experiments* for each trial.
 
     ```python
     tuner = Tuner(
@@ -113,7 +113,7 @@ Note that we are using 3 random seeds for each environment in `["CartPole-v1","A
         metric="charts/episodic_return",
         metric_last_n_average_window=50,
         direction="maximize",
-        aggregation_type="average",
+        aggregation_type="median",
         target_scores={
             "Alien-v5": [227.8, 6875],
             "Amidar-v5": [5.8, 1676],
@@ -122,6 +122,7 @@ Note that we are using 3 random seeds for each environment in `["CartPole-v1","A
             'Asteroids-v5': (719.1, 13157),
             ...
         },
+        num_seeds=3,
         ...
     )
     ```
