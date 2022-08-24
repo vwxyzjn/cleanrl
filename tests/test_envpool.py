@@ -8,6 +8,7 @@ def test_ppo_envpool():
         check=True,
     )
 
+
 def test_ppo_envpool():
     subprocess.run(
         "python cleanrl/ppo_rnd_envpool.py --num-envs 8 --num-steps 32 --num-iterations-obs-norm-init 1 --total-timesteps 256",
