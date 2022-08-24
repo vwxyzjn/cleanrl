@@ -70,13 +70,14 @@ Below are the average episodic returns for `ppo_rnd_envpool.py`. To ensure the q
 | MontezumaRevengeNoFrameSkip-v4      | 7100 (1 seed)    | 8152 (3 seeds)  |
 
 Note the MontezumaRevengeNoFrameSkip-v4 has same setting to MontezumaRevenge-v5.
-Our benchmark has one seed due to limited compute resource and extreme long run time.
+Our benchmark has one seed due to limited compute resource and extreme long run time (~250 hours).
 
 
 Learning curves:
 
 <div class="grid-container">
     <img src="../ppo-rnd/MontezumaRevenge-v5.png">
+    <img src="../ppo-rnd/MontezumaRevenge-v5-time.png">
 </div>
 
 <div></div>
