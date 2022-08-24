@@ -231,7 +231,7 @@ class RNDModel(nn.Module):
             layer_init(nn.Linear(feature_output, 512)),
         )
 
-        # Set target network is not trainable
+        # target network is not trainable
         for param in self.target.parameters():
             param.requires_grad = False
 
