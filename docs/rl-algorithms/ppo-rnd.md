@@ -61,7 +61,7 @@ Below is the additional metric for RND:
 
 To run benchmark experiments, see :material-github: [benchmark/rnd.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/rnd.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F1bd0d18978c81dd64e7987a4e19cfa31bf5b7199%2Fbenchmark%2Frnd.sh&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fc1a458243e59ccc0f8eeaa15678710c04ec6db99%2Fbenchmark%2Frnd.sh%23L3-L8&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
 
 Below are the average episodic returns for `ppo_rnd_envpool.py`. To ensure the quality of the implementation, we compared the results against `openai/random-network-distillation`' PPO.
 
@@ -71,5 +71,20 @@ Below are the average episodic returns for `ppo_rnd_envpool.py`. To ensure the q
 
 Note the MontezumaRevengeNoFrameSkip-v4 has same setting to MontezumaRevenge-v5.
 Our benchmark has one seed due to limited compute resource and extreme long run time.
+
+
+Learning curves:
+
+<div class="grid-container">
+    <img src="../ppo-rnd/MontezumaRevenge-v5.png">
+</div>
+
+<div></div>
+
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/-MontezumaRevenge-CleanRL-s-PPO-RND--VmlldzoyNTIyNjc5" style="width:100%; height:1200px" title="MontezumaRevenge: CleanRL's PPO + RND"></iframe>
+
 
 [^1]:Burda, Yuri, et al. "Exploration by random network distillation." Seventh International Conference on Learning Representations. 2019.

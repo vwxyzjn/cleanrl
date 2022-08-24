@@ -51,7 +51,7 @@ def parse_args():
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--gae", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Use GAE for advantage computation")
-    parser.add_argument("--gamma", type=float, default=0.99,
+    parser.add_argument("--gamma", type=float, default=0.999,
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
@@ -83,7 +83,7 @@ def parse_args():
         help="coefficient of extrinsic reward")
     parser.add_argument("--ext-coef", type=float, default=2.0,
         help="coefficient of intrinsic reward")
-    parser.add_argument("--int-gamma", type=float, default=0.999,
+    parser.add_argument("--int-gamma", type=float, default=0.99,
         help="Intrinsic reward discount rate")
     parser.add_argument("--num-iterations-obs-norm-init", type=int, default=50,
         help="number of iterations to initialize the observations normalization parameters")
