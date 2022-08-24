@@ -416,6 +416,142 @@ Tracked experiments and game play videos:
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-Envpool--VmlldzoxODcxMzI3" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool"></iframe>
 
 
+## `ppo_atari_envpool_xla_jax.py`
+
+The [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) has the following features:
+
+* Uses the blazing fast [Envpool](https://github.com/sail-sg/envpool) vectorized environment.
+    * Uses EnvPool's experimental [XLA interface](https://envpool.readthedocs.io/en/latest/content/xla_interface.html).
+* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  
+* For Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+* Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
+* Works with the `Discrete` action space
+
+???+ warning
+
+    Note that `ppo_atari_envpool_xla_jax.py` does not work in Windows :fontawesome-brands-windows: and MacOs :fontawesome-brands-apple:. See envpool's built wheels here: [https://pypi.org/project/envpool/#files](https://pypi.org/project/envpool/#files)
+
+
+### Usage
+
+```bash
+poetry install -E "envpool jax"
+poetry run pip install --upgrade "jax[cuda]==0.3.14" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+python cleanrl/ppo_atari_envpool_xla_jax.py --help
+python cleanrl/ppo_atari_envpool_xla_jax.py --env-id Breakout-v5
+```
+
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`.
+
+### Implementation details
+
+[ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) uses a customized `RecordEpisodeStatistics` to work with EnvPool's experimental [XLA interface](https://envpool.readthedocs.io/en/latest/content/xla_interface.html) but has the same other implementation details as `ppo_atari.py` (see [related docs](/rl-algorithms/ppo/#implementation-details_1)) except that [ppo_atari_envpool_xla_jax.pyg](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) does not use the value function clipping for simplicity. 
+
+### Experiment results
+
+To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5184afc2b7d5032b56e6689175a17b7bad172771%2Fbenchmark%2Fppo.sh%23L25-L30&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+
+Below are the average episodic returns for `ppo_atari_envpool_xla_jax.py`. Notice it has the same sample efficiency as `ppo_atari.py`, but runs about 3x faster.
+
+
+
+<!-- | Environment      | `ppo_atari_envpool_xla_jax.py` (~80 mins) | `ppo_atari.py` (~220 mins)
+| ----------- | ----------- | ----------- |
+| BreakoutNoFrameskip-v4 |   389.57 ± 29.62    | 416.31 ± 43.92 
+| PongNoFrameskip-v4 | 20.55 ± 0.37   | 20.59 ± 0.35   
+| BeamRiderNoFrameskip-v4 |   2039.83 ± 1146.62 | 2445.38 ± 528.91  
+ -->
+
+|    | Environment         |           Return |   Human Normalized Score |
+|---:|:--------------------|-----------------:|-------------------------:|
+|  0 | Alien-v5            |   1698.59        |              0.213162    |
+|  1 | Amidar-v5           |    634.468       |              0.366848    |
+|  2 | Assault-v5          |   5975.7         |             11.0726      |
+|  3 | Asterix-v5          |   4362.85        |              0.500748    |
+|  4 | Asteroids-v5        |   1793.38        |              0.0230189   |
+|  5 | Atlantis-v5         |      3.72001e+06 |            229.147       |
+|  6 | BankHeist-v5        |   1183.28        |              1.58218     |
+|  7 | BattleZone-v5       |  24744.9         |              0.642736    |
+|  8 | BeamRider-v5        |   2431.71        |              0.124848    |
+|  9 | Berzerk-v5          |    942.406       |              0.326607    |
+| 10 | Bowling-v5          |     41.6335      |              0.134691    |
+| 11 | Boxing-v5           |     92.6012      |              7.70843     |
+| 12 | Breakout-v5         |    420.536       |             14.5429      |
+| 13 | Centipede-v5        |   3114.11        |              0.103083    |
+| 14 | ChopperCommand-v5   |   5508.93        |              0.714318    |
+| 15 | CrazyClimber-v5     | 117357           |              4.25474     |
+| 16 | Defender-v5         |  52644.3         |              3.14712     |
+| 17 | DemonAttack-v5      |  24830           |             13.5675      |
+| 18 | DoubleDunk-v5       |     -8.0609      |              4.7905      |
+| 19 | Enduro-v5           |   1327.78        |              1.54303     |
+| 20 | FishingDerby-v5     |     25.375       |              2.20896     |
+| 21 | Freeway-v5          |     32.9814      |              1.11424     |
+| 22 | Frostbite-v5        |    397.16        |              0.0777516   |
+| 23 | Gopher-v5           |   6374.4         |              2.83856     |
+| 24 | Gravitar-v5         |   1403.25        |              0.387064    |
+| 25 | Hero-v5             |  25827.4         |              0.832243    |
+| 26 | IceHockey-v5        |     -4.82772     |              0.526634    |
+| 27 | Jamesbond-v5        |    510.172       |              1.75738     |
+| 28 | Kangaroo-v5         |  10477.8         |              3.49506     |
+| 29 | Krull-v5            |  10035.8         |              7.90427     |
+| 30 | KungFuMaster-v5     |  26957.7         |              1.1878      |
+| 31 | MontezumaRevenge-v5 |      0.416667    |              8.76584e-05 |
+| 32 | MsPacman-v5         |   2358.58        |              0.308728    |
+| 33 | NameThisGame-v5     |   5742.91        |              0.599408    |
+| 34 | Phoenix-v5          |  13883.8         |              2.02468     |
+| 35 | Pitfall-v5          |     -0.303922    |              0.0342287   |
+| 36 | Pong-v5             |     20.1686      |              1.15775     |
+| 37 | PrivateEye-v5       |     97.9575      |              0.00105049  |
+| 38 | Qbert-v5            |  16819.7         |              1.25316     |
+| 39 | Riverraid-v5        |   8304.04        |              0.44143     |
+| 40 | RoadRunner-v5       |  17186.6         |              2.19251     |
+| 41 | Robotank-v5         |     14.0176      |              1.21831     |
+| 42 | Seaquest-v5         |   1653.68        |              0.0377571   |
+| 43 | Skiing-v5           | -14963.3         |              0.167287    |
+| 44 | Solaris-v5          |   2394.58        |              0.10444     |
+| 45 | SpaceInvaders-v5    |   1132.19        |              0.647198    |
+| 46 | StarGunner-v5       |  45689.2         |              4.69698     |
+| 47 | Surround-v5         |     -3.11905     |              0.417027    |
+| 48 | Tennis-v5           |    -15.6775      |              0.524032    |
+| 49 | TimePilot-v5        |   6114.38        |              1.53286     |
+| 50 | Tutankham-v5        |    247.586       |              1.51207     |
+| 51 | UpNDown-v5          | 446700           |             39.9798      |
+| 52 | Venture-v5          |      0           |              0           |
+| 53 | VideoPinball-v5     |  46679           |             21.5607      |
+| 54 | WizardOfWor-v5      |   5956.61        |              1.28622     |
+| 55 | YarsRevenge-v5      |  55502.3         |              1.01797     |
+| 56 | Zaxxon-v5           |   4332.56        |              0.470425    |
+
+
+The following charts are generated by [atari_hns.py](https://github.com/openrlbenchmark/openrlbenchmark/blob/bd754806fa9c3f2ecd87b0120a731ece6c3d8e28/atari_hns.py) and [ours_vs_seedrl_hns.py](https://github.com/openrlbenchmark/openrlbenchmark/blob/bd754806fa9c3f2ecd87b0120a731ece6c3d8e28/ours_vs_seedrl_hns.py).
+
+
+Median Human Normalized Score (HNS) compared to SEEDRL's R2D2 (data available [here](https://github.com/google-research/seed_rl/blob/66e8890261f09d0355e8bf5f1c5e41968ca9f02b/docs/seed_r2d2_atari_graphs.csv)):
+
+![](../ppo/ppo_atari_envpool_xla_jax/hns_ppo_vs_r2d2.svg)
+
+
+Learning curves (left y-axis is the return and right y-axis is the human normalized score):
+
+![](../ppo/ppo_atari_envpool_xla_jax/hms_each_game.svg)
+
+Percentage of human normalized score (HMS) for each game.
+![](../ppo/ppo_atari_envpool_xla_jax/hms_bar.svg)
+
+
+
+Tracked experiments and game play videos:
+
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-PPO-JAX-EnvPool-s-XLA-part-1---VmlldzoyNTE5Nzcz" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-Part-1"></iframe>
+
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-PPO-JAX-EnvPool-s-XLA-part-2---VmlldzoyNTE5Nzc0" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-Part-2"></iframe>
+
+
 
 
 ## `ppo_procgen.py`
