@@ -49,6 +49,7 @@ See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `p
 Below is the additional metric for RND:
 
 * `charts/episode_curiosity_reward`: episodic intrinsic rewards.
+* `losses/fwd_loss`: the prediction error between predict network and target network, can also be viewed as a proxy of the curiosity reward in that batch.
 
 ### Implementation details
 
