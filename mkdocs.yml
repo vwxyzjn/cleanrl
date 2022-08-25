@@ -87,6 +87,7 @@ nav:
     - rl-algorithms/sac.md
     - rl-algorithms/td3.md
     - rl-algorithms/ppg.md
+    - rl-algorithms/ppo-rnd.md
   # - Open RL Benchmark: open-rl-benchmark.md
   - Community:
     - contribution.md
