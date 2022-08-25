@@ -23,6 +23,18 @@ Our single-file implementations of RND:
     Note that `ppo_rnd_envpool.py` does not work in Windows :fontawesome-brands-windows: and MacOs :fontawesome-brands-apple:. See envpool's built wheels here: [https://pypi.org/project/envpool/#files](https://pypi.org/project/envpool/#files)
 
 
+## Implemented Variants
+
+
+| Variants Implemented      | Description |
+| ----------- | ----------- |
+| :material-github: [`ppo_rnd_envpool.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py), :material-file-document: [docs](/rl-algorithms/ppo-rnd/#ppo_rnd_envpoolpy) | For continuous action space |
+
+
+Below are our single-file implementations of TD3:
+
+## `ppo_rnd_envpool.py`
+
 ### Usage
 
 ```bash
@@ -40,17 +52,16 @@ Below is the additional metric for RND:
 
 ### Implementation details
 
-[ppo_rnd_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py) uses a customized `RecordEpisodeStatistics` to work with envpool but has the same other implementation details as `ppo_atari.py` (see [related docs](/rl-algorithms/ppo/#implementation-details_1)).
+[ppo_rnd_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py) uses a customized `RecordEpisodeStatistics` to work with envpool but has the same other implementation details as `ppo_atari.py` (see [related docs](/rl-algorithms/ppo/#implementation-details_1)). Additionally, it has the following additional details:
 
-We initialize the normalization parameters by stepping a random agent in the environment by 50*args.num_steps. 50 comes from the [original implementation](https://github.com/openai/random-network-distillation/blob/f75c0f1efa473d5109d487062fd8ed49ddce6634/run_atari.py#L69).
-
-We uses sticky action from [envpool](https://envpool.readthedocs.io/en/latest/env/atari.html?highlight=repeat_action_probability%20#options) to facilitate the exploration.
+1. We initialize the normalization parameters by stepping a random agent in the environment by `args.num_steps * args.num_iterations_obs_norm_init`. `args.num_iterations_obs_norm_init=50` comes from the [original implementation](https://github.com/openai/random-network-distillation/blob/f75c0f1efa473d5109d487062fd8ed49ddce6634/run_atari.py#L69).
+1. We uses sticky action from [envpool](https://envpool.readthedocs.io/en/latest/env/atari.html?highlight=repeat_action_probability%20#options) to facilitate the exploration like done in the [original implementation](https://github.com/openai/random-network-distillation/blob/f75c0f1efa473d5109d487062fd8ed49ddce6634/atari_wrappers.py#L204).
 
 ### Experiment results
 
 To run benchmark experiments, see :material-github: [benchmark/rnd.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/rnd.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F1bd0d18978c81dd64e7987a4e19cfa31bf5b7199%2Fbenchmark%2Frnd.sh&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F64908e7dbb669642d5d4cd04bab505fe29184c88%2Fbenchmark%2Frnd.sh%23L3-L8&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
 
 Below are the average episodic returns for `ppo_rnd_envpool.py`. To ensure the quality of the implementation, we compared the results against `openai/random-network-distillation`' PPO.
 
@@ -59,6 +70,22 @@ Below are the average episodic returns for `ppo_rnd_envpool.py`. To ensure the q
 | MontezumaRevengeNoFrameSkip-v4      | 7100 (1 seed)    | 8152 (3 seeds)  |
 
 Note the MontezumaRevengeNoFrameSkip-v4 has same setting to MontezumaRevenge-v5.
-Our benchmark has one seed due to limited compute resource and extreme long run time.
+Our benchmark has one seed due to limited compute resource and extreme long run time (~250 hours).
+
+
+Learning curves:
+
+<div class="grid-container">
+    <img src="../ppo-rnd/MontezumaRevenge-v5.png">
+    <img src="../ppo-rnd/MontezumaRevenge-v5-time.png">
+</div>
+
+<div></div>
+
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/-MontezumaRevenge-CleanRL-s-PPO-RND--VmlldzoyNTIyNjc5" style="width:100%; height:1200px" title="MontezumaRevenge: CleanRL's PPO + RND"></iframe>
+
 
 [^1]:Burda, Yuri, et al. "Exploration by random network distillation." Seventh International Conference on Learning Representations. 2019.
