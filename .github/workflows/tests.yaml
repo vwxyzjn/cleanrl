@@ -42,6 +42,10 @@ jobs:
       - name: Run core tests with jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry run pytest tests/test_classic_control_jax.py
+      - name: Install tuner dependencies
+        run: poetry install -E optuna
+      - name: Run tuner tests
+        run: poetry run pytest tests/test_tuner.py
 
   test-atari-envs:
     strategy:
