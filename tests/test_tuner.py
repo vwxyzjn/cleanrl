@@ -2,6 +2,7 @@ import optuna
 
 from cleanrl_utils.tuner import Tuner
 
+
 def test_tuner():
     tuner = Tuner(
         script="cleanrl/ppo.py",
