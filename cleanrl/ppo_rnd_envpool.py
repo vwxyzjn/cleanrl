@@ -1,3 +1,4 @@
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo-rnd/#ppo_rnd_envpoolpy
 import argparse
 import os
 import random
@@ -50,7 +51,7 @@ def parse_args():
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--gae", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Use GAE for advantage computation")
-    parser.add_argument("--gamma", type=float, default=0.99,
+    parser.add_argument("--gamma", type=float, default=0.999,
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
@@ -73,26 +74,19 @@ def parse_args():
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
     parser.add_argument("--sticky-action", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Toggles whether or not to use sticky action.",
-    )
+        help="if toggled, sticky action will be used")
 
     # RND arguments
-    parser.add_argument(
-        "--update-proportion", type=float, default=0.25,
-        help="proportion of exp used for predictor update",
-    )
-    parser.add_argument(
-        "--int-coef", type=float, default=1.0,
-        help="coefficient of extrinsic reward"
-    )
-    parser.add_argument(
-        "--ext-coef", type=float, default=2.0,
-        help="coefficient of intrinsic reward"
-    )
-    parser.add_argument(
-        "--int-gamma", type=float, default=0.999,
-        help="Intrinsic reward discount rate"
-    )
+    parser.add_argument("--update-proportion", type=float, default=0.25,
+        help="proportion of exp used for predictor update")
+    parser.add_argument("--int-coef", type=float, default=1.0,
+        help="coefficient of extrinsic reward")
+    parser.add_argument("--ext-coef", type=float, default=2.0,
+        help="coefficient of intrinsic reward")
+    parser.add_argument("--int-gamma", type=float, default=0.99,
+        help="Intrinsic reward discount rate")
+    parser.add_argument("--num-iterations-obs-norm-init", type=int, default=50,
+        help="number of iterations to initialize the observations normalization parameters")
 
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
@@ -237,7 +231,7 @@ class RNDModel(nn.Module):
             layer_init(nn.Linear(feature_output, 512)),
         )
 
-        # Set target network is not trainable
+        # target network is not trainable
         for param in self.target.parameters():
             param.requires_grad = False
 
@@ -308,8 +302,9 @@ if __name__ == "__main__":
 
     agent = Agent(envs).to(device)
     rnd_model = RNDModel(4, envs.single_action_space.n).to(device)
+    combined_parameters = list(agent.parameters()) + list(rnd_model.predictor.parameters())
     optimizer = optim.Adam(
-        list(agent.parameters()) + list(rnd_model.predictor.parameters()),
+        combined_parameters,
         lr=args.learning_rate,
         eps=1e-5,
     )
@@ -338,7 +333,7 @@ if __name__ == "__main__":
 
     print("Start to initialize observation normalization parameter.....")
     next_ob = []
-    for step in range(args.num_steps * 50):
+    for step in range(args.num_steps * args.num_iterations_obs_norm_init):
         acs = np.random.randint(0, envs.single_action_space.n, size=(args.num_envs,))
         s, r, d, _ = envs.step(acs)
         next_ob += s[:, 3, :, :].reshape([-1, 1, 84, 84]).tolist()
@@ -414,7 +409,7 @@ if __name__ == "__main__":
 
         curiosity_rewards /= np.sqrt(reward_rms.var)
 
-        # bootstrap reward if not done. reached the batch limit
+        # bootstrap value if not done
         with torch.no_grad():
             next_value_ext, next_value_int = agent.get_value(next_obs)
             next_value_ext, next_value_int = next_value_ext.reshape(1, -1), next_value_int.reshape(1, -1)
@@ -549,7 +544,7 @@ if __name__ == "__main__":
                 loss.backward()
                 if args.max_grad_norm:
                     nn.utils.clip_grad_norm_(
-                        list(agent.parameters()) + list(rnd_model.predictor.parameters()),
+                        combined_parameters,
                         args.max_grad_norm,
                     )
                 optimizer.step()
@@ -565,8 +560,8 @@ if __name__ == "__main__":
         writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
         writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
         writer.add_scalar("losses/fwd_loss", forward_loss.item(), global_step)
-        writer.add_scalar("losses/entropy", entropy.mean().item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
+        print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
     envs.close()
