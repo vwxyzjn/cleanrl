@@ -48,8 +48,7 @@ def parse_args():
         help="the wandb's project name")
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
-    parser.add_argument("--capture-video",
-        type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+    parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="weather to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
@@ -65,16 +64,13 @@ def parse_args():
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=256,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--handle-timeout-termination",
-        type=lambda x: bool(strtobool(x)), default=False,
+    parser.add_argument("--handle-timeout-termination", type=lambda x: bool(strtobool(x)), default=False,
         help="treat TimeLimit.truncated == True as done == False")
     parser.add_argument("--n-quantiles", type=int, default=25,
         help="the number of quantiles used for each Q Network")
     parser.add_argument("--n-critics", type=int, default=5,
         help="the number of Q Networks")
-    parser.add_argument("--use-paper-n-quantiles-to-drop",
-        type=lambda x: bool(strtobool(x)),
-        default=True,
+    parser.add_argument("--use-paper-n-quantiles-to-drop", type=lambda x: bool(strtobool(x)), default=True,
         help="number of quantiles to drop")
     parser.add_argument("--n-quantiles-to-drop", type=int, default=2,
         help="number of quantiles to drop")
@@ -89,12 +85,6 @@ def parse_args():
     args = parser.parse_args()
     # fmt: on
     return args
-
-
-def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
-    torch.nn.init.orthogonal_(layer.weight, std)
-    torch.nn.init.constant_(layer.bias, bias_const)
-    return layer
 
 
 def make_env(env_id, seed, idx, capture_video, run_name):
@@ -138,11 +128,11 @@ class QuantileCritics(nn.Module):
 
         def make_critic() -> nn.Module:
             return nn.Sequential(
-                layer_init(nn.Linear(state_dim + action_dim, 512)),
+                nn.Linear(state_dim + action_dim, 512),
                 nn.ReLU(),
-                layer_init(nn.Linear(512, 512)),
+                nn.Linear(512, 512),
                 nn.ReLU(),
-                layer_init(nn.Linear(512, n_quantiles)),
+                nn.Linear(512, n_quantiles),
             )
 
         self.critics = nn.ModuleList([make_critic() for _ in range(n_critics)])
@@ -234,8 +224,6 @@ if __name__ == "__main__":
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
-    max_action = float(envs.single_action_space.high[0])
-
     if args.use_paper_n_quantiles_to_drop and args.env_id in PAPER_N_QUANTILES_TO_DROP:
         args.n_quantiles_to_drop = PAPER_N_QUANTILES_TO_DROP[args.env_id]
         print(f"Using paper n_quantiles_to_drop: {args.n_quantiles_to_drop} for env: {args.env_id}")
@@ -271,8 +259,9 @@ if __name__ == "__main__":
         if global_step < args.learning_starts:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            actions, _, _ = actor.get_action(torch.Tensor(obs).to(device))
-            actions = actions.detach().cpu().numpy()
+            with torch.no_grad():
+                actions, _, _ = actor.get_action(torch.Tensor(obs).to(device))
+                actions = actions.cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
