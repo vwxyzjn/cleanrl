@@ -34,7 +34,7 @@ Good luck have fun :rocket:
 ## Get started
 
 Prerequisites:
-* Python 3.8-3.9 (not yet 3.10)
+* >=3.7.1,<3.10 (not yet 3.10)
 * [Poetry](https://python-poetry.org)
 
 To run experiments locally, give the following a try:

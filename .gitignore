@@ -7,6 +7,7 @@ cleanrl/ppo_continuous_action_isaacgym/isaacgym/setup.py
 
 IsaacGym_Preview_3_Package.tar.gz
 IsaacGym_Preview_4_Package.tar.gz
+cleanrl_hpopt.db
 debug.sh.docker.sh
 docker_cache
 rl-video-*.mp4
