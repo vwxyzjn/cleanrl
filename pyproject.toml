@@ -33,7 +33,7 @@ awscli = {version = "^1.20.57", optional = true}
 pytest = {version = "^6.2.5", optional = true}
 free-mujoco-py = {version = "^2.1.6", optional = true}
 mkdocs-material = {version = "^7.3.4", optional = true}
-envpool = {version = "^0.4.3", optional = true}
+envpool = "^0.6.4"
 SuperSuit = {version = "^3.4.0", optional = true}
 multi-agent-ale-py = {version = "^0.1.11", optional = true}
 jax = {version = "^0.3.14", optional = true}
