@@ -389,7 +389,7 @@ name = "dm-env"
 version = "1.5"
 description = "A Python interface for Reinforcement Learning environments."
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 
 [package.dependencies]
@@ -402,7 +402,7 @@ name = "dm-tree"
 version = "0.1.6"
 description = "Tree is a library for working with nested data structures."
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 
 [package.dependencies]
@@ -432,7 +432,7 @@ name = "envpool"
 version = "0.6.4"
 description = "\"C++-based high-performance parallel environment execution engine (vectorized env) for general RL environments.\""
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 
 [package.dependencies]
@@ -2176,7 +2176,7 @@ name = "types-protobuf"
 version = "3.19.12"
 description = "Typing stubs for protobuf"
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 
 [[package]]
@@ -2333,7 +2333,7 @@ pytest = ["pytest"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "af92ec8971ca051163bc163a0d8bdee55ae5b7f8bc1279ba332ccfee6e93683a"
+content-hash = "2cf65eebf0dc03cedcbf8b58e626502c081082287ec3c8f5fc758cfc777a197b"
 
 [metadata.files]
 absl-py = [
