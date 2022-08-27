@@ -87,12 +87,13 @@ nav:
     - rl-algorithms/sac.md
     - rl-algorithms/td3.md
     - rl-algorithms/ppg.md
-  # - Open RL Benchmark: open-rl-benchmark.md
+    - rl-algorithms/ppo-rnd.md
+  - Advanced:
+    - advanced/hyperparameter-tuning.md
+    - advanced/resume-training.md
   - Community:
     - contribution.md
     - made-with-cleanrl.md
-  - Advanced:
-    - advanced/resume-training.md
   - Cloud Integration: 
     - cloud/installation.md
     - cloud/submit-experiments.md

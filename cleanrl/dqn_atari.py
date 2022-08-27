@@ -178,8 +178,8 @@ if __name__ == "__main__":
         if random.random() < epsilon:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            logits = q_network(torch.Tensor(obs).to(device))
-            actions = torch.argmax(logits, dim=1).cpu().numpy()
+            q_values = q_network(torch.Tensor(obs).to(device))
+            actions = torch.argmax(q_values, dim=1).cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
