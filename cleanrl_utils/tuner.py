@@ -28,7 +28,7 @@ class Tuner:
         metric: str,
         target_scores: Dict[str, Optional[List[float]]],
         params_fn: Callable[[optuna.Trial], Dict],
-        direction: str = "maximize",
+        directions: List[str] = ["maximize"],
         aggregation_type: str = "average",
         metric_last_n_average_window: int = 50,
         sampler: Optional[optuna.samplers.BaseSampler] = None,
@@ -47,7 +47,7 @@ class Tuner:
                 )
 
         self.params_fn = params_fn
-        self.direction = direction
+        self.directions = directions
         self.aggregation_type = aggregation_type
         if self.aggregation_type == "average":
             self.aggregation_fn = np.average
@@ -84,8 +84,10 @@ class Tuner:
 
             algo_command = [f"--{key}={value}" for key, value in params.items()]
             normalized_scoress = []
+            relative_timess = []
             for seed in range(num_seeds):
                 normalized_scores = []
+                relative_times = []
                 for env_id in self.target_scores.keys():
                     sys.argv = algo_command + [f"--env-id={env_id}", f"--seed={seed}", "--track=False"]
                     with HiddenPrints():
@@ -99,6 +101,8 @@ class Tuner:
                     metric_values = [
                         scalar_event.value for scalar_event in ea.Scalars(self.metric)[-self.metric_last_n_average_window :]
                     ]
+                    relative_time = ea.Scalars(self.metric)[-1].wall_time - ea.Scalars(self.metric)[0].wall_time
+                    relative_times += [relative_time]
                     print(
                         f"The average episodic return on {env_id} is {np.average(metric_values)} averaged over the last {self.metric_last_n_average_window} episodes."
                     )
@@ -112,26 +116,28 @@ class Tuner:
                     if run:
                         run.log({f"{env_id}_return": np.average(metric_values)})
 
+                relative_timess += [relative_times]
                 normalized_scoress += [normalized_scores]
                 aggregated_normalized_score = self.aggregation_fn(normalized_scores)
-                print(f"The {self.aggregation_type} normalized score is {aggregated_normalized_score} with num_seeds={seed}")
-                trial.report(aggregated_normalized_score, step=seed)
+                aggregated_relative_time = self.aggregation_fn(relative_times)
+                print(f"The {self.aggregation_type} normalized score is {aggregated_normalized_score} and relative time is {aggregated_relative_time} with num_seeds={seed}")
+                # trial.report(aggregated_normalized_score, step=seed)
                 if run:
                     run.log({"aggregated_normalized_score": aggregated_normalized_score})
-                if trial.should_prune():
-                    if run:
-                        run.finish(quiet=True)
-                    raise optuna.TrialPruned()
+                # if trial.should_prune():
+                #     if run:
+                #         run.finish(quiet=True)
+                #     raise optuna.TrialPruned()
 
             if run:
                 run.finish(quiet=True)
-            return np.average(
+            return np.average(   # we alaways return the average of the aggregated normalized scores
                 self.aggregation_fn(normalized_scoress, axis=1)
-            )  # we alaways return the average of the aggregated normalized scores
+            ), np.average(self.aggregation_fn(relative_timess, axis=1))
 
         study = optuna.create_study(
             study_name=self.study_name,
-            direction=self.direction,
+            directions=self.directions,
             storage=self.storage,
             pruner=self.pruner,
             sampler=self.sampler,
