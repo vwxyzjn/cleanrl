@@ -12,6 +12,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from stable_baselines3.common.atari_wrappers import (
+    ClipRewardEnv,
     EpisodicLifeEnv,
     FireResetEnv,
     MaxAndSkipEnv,
@@ -87,8 +88,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         env = EpisodicLifeEnv(env)
         if "FIRE" in env.unwrapped.get_action_meanings():
             env = FireResetEnv(env)
-        # Clip rewards: Clip rewards in a (-1, 1) range. SB3 reward_clip doesn't clip, it bins in [-1, 0, 1].
-        env = gym.wrappers.TransformReward(env, lambda reward: np.clip(reward, -1, 1))
+        env = ClipRewardEnv(env)
         env = gym.wrappers.ResizeObservation(env, (84, 84))
         env = gym.wrappers.GrayScaleObservation(env)
         env = gym.wrappers.FrameStack(env, 4)
