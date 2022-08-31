@@ -100,8 +100,8 @@ def make_env(env_id, seed, idx, capture_video, run_name):
     return thunk
 
 
+# He initialization
 def network_init(net, bias_const=0.0):
-    # He initialization
     for param in net.parameters():
         if type(param) == nn.Linear or type(param) == nn.Conv2d:
             nn.init.kaiming_normal_(param.weight)
@@ -115,8 +115,6 @@ def network_init(net, bias_const=0.0):
 # See https://arxiv.org/abs/1910.01741 for more info
 # TL;DR The actor's gradients mess up the representation when using a joint encoder
 class SoftQNetwork(nn.Module):
-    """Soft Q network for pixel inputs."""
-
     def __init__(self, envs):
         super().__init__()
         obs_shape = envs.single_observation_space.shape
@@ -146,8 +144,6 @@ class SoftQNetwork(nn.Module):
 
 
 class Actor(nn.Module):
-    """Discrete SAC Actor for pixel inputs"""
-
     def __init__(self, envs):
         super().__init__()
         obs_shape = envs.single_observation_space.shape
@@ -169,11 +165,6 @@ class Actor(nn.Module):
             nn.ReLU(),
             nn.Linear(512, envs.single_action_space.n),
         )
-
-        # He initialization
-        for param in self.parameters():
-            if type(param) == nn.Linear or type(param) == nn.Conv2d:
-                nn.init.kaiming_normal_(param.weight)
 
     def forward(self, x):
         x = self.conv(x)
