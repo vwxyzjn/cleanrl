@@ -190,11 +190,7 @@ class Actor(nn.Module):
         action = policy_dist.sample()
         # Action probabilities for calculating the adapted soft-Q loss
         action_probs = policy_dist.probs
-        # From https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch/blob/135d3e2e06bbde2868047d738e3fc2d73fd8cc93/agents/actor_critic_agents/SAC_Discrete.py#L58
-        # Add small numerical constant where action probability is 0 to avoid log(0)
-        z = action_probs == 0.0
-        z = z.float() * 1e-8
-        log_pi = torch.log(action_probs + z)
+        log_pi = F.log_softmax(action_probs, dim=1)
         return action, log_pi, action_probs
 
 
