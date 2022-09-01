@@ -72,9 +72,12 @@ def parse_args():
     parser.add_argument("--num-skills", type=int, default=50)
     parser.add_argument("--discriminator_lr", type=float, default=1e-3,
         help="the learning rate of the discriminator network")
+    parser.add_argument("--best-skill", type=int, default=None,
+        help="the index of the best skill (< num-skills)")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--learn-skills", action='store_true', default=False)
     group.add_argument("--use-skills", action='store_true', default=False)
+    group.add_argument("--evaluate-skills", action='store_true', default=False)
     args = parser.parse_args()
     # fmt: on
     return args
@@ -111,22 +114,6 @@ class SoftQNetwork(nn.Module):
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
-
-
-# INFO: some implementations use separate network for V and Q
-# as cleanrl doesn't use a separate V network, we'll follow same structure for DIAYN
-# class ValueNetwork(nn.Module):
-#     def __init__(self, env):
-#         super().__init__()
-#         self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
-#         self.fc2 = nn.Linear(256, 256)
-#         self.fc3 = nn.Linear(256, 1)
-
-#     def forward(self, x):
-#         x = F.relu(self.fc1(x))
-#         x = F.relu(self.fc2(x))
-#         x = self.fc3(x)
-#         return x
 
 
 # INFO: don't need to use OptionsPolicy as it is not used in the paper.
@@ -266,19 +253,19 @@ class DIAYN:
             self.alpha = args.alpha
 
         self.envs.single_observation_space.dtype = np.float32
-
+        self.model_path = f"runs/{self.run_name}/models/" + "diayn_state.pth"
         if args.run_name:
-            self.load_models()
+            self.load_model()
 
     def learn_skills(self):
-        low = np.hstack([self.envs.single_observation_space.low, np.full(args.num_skills, 0)])
-        high = np.hstack([self.envs.single_observation_space.high, np.full(args.num_skills, 1)])
+        low = np.hstack([self.envs.single_observation_space.low, np.full(self.args.num_skills, 0)])
+        high = np.hstack([self.envs.single_observation_space.high, np.full(self.args.num_skills, 1)])
         aug_obs_space = gym.spaces.Box(low=low, high=high)
         rb = ReplayBuffer(
-            args.buffer_size,
+            self.args.buffer_size,
             aug_obs_space,
             self.envs.single_action_space,
-            device,
+            self.device,
             handle_timeout_termination=True,
         )
 
@@ -409,14 +396,184 @@ class DIAYN:
                     self.writer.add_scalar("losses/discriminator_loss", discriminator_loss.item(), global_step)
                     print("SPS:", int(global_step / (time.time() - start_time)))
                     self.writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
-                    if args.autotune:
+                    if self.args.autotune:
                         self.writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
                 if global_step % 10000 == 0:
                     self.save_model()
         return
 
+    def use_skills(self):
+        """
+        Use pre-trained skills to train the agent.
+        """
+        low = np.hstack([self.envs.single_observation_space.low, np.full(args.num_skills, 0)])
+        high = np.hstack([self.envs.single_observation_space.high, np.full(args.num_skills, 1)])
+        aug_obs_space = gym.spaces.Box(low=low, high=high)
+        rb = ReplayBuffer(
+            args.buffer_size,
+            aug_obs_space,
+            self.envs.single_action_space,
+            device,
+            handle_timeout_termination=True,
+        )
+
+        start_time = time.time()
+
+        # Evaluate each skill to find the best performing skill
+        if self.args.best_skill is not None:
+            best_skill = self.args.best_skill
+        else:
+            print("Best skill not provided. Evaluating each skill to find the best performing skill.")
+            scores = self.evaluate_skills(eval_episodes=1)
+            best_skill = np.argmax(scores)
+
+        # initializing the networks with best skill and the fine-tuning on it
+        one_hot_z = np.zeros((1, self.args.num_skills), dtype=np.float32)
+        one_hot_z[0, best_skill] = 1
+
+        # TRY NOT TO MODIFY: start the game
+        obs = self.envs.reset()
+        z_aug_obs = aug_obs_z(obs, one_hot_z)
+        for global_step in range(self.args.total_timesteps):
+            # ALGO LOGIC: put action logic here
+            actions, _, _ = self.actor.get_action(torch.Tensor(z_aug_obs).to(device))
+            actions = actions.detach().cpu().numpy()
+
+            # TRY NOT TO MODIFY: execute the game and log data.
+            next_obs, rewards, dones, infos = self.envs.step(actions)
+            z_aug_obs_next = aug_obs_z(next_obs, one_hot_z)
+
+            # TRY NOT TO MODIFY: record rewards for plotting purposes
+            for idx, info in enumerate(infos):
+                if "episode" in info.keys():
+                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                    self.writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                    self.writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                    break
+
+            # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
+            real_z_aug_obs_next = z_aug_obs_next.copy()
+            for idx, d in enumerate(dones):
+                if d:
+                    real_z_aug_obs_next[idx, : -self.args.num_skills] = infos[idx]["terminal_observation"]
+
+            rb.add(z_aug_obs, real_z_aug_obs_next, actions, rewards, dones, infos)
+
+            # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
+            z_aug_obs = z_aug_obs_next
+            obs = next_obs
+
+            # ALGO LOGIC: training.
+            if global_step > self.args.learning_starts:
+                data = rb.sample(self.args.batch_size)
+
+                # skill prediction from discriminator
+                next_observations, sampled_skills = split_aug_obs(data.next_observations, self.args.num_skills)
+                pred_z = self.discriminator(next_observations)
+                predicted_z_log_probs = F.cross_entropy(pred_z, sampled_skills, reduction="none")
+
+                with torch.no_grad():
+                    next_state_actions, next_state_log_pi, _ = self.actor.get_action(data.next_observations)
+                    qf1_next_target = self.qf1_target(data.next_observations, next_state_actions)
+                    qf2_next_target = self.qf2_target(data.next_observations, next_state_actions)
+                    min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - self.alpha * next_state_log_pi
+                    next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * self.args.gamma * (
+                        min_qf_next_target
+                    ).view(-1)
+
+                qf1_a_values = self.qf1(data.observations, data.actions).view(-1)
+                qf2_a_values = self.qf2(data.observations, data.actions).view(-1)
+                qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
+                qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
+                qf_loss = qf1_loss + qf2_loss
+
+                self.q_optimizer.zero_grad()
+                qf_loss.backward()
+                self.q_optimizer.step()
+
+                discriminator_loss = predicted_z_log_probs.mean()
+                self.discriminator_optimizer.zero_grad()
+                discriminator_loss.backward()
+                self.discriminator_optimizer.step()
+
+                if global_step % self.args.policy_frequency == 0:  # TD 3 Delayed update support
+                    for _ in range(
+                        self.args.policy_frequency
+                    ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
+                        pi, log_pi, _ = self.actor.get_action(data.observations)
+                        qf1_pi = self.qf1(data.observations, pi)
+                        qf2_pi = self.qf2(data.observations, pi)
+                        min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
+                        actor_loss = ((self.alpha * log_pi) - min_qf_pi).mean()
+
+                        self.actor_optimizer.zero_grad()
+                        actor_loss.backward()
+                        self.actor_optimizer.step()
+
+                        if self.args.autotune:
+                            with torch.no_grad():
+                                _, log_pi, _ = self.actor.get_action(data.observations)
+                            alpha_loss = (-self.log_alpha * (log_pi + self.target_entropy)).mean()
+
+                            self.a_optimizer.zero_grad()
+                            alpha_loss.backward()
+                            self.a_optimizer.step()
+                            self.alpha = self.log_alpha.exp().item()
+
+                # update the target networks
+                if global_step % self.args.target_network_frequency == 0:
+                    for param, target_param in zip(self.qf1.parameters(), self.qf1_target.parameters()):
+                        target_param.data.copy_(self.args.tau * param.data + (1 - self.args.tau) * target_param.data)
+                    for param, target_param in zip(self.qf2.parameters(), self.qf2_target.parameters()):
+                        target_param.data.copy_(self.args.tau * param.data + (1 - self.args.tau) * target_param.data)
+
+                if global_step % 100 == 0:
+                    self.writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
+                    self.writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
+                    self.writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
+                    self.writer.add_scalar("losses/qf2_loss", qf2_loss.item(), global_step)
+                    self.writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
+                    self.writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
+                    self.writer.add_scalar("losses/alpha", self.alpha, global_step)
+                    self.writer.add_scalar("losses/discriminator_loss", discriminator_loss.item(), global_step)
+                    print("SPS:", int(global_step / (time.time() - start_time)))
+                    self.writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+                    if self.args.autotune:
+                        self.writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
+        return
+
+    def evaluate_skills(self, eval_episodes=1):
+        """
+        Evaluate the performance of the skills.
+        """
+        scores = []
+        # Evaluate the performance of the skill
+        for skill_idx in range(self.args.num_skills):
+            envs = gym.vector.SyncVectorEnv(
+                [make_env(self.args.env_id, self.args.seed, 0, self.args.capture_video, self.run_name + f"/{skill_idx}")]
+            )
+            one_hot_z = np.zeros((1, self.args.num_skills), dtype=np.float32)
+            one_hot_z[0, skill_idx] = 1
+            skill_rews = []
+            for _ in range(eval_episodes):
+                obs = envs.reset()
+                dones = [False]
+                cum_rew = 0
+                while not dones[0]:
+                    z_aug_obs = aug_obs_z(obs, one_hot_z)
+                    actions, _, _ = self.actor.get_action(torch.Tensor(z_aug_obs).to(device))
+                    actions = actions.detach().cpu().numpy()
+
+                    # TRY NOT TO MODIFY: execute the game and log data.
+                    next_obs, rewards, dones, infos = envs.step(actions)
+                    cum_rew += rewards[0]
+                    obs = next_obs
+                skill_rews.append(cum_rew)
+            scores.append(np.mean(skill_rews))
+            print(f"Skill {skill_idx}, reward: {scores[-1]}")
+        return scores
+
     def save_model(self):
-        self.model_path = f"runs/{self.run_name}/models/" + "diayn_state.pth"
         if not os.path.exists(self.model_path):
             os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
         models_info = dict()
@@ -443,10 +600,16 @@ class DIAYN:
         # self.actor_optimizer.load_state_dict(models_info["actor_optimizer"])
         # self.q_optimizer.load_state_dict(models_info["q_optimizer"])
         # self.discriminator_optimizer.load_state_dict(models_info["discriminator_optimizer"])
+        return
 
 
 if __name__ == "__main__":
     args = parse_args()
+
+    if args.best_skill and args.best_skill >= args.num_skills:
+        raise ValueError(
+            f"The best skill should be less than total skill. Given best skill is {args.best_skill} whereas total skills are {args.num_skills}"
+        )
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -463,7 +626,11 @@ if __name__ == "__main__":
     elif args.use_skills:
         if args.run_name == None:
             raise ValueError("need run_name to load trained skills from")
-        raise NotImplementedError("using learned skills yet to be implemented")
-
+        diayn_agent.use_skills()
+    elif args.evaluate_skills:
+        if args.run_name == None:
+            raise ValueError("need run_name to load trained skills from")
+        scores = diayn_agent.evaluate_skills()
+        print(scores)
     # envs.close()
     # writer.close()
