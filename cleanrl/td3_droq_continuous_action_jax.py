@@ -4,7 +4,7 @@ import os
 import random
 import time
 from distutils.util import strtobool
-from typing import Sequence
+from typing import Sequence, Optional
 
 import flax
 import flax.linen as nn
@@ -58,7 +58,11 @@ def parse_args():
     parser.add_argument("--learning-starts", type=int, default=1000,
         help="timestep to start learning")
     parser.add_argument("--gradient-steps", type=int, default=1,
-        help="Number of gradient steps to perform after each rollout")    
+        help="Number of gradient steps to perform after each rollout")
+    # Argument for dropout rate
+    parser.add_argument("--dropout-rate", type=float, default=0.0)
+    # Argument for layer normalization
+    parser.add_argument("--layer-norm", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True)
     parser.add_argument("--policy-frequency", type=int, default=2,
         help="the frequency of training policy (delayed)")
     parser.add_argument("--noise-clip", type=float, default=0.5,
@@ -85,12 +89,23 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
+    use_layer_norm: bool = False
+    dropout_rate: Optional[float] = None
+
     @nn.compact
-    def __call__(self, x: jnp.ndarray, a: jnp.ndarray):
+    def __call__(self, x: jnp.ndarray, a: jnp.ndarray, training: bool = False):
         x = jnp.concatenate([x, a], -1)
         x = nn.Dense(256)(x)
+        if self.dropout_rate is not None and self.dropout_rate > 0:
+            x = nn.Dropout(rate=self.dropout_rate)(x, deterministic=False)
+        if self.use_layer_norm:
+            x = nn.LayerNorm()(x)
         x = nn.relu(x)
         x = nn.Dense(256)(x)
+        if self.dropout_rate is not None and self.dropout_rate > 0:
+            x = nn.Dropout(rate=self.dropout_rate)(x, deterministic=False)
+        if self.use_layer_norm:
+            x = nn.LayerNorm()(x)
         x = nn.relu(x)
         x = nn.Dense(1)(x)
         return x
@@ -144,6 +159,7 @@ def main():
     np.random.seed(args.seed)
     key = jax.random.PRNGKey(args.seed)
     key, actor_key, qf1_key, qf2_key = jax.random.split(key, 4)
+    key, dropout_key1, dropout_key2 = jax.random.split(key, 3)
 
     # env setup
     envs = DummyVecEnv(
@@ -178,21 +194,37 @@ def main():
         target_params=actor.init(actor_key, obs),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
-    qf = QNetwork()
+    qf = QNetwork(dropout_rate=args.dropout_rate, use_layer_norm=args.layer_norm)
     qf1_state = RLTrainState.create(
         apply_fn=qf.apply,
-        params=qf.init(qf1_key, obs, jnp.array([envs.action_space.sample()])),
-        target_params=qf.init(qf1_key, obs, jnp.array([envs.action_space.sample()])),
+        params=qf.init(
+            {"params": qf1_key, "dropout": dropout_key1},
+            obs,
+            jnp.array([envs.action_space.sample()]),
+        ),
+        target_params=qf.init(
+            {"params": qf1_key, "dropout": dropout_key1},
+            obs,
+            jnp.array([envs.action_space.sample()]),
+        ),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
     qf2_state = RLTrainState.create(
         apply_fn=qf.apply,
-        params=qf.init(qf2_key, obs, jnp.array([envs.action_space.sample()])),
-        target_params=qf.init(qf2_key, obs, jnp.array([envs.action_space.sample()])),
+        params=qf.init(
+            {"params": qf2_key, "dropout": dropout_key2},
+            obs,
+            jnp.array([envs.action_space.sample()]),
+        ),
+        target_params=qf.init(
+            {"params": qf2_key, "dropout": dropout_key2},
+            obs,
+            jnp.array([envs.action_space.sample()]),
+        ),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
     actor.apply = jax.jit(actor.apply)
-    qf.apply = jax.jit(qf.apply)
+    qf.apply = jax.jit(qf.apply, static_argnames=("dropout_rate", "use_layer_norm"))
 
     @jax.jit
     def update_critic(
@@ -208,7 +240,9 @@ def main():
     ):
         # TODO Maybe pre-generate a lot of random keys
         # also check https://jax.readthedocs.io/en/latest/jax.random.html
-        key, noise_key = jax.random.split(key, 2)
+        key, noise_key, dropout_key_1, dropout_key_2 = jax.random.split(key, 4)
+        key, dropout_noise_key = jax.random.split(key, 2)
+
         clipped_noise = jnp.clip(
             (jax.random.normal(noise_key, actions[0].shape) * args.policy_noise),
             -args.noise_clip,
@@ -220,10 +254,18 @@ def main():
             envs.action_space.high[0],
         )
         qf1_next_target = qf.apply(
-            qf1_state.target_params, next_observations, next_state_actions
+            qf1_state.target_params,
+            next_observations,
+            next_state_actions,
+            True,
+            rngs={"dropout": dropout_key_1},
         ).reshape(-1)
         qf2_next_target = qf.apply(
-            qf2_state.target_params, next_observations, next_state_actions
+            qf2_state.target_params,
+            next_observations,
+            next_state_actions,
+            True,
+            rngs={"dropout": dropout_key_2},
         ).reshape(-1)
         min_qf_next_target = jnp.minimum(qf1_next_target, qf2_next_target)
         next_q_value = (
@@ -231,7 +273,9 @@ def main():
         ).reshape(-1)
 
         def mse_loss(params):
-            qf_a_values = qf.apply(params, observations, actions).squeeze()
+            qf_a_values = qf.apply(
+                params, observations, actions, True, rngs={"dropout": dropout_noise_key}
+            ).squeeze()
             return ((qf_a_values - next_q_value) ** 2).mean(), qf_a_values.mean()
 
         (qf1_loss_value, qf1_a_values), grads1 = jax.value_and_grad(
@@ -256,10 +300,17 @@ def main():
         qf1_state: RLTrainState,
         qf2_state: RLTrainState,
         observations: np.ndarray,
+        key: jnp.ndarray,
     ):
+        key, dropout_key = jax.random.split(key, 2)
+
         def actor_loss(params):
             return -qf.apply(
-                qf1_state.params, observations, actor.apply(params, observations)
+                qf1_state.params,
+                observations,
+                actor.apply(params, observations),
+                True,
+                rngs={"dropout": dropout_key},
             ).mean()
 
         actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
@@ -280,7 +331,7 @@ def main():
                 qf2_state.params, qf2_state.target_params, args.tau
             )
         )
-        return actor_state, (qf1_state, qf2_state), actor_loss_value
+        return actor_state, (qf1_state, qf2_state), actor_loss_value, key
 
     start_time = time.time()
     n_updates = 0
@@ -364,11 +415,13 @@ def main():
                         actor_state,
                         (qf1_state, qf2_state),
                         actor_loss_value,
+                        key,
                     ) = update_actor(
                         actor_state,
                         qf1_state,
                         qf2_state,
                         data.observations.numpy(),
+                        key,
                     )
             if global_step % 100 == 0:
                 writer.add_scalar("losses/qf1_loss", qf1_loss_value.item(), global_step)
