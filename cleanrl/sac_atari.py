@@ -45,7 +45,7 @@ def parse_args():
         help="weather to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="Seaquest-v4",
+    parser.add_argument("--env-id", type=str, default="MsPacmanNoFrameskip-v4",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=120000,
         help="total timesteps of the experiments")
@@ -101,13 +101,11 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 
 
 # He initialization
-def network_init(net, bias_const=0.0):
-    for param in net.parameters():
-        if type(param) == nn.Linear or type(param) == nn.Conv2d:
-            nn.init.kaiming_normal_(param.weight)
-            torch.nn.init.constant_(param.bias, bias_const)
-
-    return net
+def layer_init(layer, bias_const=0.0):
+    if isinstance(layer, nn.Linear) or isinstance(layer, nn.Conv2d):
+        nn.init.kaiming_normal_(layer.weight)
+        torch.nn.init.constant_(layer.bias, bias_const)
+    return layer
 
 
 # ALGO LOGIC: initialize agent here:
@@ -119,11 +117,11 @@ class SoftQNetwork(nn.Module):
         super().__init__()
         obs_shape = envs.single_observation_space.shape
         self.conv = nn.Sequential(
-            nn.Conv2d(obs_shape[0], 32, kernel_size=8, stride=4),
+            layer_init(nn.Conv2d(obs_shape[0], 32, kernel_size=8, stride=4)),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2)),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1)),
             nn.Flatten(),
             nn.ReLU(),
         )
@@ -132,9 +130,9 @@ class SoftQNetwork(nn.Module):
             output_dim = self.conv(torch.zeros(1, *obs_shape)).shape[1]
 
         self.Q_func = nn.Sequential(
-            nn.Linear(output_dim, 512),
+            layer_init(nn.Linear(output_dim, 512)),
             nn.ReLU(),
-            nn.Linear(512, envs.single_action_space.n),
+            layer_init(nn.Linear(512, envs.single_action_space.n)),
         )
 
     def forward(self, x):
@@ -148,11 +146,11 @@ class Actor(nn.Module):
         super().__init__()
         obs_shape = envs.single_observation_space.shape
         self.conv = nn.Sequential(
-            nn.Conv2d(obs_shape[0], 32, kernel_size=8, stride=4),
+            layer_init(nn.Conv2d(obs_shape[0], 32, kernel_size=8, stride=4)),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2)),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1)),
             nn.Flatten(),
             nn.ReLU(),
         )
@@ -161,9 +159,9 @@ class Actor(nn.Module):
             output_dim = self.conv(torch.zeros(1, *obs_shape)).shape[1]
 
         self.fc_logits = nn.Sequential(
-            nn.Linear(output_dim, 512),
+            layer_init(nn.Linear(output_dim, 512)),
             nn.ReLU(),
-            nn.Linear(512, envs.single_action_space.n),
+            layer_init(nn.Linear(512, envs.single_action_space.n)),
         )
 
     def forward(self, x):
@@ -220,9 +218,9 @@ if __name__ == "__main__":
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
-    actor = network_init(Actor(envs)).to(device)
-    qf1 = network_init(SoftQNetwork(envs)).to(device)
-    qf2 = network_init(SoftQNetwork(envs)).to(device)
+    actor = Actor(envs).to(device)
+    qf1 = SoftQNetwork(envs).to(device)
+    qf2 = SoftQNetwork(envs).to(device)
 
     qf1_target = SoftQNetwork(envs).to(device)
     qf2_target = SoftQNetwork(envs).to(device)
@@ -233,7 +231,7 @@ if __name__ == "__main__":
 
     # Automatic entropy tuning
     if args.autotune:
-        target_entropy = -0.98 * torch.log(1/torch.tensor(envs.single_action_space.n))
+        target_entropy = -0.98 * torch.log(1 / torch.tensor(envs.single_action_space.n))
         log_alpha = torch.zeros(1, requires_grad=True, device=device)
         alpha = log_alpha.exp().item()
         a_optimizer = optim.Adam([log_alpha], lr=args.policy_lr, eps=1e-4)
