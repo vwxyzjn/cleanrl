@@ -233,7 +233,7 @@ if __name__ == "__main__":
 
     # Automatic entropy tuning
     if args.autotune:
-        target_entropy = -0.98 * torch.log(torch.tensor(envs.single_action_space.n, dtype=float))
+        target_entropy = -0.98 * torch.log(1/torch.tensor(envs.single_action_space.n))
         log_alpha = torch.zeros(1, requires_grad=True, device=device)
         alpha = log_alpha.exp().item()
         a_optimizer = optim.Adam([log_alpha], lr=args.policy_lr, eps=1e-4)
