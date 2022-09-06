@@ -178,7 +178,7 @@ class Actor(nn.Module):
         action = policy_dist.sample()
         # Action probabilities for calculating the adapted soft-Q loss
         action_probs = policy_dist.probs
-        log_pi = F.log_softmax(action_probs, dim=1)
+        log_pi = F.log_softmax(logits, dim=1)
         return action, log_pi, action_probs
 
 
