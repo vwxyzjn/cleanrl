@@ -67,7 +67,7 @@ jobs:
 
       # atari tests
       - name: Install atari dependencies
-        run: poetry install --with "pytest atari"
+        run: poetry install --with pytest,atari
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run atari tests
@@ -127,7 +127,7 @@ jobs:
 
       # procgen tests
       - name: Install core dependencies
-        run: poetry install --with "pytest procgen"
+        run: poetry install --with pytest,procgen
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run pybullet tests
