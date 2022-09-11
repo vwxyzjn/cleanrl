@@ -79,10 +79,17 @@ SuperSuit = "3.4.0"
 multi-agent-ale-py = "0.1.11"
 
 
-
+[tool.poetry.group.cloud]
+optional = true
 [tool.poetry.group.cloud.dependencies]
 boto3 = "^1.24.70"
 awscli = "^1.25.71"
+
+[tool.poetry.group.isaacgym]
+optional = true
+[tool.poetry.group.isaacgym.dependencies]
+isaacgym = {path = "cleanrl/ppo_continuous_action_isaacgym/isaacgym"}
+isaacgymenvs = {git = "https://github.com/vwxyzjn/IsaacGymEnvs.git", rev = "poetry"}
 
 [build-system]
 requires = ["poetry-core"]
