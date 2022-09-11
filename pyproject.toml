@@ -79,6 +79,11 @@ SuperSuit = "3.4.0"
 multi-agent-ale-py = "0.1.11"
 
 
+
+[tool.poetry.group.cloud.dependencies]
+boto3 = "^1.24.70"
+awscli = "^1.25.71"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
