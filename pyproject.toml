@@ -63,6 +63,21 @@ optuna = "^3.0.1"
 optuna-dashboard = "^0.7.2"
 rich = "<12.0"
 
+[tool.poetry.group.envpool]
+optional = true
+[tool.poetry.group.envpool.dependencies]
+envpool = "^0.6.4"
+
+
+[tool.poetry.group.pettingzoo.dependencies]
+PettingZoo = "1.18.1"
+SuperSuit = "3.4.0"
+multi-agent-ale-py = "0.1.11"
+
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^2.20.0"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
