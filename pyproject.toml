@@ -16,6 +16,9 @@ gym = {version = "0.23.1", extras = ["classic_control"]}
 torch = "^1.12.1"
 stable-baselines3 = "1.2.0"
 
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^2.20.0"
+
 [tool.poetry.group.atari]
 optional = true
 [tool.poetry.group.atari.dependencies]
@@ -68,15 +71,13 @@ optional = true
 [tool.poetry.group.envpool.dependencies]
 envpool = "^0.6.4"
 
-
+[tool.poetry.group.pettingzoo]
+optional = true
 [tool.poetry.group.pettingzoo.dependencies]
 PettingZoo = "1.18.1"
 SuperSuit = "3.4.0"
 multi-agent-ale-py = "0.1.11"
 
-
-[tool.poetry.group.dev.dependencies]
-pre-commit = "^2.20.0"
 
 [build-system]
 requires = ["poetry-core"]
