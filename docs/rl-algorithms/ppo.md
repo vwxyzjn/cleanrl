@@ -466,90 +466,104 @@ Below are the average episodic returns for `ppo_atari_envpool_xla_jax.py`. Notic
 | PongNoFrameskip-v4 | 20.55 ± 0.37   | 20.59 ± 0.35   
 | BeamRiderNoFrameskip-v4 |   2039.83 ± 1146.62 | 2445.38 ± 528.91  
  -->
-
-|    | Environment         |           Return |   Human Normalized Score |
-|---:|:--------------------|-----------------:|-------------------------:|
-|  0 | Alien-v5            |   1698.59        |              0.213162    |
-|  1 | Amidar-v5           |    634.468       |              0.366848    |
-|  2 | Assault-v5          |   5975.7         |             11.0726      |
-|  3 | Asterix-v5          |   4362.85        |              0.500748    |
-|  4 | Asteroids-v5        |   1793.38        |              0.0230189   |
-|  5 | Atlantis-v5         |      3.72001e+06 |            229.147       |
-|  6 | BankHeist-v5        |   1183.28        |              1.58218     |
-|  7 | BattleZone-v5       |  24744.9         |              0.642736    |
-|  8 | BeamRider-v5        |   2431.71        |              0.124848    |
-|  9 | Berzerk-v5          |    942.406       |              0.326607    |
-| 10 | Bowling-v5          |     41.6335      |              0.134691    |
-| 11 | Boxing-v5           |     92.6012      |              7.70843     |
-| 12 | Breakout-v5         |    420.536       |             14.5429      |
-| 13 | Centipede-v5        |   3114.11        |              0.103083    |
-| 14 | ChopperCommand-v5   |   5508.93        |              0.714318    |
-| 15 | CrazyClimber-v5     | 117357           |              4.25474     |
-| 16 | Defender-v5         |  52644.3         |              3.14712     |
-| 17 | DemonAttack-v5      |  24830           |             13.5675      |
-| 18 | DoubleDunk-v5       |     -8.0609      |              4.7905      |
-| 19 | Enduro-v5           |   1327.78        |              1.54303     |
-| 20 | FishingDerby-v5     |     25.375       |              2.20896     |
-| 21 | Freeway-v5          |     32.9814      |              1.11424     |
-| 22 | Frostbite-v5        |    397.16        |              0.0777516   |
-| 23 | Gopher-v5           |   6374.4         |              2.83856     |
-| 24 | Gravitar-v5         |   1403.25        |              0.387064    |
-| 25 | Hero-v5             |  25827.4         |              0.832243    |
-| 26 | IceHockey-v5        |     -4.82772     |              0.526634    |
-| 27 | Jamesbond-v5        |    510.172       |              1.75738     |
-| 28 | Kangaroo-v5         |  10477.8         |              3.49506     |
-| 29 | Krull-v5            |  10035.8         |              7.90427     |
-| 30 | KungFuMaster-v5     |  26957.7         |              1.1878      |
-| 31 | MontezumaRevenge-v5 |      0.416667    |              8.76584e-05 |
-| 32 | MsPacman-v5         |   2358.58        |              0.308728    |
-| 33 | NameThisGame-v5     |   5742.91        |              0.599408    |
-| 34 | Phoenix-v5          |  13883.8         |              2.02468     |
-| 35 | Pitfall-v5          |     -0.303922    |              0.0342287   |
-| 36 | Pong-v5             |     20.1686      |              1.15775     |
-| 37 | PrivateEye-v5       |     97.9575      |              0.00105049  |
-| 38 | Qbert-v5            |  16819.7         |              1.25316     |
-| 39 | Riverraid-v5        |   8304.04        |              0.44143     |
-| 40 | RoadRunner-v5       |  17186.6         |              2.19251     |
-| 41 | Robotank-v5         |     14.0176      |              1.21831     |
-| 42 | Seaquest-v5         |   1653.68        |              0.0377571   |
-| 43 | Skiing-v5           | -14963.3         |              0.167287    |
-| 44 | Solaris-v5          |   2394.58        |              0.10444     |
-| 45 | SpaceInvaders-v5    |   1132.19        |              0.647198    |
-| 46 | StarGunner-v5       |  45689.2         |              4.69698     |
-| 47 | Surround-v5         |     -3.11905     |              0.417027    |
-| 48 | Tennis-v5           |    -15.6775      |              0.524032    |
-| 49 | TimePilot-v5        |   6114.38        |              1.53286     |
-| 50 | Tutankham-v5        |    247.586       |              1.51207     |
-| 51 | UpNDown-v5          | 446700           |             39.9798      |
-| 52 | Venture-v5          |      0           |              0           |
-| 53 | VideoPinball-v5     |  46679           |             21.5607      |
-| 54 | WizardOfWor-v5      |   5956.61        |              1.28622     |
-| 55 | YarsRevenge-v5      |  55502.3         |              1.01797     |
-| 56 | Zaxxon-v5           |   4332.56        |              0.470425    |
-
+| Environment         |   CleanRL ppo_atari_envpool_xla_jax.py |   openai/baselines' PPO |
+|:--------------------|---------------------------------------:|------------------------:|
+| Alien-v5            |                         1744.76        |          1549.42        |
+| Amidar-v5           |                          617.137       |           546.406       |
+| Assault-v5          |                         5734.04        |          4050.78        |
+| Asterix-v5          |                         3341.9         |          3459.9         |
+| Asteroids-v5        |                         1669.3         |          1467.19        |
+| Atlantis-v5         |                            3.92929e+06 |             3.09748e+06 |
+| BankHeist-v5        |                         1192.68        |          1195.34        |
+| BattleZone-v5       |                        24937.9         |         20314.3         |
+| BeamRider-v5        |                         2447.84        |          2740.02        |
+| Berzerk-v5          |                         1082.72        |           887.019       |
+| Bowling-v5          |                           44.0681      |            62.2634      |
+| Boxing-v5           |                           92.0554      |            93.3596      |
+| Breakout-v5         |                          431.795       |           388.891       |
+| Centipede-v5        |                         2910.69        |          3688.16        |
+| ChopperCommand-v5   |                         5555.84        |           933.333       |
+| CrazyClimber-v5     |                       116114           |        111675           |
+| Defender-v5         |                        51439.2         |         50045.1         |
+| DemonAttack-v5      |                        22824.8         |         12173.9         |
+| DoubleDunk-v5       |                           -8.56781     |            -9           |
+| Enduro-v5           |                         1262.79        |          1061.12        |
+| FishingDerby-v5     |                           21.6222      |            23.8876      |
+| Freeway-v5          |                           33.1075      |            32.9167      |
+| Frostbite-v5        |                          904.346       |           924.5         |
+| Gopher-v5           |                        11369.6         |          2899.57        |
+| Gravitar-v5         |                         1141.95        |           870.755       |
+| Hero-v5             |                        24628.3         |         25984.5         |
+| IceHockey-v5        |                           -4.91917     |            -4.71505     |
+| Jamesbond-v5        |                          504.105       |           516.489       |
+| Kangaroo-v5         |                         7281.59        |          3791.5         |
+| Krull-v5            |                         9384.7         |          8672.95        |
+| KungFuMaster-v5     |                        26594.5         |         29116.1         |
+| MontezumaRevenge-v5 |                            0.240385    |             0           |
+| MsPacman-v5         |                         2461.62        |          2113.44        |
+| NameThisGame-v5     |                         5442.67        |          5713.89        |
+| Phoenix-v5          |                        14008.5         |          8693.21        |
+| Pitfall-v5          |                           -0.0801282   |            -1.47059     |
+| Pong-v5             |                           20.309       |            20.4043      |
+| PrivateEye-v5       |                           99.5283      |            21.2121      |
+| Qbert-v5            |                        16430.7         |         14283.4         |
+| Riverraid-v5        |                         8297.21        |          9267.48        |
+| RoadRunner-v5       |                        19342.2         |         40325           |
+| Robotank-v5         |                           15.45        |            16           |
+| Seaquest-v5         |                         1230.02        |          1754.44        |
+| Skiing-v5           |                       -14684.3         |        -13901.7         |
+| Solaris-v5          |                         2353.62        |          2088.12        |
+| SpaceInvaders-v5    |                         1162.16        |          1017.65        |
+| StarGunner-v5       |                        53535.9         |         40906           |
+| Surround-v5         |                           -2.94558     |            -6.08095     |
+| Tennis-v5           |                          -15.0446      |            -9.71429     |
+| TimePilot-v5        |                         6224.87        |          5775.53        |
+| Tutankham-v5        |                          238.419       |           197.929       |
+| UpNDown-v5          |                       430177           |        129459           |
+| Venture-v5          |                            0           |           115.278       |
+| VideoPinball-v5     |                        42975.3         |         32777.4         |
+| WizardOfWor-v5      |                         6247.83        |          5024.03        |
+| YarsRevenge-v5      |                        56696.7         |          8238.44        |
+| Zaxxon-v5           |                         6015.8         |          6379.79        |
 
 The following charts are generated by [atari_hns.py](https://github.com/openrlbenchmark/openrlbenchmark/blob/bd754806fa9c3f2ecd87b0120a731ece6c3d8e28/atari_hns.py) and [ours_vs_seedrl_hns.py](https://github.com/openrlbenchmark/openrlbenchmark/blob/bd754806fa9c3f2ecd87b0120a731ece6c3d8e28/ours_vs_seedrl_hns.py).
 
 
-Median Human Normalized Score (HNS) compared to SEEDRL's R2D2 (data available [here](https://github.com/google-research/seed_rl/blob/66e8890261f09d0355e8bf5f1c5e41968ca9f02b/docs/seed_r2d2_atari_graphs.csv)). Note the SEEDRL's R2D2's median HNS data does not include learning curves for `Defender` and `Surround` (see [google-research/seed_rl#78](https://github.com/google-research/seed_rl/issues/78)). Also note the SEEDRL's R2D2 uses slightly different Atari preprocessing than our `ppo_atari_envpool_xla_jax.py`, so we may be comparing apples and oranges; however, the results are still informative.
 
-![](../ppo/ppo_atari_envpool_xla_jax/hns_ppo_vs_r2d2.svg)
+Median Human Normalized Score (HNS) compared to openai/baselines.
+
+![](../ppo/ppo_atari_envpool_xla_jax/hns_ppo_vs_baselines.svg)
 
 
 Learning curves (left y-axis is the return and right y-axis is the human normalized score):
 
 ![](../ppo/ppo_atari_envpool_xla_jax/hms_each_game.svg)
 
+
 Percentage of human normalized score (HMS) for each game.
-![](../ppo/ppo_atari_envpool_xla_jax/hms_bar.svg)
+![](../ppo/ppo_atari_envpool_xla_jax/runset_0_hms_bar.svg)
+
+
+???+ info
+
+    Note the original openai/baselines uses `atari-py==0.2.6` which hangs on `gym.make("DefenderNoFrameskip-v4")` and does not support SurroundNoFrameskip-v4 (see issue [:material-github: openai/atari-py#73](https://github.com/openai/atari-py/issues/73)). To get results on these environments, we use `gym==0.23.1 ale-py==0.7.4 "AutoROM[accept-rom-license]==0.4.2` and [manually register `SurroundNoFrameskip-v4` in our fork](https://github.com/vwxyzjn/baselines/blob/e2cb1c938a62fa8d7fe98187246cde08dfd57bd1/baselines/common/register_all_atari_envs.py#L2). 
+
+
+Median Human Normalized Score (HNS) compared to SEEDRL's R2D2 (data available [here](https://github.com/google-research/seed_rl/blob/66e8890261f09d0355e8bf5f1c5e41968ca9f02b/docs/seed_r2d2_atari_graphs.csv)). 
+
+![](../ppo/ppo_atari_envpool_xla_jax/hns_ppo_vs_r2d2.svg)
+
+???+ info
+
+    Note the SEEDRL's R2D2's median HNS data does not include learning curves for `Defender` and `Surround` (see [google-research/seed_rl#78](https://github.com/google-research/seed_rl/issues/78)). Also note the SEEDRL's R2D2 uses slightly different Atari preprocessing than our `ppo_atari_envpool_xla_jax.py`, so we may be comparing apples and oranges; however, the results are still informative at the scale of 57 Atari games — we would be at least comparing similar apples.
 
 
 
 Tracked experiments and game play videos:
 
-<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-PPO-JAX-EnvPool-s-XLA-part-1---VmlldzoyNTE5Nzcz" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-Part-1"></iframe>
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-PPO-JAX-EnvPool-s-XLA-vs-openai-baselins-PPO-part-1---VmlldzoyNjE2ODMz" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-vs-openai-baselines-Part-1"></iframe>
 
-<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-PPO-JAX-EnvPool-s-XLA-part-2---VmlldzoyNTE5Nzc0" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-Part-2"></iframe>
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-PPO-JAX-EnvPool-s-XLA-vs-openai-baselins-PPO-part-2---VmlldzoyNjE2ODM1" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-vs-openai-baselines-Part-2"></iframe>
 
 
 
