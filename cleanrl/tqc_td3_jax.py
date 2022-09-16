@@ -72,6 +72,7 @@ def parse_args():
     parser.add_argument("--verbose", type=int, default=1)
     # top quantiles to drop per net
     parser.add_argument("-t", "--top-quantiles-to-drop-per-net", type=int, default=2)
+    parser.add_argument("--n-units", type=int, default=256)
 
     parser.add_argument("--noise-clip", type=float, default=0.5,
         help="noise clip parameter of the Target Policy Smoothing Regularization")
@@ -100,17 +101,18 @@ class QNetwork(nn.Module):
     use_layer_norm: bool = False
     dropout_rate: Optional[float] = None
     n_quantiles: int = 25
+    n_units: int = 256
 
     @nn.compact
     def __call__(self, x: jnp.ndarray, a: jnp.ndarray, training: bool = False):
         x = jnp.concatenate([x, a], -1)
-        x = nn.Dense(256)(x)
+        x = nn.Dense(self.n_units)(x)
         if self.dropout_rate is not None and self.dropout_rate > 0:
             x = nn.Dropout(rate=self.dropout_rate)(x, deterministic=False)
         if self.use_layer_norm:
             x = nn.LayerNorm()(x)
         x = nn.relu(x)
-        x = nn.Dense(256)(x)
+        x = nn.Dense(self.n_units)(x)
         if self.dropout_rate is not None and self.dropout_rate > 0:
             x = nn.Dropout(rate=self.dropout_rate)(x, deterministic=False)
         if self.use_layer_norm:
@@ -124,12 +126,13 @@ class Actor(nn.Module):
     action_dim: Sequence[int]
     action_scale: float
     action_bias: float
+    n_units: int = 256
 
     @nn.compact
     def __call__(self, x):
-        x = nn.Dense(256)(x)
+        x = nn.Dense(self.n_units)(x)
         x = nn.relu(x)
-        x = nn.Dense(256)(x)
+        x = nn.Dense(self.n_units)(x)
         x = nn.relu(x)
         x = nn.Dense(self.action_dim)(x)
         x = nn.tanh(x)
@@ -214,6 +217,7 @@ def main():
         action_dim=np.prod(envs.action_space.shape),
         action_scale=(max_action - min_action) / 2.0,
         action_bias=(max_action + min_action) / 2.0,
+        n_units=args.n_units,
     )
     actor_state = RLTrainState.create(
         apply_fn=actor.apply,
@@ -221,7 +225,9 @@ def main():
         target_params=actor.init(actor_key, obs),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
-    qf = QNetwork(dropout_rate=args.dropout_rate, use_layer_norm=args.layer_norm)
+    qf = QNetwork(
+        dropout_rate=args.dropout_rate, use_layer_norm=args.layer_norm, n_units=args.n_units, n_quantiles=n_quantiles
+    )
     qf1_state = RLTrainState.create(
         apply_fn=qf.apply,
         params=qf.init(
