@@ -4,7 +4,7 @@ import os
 import random
 import time
 from distutils.util import strtobool
-from typing import Sequence, Optional
+from typing import Optional, Sequence
 
 import flax
 import flax.linen as nn
@@ -16,8 +16,9 @@ import optax
 import pybullet_envs  # noqa
 from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
-from torch.utils.tensorboard import SummaryWriter
 from stable_baselines3.common.vec_env import DummyVecEnv
+from torch.utils.tensorboard import SummaryWriter
+from tqdm.rich import tqdm
 
 
 def parse_args():
@@ -65,6 +66,11 @@ def parse_args():
     parser.add_argument("--layer-norm", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True)
     parser.add_argument("--policy-frequency", type=int, default=2,
         help="the frequency of training policy (delayed)")
+    parser.add_argument("--eval-freq", type=int, default=-1)
+    parser.add_argument("--n-eval-envs", type=int, default=1)
+    parser.add_argument("--n-eval-episodes", type=int, default=10)
+    parser.add_argument("--verbose", type=int, default=1)
+
     parser.add_argument("--noise-clip", type=float, default=0.5,
         help="noise clip parameter of the Target Policy Smoothing Regularization")
     args = parser.parse_args()
@@ -72,7 +78,7 @@ def parse_args():
     return args
 
 
-def make_env(env_id, seed, idx, capture_video, run_name):
+def make_env(env_id, seed, idx, capture_video=False, run_name=""):
     def thunk():
         env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
@@ -132,6 +138,20 @@ class RLTrainState(TrainState):
     target_params: flax.core.FrozenDict
 
 
+def evaluate_policy(eval_env, actor, actor_state, n_eval_episodes: int = 10):
+    eval_episode_rewards = []
+    for _ in range(n_eval_episodes):
+        obs = eval_env.reset()
+        done = False
+        episode_reward = 0
+        while not done:
+            action = np.array(actor.apply(actor_state.params, obs))
+            obs, reward, done, _ = eval_env.step(action)
+            episode_reward += reward
+        eval_episode_rewards.append(episode_reward)
+    return np.mean(eval_episode_rewards), np.std(eval_episode_rewards)
+
+
 def main():
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -165,6 +185,8 @@ def main():
     envs = DummyVecEnv(
         [make_env(args.env_id, args.seed, 0, args.capture_video, run_name)]
     )
+    eval_envs = DummyVecEnv([make_env(args.env_id, args.seed + 1, 0)])
+
     assert isinstance(
         envs.action_space, gym.spaces.Box
     ), "only continuous action space is supported"
@@ -335,7 +357,7 @@ def main():
 
     start_time = time.time()
     n_updates = 0
-    for global_step in range(args.total_timesteps):
+    for global_step in tqdm(range(args.total_timesteps)):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
             actions = np.array(
@@ -362,9 +384,10 @@ def main():
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         for info in infos:
             if "episode" in info.keys():
-                print(
-                    f"global_step={global_step + 1}, episodic_return={info['episode']['r']:.2f}"
-                )
+                if args.verbose >= 2:
+                    print(
+                        f"global_step={global_step + 1}, episodic_return={info['episode']['r']:.2f}"
+                    )
                 writer.add_scalar(
                     "charts/episodic_return", info["episode"]["r"], global_step
                 )
@@ -423,6 +446,16 @@ def main():
                         data.observations.numpy(),
                         key,
                     )
+
+            fps = int(global_step / (time.time() - start_time))
+            if args.eval_freq > 0 and global_step % args.eval_freq == 0:
+                mean_reward, std_reward = evaluate_policy(eval_envs, actor, actor_state)
+                print(
+                    f"global_step={global_step}, mean_eval_reward={mean_reward:.2f} +/- {std_reward:.2f} - {fps} fps"
+                )
+                writer.add_scalar("charts/mean_eval_reward", mean_reward, global_step)
+                writer.add_scalar("charts/std_eval_reward", std_reward, global_step)
+
             if global_step % 100 == 0:
                 writer.add_scalar("losses/qf1_loss", qf1_loss_value.item(), global_step)
                 writer.add_scalar("losses/qf2_loss", qf2_loss_value.item(), global_step)
@@ -431,7 +464,8 @@ def main():
                 writer.add_scalar(
                     "losses/actor_loss", actor_loss_value.item(), global_step
                 )
-                print("FPS:", int(global_step / (time.time() - start_time)))
+                if args.verbose >= 2:
+                    print("FPS:", fps)
                 writer.add_scalar(
                     "charts/SPS",
                     int(global_step / (time.time() - start_time)),
