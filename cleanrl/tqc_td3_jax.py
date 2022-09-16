@@ -71,7 +71,7 @@ def parse_args():
     parser.add_argument("--n-eval-episodes", type=int, default=10)
     parser.add_argument("--verbose", type=int, default=1)
     # top quantiles to drop per net
-    parser.add_argument("--top-quantile-drop-per-net", type=int, default=2)
+    parser.add_argument("-t", "--top-quantiles-to-drop-per-net", type=int, default=2)
 
     parser.add_argument("--noise-clip", type=float, default=0.5,
         help="noise clip parameter of the Target Policy Smoothing Regularization")
@@ -173,8 +173,7 @@ def main():
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
         "hyperparameters",
-        "|param|value|\n|-|-|\n%s"
-        % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
+        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
     # TRY NOT TO MODIFY: seeding
@@ -185,14 +184,10 @@ def main():
     key, dropout_key1, dropout_key2 = jax.random.split(key, 3)
 
     # env setup
-    envs = DummyVecEnv(
-        [make_env(args.env_id, args.seed, 0, args.capture_video, run_name)]
-    )
+    envs = DummyVecEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     eval_envs = DummyVecEnv([make_env(args.env_id, args.seed + 1, 0)])
 
-    assert isinstance(
-        envs.action_space, gym.spaces.Box
-    ), "only continuous action space is supported"
+    assert isinstance(envs.action_space, gym.spaces.Box), "only continuous action space is supported"
 
     # Assume that all dimensions share the same bound
     min_action = float(envs.action_space.low[0])
@@ -308,21 +303,15 @@ def main():
         next_quantiles = jnp.sort(qf_next_quantiles)
         # Keep only the quantiles we need
         next_target_quantiles = next_quantiles[:, :n_target_quantiles]
-        
 
-        target_quantiles = (
-            rewards.reshape(-1, 1) + (1 - dones.reshape(-1, 1)) * args.gamma * (next_target_quantiles)
-        )
+        target_quantiles = rewards.reshape(-1, 1) + (1 - dones.reshape(-1, 1)) * args.gamma * (next_target_quantiles)
 
         # Make target_quantiles broadcastable to (batch_size, n_quantiles, n_target_quantiles).
         target_quantiles = jnp.expand_dims(target_quantiles, axis=1)
 
-
         def huber_quantile_loss(params, noise_key):
             # Compute huber quantile loss
-            current_quantiles = qf.apply(
-                params, observations, actions, True, rngs={"dropout": noise_key}
-            )
+            current_quantiles = qf.apply(params, observations, actions, True, rngs={"dropout": noise_key})
             # convert to shape: (batch_size, n_quantiles, 1)
             current_quantiles = jnp.expand_dims(current_quantiles, axis=-1)
 
@@ -331,7 +320,7 @@ def main():
             cum_prob = (jnp.arange(n_quantiles, dtype=jnp.float32) + 0.5) / n_quantiles
             # convert to shape: (1, n_quantiles, 1)
             cum_prob = jnp.expand_dims(cum_prob, axis=(0, -1))
-            
+
             # TQC
             # target_quantiles: (batch_size, 1, n_target_quantiles) -> (batch_size, 1, 1, n_target_quantiles)
             # current_quantiles: (batch_size, n_critics, n_quantiles) -> (batch_size, n_critics, n_quantiles, 1)
@@ -344,12 +333,8 @@ def main():
             loss = jnp.abs(cum_prob - (pairwise_delta < 0).astype(jnp.float32)) * huber_loss
             return loss.mean()
 
-        qf1_loss_value, grads1 = jax.value_and_grad(
-            huber_quantile_loss, has_aux=False
-        )(qf1_state.params, dropout_key_3)
-        qf2_loss_value, grads2 = jax.value_and_grad(
-            huber_quantile_loss, has_aux=False
-        )(qf2_state.params, dropout_key_4)
+        qf1_loss_value, grads1 = jax.value_and_grad(huber_quantile_loss, has_aux=False)(qf1_state.params, dropout_key_3)
+        qf2_loss_value, grads2 = jax.value_and_grad(huber_quantile_loss, has_aux=False)(qf2_state.params, dropout_key_4)
         qf1_state = qf1_state.apply_gradients(grads=grads1)
         qf2_state = qf2_state.apply_gradients(grads=grads2)
 
@@ -381,32 +366,24 @@ def main():
         actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
         actor_state = actor_state.apply_gradients(grads=grads)
         actor_state = actor_state.replace(
-            target_params=optax.incremental_update(
-                actor_state.params, actor_state.target_params, args.tau
-            )
+            target_params=optax.incremental_update(actor_state.params, actor_state.target_params, args.tau)
         )
 
         qf1_state = qf1_state.replace(
-            target_params=optax.incremental_update(
-                qf1_state.params, qf1_state.target_params, args.tau
-            )
+            target_params=optax.incremental_update(qf1_state.params, qf1_state.target_params, args.tau)
         )
         qf2_state = qf2_state.replace(
-            target_params=optax.incremental_update(
-                qf2_state.params, qf2_state.target_params, args.tau
-            )
+            target_params=optax.incremental_update(qf2_state.params, qf2_state.target_params, args.tau)
         )
         return actor_state, (qf1_state, qf2_state), actor_loss_value, key
 
     start_time = time.time()
     n_updates = 0
     for global_step in tqdm(range(args.total_timesteps)):
-    # for global_step in range(args.total_timesteps):
+        # for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
-            actions = np.array(
-                [envs.action_space.sample() for _ in range(envs.num_envs)]
-            )
+            actions = np.array([envs.action_space.sample() for _ in range(envs.num_envs)])
         else:
             actions = actor.apply(actor_state.params, obs)
             actions = np.array(
@@ -429,15 +406,9 @@ def main():
         for info in infos:
             if "episode" in info.keys():
                 if args.verbose >= 2:
-                    print(
-                        f"global_step={global_step + 1}, episodic_return={info['episode']['r']:.2f}"
-                    )
-                writer.add_scalar(
-                    "charts/episodic_return", info["episode"]["r"], global_step
-                )
-                writer.add_scalar(
-                    "charts/episodic_length", info["episode"]["l"], global_step
-                )
+                    print(f"global_step={global_step + 1}, episodic_return={info['episode']['r']:.2f}")
+                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 break
 
         # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
@@ -460,11 +431,7 @@ def main():
                 n_updates += 1
                 data = rb.sample(args.batch_size)
 
-                (
-                    (qf1_state, qf2_state),
-                    (qf1_loss_value, qf2_loss_value),
-                    key,
-                ) = update_critic(
+                ((qf1_state, qf2_state), (qf1_loss_value, qf2_loss_value), key,) = update_critic(
                     actor_state,
                     qf1_state,
                     qf2_state,
@@ -477,12 +444,7 @@ def main():
                 )
 
                 if n_updates % args.policy_frequency == 0:
-                    (
-                        actor_state,
-                        (qf1_state, qf2_state),
-                        actor_loss_value,
-                        key,
-                    ) = update_actor(
+                    (actor_state, (qf1_state, qf2_state), actor_loss_value, key,) = update_actor(
                         actor_state,
                         qf1_state,
                         qf2_state,
@@ -493,9 +455,7 @@ def main():
             fps = int(global_step / (time.time() - start_time))
             if args.eval_freq > 0 and global_step % args.eval_freq == 0:
                 mean_reward, std_reward = evaluate_policy(eval_envs, actor, actor_state)
-                print(
-                    f"global_step={global_step}, mean_eval_reward={mean_reward:.2f} +/- {std_reward:.2f} - {fps} fps"
-                )
+                print(f"global_step={global_step}, mean_eval_reward={mean_reward:.2f} +/- {std_reward:.2f} - {fps} fps")
                 writer.add_scalar("charts/mean_eval_reward", mean_reward, global_step)
                 writer.add_scalar("charts/std_eval_reward", std_reward, global_step)
 
@@ -504,9 +464,7 @@ def main():
                 writer.add_scalar("losses/qf2_loss", qf2_loss_value.item(), global_step)
                 # writer.add_scalar("losses/qf1_values", qf1_a_values.item(), global_step)
                 # writer.add_scalar("losses/qf2_values", qf2_a_values.item(), global_step)
-                writer.add_scalar(
-                    "losses/actor_loss", actor_loss_value.item(), global_step
-                )
+                writer.add_scalar("losses/actor_loss", actor_loss_value.item(), global_step)
                 if args.verbose >= 2:
                     print("FPS:", fps)
                 writer.add_scalar(
