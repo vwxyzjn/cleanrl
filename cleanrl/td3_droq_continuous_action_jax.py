@@ -343,20 +343,6 @@ def main():
             )
         )
 
-        # qf1_state = qf1_state.replace(
-        #     target_params=optax.incremental_update(
-        #         qf1_state.params, qf1_state.target_params, args.tau
-        #     )
-        # )
-        # qf2_state = qf2_state.replace(
-        #     target_params=optax.incremental_update(
-        #         qf2_state.params, qf2_state.target_params, args.tau
-        #     )
-        # )
-        return actor_state, (qf1_state, qf2_state), actor_loss_value, key
-
-    @jax.jit
-    def update_q_target_networks(qf1_state, qf2_state):
         qf1_state = qf1_state.replace(
             target_params=optax.incremental_update(
                 qf1_state.params, qf1_state.target_params, args.tau
@@ -367,7 +353,7 @@ def main():
                 qf2_state.params, qf2_state.target_params, args.tau
             )
         )
-        return qf1_state, qf2_state
+        return actor_state, (qf1_state, qf2_state), actor_loss_value, key
 
     start_time = time.time()
     n_updates = 0
@@ -446,9 +432,6 @@ def main():
                     data.dones.flatten().numpy(),
                     key,
                 )
-
-                # TODO: check if we need to update actor target too
-                qf1_state, qf2_state = update_q_target_networks(qf1_state, qf2_state)
 
                 if n_updates % args.policy_frequency == 0:
                     (
