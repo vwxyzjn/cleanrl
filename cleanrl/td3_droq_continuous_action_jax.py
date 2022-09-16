@@ -369,6 +369,54 @@ def main():
         )
         return qf1_state, qf2_state
 
+    @jax.jit
+    def train(qf1_state, qf2_state, actor_state, key, n_updates):
+        for _ in range(args.gradient_steps):
+            n_updates += 1
+            data = rb.sample(args.batch_size)
+
+            (
+                (qf1_state, qf2_state),
+                (qf1_loss_value, qf2_loss_value),
+                (qf1_a_values, qf2_a_values),
+                key,
+            ) = update_critic(
+                actor_state,
+                qf1_state,
+                qf2_state,
+                data.observations.numpy(),
+                data.actions.numpy(),
+                data.next_observations.numpy(),
+                data.rewards.flatten().numpy(),
+                data.dones.flatten().numpy(),
+                key,
+            )
+
+            # TODO: check if we need to update actor target too
+            qf1_state, qf2_state = update_q_target_networks(qf1_state, qf2_state)
+
+        (
+            actor_state,
+            (qf1_state, qf2_state),
+            actor_loss_value,
+            key,
+        ) = update_actor(
+            actor_state,
+            qf1_state,
+            qf2_state,
+            data.observations.numpy(),
+            key,
+        )
+        return (
+            n_updates,
+            (qf1_state, qf2_state),
+            actor_state,
+            key,
+            (qf1_loss_value, qf2_loss_value),
+            actor_loss_value,
+            (qf1_a_values, qf2_a_values),
+        )
+
     start_time = time.time()
     n_updates = 0
     for global_step in tqdm(range(args.total_timesteps)):
@@ -426,45 +474,18 @@ def main():
 
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
-            for _ in range(args.gradient_steps):
-                n_updates += 1
-                data = rb.sample(args.batch_size)
-
-                (
-                    (qf1_state, qf2_state),
-                    (qf1_loss_value, qf2_loss_value),
-                    (qf1_a_values, qf2_a_values),
-                    key,
-                ) = update_critic(
-                    actor_state,
-                    qf1_state,
-                    qf2_state,
-                    data.observations.numpy(),
-                    data.actions.numpy(),
-                    data.next_observations.numpy(),
-                    data.rewards.flatten().numpy(),
-                    data.dones.flatten().numpy(),
-                    key,
-                )
-
-                # TODO: check if we need to update actor target too
-                qf1_state, qf2_state = update_q_target_networks(qf1_state, qf2_state)
-
-                if n_updates % args.policy_frequency == 0:
-                    (
-                        actor_state,
-                        (qf1_state, qf2_state),
-                        actor_loss_value,
-                        key,
-                    ) = update_actor(
-                        actor_state,
-                        qf1_state,
-                        qf2_state,
-                        data.observations.numpy(),
-                        key,
-                    )
+            (
+                n_updates,
+                (qf1_state, qf2_state),
+                actor_state,
+                key,
+                (qf1_loss_value, qf2_loss_value),
+                actor_loss_value,
+                (qf1_a_values, qf2_a_values),
+            ) = train(qf1_state, qf2_state, actor_state, key, n_updates)
 
             fps = int(global_step / (time.time() - start_time))
+
             if args.eval_freq > 0 and global_step % args.eval_freq == 0:
                 mean_reward, std_reward = evaluate_policy(eval_envs, actor, actor_state)
                 print(
