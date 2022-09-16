@@ -373,8 +373,8 @@ def main():
     def train(qf1_state, qf2_state, actor_state, key, n_updates):
         for _ in range(args.gradient_steps):
             n_updates += 1
-            # TODO: replace with jitable replay buffer, currently buggy (same samples are returned)
             data = rb.sample(args.batch_size)
+
             (
                 (qf1_state, qf2_state),
                 (qf1_loss_value, qf2_loss_value),
@@ -407,54 +407,6 @@ def main():
             data.observations.numpy(),
             key,
         )
-        return (
-            n_updates,
-            (qf1_state, qf2_state),
-            actor_state,
-            key,
-            (qf1_loss_value, qf2_loss_value),
-            actor_loss_value,
-            (qf1_a_values, qf2_a_values),
-        )
-
-    def train_no_jit(qf1_state, qf2_state, actor_state, key, n_updates):
-        actor_loss_value = 0.0
-        for _ in range(args.gradient_steps):
-            n_updates += 1
-            data = rb.sample(args.batch_size)
-
-            (
-                (qf1_state, qf2_state),
-                (qf1_loss_value, qf2_loss_value),
-                (qf1_a_values, qf2_a_values),
-                key,
-            ) = update_critic(
-                actor_state,
-                qf1_state,
-                qf2_state,
-                data.observations.numpy(),
-                data.actions.numpy(),
-                data.next_observations.numpy(),
-                data.rewards.flatten().numpy(),
-                data.dones.flatten().numpy(),
-                key,
-            )
-
-            # TODO: check if we need to update actor target too
-            qf1_state, qf2_state = update_q_target_networks(qf1_state, qf2_state)
-            if n_updates % args.policy_frequency == 0:
-                (
-                    actor_state,
-                    (qf1_state, qf2_state),
-                    actor_loss_value,
-                    key,
-                ) = update_actor(
-                    actor_state,
-                    qf1_state,
-                    qf2_state,
-                    data.observations.numpy(),
-                    key,
-                )
         return (
             n_updates,
             (qf1_state, qf2_state),
@@ -522,9 +474,6 @@ def main():
 
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
-            # TODO: fix when train_freq > 1
-            train_fn = train if args.policy_frequency == args.gradient_steps else train_no_jit
-
             (
                 n_updates,
                 (qf1_state, qf2_state),
@@ -533,7 +482,7 @@ def main():
                 (qf1_loss_value, qf2_loss_value),
                 actor_loss_value,
                 (qf1_a_values, qf2_a_values),
-            ) = train_fn(qf1_state, qf2_state, actor_state, key, n_updates)
+            ) = train(qf1_state, qf2_state, actor_state, key, n_updates)
 
             fps = int(global_step / (time.time() - start_time))
 
