@@ -70,6 +70,8 @@ def parse_args():
     parser.add_argument("--n-eval-envs", type=int, default=1)
     parser.add_argument("--n-eval-episodes", type=int, default=10)
     parser.add_argument("--verbose", type=int, default=1)
+    # top quantiles to drop per net
+    parser.add_argument("--top-quantile-drop-per-net", type=int, default=2)
 
     parser.add_argument("--noise-clip", type=float, default=0.5,
         help="noise clip parameter of the Target Policy Smoothing Regularization")
@@ -208,7 +210,7 @@ def main():
     n_quantiles = 25
     n_critics = 2
     quantiles_total = n_quantiles * n_critics
-    top_quantiles_to_drop_per_net = 2
+    top_quantiles_to_drop_per_net = args.top_quantiles_to_drop_per_net
     n_target_quantiles = quantiles_total - top_quantiles_to_drop_per_net * n_critics
 
     # TRY NOT TO MODIFY: start the game
