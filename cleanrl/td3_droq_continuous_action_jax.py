@@ -263,7 +263,7 @@ def main():
         # TODO Maybe pre-generate a lot of random keys
         # also check https://jax.readthedocs.io/en/latest/jax.random.html
         key, noise_key, dropout_key_1, dropout_key_2 = jax.random.split(key, 4)
-        key, dropout_noise_key = jax.random.split(key, 2)
+        key, dropout_key_3, dropout_key_4 = jax.random.split(key, 3)
 
         clipped_noise = jnp.clip(
             (jax.random.normal(noise_key, actions[0].shape) * args.policy_noise),
@@ -294,18 +294,18 @@ def main():
             rewards + (1 - dones) * args.gamma * (min_qf_next_target)
         ).reshape(-1)
 
-        def mse_loss(params):
+        def mse_loss(params, noise_key):
             qf_a_values = qf.apply(
-                params, observations, actions, True, rngs={"dropout": dropout_noise_key}
+                params, observations, actions, True, rngs={"dropout": noise_key}
             ).squeeze()
             return ((qf_a_values - next_q_value) ** 2).mean(), qf_a_values.mean()
 
         (qf1_loss_value, qf1_a_values), grads1 = jax.value_and_grad(
             mse_loss, has_aux=True
-        )(qf1_state.params)
+        )(qf1_state.params, dropout_key_3)
         (qf2_loss_value, qf2_a_values), grads2 = jax.value_and_grad(
             mse_loss, has_aux=True
-        )(qf2_state.params)
+        )(qf2_state.params, dropout_key_4)
         qf1_state = qf1_state.apply_gradients(grads=grads1)
         qf2_state = qf2_state.apply_gradients(grads=grads2)
 
