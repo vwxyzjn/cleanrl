@@ -5,7 +5,7 @@ import random
 import time
 from distutils.util import strtobool
 from functools import partial
-from typing import Optional, Sequence
+from typing import NamedTuple, Optional, Sequence
 
 import flax
 import flax.linen as nn
@@ -20,6 +20,14 @@ from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.vec_env import DummyVecEnv
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.rich import tqdm
+
+
+class ReplayBufferSamplesNp(NamedTuple):
+    observations: np.ndarray
+    actions: np.ndarray
+    next_observations: np.ndarray
+    dones: np.ndarray
+    rewards: np.ndarray
 
 
 def parse_args():
@@ -384,30 +392,41 @@ def main():
         )
         return actor_state, (qf1_state, qf2_state), actor_loss_value, key
 
-    def train(n_updates: int, qf1_state, qf2_state, actor_state, key):
-        for _ in range(args.gradient_steps):
+    @jax.jit
+    def train(data: ReplayBufferSamplesNp, n_updates: int, qf1_state, qf2_state, actor_state, key):
+        for i in range(args.gradient_steps):
             n_updates += 1
-            data = rb.sample(args.batch_size)
+
+            def slice(x):
+                assert x.shape[0] % args.gradient_steps == 0
+                batch_size = args.batch_size
+                batch_size = x.shape[0] // args.gradient_steps
+                return x[batch_size * i : batch_size * (i + 1)]
 
             ((qf1_state, qf2_state), (qf1_loss_value, qf2_loss_value), key,) = update_critic(
                 actor_state,
                 qf1_state,
                 qf2_state,
-                data.observations.numpy(),
-                data.actions.numpy(),
-                data.next_observations.numpy(),
-                data.rewards.flatten().numpy(),
-                data.dones.flatten().numpy(),
+                slice(data.observations),
+                slice(data.actions),
+                slice(data.next_observations),
+                slice(data.rewards),
+                slice(data.dones),
                 key,
             )
 
+            # sanity check
+            # otherwise must use update_actor=n_updates % args.policy_frequency,
+            # which is not jitable
+            assert args.policy_frequency <= args.gradient_steps
             (actor_state, (qf1_state, qf2_state), actor_loss_value, key,) = update_actor(
                 actor_state,
                 qf1_state,
                 qf2_state,
-                data.observations.numpy(),
+                slice(data.observations),
                 key,
-                update_actor=n_updates % args.policy_frequency,
+                update_actor=((i + 1) % args.policy_frequency) == 0,
+                # update_actor=(n_updates % args.policy_frequency) == 0,
             )
         return n_updates, qf1_state, qf2_state, actor_state, key, (qf1_loss_value, qf2_loss_value, actor_loss_value)
 
@@ -461,7 +480,19 @@ def main():
 
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
+            # Sample all at once for efficiency (so we can jit the for loop)
+            data = rb.sample(args.batch_size * args.gradient_steps)
+            # Convert to numpy
+            data = ReplayBufferSamplesNp(
+                data.observations.numpy(),
+                data.actions.numpy(),
+                data.next_observations.numpy(),
+                data.dones.numpy().flatten(),
+                data.rewards.numpy().flatten(),
+            )
+
             n_updates, qf1_state, qf2_state, actor_state, key, (qf1_loss_value, qf2_loss_value, actor_loss_value) = train(
+                data,
                 n_updates,
                 qf1_state,
                 qf2_state,
