@@ -4,6 +4,7 @@ import os
 import random
 import time
 from distutils.util import strtobool
+from functools import partial
 from typing import Optional, Sequence
 
 import flax
@@ -318,21 +319,16 @@ def main():
         def huber_quantile_loss(params, noise_key):
             # Compute huber quantile loss
             current_quantiles = qf.apply(params, observations, actions, True, rngs={"dropout": noise_key})
-            # convert to shape: (batch_size, n_quantiles, 1)
+            # convert to shape: (batch_size, n_quantiles, 1) for broadcast
             current_quantiles = jnp.expand_dims(current_quantiles, axis=-1)
 
             # Cumulative probabilities to calculate quantiles.
             # shape: (n_quantiles,)
             cum_prob = (jnp.arange(n_quantiles, dtype=jnp.float32) + 0.5) / n_quantiles
-            # convert to shape: (1, n_quantiles, 1)
+            # convert to shape: (1, n_quantiles, 1) for broadcast
             cum_prob = jnp.expand_dims(cum_prob, axis=(0, -1))
 
-            # TQC
-            # target_quantiles: (batch_size, 1, n_target_quantiles) -> (batch_size, 1, 1, n_target_quantiles)
-            # current_quantiles: (batch_size, n_critics, n_quantiles) -> (batch_size, n_critics, n_quantiles, 1)
-            # pairwise_delta: (batch_size, n_critics, n_quantiles, n_target_quantiles)
-            # Note: in both cases, the loss has the same shape as pairwise_delta
-
+            # pairwise_delta: (batch_size, n_quantiles, n_target_quantiles)
             pairwise_delta = target_quantiles - current_quantiles
             abs_pairwise_delta = jnp.abs(pairwise_delta)
             huber_loss = jnp.where(abs_pairwise_delta > 1, abs_pairwise_delta - 0.5, pairwise_delta**2 * 0.5)
@@ -350,13 +346,14 @@ def main():
             key,
         )
 
-    @jax.jit
+    @partial(jax.jit, static_argnames=["update_actor"])
     def update_actor(
         actor_state: RLTrainState,
         qf1_state: RLTrainState,
         qf2_state: RLTrainState,
         observations: np.ndarray,
         key: jnp.ndarray,
+        update_actor: bool,
     ):
         key, dropout_key = jax.random.split(key, 2)
 
@@ -369,11 +366,15 @@ def main():
                 rngs={"dropout": dropout_key},
             ).mean()
 
-        actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
-        actor_state = actor_state.apply_gradients(grads=grads)
-        actor_state = actor_state.replace(
-            target_params=optax.incremental_update(actor_state.params, actor_state.target_params, args.tau)
-        )
+        if update_actor:
+            actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
+            actor_state = actor_state.apply_gradients(grads=grads)
+            # TODO: check with and without updating target actor
+            actor_state = actor_state.replace(
+                target_params=optax.incremental_update(actor_state.params, actor_state.target_params, args.tau)
+            )
+        else:
+            actor_loss_value = 0.0
 
         qf1_state = qf1_state.replace(
             target_params=optax.incremental_update(qf1_state.params, qf1_state.target_params, args.tau)
@@ -382,6 +383,33 @@ def main():
             target_params=optax.incremental_update(qf2_state.params, qf2_state.target_params, args.tau)
         )
         return actor_state, (qf1_state, qf2_state), actor_loss_value, key
+
+    def train(n_updates: int, qf1_state, qf2_state, actor_state, key):
+        for _ in range(args.gradient_steps):
+            n_updates += 1
+            data = rb.sample(args.batch_size)
+
+            ((qf1_state, qf2_state), (qf1_loss_value, qf2_loss_value), key,) = update_critic(
+                actor_state,
+                qf1_state,
+                qf2_state,
+                data.observations.numpy(),
+                data.actions.numpy(),
+                data.next_observations.numpy(),
+                data.rewards.flatten().numpy(),
+                data.dones.flatten().numpy(),
+                key,
+            )
+
+            (actor_state, (qf1_state, qf2_state), actor_loss_value, key,) = update_actor(
+                actor_state,
+                qf1_state,
+                qf2_state,
+                data.observations.numpy(),
+                key,
+                update_actor=n_updates % args.policy_frequency,
+            )
+        return n_updates, qf1_state, qf2_state, actor_state, key, (qf1_loss_value, qf2_loss_value, actor_loss_value)
 
     start_time = time.time()
     n_updates = 0
@@ -433,30 +461,13 @@ def main():
 
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
-            for _ in range(args.gradient_steps):
-                n_updates += 1
-                data = rb.sample(args.batch_size)
-
-                ((qf1_state, qf2_state), (qf1_loss_value, qf2_loss_value), key,) = update_critic(
-                    actor_state,
-                    qf1_state,
-                    qf2_state,
-                    data.observations.numpy(),
-                    data.actions.numpy(),
-                    data.next_observations.numpy(),
-                    data.rewards.flatten().numpy(),
-                    data.dones.flatten().numpy(),
-                    key,
-                )
-
-                if n_updates % args.policy_frequency == 0:
-                    (actor_state, (qf1_state, qf2_state), actor_loss_value, key,) = update_actor(
-                        actor_state,
-                        qf1_state,
-                        qf2_state,
-                        data.observations.numpy(),
-                        key,
-                    )
+            n_updates, qf1_state, qf2_state, actor_state, key, (qf1_loss_value, qf2_loss_value, actor_loss_value) = train(
+                n_updates,
+                qf1_state,
+                qf2_state,
+                actor_state,
+                key,
+            )
 
             fps = int(global_step / (time.time() - start_time))
             if args.eval_freq > 0 and global_step % args.eval_freq == 0:
