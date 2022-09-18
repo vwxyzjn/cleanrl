@@ -354,14 +354,14 @@ def main():
             key,
         )
 
-    @partial(jax.jit, static_argnames=["update_actor"])
+    # @partial(jax.jit, static_argnames=["update_actor"])
+    @jax.jit
     def update_actor(
         actor_state: RLTrainState,
         qf1_state: RLTrainState,
         qf2_state: RLTrainState,
         observations: np.ndarray,
         key: jnp.ndarray,
-        update_actor: bool,
     ):
         key, dropout_key = jax.random.split(key, 2)
 
@@ -374,15 +374,12 @@ def main():
                 rngs={"dropout": dropout_key},
             ).mean()
 
-        if update_actor:
-            actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
-            actor_state = actor_state.apply_gradients(grads=grads)
-            # TODO: check with and without updating target actor
-            actor_state = actor_state.replace(
-                target_params=optax.incremental_update(actor_state.params, actor_state.target_params, args.tau)
-            )
-        else:
-            actor_loss_value = 0.0
+        actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
+        actor_state = actor_state.apply_gradients(grads=grads)
+        # TODO: check with and without updating target actor
+        actor_state = actor_state.replace(
+            target_params=optax.incremental_update(actor_state.params, actor_state.target_params, args.tau)
+        )
 
         qf1_state = qf1_state.replace(
             target_params=optax.incremental_update(qf1_state.params, qf1_state.target_params, args.tau)
@@ -418,17 +415,24 @@ def main():
             # sanity check
             # otherwise must use update_actor=n_updates % args.policy_frequency,
             # which is not jitable
-            assert args.policy_frequency <= args.gradient_steps
-            (actor_state, (qf1_state, qf2_state), actor_loss_value, key,) = update_actor(
-                actor_state,
-                qf1_state,
-                qf2_state,
-                slice(data.observations),
-                key,
-                update_actor=((i + 1) % args.policy_frequency) == 0,
-                # update_actor=(n_updates % args.policy_frequency) == 0,
-            )
-        return n_updates, qf1_state, qf2_state, actor_state, key, (qf1_loss_value, qf2_loss_value, actor_loss_value)
+            # assert args.policy_frequency <= args.gradient_steps
+        (actor_state, (qf1_state, qf2_state), actor_loss_value, key,) = update_actor(
+            actor_state,
+            qf1_state,
+            qf2_state,
+            slice(data.observations),
+            key,
+            # update_actor=((i + 1) % args.policy_frequency) == 0,
+            # update_actor=(n_updates % args.policy_frequency) == 0,
+        )
+        return (
+            n_updates,
+            qf1_state,
+            qf2_state,
+            actor_state,
+            key,
+            (qf1_loss_value, qf2_loss_value, actor_loss_value, slice(data.rewards)),
+        )
 
     start_time = time.time()
     n_updates = 0
@@ -491,7 +495,14 @@ def main():
                 data.rewards.numpy().flatten(),
             )
 
-            n_updates, qf1_state, qf2_state, actor_state, key, (qf1_loss_value, qf2_loss_value, actor_loss_value) = train(
+            (
+                n_updates,
+                qf1_state,
+                qf2_state,
+                actor_state,
+                key,
+                (qf1_loss_value, qf2_loss_value, actor_loss_value, reward),
+            ) = train(
                 data,
                 n_updates,
                 qf1_state,
@@ -499,6 +510,11 @@ def main():
                 actor_state,
                 key,
             )
+
+            # print(global_step)
+            # print(reward[:5])
+            # if global_step > 10005:
+            #    exit()
 
             fps = int(global_step / (time.time() - start_time))
             if args.eval_freq > 0 and global_step % args.eval_freq == 0:
