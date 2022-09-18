@@ -229,7 +229,7 @@ def main():
         apply_fn=actor.apply,
         params=actor.init(actor_key, obs),
         target_params=actor.init(actor_key, obs),
-        tx=optax.adan(learning_rate=args.learning_rate),
+        tx=optax.adam(learning_rate=args.learning_rate),
     )
 
     agent = Agent(actor, actor_state)
@@ -249,7 +249,7 @@ def main():
             obs,
             jnp.array([envs.action_space.sample()]),
         ),
-        tx=optax.adan(learning_rate=args.learning_rate),
+        tx=optax.adam(learning_rate=args.learning_rate),
     )
     qf2_state = RLTrainState.create(
         apply_fn=qf.apply,
@@ -263,7 +263,7 @@ def main():
             obs,
             jnp.array([envs.action_space.sample()]),
         ),
-        tx=optax.adan(learning_rate=args.learning_rate),
+        tx=optax.adam(learning_rate=args.learning_rate),
     )
     actor.apply = jax.jit(actor.apply)
     qf.apply = jax.jit(qf.apply, static_argnames=("dropout_rate", "use_layer_norm"))
