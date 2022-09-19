@@ -16,6 +16,8 @@ import optax
 import pybullet_envs  # noqa
 from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import DummyVecEnv
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.rich import tqdm
@@ -67,7 +69,7 @@ def parse_args():
     parser.add_argument("--policy-frequency", type=int, default=2,
         help="the frequency of training policy (delayed)")
     parser.add_argument("--eval-freq", type=int, default=-1)
-    parser.add_argument("--n-eval-envs", type=int, default=1)
+    parser.add_argument("--n-eval-envs", type=int, default=5)
     parser.add_argument("--n-eval-episodes", type=int, default=10)
     parser.add_argument("--verbose", type=int, default=1)
 
@@ -134,22 +136,18 @@ class Actor(nn.Module):
         return x
 
 
+class Agent:
+    def __init__(self, actor, actor_state) -> None:
+        self.actor = actor
+        self.actor_state = actor_state
+
+    def predict(self, obervations: np.ndarray, deterministic=True, state=None, episode_start=None):
+        actions = np.array(self.actor.apply(self.actor_state.params, obervations))
+        return actions, None
+
+
 class RLTrainState(TrainState):
     target_params: flax.core.FrozenDict
-
-
-def evaluate_policy(eval_env, actor, actor_state, n_eval_episodes: int = 10):
-    eval_episode_rewards = []
-    for _ in range(n_eval_episodes):
-        obs = eval_env.reset()
-        done = False
-        episode_reward = 0
-        while not done:
-            action = np.array(actor.apply(actor_state.params, obs))
-            obs, reward, done, _ = eval_env.step(action)
-            episode_reward += reward
-        eval_episode_rewards.append(episode_reward)
-    return np.mean(eval_episode_rewards), np.std(eval_episode_rewards)
 
 
 def main():
@@ -182,7 +180,7 @@ def main():
 
     # env setup
     envs = DummyVecEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
-    eval_envs = DummyVecEnv([make_env(args.env_id, args.seed + 1, 0)])
+    eval_envs = make_vec_env(args.env_id, n_envs=args.n_eval_envs, seed=args.seed)
 
     assert isinstance(envs.action_space, gym.spaces.Box), "only continuous action space is supported"
 
@@ -211,6 +209,9 @@ def main():
         target_params=actor.init(actor_key, obs),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
+
+    agent = Agent(actor, actor_state)
+
     qf = QNetwork(dropout_rate=args.dropout_rate, use_layer_norm=args.layer_norm)
     qf1_state = RLTrainState.create(
         apply_fn=qf.apply,
@@ -412,7 +413,8 @@ def main():
 
             fps = int(global_step / (time.time() - start_time))
             if args.eval_freq > 0 and global_step % args.eval_freq == 0:
-                mean_reward, std_reward = evaluate_policy(eval_envs, actor, actor_state)
+                agent.actor, agent.actor_state = actor, actor_state
+                mean_reward, std_reward = evaluate_policy(agent, eval_envs, n_eval_episodes=args.n_eval_episodes)
                 print(f"global_step={global_step}, mean_eval_reward={mean_reward:.2f} +/- {std_reward:.2f} - {fps} fps")
                 writer.add_scalar("charts/mean_eval_reward", mean_reward, global_step)
                 writer.add_scalar("charts/std_eval_reward", std_reward, global_step)
