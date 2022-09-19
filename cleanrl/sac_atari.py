@@ -45,11 +45,11 @@ def parse_args():
         help="weather to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="MsPacmanNoFrameskip-v4",
+    parser.add_argument("--env-id", type=str, default="SeaquestNoFrameskip-v4",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=120000,
+    parser.add_argument("--total-timesteps", type=int, default=int(1e6),
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(1.5e5),
+    parser.add_argument("--buffer-size", type=int, default=int(1e5),
         help="the replay memory buffer size") # smaller than in original paper but evaluation is done only for 100k steps anyway
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
@@ -63,7 +63,7 @@ def parse_args():
         help="the learning rate of the policy network optimizer")
     parser.add_argument("--q-lr", type=float, default=3e-4,
         help="the learning rate of the Q network network optimizer")
-    parser.add_argument("--policy-frequency", type=int, default=4,
+    parser.add_argument("--policy-frequency", type=int, default=2,
         help="the frequency of training policy (delayed)")
     parser.add_argument("--target-network-frequency", type=int, default=8000, # Denis Yarats' implementation delays this by 2.
         help="the frequency of updates for the target networks")
@@ -79,6 +79,7 @@ def parse_args():
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         env = gym.make(env_id)
+        env.spec.max_episode_length = 27000
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
@@ -212,7 +213,7 @@ if __name__ == "__main__":
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     # TODO: Change back before merge
-    device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
+    device = torch.device("cuda:1" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
@@ -355,3 +356,4 @@ if __name__ == "__main__":
 
     envs.close()
     writer.close()
+    wandb.finish()
