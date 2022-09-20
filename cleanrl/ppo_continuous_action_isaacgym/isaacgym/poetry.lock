@@ -27,7 +27,7 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "gym"
-version = "0.23.1"
+version = "0.26.1"
 description = "Gym: A universal API for reinforcement learning environments"
 category = "main"
 optional = false
@@ -261,7 +261,7 @@ cloudpickle = [
     {file = "cloudpickle-2.1.0.tar.gz", hash = "sha256:bb233e876a58491d9590a676f93c7a5473a08f747d5ab9df7f9ce564b3e7938e"},
 ]
 gym = [
-    {file = "gym-0.23.1.tar.gz", hash = "sha256:d0f9b9da34edbdace421c9442fc9205d03b8d15d0fb451053c766cde706d40e0"},
+    {file = "gym-0.26.1.tar.gz", hash = "sha256:d0f9b9da34edbdace421c9442fc9205d03b8d15d0fb451053c766cde706d40e0"},
 ]
 gym-notices = [
     {file = "gym-notices-0.0.7.tar.gz", hash = "sha256:254b667412dbe205135213595c963cd830668382ce57b68a0c282a238eeb35b9"},

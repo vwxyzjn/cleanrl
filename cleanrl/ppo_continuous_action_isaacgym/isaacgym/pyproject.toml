@@ -10,7 +10,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = ">=3.7.1,<3.10"
-gym = "0.23.1"
+gym = "0.26.1"
 torch = "^1.12.0"
 torchvision = "^0.13.0"
 PyYAML = ">=5.3.1"

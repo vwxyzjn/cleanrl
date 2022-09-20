@@ -16,7 +16,7 @@ wandb = "^0.12.1"
 pyglet = "^1.5.19"
 opencv-python = "^3.4.0"
 stable-baselines3 = "^1.1.0"
-gym = {version = "^0.23.0", extras = ["classic_control"]}
+gym = "0.26.1"
 
 # Optional dependencies
 ale-py = {version = "^0.7", optional = true}
