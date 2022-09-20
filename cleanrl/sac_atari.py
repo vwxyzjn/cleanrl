@@ -49,7 +49,7 @@ def parse_args():
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=int(1e6),
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(1e5),
+    parser.add_argument("--buffer-size", type=int, default=int(1e6),
         help="the replay memory buffer size") # smaller than in original paper but evaluation is done only for 100k steps anyway
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
@@ -63,8 +63,8 @@ def parse_args():
         help="the learning rate of the policy network optimizer")
     parser.add_argument("--q-lr", type=float, default=3e-4,
         help="the learning rate of the Q network network optimizer")
-    parser.add_argument("--policy-frequency", type=int, default=2,
-        help="the frequency of training policy (delayed)")
+    parser.add_argument("--update-frequency", type=int, default=4,
+        help="the frequency of training updates")
     parser.add_argument("--target-network-frequency", type=int, default=8000, # Denis Yarats' implementation delays this by 2.
         help="the frequency of updates for the target networks")
     parser.add_argument("--alpha", type=float, default=0.2,
@@ -244,8 +244,7 @@ if __name__ == "__main__":
         envs.single_observation_space,
         envs.single_action_space,
         device,
-        # TODO: Can be changed back for cleanRL runs
-        optimize_memory_usage=False,
+        optimize_memory_usage=True,
         handle_timeout_termination=True,
     )
     start_time = time.time()
@@ -282,7 +281,7 @@ if __name__ == "__main__":
         obs = next_obs
 
         # ALGO LOGIC: training.
-        if global_step > args.learning_starts:
+        if global_step > args.learning_starts and global_step % args.update_frequency == 0:
             data = rb.sample(args.batch_size)
             # CRITIC training
             with torch.no_grad():
@@ -308,31 +307,29 @@ if __name__ == "__main__":
             qf_loss.backward()
             q_optimizer.step()
 
-            if global_step % args.policy_frequency == 0:  # TD 3 Delayed update support
-                for _ in range(args.policy_frequency):
-                    # ACTOR training
-                    _, log_pi, pi_probs = actor.get_action(data.observations)
-                    with torch.no_grad():
-                        qf1_pi = qf1(data.observations)
-                        qf2_pi = qf2(data.observations)
-                        min_qf_pi = torch.min(qf1_pi, qf2_pi)
-                    # no need for reparameterization, the expectation can be calculated for discrete actions
-                    actor_loss = (pi_probs * ((alpha * log_pi) - min_qf_pi)).mean()
+            # ACTOR training
+            _, log_pi, pi_probs = actor.get_action(data.observations)
+            with torch.no_grad():
+                qf1_pi = qf1(data.observations)
+                qf2_pi = qf2(data.observations)
+                min_qf_pi = torch.min(qf1_pi, qf2_pi)
+            # no need for reparameterization, the expectation can be calculated for discrete actions
+            actor_loss = (pi_probs * ((alpha * log_pi) - min_qf_pi)).mean()
 
-                    actor_optimizer.zero_grad()
-                    actor_loss.backward()
-                    actor_optimizer.step()
+            actor_optimizer.zero_grad()
+            actor_loss.backward()
+            actor_optimizer.step()
 
-                    if args.autotune:
-                        with torch.no_grad():
-                            _, log_pi, action_probs = actor.get_action(data.observations)
-                        # use action probabilities for temperate loss
-                        alpha_loss = (action_probs * (-log_alpha * (log_pi + target_entropy))).mean()
+            if args.autotune:
+                with torch.no_grad():
+                    _, log_pi, action_probs = actor.get_action(data.observations)
+                # use action probabilities for temperate loss
+                alpha_loss = (action_probs * (-log_alpha * (log_pi + target_entropy))).mean()
 
-                        a_optimizer.zero_grad()
-                        alpha_loss.backward()
-                        a_optimizer.step()
-                        alpha = log_alpha.exp().item()
+                a_optimizer.zero_grad()
+                alpha_loss.backward()
+                a_optimizer.step()
+                alpha = log_alpha.exp().item()
 
             # update the target networks
             if global_step % args.target_network_frequency == 0:
