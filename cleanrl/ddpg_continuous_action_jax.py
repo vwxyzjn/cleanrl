@@ -70,7 +70,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        
+
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -265,7 +265,7 @@ if __name__ == "__main__":
                 data.actions.numpy(),
                 data.next_observations.numpy(),
                 data.rewards.flatten().numpy(),
-                data.dones.flatten().numpy(), # TODO: to be updated to data.terminateds once SB3 is updated
+                data.dones.flatten().numpy(),  # TODO: to be updated to data.terminateds once SB3 is updated
             )
             if global_step % args.policy_frequency == 0:
                 actor_state, qf1_state, actor_loss_value = update_actor(

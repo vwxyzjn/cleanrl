@@ -102,7 +102,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         env = gym.wrappers.ResizeObservation(env, (84, 84))
         env = gym.wrappers.GrayScaleObservation(env)
         env = gym.wrappers.FrameStack(env, 1)
-        
+
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -244,7 +244,9 @@ if __name__ == "__main__":
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                action, logprob, _, value, next_lstm_state = agent.get_action_and_value(next_obs, next_lstm_state, next_terminated)
+                action, logprob, _, value, next_lstm_state = agent.get_action_and_value(
+                    next_obs, next_lstm_state, next_terminated
+                )
                 values[step] = value.flatten()
             actions[step] = action
             logprobs[step] = logprob

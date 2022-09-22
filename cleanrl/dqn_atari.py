@@ -88,7 +88,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         env = gym.wrappers.ResizeObservation(env, (84, 84))
         env = gym.wrappers.GrayScaleObservation(env)
         env = gym.wrappers.FrameStack(env, 4)
-        
+
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env

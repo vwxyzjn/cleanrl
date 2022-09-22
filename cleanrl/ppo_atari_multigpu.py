@@ -108,7 +108,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         env = gym.wrappers.ResizeObservation(env, (84, 84))
         env = gym.wrappers.GrayScaleObservation(env)
         env = gym.wrappers.FrameStack(env, 4)
-        
+
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -257,7 +257,7 @@ E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, terminated, _,  info = envs.step(action.cpu().numpy())
+            next_obs, reward, terminated, _, info = envs.step(action.cpu().numpy())
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_terminated = torch.Tensor(next_obs).to(device), torch.Tensor(terminated).to(device)
 

@@ -90,7 +90,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         env = gym.wrappers.ResizeObservation(env, (84, 84))
         env = gym.wrappers.GrayScaleObservation(env)
         env = gym.wrappers.FrameStack(env, 4)
-        
+
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -244,7 +244,7 @@ if __name__ == "__main__":
                 data.actions.numpy(),
                 data.next_observations.numpy(),
                 data.rewards.flatten().numpy(),
-                data.dones.flatten().numpy(), # TODO: to be updated to data.terminateds once SB3 is updated
+                data.dones.flatten().numpy(),  # TODO: to be updated to data.terminateds once SB3 is updated
             )
 
             if global_step % 100 == 0:

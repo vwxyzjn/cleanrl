@@ -79,7 +79,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        
+
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -248,7 +248,7 @@ if __name__ == "__main__":
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                 next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
                 # TODO: to be updated to data.terminateds once SB3 is updated
-                
+
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
             qf2_a_values = qf2(data.observations, data.actions).view(-1)
             qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
