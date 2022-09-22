@@ -119,7 +119,7 @@ class RecordEpisodeStatistics(gym.Wrapper):
         return observations
 
     def step(self, action):
-        observations, rewards, dones, infos = super().step(action)
+        observations, rewards, terminateds, truncateds, infos = super().step(action)
         self.episode_returns += infos["reward"]
         self.episode_lengths += 1
         self.returned_episode_returns[:] = self.episode_returns
@@ -129,14 +129,15 @@ class RecordEpisodeStatistics(gym.Wrapper):
             self.episode_returns *= 1 - all_lives_exhausted
             self.episode_lengths *= 1 - all_lives_exhausted
         else:
-            self.episode_returns *= 1 - dones
-            self.episode_lengths *= 1 - dones
+            self.episode_returns *= 1 - np.logical_or(terminateds, truncateds)
+            self.episode_lengths *= 1 - np.logical_or(terminateds, truncateds)
         infos["r"] = self.returned_episode_returns
         infos["l"] = self.returned_episode_lengths
         return (
             observations,
             rewards,
-            dones,
+            terminateds,
+            truncateds,
             infos,
         )
 
@@ -319,7 +320,7 @@ if __name__ == "__main__":
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     curiosity_rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    terminateds = torch.zeros((args.num_steps, args.num_envs)).to(device)
     ext_values = torch.zeros((args.num_steps, args.num_envs)).to(device)
     int_values = torch.zeros((args.num_steps, args.num_envs)).to(device)
     avg_returns = deque(maxlen=20)
@@ -327,8 +328,8 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
-    next_obs = torch.Tensor(envs.reset()).to(device)
-    next_done = torch.zeros(args.num_envs).to(device)
+    next_obs = torch.Tensor(envs.reset()[0]).to(device)
+    next_terminated = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
 
     print("Start to initialize observation normalization parameter.....")
@@ -354,7 +355,7 @@ if __name__ == "__main__":
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
             obs[step] = next_obs
-            dones[step] = next_done
+            terminateds[step] = next_terminated
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
@@ -369,9 +370,9 @@ if __name__ == "__main__":
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, done, info = envs.step(action.cpu().numpy())
+            next_obs, reward, terminated, info = envs.step(action.cpu().numpy())
             rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
+            next_obs, next_terminated = torch.Tensor(next_obs).to(device), torch.Tensor(terminated).to(device)
             rnd_next_obs = (
                 (
                     (next_obs[:, 3, :, :].reshape(args.num_envs, 1, 84, 84) - torch.from_numpy(obs_rms.mean).to(device))
@@ -381,7 +382,7 @@ if __name__ == "__main__":
             target_next_feature = rnd_model.target(rnd_next_obs)
             predict_next_feature = rnd_model.predictor(rnd_next_obs)
             curiosity_rewards[step] = ((target_next_feature - predict_next_feature).pow(2).sum(1) / 2).data
-            for idx, d in enumerate(done):
+            for idx, d in enumerate(terminated):
                 if d and info["lives"][idx] == 0:
                     avg_returns.append(info["r"][idx])
                     epi_ret = np.average(avg_returns)
@@ -409,7 +410,7 @@ if __name__ == "__main__":
 
         curiosity_rewards /= np.sqrt(reward_rms.var)
 
-        # bootstrap value if not done
+        # bootstrap value if not terminated
         with torch.no_grad():
             next_value_ext, next_value_int = agent.get_value(next_obs)
             next_value_ext, next_value_int = next_value_ext.reshape(1, -1), next_value_int.reshape(1, -1)
@@ -420,12 +421,12 @@ if __name__ == "__main__":
                 int_lastgaelam = 0
                 for t in reversed(range(args.num_steps)):
                     if t == args.num_steps - 1:
-                        ext_nextnonterminal = 1.0 - next_done
+                        ext_nextnonterminal = 1.0 - next_terminated
                         int_nextnonterminal = 1.0
                         ext_nextvalues = next_value_ext
                         int_nextvalues = next_value_int
                     else:
-                        ext_nextnonterminal = 1.0 - dones[t + 1]
+                        ext_nextnonterminal = 1.0 - terminateds[t + 1]
                         int_nextnonterminal = 1.0
                         ext_nextvalues = ext_values[t + 1]
                         int_nextvalues = int_values[t + 1]
@@ -444,12 +445,12 @@ if __name__ == "__main__":
                 int_returns = torch.zeros_like(curiosity_rewards, device=device)
                 for t in reversed(range(args.num_steps)):
                     if t == args.num_steps - 1:
-                        ext_nextnonterminal = 1.0 - next_done
+                        ext_nextnonterminal = 1.0 - next_terminated
                         int_nextnonterminal = 1.0
                         ext_next_return = next_value_ext
                         int_next_return = next_value_int
                     else:
-                        ext_nextnonterminal = 1.0 - dones[t + 1]
+                        ext_nextnonterminal = 1.0 - terminateds[t + 1]
                         int_nextnonterminal = 1.0
                         ext_next_return = ext_returns[t + 1]
                         int_next_return = int_returns[t + 1]

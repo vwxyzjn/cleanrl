@@ -70,7 +70,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env.seed(seed)
+        
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     )
 
     # TRY NOT TO MODIFY: start the game
-    obs = envs.reset()
+    obs, _ = envs.reset(seed=args.seed)
     action_scale = np.array((envs.action_space.high - envs.action_space.low) / 2.0)
     action_bias = np.array((envs.action_space.high + envs.action_space.low) / 2.0)
     actor = Actor(
@@ -186,11 +186,11 @@ if __name__ == "__main__":
         actions: np.ndarray,
         next_observations: np.ndarray,
         rewards: np.ndarray,
-        dones: np.ndarray,
+        terminateds: np.ndarray,
     ):
         next_state_actions = (actor.apply(actor_state.target_params, next_observations)).clip(-1, 1)  # TODO: proper clip
         qf1_next_target = qf1.apply(qf1_state.target_params, next_observations, next_state_actions).reshape(-1)
-        next_q_value = (rewards + (1 - dones) * args.gamma * (qf1_next_target)).reshape(-1)
+        next_q_value = (rewards + (1 - terminateds) * args.gamma * (qf1_next_target)).reshape(-1)
 
         def mse_loss(params):
             qf1_a_values = qf1.apply(params, observations, actions).squeeze()
@@ -235,7 +235,7 @@ if __name__ == "__main__":
             )
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards, dones, infos = envs.step(actions)
+        next_obs, rewards, terminateds, _, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         for info in infos:
@@ -245,12 +245,12 @@ if __name__ == "__main__":
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 break
 
-        # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
+        # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
-        for idx, d in enumerate(dones):
+        for idx, d in enumerate(terminateds):
             if d:
-                real_next_obs[idx] = infos[idx]["terminal_observation"]
-        rb.add(obs, real_next_obs, actions, rewards, dones, infos)
+                real_next_obs[idx] = infos[idx]["final_observation"]
+        rb.add(obs, real_next_obs, actions, rewards, terminateds, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -265,7 +265,7 @@ if __name__ == "__main__":
                 data.actions.numpy(),
                 data.next_observations.numpy(),
                 data.rewards.flatten().numpy(),
-                data.dones.flatten().numpy(),
+                data.dones.flatten().numpy(), # TODO: to be updated to data.terminateds once SB3 is updated
             )
             if global_step % args.policy_frequency == 0:
                 actor_state, qf1_state, actor_loss_value = update_actor(

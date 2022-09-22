@@ -95,16 +95,16 @@ class RecordEpisodeStatistics(gym.Wrapper):
             print("env has lives")
 
     def reset(self, **kwargs):
-        observations = super().reset(**kwargs)
+        observations, _ = super().reset(**kwargs)
         self.episode_returns = np.zeros(self.num_envs, dtype=np.float32)
         self.episode_lengths = np.zeros(self.num_envs, dtype=np.int32)
         self.lives = np.zeros(self.num_envs, dtype=np.int32)
         self.returned_episode_returns = np.zeros(self.num_envs, dtype=np.float32)
         self.returned_episode_lengths = np.zeros(self.num_envs, dtype=np.int32)
-        return observations
+        return observations, {}
 
     def step(self, action):
-        observations, rewards, dones, infos = super().step(action)
+        observations, rewards, terminateds, truncateds, infos = super().step(action)
         self.episode_returns += infos["reward"]
         self.episode_lengths += 1
         self.returned_episode_returns[:] = self.episode_returns
@@ -114,14 +114,15 @@ class RecordEpisodeStatistics(gym.Wrapper):
             self.episode_returns *= 1 - all_lives_exhausted
             self.episode_lengths *= 1 - all_lives_exhausted
         else:
-            self.episode_returns *= 1 - dones
-            self.episode_lengths *= 1 - dones
+            self.episode_returns *= 1 - np.logical_or(terminateds, truncateds)
+            self.episode_lengths *= 1 - np.logical_or(terminateds, truncateds)
         infos["r"] = self.returned_episode_returns
         infos["l"] = self.returned_episode_lengths
         return (
             observations,
             rewards,
-            dones,
+            terminateds,
+            truncateds,
             infos,
         )
 
@@ -213,15 +214,15 @@ if __name__ == "__main__":
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    terminateds = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
     avg_returns = deque(maxlen=20)
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
-    next_obs = torch.Tensor(envs.reset()).to(device)
-    next_done = torch.zeros(args.num_envs).to(device)
+    next_obs, _ = torch.Tensor(envs.reset(seed=args.seed)).to(device)
+    next_terminated = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
 
     for update in range(1, num_updates + 1):
@@ -234,7 +235,7 @@ if __name__ == "__main__":
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
             obs[step] = next_obs
-            dones[step] = next_done
+            terminateds[step] = next_terminated
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
@@ -244,11 +245,11 @@ if __name__ == "__main__":
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, done, info = envs.step(action.cpu().numpy())
+            next_obs, reward, terminated, _, info = envs.step(action.cpu().numpy())
             rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
+            next_obs, next_terminated = torch.Tensor(next_obs).to(device), torch.Tensor(terminated).to(device)
 
-            for idx, d in enumerate(done):
+            for idx, d in enumerate(terminated):
                 if d and info["lives"][idx] == 0:
                     print(f"global_step={global_step}, episodic_return={info['r'][idx]}")
                     avg_returns.append(info["r"][idx])
@@ -256,7 +257,7 @@ if __name__ == "__main__":
                     writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
                     writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
 
-        # bootstrap value if not done
+        # bootstrap value if not terminated
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)
             if args.gae:
@@ -264,10 +265,10 @@ if __name__ == "__main__":
                 lastgaelam = 0
                 for t in reversed(range(args.num_steps)):
                     if t == args.num_steps - 1:
-                        nextnonterminal = 1.0 - next_done
+                        nextnonterminal = 1.0 - next_terminated
                         nextvalues = next_value
                     else:
-                        nextnonterminal = 1.0 - dones[t + 1]
+                        nextnonterminal = 1.0 - terminateds[t + 1]
                         nextvalues = values[t + 1]
                     delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
                     advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
@@ -276,10 +277,10 @@ if __name__ == "__main__":
                 returns = torch.zeros_like(rewards).to(device)
                 for t in reversed(range(args.num_steps)):
                     if t == args.num_steps - 1:
-                        nextnonterminal = 1.0 - next_done
+                        nextnonterminal = 1.0 - next_terminated
                         next_return = next_value
                     else:
-                        nextnonterminal = 1.0 - dones[t + 1]
+                        nextnonterminal = 1.0 - terminateds[t + 1]
                         next_return = returns[t + 1]
                     returns[t] = rewards[t] + args.gamma * nextnonterminal * next_return
                 advantages = returns - values

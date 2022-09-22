@@ -70,7 +70,6 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env.seed(seed)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -132,7 +131,7 @@ if __name__ == "__main__":
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
-    obs = envs.reset()
+    obs, _ = envs.reset(seed=args.seed)
 
     q_network = QNetwork(action_dim=envs.single_action_space.n)
 
@@ -156,10 +155,10 @@ if __name__ == "__main__":
     )
 
     @jax.jit
-    def update(q_state, observations, actions, next_observations, rewards, dones):
+    def update(q_state, observations, actions, next_observations, rewards, terminateds):
         q_next_target = q_network.apply(q_state.target_params, next_observations)  # (batch_size, num_actions)
         q_next_target = jnp.max(q_next_target, axis=-1)  # (batch_size,)
-        next_q_value = rewards + (1 - dones) * args.gamma * q_next_target
+        next_q_value = rewards + (1 - terminateds) * args.gamma * q_next_target
 
         def mse_loss(params):
             q_pred = q_network.apply(params, observations)  # (batch_size, num_actions)
@@ -173,7 +172,7 @@ if __name__ == "__main__":
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
-    obs = envs.reset()
+    obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
@@ -185,7 +184,7 @@ if __name__ == "__main__":
             actions = jax.device_get(actions)
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards, dones, infos = envs.step(actions)
+        next_obs, rewards, terminateds, _, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         for info in infos:
@@ -196,12 +195,12 @@ if __name__ == "__main__":
                 writer.add_scalar("charts/epsilon", epsilon, global_step)
                 break
 
-        # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
+        # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
-        for idx, d in enumerate(dones):
-            if d:
-                real_next_obs[idx] = infos[idx]["terminal_observation"]
-        rb.add(obs, real_next_obs, actions, rewards, dones, infos)
+        for idx, t in enumerate(terminateds):
+            if t:
+                real_next_obs[idx] = infos[idx]["final_observation"]
+        rb.add(obs, real_next_obs, actions, rewards, terminateds, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -217,6 +216,7 @@ if __name__ == "__main__":
                 data.next_observations.numpy(),
                 data.rewards.flatten().numpy(),
                 data.dones.flatten().numpy(),
+                # TODO: to be replaced with data.terminateds once SB3 is updated
             )
 
             if global_step % 100 == 0:

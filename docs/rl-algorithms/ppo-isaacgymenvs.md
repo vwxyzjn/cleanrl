@@ -170,9 +170,9 @@ Additionally, `charts/consecutive_successes` means the number of consecutive epi
    1. Create a custom `RecordEpisodeStatisticsTorch` wrapper that records statstics using GPU tensors instead of `numpy` arrays.
    1. Avoid transferring the tensors to CPU. The related code in `ppo_continuous_action.py` looks like
    ```python
-   next_obs, reward, done, info = envs.step(action.cpu().numpy())
+   next_obs, reward, terminated, truncated, info = envs.step(action.cpu().numpy())
    rewards[step] = torch.tensor(reward).to(device).view(-1)
-   next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
+   next_obs, next_terminated = torch.Tensor(next_obs).to(device), torch.Tensor(terminated).to(device)
    ```
    and the related code in `ppo_continuous_action_isaacgym.py` looks like
    ```python

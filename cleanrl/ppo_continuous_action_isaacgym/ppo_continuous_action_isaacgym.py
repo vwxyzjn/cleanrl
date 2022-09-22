@@ -261,7 +261,7 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
-    next_obs = envs.reset()
+    next_obs, _ = envs.reset(seed=args.seed)
     next_done = torch.zeros(args.num_envs, dtype=torch.float).to(device)
     num_updates = args.total_timesteps // args.batch_size
 
@@ -299,7 +299,7 @@ if __name__ == "__main__":
                             )
                         break
 
-        # bootstrap value if not done
+        # bootstrap value if not terminated
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)
             if args.gae:
