@@ -180,7 +180,7 @@ if __name__ == "__main__":
         envs.single_action_space,
         "cpu",
         optimize_memory_usage=True,
-        handle_timeout_termination=True,
+        handle_timeout_termination=False,
     )
 
     @jax.jit

@@ -166,7 +166,7 @@ if __name__ == "__main__":
         envs.single_action_space,
         device,
         optimize_memory_usage=True,
-        handle_timeout_termination=True,
+        handle_timeout_termination=False,
     )
     start_time = time.time()
 
