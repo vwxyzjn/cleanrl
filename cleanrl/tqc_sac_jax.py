@@ -126,7 +126,7 @@ def parse_args():
     parser.add_argument("--dropout-rate", type=float, default=0.0)
     # Argument for layer normalization
     parser.add_argument("--layer-norm", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True)
-    parser.add_argument("--policy-frequency", type=int, default=2,
+    parser.add_argument("--policy-frequency", type=int, default=1,
         help="the frequency of training policy (delayed)")
     parser.add_argument("--eval-freq", type=int, default=-1)
     parser.add_argument("--n-eval-envs", type=int, default=5)
@@ -143,8 +143,7 @@ def parse_args():
 def make_env(env_id, seed, idx, capture_video=False, run_name=""):
     def thunk():
         env = gym.make(env_id)
-        if env_id == "Pendulum-v1":
-            env = RescaleAction(env)
+        # env = RescaleAction(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
@@ -160,11 +159,16 @@ def make_env(env_id, seed, idx, capture_video=False, run_name=""):
 # from https://github.com/ikostrikov/walk_in_the_park
 # otherwise mode is not define for Squashed Gaussian
 class TanhTransformedDistribution(tfd.TransformedDistribution):
-    def __init__(self, distribution: tfd.Distribution, validate_args: bool = False):
+    def __init__(self, distribution: tfd.Distribution, validate_args: bool = False, threshold=0.999):
+        self._threshold = threshold
         super().__init__(distribution=distribution, bijector=tfp.bijectors.Tanh(), validate_args=validate_args)
 
     def mode(self) -> jnp.ndarray:
         return self.bijector.forward(self.distribution.mode())
+
+    # def log_prob(self, actions: jnp.ndarray) -> jnp.ndarray:
+    #     actions = jnp.clip(actions, -self._threshold, self._threshold)
+    #     return  super().log_prob(actions)
 
     @classmethod
     def _parameter_properties(cls, dtype: Optional[Any], num_classes=None):
@@ -173,13 +177,13 @@ class TanhTransformedDistribution(tfd.TransformedDistribution):
         return td_properties
 
 
-class Temperature(nn.Module):
-    initial_temperature: float = 1.0
+class EntropyCoef(nn.Module):
+    ent_coef_init: float = 1.0
 
     @nn.compact
     def __call__(self) -> jnp.ndarray:
-        log_temp = self.param("log_temp", init_fn=lambda key: jnp.full((), jnp.log(self.initial_temperature)))
-        return jnp.exp(log_temp)
+        log_ent_coef = self.param("log_ent_coef", init_fn=lambda key: jnp.full((), jnp.log(self.ent_coef_init)))
+        return jnp.exp(log_ent_coef)
 
 
 # ALGO LOGIC: initialize agent here:
@@ -223,6 +227,7 @@ class Actor(nn.Module):
         mean = nn.Dense(self.action_dim)(x)
         log_std = nn.Dense(self.action_dim)(x)
         log_std = jnp.clip(log_std, self.log_std_min, self.log_std_max)
+        # dist = tfd.MultivariateNormalDiag(loc=mean, scale_diag=jnp.exp(log_std))
         dist = TanhTransformedDistribution(
             tfd.MultivariateNormalDiag(loc=mean, scale_diag=jnp.exp(log_std)),
         )
@@ -274,7 +279,7 @@ def main():
 
     # env setup
     envs = DummyVecEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
-    eval_envs = make_vec_env(args.env_id, n_envs=args.n_eval_envs, seed=args.seed, wrapper_class=RescaleAction)
+    eval_envs = make_vec_env(args.env_id, n_envs=args.n_eval_envs, seed=args.seed)  # wrapper_class=RescaleAction
 
     assert isinstance(envs.action_space, gym.spaces.Box), "only continuous action space is supported"
 
@@ -319,7 +324,7 @@ def main():
     )
 
     ent_coef_init = 1.0
-    ent_coef = Temperature(ent_coef_init)
+    ent_coef = EntropyCoef(ent_coef_init)
     ent_coef_state = TrainState.create(
         apply_fn=ent_coef.apply, params=ent_coef.init(ent_key)["params"], tx=optax.adam(learning_rate=args.learning_rate)
     )
@@ -362,7 +367,9 @@ def main():
 
     @jax.jit
     def sample_action(actor_state, obervations, key):
-        return actor.apply(actor_state.params, obervations).sample(seed=key)
+        dist = actor.apply(actor_state.params, obervations)
+        action = dist.sample(seed=key)
+        return action
 
     @jax.jit
     def select_action(actor_state, obervations):
@@ -419,6 +426,7 @@ def main():
         next_target_quantiles = next_quantiles[:, :n_target_quantiles]
 
         # td error + entropy term
+        # ent_coef_value = 0.0
         next_target_quantiles = next_target_quantiles - ent_coef_value * next_log_prob.reshape(-1, 1)
         target_quantiles = rewards.reshape(-1, 1) + (1 - dones.reshape(-1, 1)) * args.gamma * next_target_quantiles
 
@@ -471,20 +479,14 @@ def main():
 
             dist = actor.apply(params, observations)
             actor_actions = dist.sample(seed=noise_key)
-            log_prob = dist.log_prob(actions).reshape(-1, 1)
+            log_prob = dist.log_prob(actor_actions).reshape(-1, 1)
 
-            qf_pi = (
-                qf.apply(
-                    qf1_state.params,
-                    observations,
-                    actor_actions,
-                    True,
-                    rngs={"dropout": dropout_key},
-                )
-                # .mean(axis=2) TODO: add second qf
-                .mean(axis=1, keepdims=True)
-            )
+            qf_pi = qf.apply(qf1_state.params, observations, actor_actions, True, rngs={"dropout": dropout_key},).mean(
+                axis=1, keepdims=True
+            )  # .mean(axis=2) TODO: add second qf
+
             ent_coef_value = ent_coef.apply({"params": ent_coef_state.params})
+            # ent_coef_value = 0.01
             return (ent_coef_value * log_prob - qf_pi).mean(), -log_prob.mean()
 
         (actor_loss_value, entropy), grads = jax.value_and_grad(actor_loss, has_aux=True)(actor_state.params)
@@ -500,13 +502,12 @@ def main():
         return actor_state, (qf1_state, qf2_state), actor_loss_value, key, entropy
 
     @jax.jit
-    def update_temperature(ent_coef_state: TrainState,
-                           entropy: float):
-
+    def update_temperature(ent_coef_state: TrainState, entropy: float):
         def temperature_loss(temp_params):
             ent_coef_value = ent_coef.apply({"params": temp_params})
-            temp_loss = ent_coef_value * (entropy - target_entropy).mean()
-            return temp_loss
+            # ent_coef_loss = (jnp.log(ent_coef_value) * (entropy - target_entropy)).mean()
+            ent_coef_loss = ent_coef_value * (entropy - target_entropy).mean()
+            return ent_coef_loss
 
         ent_coef_loss, grads = jax.value_and_grad(temperature_loss)(ent_coef_state.params)
         ent_coef_state = ent_coef_state.apply_gradients(grads=grads)
@@ -537,10 +538,6 @@ def main():
                 key,
             )
 
-            # sanity check
-            # otherwise must use update_actor=n_updates % args.policy_frequency,
-            # which is not jitable
-            # assert args.policy_frequency <= args.gradient_steps
         (actor_state, (qf1_state, qf2_state), actor_loss_value, key, entropy) = update_actor(
             actor_state,
             qf1_state,
@@ -548,8 +545,6 @@ def main():
             ent_coef_state,
             slice(data.observations),
             key,
-            # update_actor=((i + 1) % args.policy_frequency) == 0,
-            # update_actor=(n_updates % args.policy_frequency) == 0,
         )
         ent_coef_state, _ = update_temperature(ent_coef_state, entropy)
 
@@ -576,6 +571,7 @@ def main():
             # actions = np.array(actor.apply(actor_state.params, obs).sample(seed=exploration_key))
             actions = np.array(sample_action(actor_state, obs, exploration_key))
 
+        # actions = np.clip(actions, -1.0, 1.0)
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
 
@@ -642,6 +638,8 @@ def main():
                 writer.add_scalar("charts/std_eval_reward", std_reward, global_step)
 
             if global_step % 100 == 0:
+                ent_coef_value = ent_coef.apply({"params": ent_coef_state.params})
+                writer.add_scalar("losses/ent_coef_value", ent_coef_value.item(), global_step)
                 writer.add_scalar("losses/qf1_loss", qf1_loss_value.item(), global_step)
                 writer.add_scalar("losses/qf2_loss", qf2_loss_value.item(), global_step)
                 # writer.add_scalar("losses/qf1_values", qf1_a_values.item(), global_step)
