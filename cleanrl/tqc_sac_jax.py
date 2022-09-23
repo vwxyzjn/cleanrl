@@ -3,8 +3,9 @@ import argparse
 import os
 import random
 import time
+from dataclasses import dataclass
 from distutils.util import strtobool
-from typing import NamedTuple, Optional, Sequence, Any
+from typing import Any, NamedTuple, Optional, Sequence, Union
 
 import flax
 import flax.linen as nn
@@ -14,6 +15,7 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 import pybullet_envs  # noqa
+import tensorflow_probability
 from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.env_util import make_vec_env
@@ -21,7 +23,6 @@ from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import DummyVecEnv
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.rich import tqdm
-import tensorflow_probability
 
 tfp = tensorflow_probability.substrates.jax
 tfd = tfp.distributions
@@ -33,6 +34,57 @@ class ReplayBufferSamplesNp(NamedTuple):
     next_observations: np.ndarray
     dones: np.ndarray
     rewards: np.ndarray
+
+
+class RescaleAction(gym.ActionWrapper):
+    """Affinely rescales the continuous action space of the environment to the range [min_action, max_action].
+
+    The base environment :attr:`env` must have an action space of type :class:`spaces.Box`. If :attr:`min_action`
+    or :attr:`max_action` are numpy arrays, the shape must match the shape of the environment's action space.
+
+    """
+
+    def __init__(
+        self,
+        env: gym.Env,
+        min_action: int = -1,
+        max_action: int = 1,
+    ):
+        """Initializes the :class:`RescaleAction` wrapper.
+
+        Args:
+            env (Env): The environment to apply the wrapper
+            min_action (float, int or np.ndarray): The min values for each action. This may be a numpy array or a scalar.
+            max_action (float, int or np.ndarray): The max values for each action. This may be a numpy array or a scalar.
+        """
+        assert isinstance(env.action_space, gym.spaces.Box), f"expected Box action space, got {type(env.action_space)}"
+        assert np.less_equal(min_action, max_action).all(), (min_action, max_action)
+
+        super().__init__(env)
+        self.min_action = np.zeros(env.action_space.shape, dtype=env.action_space.dtype) + min_action
+        self.max_action = np.zeros(env.action_space.shape, dtype=env.action_space.dtype) + max_action
+        self.action_space = gym.spaces.Box(
+            low=min_action,
+            high=max_action,
+            shape=env.action_space.shape,
+            dtype=env.action_space.dtype,
+        )
+
+    def action(self, action):
+        """Rescales the action affinely from  [:attr:`min_action`, :attr:`max_action`] to the action space of the base environment, :attr:`env`.
+
+        Args:
+            action: The action to rescale
+
+        Returns:
+            The rescaled action
+        """
+        action = np.clip(action, self.min_action, self.max_action)
+        low = self.env.action_space.low
+        high = self.env.action_space.high
+        action = low + (high - low) * ((action - self.min_action) / (self.max_action - self.min_action))
+        action = np.clip(action, low, high)
+        return action
 
 
 def parse_args():
@@ -91,6 +143,8 @@ def parse_args():
 def make_env(env_id, seed, idx, capture_video=False, run_name=""):
     def thunk():
         env = gym.make(env_id)
+        if env_id == "Pendulum-v1":
+            env = RescaleAction(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
@@ -175,13 +229,14 @@ class Actor(nn.Module):
         return dist
 
 
+@dataclass
 class Agent:
-    def __init__(self, actor, actor_state) -> None:
-        self.actor = actor
-        self.actor_state = actor_state
+    actor: Actor
+    actor_state: TrainState
 
     def predict(self, obervations: np.ndarray, deterministic=True, state=None, episode_start=None):
-        actions = np.array(self.actor.apply(self.actor_state.params, obervations).mode())
+        # actions = np.array(self.actor.apply(self.actor_state.params, obervations).mode())
+        actions = np.array(self.select_action(self.actor_state, obervations))
         return actions, None
 
 
@@ -219,7 +274,7 @@ def main():
 
     # env setup
     envs = DummyVecEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
-    eval_envs = make_vec_env(args.env_id, n_envs=args.n_eval_envs, seed=args.seed)
+    eval_envs = make_vec_env(args.env_id, n_envs=args.n_eval_envs, seed=args.seed, wrapper_class=RescaleAction)
 
     assert isinstance(envs.action_space, gym.spaces.Box), "only continuous action space is supported"
 
@@ -228,6 +283,7 @@ def main():
     max_action = float(envs.action_space.high[0])
     # For now assumed low=-1, high=1
     # TODO: handle any action space boundary
+
     action_scale = ((max_action - min_action) / 2.0,)
     action_bias = ((max_action + min_action) / 2.0,)
 
@@ -247,6 +303,9 @@ def main():
     top_quantiles_to_drop_per_net = args.top_quantiles_to_drop_per_net
     n_target_quantiles = quantiles_total - top_quantiles_to_drop_per_net * n_critics
 
+    # automatically set target entropy if needed
+    target_entropy = -np.prod(envs.action_space.shape).astype(np.float32)
+
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
     actor = Actor(
@@ -259,7 +318,7 @@ def main():
         tx=optax.adam(learning_rate=args.learning_rate),
     )
 
-    ent_coef_init = 0.1
+    ent_coef_init = 1.0
     ent_coef = Temperature(ent_coef_init)
     ent_coef_state = TrainState.create(
         apply_fn=ent_coef.apply, params=ent_coef.init(ent_key)["params"], tx=optax.adam(learning_rate=args.learning_rate)
@@ -302,6 +361,16 @@ def main():
     qf.apply = jax.jit(qf.apply, static_argnames=("dropout_rate", "use_layer_norm"))
 
     @jax.jit
+    def sample_action(actor_state, obervations, key):
+        return actor.apply(actor_state.params, obervations).sample(seed=key)
+
+    @jax.jit
+    def select_action(actor_state, obervations):
+        return actor.apply(actor_state.params, obervations).mode()
+
+    agent.select_action = select_action
+
+    @jax.jit
     def update_critic(
         actor_state: TrainState,
         qf1_state: RLTrainState,
@@ -324,7 +393,6 @@ def main():
         next_log_prob = dist.log_prob(next_state_actions)
 
         ent_coef_value = ent_coef.apply({"params": ent_coef_state.params})
-
 
         qf1_next_quantiles = qf.apply(
             qf1_state.target_params,
@@ -401,7 +469,7 @@ def main():
 
         def actor_loss(params):
 
-            dist = actor.apply(actor_state.params, observations)
+            dist = actor.apply(params, observations)
             actor_actions = dist.sample(seed=noise_key)
             log_prob = dist.log_prob(actions).reshape(-1, 1)
 
@@ -417,18 +485,33 @@ def main():
                 .mean(axis=1, keepdims=True)
             )
             ent_coef_value = ent_coef.apply({"params": ent_coef_state.params})
-            return (ent_coef_value * log_prob - qf_pi).mean()
+            return (ent_coef_value * log_prob - qf_pi).mean(), -log_prob.mean()
 
-        actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
+        (actor_loss_value, entropy), grads = jax.value_and_grad(actor_loss, has_aux=True)(actor_state.params)
         actor_state = actor_state.apply_gradients(grads=grads)
 
+        # TODO: move update to critic update
         qf1_state = qf1_state.replace(
             target_params=optax.incremental_update(qf1_state.params, qf1_state.target_params, args.tau)
         )
         qf2_state = qf2_state.replace(
             target_params=optax.incremental_update(qf2_state.params, qf2_state.target_params, args.tau)
         )
-        return actor_state, (qf1_state, qf2_state), actor_loss_value, key
+        return actor_state, (qf1_state, qf2_state), actor_loss_value, key, entropy
+
+    @jax.jit
+    def update_temperature(ent_coef_state: TrainState,
+                           entropy: float):
+
+        def temperature_loss(temp_params):
+            ent_coef_value = ent_coef.apply({"params": temp_params})
+            temp_loss = ent_coef_value * (entropy - target_entropy).mean()
+            return temp_loss
+
+        ent_coef_loss, grads = jax.value_and_grad(temperature_loss)(ent_coef_state.params)
+        ent_coef_state = ent_coef_state.apply_gradients(grads=grads)
+
+        return ent_coef_state, ent_coef_loss
 
     @jax.jit
     def train(data: ReplayBufferSamplesNp, n_updates: int, qf1_state, qf2_state, actor_state, ent_coef_state, key):
@@ -458,7 +541,7 @@ def main():
             # otherwise must use update_actor=n_updates % args.policy_frequency,
             # which is not jitable
             # assert args.policy_frequency <= args.gradient_steps
-        (actor_state, (qf1_state, qf2_state), actor_loss_value, key,) = update_actor(
+        (actor_state, (qf1_state, qf2_state), actor_loss_value, key, entropy) = update_actor(
             actor_state,
             qf1_state,
             qf2_state,
@@ -468,6 +551,8 @@ def main():
             # update_actor=((i + 1) % args.policy_frequency) == 0,
             # update_actor=(n_updates % args.policy_frequency) == 0,
         )
+        ent_coef_state, _ = update_temperature(ent_coef_state, entropy)
+
         return (
             n_updates,
             qf1_state,
@@ -488,7 +573,8 @@ def main():
         else:
             # TODO: JIT sampling?
             key, exploration_key = jax.random.split(key, 2)
-            actions = np.array(actor.apply(actor_state.params, obs).sample(seed=exploration_key))
+            # actions = np.array(actor.apply(actor_state.params, obs).sample(seed=exploration_key))
+            actions = np.array(sample_action(actor_state, obs, exploration_key))
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
