@@ -5,7 +5,7 @@ import random
 import time
 from dataclasses import dataclass
 from distutils.util import strtobool
-from typing import Any, NamedTuple, Optional, Sequence, Union
+from typing import Any, NamedTuple, Optional, Sequence
 
 import flax
 import flax.linen as nn
@@ -34,57 +34,6 @@ class ReplayBufferSamplesNp(NamedTuple):
     next_observations: np.ndarray
     dones: np.ndarray
     rewards: np.ndarray
-
-
-class RescaleAction(gym.ActionWrapper):
-    """Affinely rescales the continuous action space of the environment to the range [min_action, max_action].
-
-    The base environment :attr:`env` must have an action space of type :class:`spaces.Box`. If :attr:`min_action`
-    or :attr:`max_action` are numpy arrays, the shape must match the shape of the environment's action space.
-
-    """
-
-    def __init__(
-        self,
-        env: gym.Env,
-        min_action: int = -1,
-        max_action: int = 1,
-    ):
-        """Initializes the :class:`RescaleAction` wrapper.
-
-        Args:
-            env (Env): The environment to apply the wrapper
-            min_action (float, int or np.ndarray): The min values for each action. This may be a numpy array or a scalar.
-            max_action (float, int or np.ndarray): The max values for each action. This may be a numpy array or a scalar.
-        """
-        assert isinstance(env.action_space, gym.spaces.Box), f"expected Box action space, got {type(env.action_space)}"
-        assert np.less_equal(min_action, max_action).all(), (min_action, max_action)
-
-        super().__init__(env)
-        self.min_action = np.zeros(env.action_space.shape, dtype=env.action_space.dtype) + min_action
-        self.max_action = np.zeros(env.action_space.shape, dtype=env.action_space.dtype) + max_action
-        self.action_space = gym.spaces.Box(
-            low=min_action,
-            high=max_action,
-            shape=env.action_space.shape,
-            dtype=env.action_space.dtype,
-        )
-
-    def action(self, action):
-        """Rescales the action affinely from  [:attr:`min_action`, :attr:`max_action`] to the action space of the base environment, :attr:`env`.
-
-        Args:
-            action: The action to rescale
-
-        Returns:
-            The rescaled action
-        """
-        action = np.clip(action, self.min_action, self.max_action)
-        low = self.env.action_space.low
-        high = self.env.action_space.high
-        action = low + (high - low) * ((action - self.min_action) / (self.max_action - self.min_action))
-        action = np.clip(action, low, high)
-        return action
 
 
 def parse_args():
@@ -159,16 +108,11 @@ def make_env(env_id, seed, idx, capture_video=False, run_name=""):
 # from https://github.com/ikostrikov/walk_in_the_park
 # otherwise mode is not define for Squashed Gaussian
 class TanhTransformedDistribution(tfd.TransformedDistribution):
-    def __init__(self, distribution: tfd.Distribution, validate_args: bool = False, threshold=0.999):
-        self._threshold = threshold
+    def __init__(self, distribution: tfd.Distribution, validate_args: bool = False):
         super().__init__(distribution=distribution, bijector=tfp.bijectors.Tanh(), validate_args=validate_args)
 
     def mode(self) -> jnp.ndarray:
         return self.bijector.forward(self.distribution.mode())
-
-    # def log_prob(self, actions: jnp.ndarray) -> jnp.ndarray:
-    #     actions = jnp.clip(actions, -self._threshold, self._threshold)
-    #     return  super().log_prob(actions)
 
     @classmethod
     def _parameter_properties(cls, dtype: Optional[Any], num_classes=None):
@@ -279,18 +223,14 @@ def main():
 
     # env setup
     envs = DummyVecEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
-    eval_envs = make_vec_env(args.env_id, n_envs=args.n_eval_envs, seed=args.seed)  # wrapper_class=RescaleAction
+    eval_envs = make_vec_env(args.env_id, n_envs=args.n_eval_envs, seed=args.seed)
 
     assert isinstance(envs.action_space, gym.spaces.Box), "only continuous action space is supported"
 
     # Assume that all dimensions share the same bound
-    min_action = float(envs.action_space.low[0])
-    max_action = float(envs.action_space.high[0])
+    # min_action = float(envs.action_space.low[0])
+    # max_action = float(envs.action_space.high[0])
     # For now assumed low=-1, high=1
-    # TODO: handle any action space boundary
-
-    action_scale = ((max_action - min_action) / 2.0,)
-    action_bias = ((max_action + min_action) / 2.0,)
 
     envs.observation_space.dtype = np.float32
     rb = ReplayBuffer(
@@ -463,7 +403,6 @@ def main():
             key,
         )
 
-    # @partial(jax.jit, static_argnames=["update_actor"])
     @jax.jit
     def update_actor(
         actor_state: RLTrainState,
@@ -566,9 +505,7 @@ def main():
         if global_step < args.learning_starts:
             actions = np.array([envs.action_space.sample() for _ in range(envs.num_envs)])
         else:
-            # TODO: JIT sampling?
             key, exploration_key = jax.random.split(key, 2)
-            # actions = np.array(actor.apply(actor_state.params, obs).sample(seed=exploration_key))
             actions = np.array(sample_action(actor_state, obs, exploration_key))
 
         # actions = np.clip(actions, -1.0, 1.0)
