@@ -366,7 +366,6 @@ def main():
         next_target_quantiles = next_quantiles[:, :n_target_quantiles]
 
         # td error + entropy term
-        # ent_coef_value = 0.0
         next_target_quantiles = next_target_quantiles - ent_coef_value * next_log_prob.reshape(-1, 1)
         target_quantiles = rewards.reshape(-1, 1) + (1 - dones.reshape(-1, 1)) * args.gamma * next_target_quantiles
 
@@ -412,7 +411,7 @@ def main():
         observations: np.ndarray,
         key: jnp.ndarray,
     ):
-        key, dropout_key, noise_key = jax.random.split(key, 3)
+        key, dropout_key_1, dropout_key_2, noise_key = jax.random.split(key, 4)
 
         def actor_loss(params):
 
@@ -420,25 +419,45 @@ def main():
             actor_actions = dist.sample(seed=noise_key)
             log_prob = dist.log_prob(actor_actions).reshape(-1, 1)
 
-            qf_pi = qf.apply(qf1_state.params, observations, actor_actions, True, rngs={"dropout": dropout_key},).mean(
-                axis=1, keepdims=True
-            )  # .mean(axis=2) TODO: add second qf
+            qf1_pi = qf.apply(
+                qf1_state.params,
+                observations,
+                actor_actions,
+                True,
+                rngs={"dropout": dropout_key_1},
+            )
+            qf2_pi = qf.apply(
+                qf2_state.params,
+                observations,
+                actor_actions,
+                True,
+                rngs={"dropout": dropout_key_2},
+            )
+            qf1_pi = jnp.expand_dims(qf1_pi, axis=-1)
+            qf2_pi = jnp.expand_dims(qf2_pi, axis=-1)
+
+            # Concatenate quantiles from both critics
+            # (batch, n_quantiles, n_critics)
+            qf_pi = jnp.concatenate((qf1_pi, qf2_pi), axis=1)
+            qf_pi = qf_pi.mean(axis=2).mean(axis=1, keepdims=True)
 
             ent_coef_value = ent_coef.apply({"params": ent_coef_state.params})
-            # ent_coef_value = 0.01
             return (ent_coef_value * log_prob - qf_pi).mean(), -log_prob.mean()
 
         (actor_loss_value, entropy), grads = jax.value_and_grad(actor_loss, has_aux=True)(actor_state.params)
         actor_state = actor_state.apply_gradients(grads=grads)
 
-        # TODO: move update to critic update
+        return actor_state, (qf1_state, qf2_state), actor_loss_value, key, entropy
+
+    @jax.jit
+    def soft_update(qf1_state: RLTrainState, qf2_state: RLTrainState):
         qf1_state = qf1_state.replace(
             target_params=optax.incremental_update(qf1_state.params, qf1_state.target_params, args.tau)
         )
         qf2_state = qf2_state.replace(
             target_params=optax.incremental_update(qf2_state.params, qf2_state.target_params, args.tau)
         )
-        return actor_state, (qf1_state, qf2_state), actor_loss_value, key, entropy
+        return qf1_state, qf2_state
 
     @jax.jit
     def update_temperature(ent_coef_state: TrainState, entropy: float):
@@ -454,7 +473,15 @@ def main():
         return ent_coef_state, ent_coef_loss
 
     @jax.jit
-    def train(data: ReplayBufferSamplesNp, n_updates: int, qf1_state, qf2_state, actor_state, ent_coef_state, key):
+    def train(
+        data: ReplayBufferSamplesNp,
+        n_updates: int,
+        qf1_state: RLTrainState,
+        qf2_state: RLTrainState,
+        actor_state: TrainState,
+        ent_coef_state: TrainState,
+        key,
+    ):
         for i in range(args.gradient_steps):
             n_updates += 1
 
@@ -476,6 +503,7 @@ def main():
                 slice(data.dones),
                 key,
             )
+            qf1_state, qf2_state = soft_update(qf1_state, qf2_state)
 
         (actor_state, (qf1_state, qf2_state), actor_loss_value, key, entropy) = update_actor(
             actor_state,
@@ -499,8 +527,8 @@ def main():
 
     start_time = time.time()
     n_updates = 0
+    # for global_step in range(args.total_timesteps):
     for global_step in tqdm(range(args.total_timesteps)):
-        # for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
             actions = np.array([envs.action_space.sample() for _ in range(envs.num_envs)])
