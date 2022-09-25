@@ -4,7 +4,7 @@
 poetry install -E envpool
 OMP_NUM_THREADS=1 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids BattleZone-v5 DoubleDunk-v5 NameThisGame-v5 Phoenix-v5 Qbert-v5 \
-    --command "poetry run python cleanrl/ppo_dna_atari_envpool.py --anneal-rl False --total-timesteps 50000000 --track" \
+    --command "poetry run python cleanrl/ppo_dna_atari_envpool.py --anneal-lr False --total-timesteps 50000000 --track" \
     --num-seeds 3 \
     --workers 1
 
