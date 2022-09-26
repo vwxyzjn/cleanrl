@@ -92,7 +92,7 @@ import random
 import time
 from collections import deque
 from distutils.util import strtobool
-from typing import Final, Tuple, NamedTuple
+from typing import Final, Tuple, NamedTuple, List, Dict, Any
 
 import envpool
 import gym
@@ -165,6 +165,49 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+class ReplayBuffer(ReplayBuffer):
+    """Modified to work with newer gym version"""
+    def add(
+        self,
+        obs: np.ndarray,
+        next_obs: np.ndarray,
+        action: np.ndarray,
+        reward: np.ndarray,
+        done: np.ndarray,
+        infos: List[Dict[str, Any]],
+    ) -> None:
+
+        # Reshape needed when using multiple envs with discrete observations
+        # as numpy cannot broadcast (n_discrete,) to (n_discrete, 1)
+        if isinstance(self.observation_space, gym.spaces.Discrete):
+            obs = obs.reshape((self.n_envs,) + self.obs_shape)
+            next_obs = next_obs.reshape((self.n_envs,) + self.obs_shape)
+
+        # Same, for actions
+        if isinstance(self.action_space, gym.spaces.Discrete):
+            action = action.reshape((self.n_envs, self.action_dim))
+
+        # Copy to avoid modification by reference
+        self.observations[self.pos] = np.array(obs).copy()
+
+        if self.optimize_memory_usage:
+            self.observations[(self.pos + 1) % self.buffer_size] = np.array(next_obs).copy()
+        else:
+            self.next_observations[self.pos] = np.array(next_obs).copy()
+
+        self.actions[self.pos] = np.array(action).copy()
+        self.rewards[self.pos] = np.array(reward).copy()
+        self.dones[self.pos] = np.array(done).copy()
+
+        if self.handle_timeout_termination:
+            self.timeouts[self.pos] = info.get("TimeLimit.truncated", False)
+
+        self.pos += 1
+        if self.pos == self.buffer_size:
+            self.full = True
+            self.pos = 0
+
+
 class RecordEpisodeStatistics(gym.Wrapper):
     """Envpool-compatible episode statistics recording"""
     def __init__(self, env, deque_size=100):
@@ -190,7 +233,7 @@ class RecordEpisodeStatistics(gym.Wrapper):
         return observations
 
     def step(self, action):
-        observations, rewards, dones, infos = super().step(action)
+        observations, rewards, dones, truncateds, infos = super().step(action)
         self.episode_returns += infos["reward"]
         self.episode_lengths += 1
         self.returned_episode_returns[:] = self.episode_returns
@@ -293,7 +336,7 @@ class ActorHeads(nn.Module):
         entropy = (-(logprobs * probs)).sum(-1)  # Entropy of distributions
         action = torch.multinomial(probs, 1)
         logprob = logprobs.gather(-1, action).squeeze(-1)
-        return ActorOutput(termination, beta, option, action, logprob, entropy)
+        return ActorOutput(termination, beta, option, action.squeeze(-1), logprob, entropy)
 
     @torch.jit.export
     def term_probs(self, next_detached_features: torch.Tensor, options_on_arrival: torch.Tensor):
@@ -307,6 +350,15 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope = (end_e - start_e) / duration
     return max(slope * t + start_e, end_e)
 
+
+def make_env(env_id):
+    def thunk():
+        env = gym.make("ALE/" + env_id, frameskip=4, repeat_action_probability=0.)
+        env = gym.wrappers.RecordEpisodeStatistics(env)
+        env = gym.wrappers.AtariPreprocessing(env, frame_skip=1)
+        env = gym.wrappers.FrameStack(env, 4)  # Still need frame stacking
+        return env
+    return thunk
 
 if __name__ == "__main__":
     args = parse_args()
@@ -337,20 +389,10 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
-    # env setup
-    # has 4framestack, 4 frameskip, reward clip
-    envs = envpool.make(
-        args.env_id,
-        env_type="gym",
-        episodic_life=True,
-        reward_clip=True,
-        seed=args.seed,
-    )
-    envs.num_envs = 1
-    envs.single_action_space = envs.action_space
-    envs.single_observation_space = envs.observation_space
-    envs = RecordEpisodeStatistics(envs)
-    assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id)])
+    if args.capture_video:
+        envs = gym.wrappers.RecordVideo(envs, f"videos/{run_name}")
+    assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(args).to(device)
     optimizer = optim.RMSprop(q_network.parameters(), lr=args.learning_rate, alpha=0.95, eps=1e-2)
@@ -364,15 +406,15 @@ if __name__ == "__main__":
         envs.single_observation_space,
         gym.spaces.Discrete(args.num_options),
         device,
-        optimize_memory_usage=True,
-        handle_timeout_termination=False,
+        optimize_memory_usage=False,
+        handle_timeout_termination=True,
     )
     start_time = time.time()
 
     current_option = torch.randint(0, args.num_options, (envs.num_envs,), dtype=torch.int64, device=device)
 
     # TRY NOT TO MODIFY: start the game
-    obs = envs.reset()
+    obs, info = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put
         # action logic here
@@ -381,7 +423,7 @@ if __name__ == "__main__":
         oc_output = oc_head(detached_features, q.detach(), current_option, epsilon, global_step <= args.learning_starts)
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards, dones, info = envs.step(oc_output.action.cpu().numpy())
+        next_obs, rewards, dones, truncateds, info = envs.step(oc_output.action.cpu().numpy())
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "episode" in info.keys():
@@ -392,10 +434,9 @@ if __name__ == "__main__":
             break
 
         # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
-        # real_next_obs = next_obs.copy()
-        # for idx, d in enumerate(dones):
-        #     if d:
-        #         real_next_obs[idx] = info[idx]["terminal_observation"]
+        real_next_obs = next_obs.copy()
+        if dones.any():
+            real_next_obs[dones] = info["final_observation"][0][0]
         rb.add(obs, next_obs, oc_output.option.cpu(), rewards, dones, info)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
