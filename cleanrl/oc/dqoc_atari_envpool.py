@@ -249,7 +249,7 @@ class QNetwork(nn.Module):
 
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """Return processed features (no gradient) and critic output Q(s,w)"""
-        x = self.network(x / 255.)
+        x = self.network(x.float() / 255.)
         return x.detach(), self.critic(x)
 
 
@@ -276,8 +276,7 @@ class ActorHeads(nn.Module):
     def forward(self, detached_features: torch.Tensor, q: torch.Tensor, option_on_arrival: torch.Tensor, current_epsilon: float = 1.,
                 random_action_phase: bool = False) -> ActorOutput:
         """Sample termination. Sample new option if terminal. Sample new action from option"""
-        w = option_on_arrival.unsqueeze(-1)
-        beta = torch.sigmoid(self.termination(detached_features).gather(-1, w).squeeze(-1))  # Termination probability of current option
+        beta = torch.sigmoid(batched_index(option_on_arrival, self.termination(detached_features)))  # Termination probability of current option
         if random_action_phase: termination = torch.ones_like(option_on_arrival, dtype=torch.bool)  # Always terminate in random action phase
         else: termination = torch.bernoulli(beta)  # Sample termination
         # Epsilon-greedy option when terminal
@@ -285,7 +284,7 @@ class ActorHeads(nn.Module):
             candidate_option = torch.where(torch.rand_like(current_option, dtype=torch.float32) < current_epsilon,
                                            torch.randint_like(current_option, 0, self.num_options),
                                            q.argmax(-1))
-            option = torch.where(termination, candidate_option, option_on_arrival)
+            option = torch.where(termination > 0, candidate_option, option_on_arrival)
         else:
             option = option_on_arrival
         pi_logits = self.option_actor(detached_features).reshape(-1, self.num_options, self.num_actions)
@@ -295,6 +294,12 @@ class ActorHeads(nn.Module):
         action = torch.multinomial(probs, 1)
         logprob = logprobs.gather(-1, action).squeeze(-1)
         return ActorOutput(termination, beta, option, action, logprob, entropy)
+
+    @torch.jit.export
+    def term_probs(self, next_detached_features: torch.Tensor, options_on_arrival: torch.Tensor):
+        """No sampling, just get term probs for options at bootstrap step"""
+        return batched_index(options_on_arrival.squeeze(-1), self.termination(next_detached_features))
+
 
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
@@ -357,7 +362,7 @@ if __name__ == "__main__":
     rb = ReplayBuffer(
         args.buffer_size,
         envs.single_observation_space,
-        envs.single_action_space,
+        gym.spaces.Discrete(args.num_options),
         device,
         optimize_memory_usage=True,
         handle_timeout_termination=False,
@@ -387,11 +392,11 @@ if __name__ == "__main__":
             break
 
         # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
-        real_next_obs = next_obs.copy()
-        for idx, d in enumerate(dones):
-            if d:
-                real_next_obs[idx] = info[idx]["terminal_observation"]
-        rb.add(obs, real_next_obs, oc_output.option.cpu().numpy(), rewards, dones, info)
+        # real_next_obs = next_obs.copy()
+        # for idx, d in enumerate(dones):
+        #     if d:
+        #         real_next_obs[idx] = info[idx]["terminal_observation"]
+        rb.add(obs, next_obs, oc_output.option.cpu(), rewards, dones, info)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -400,15 +405,15 @@ if __name__ == "__main__":
         if global_step > args.learning_starts and global_step % args.train_frequency == 0:
             # online actor update. Need target Q for next obs
             with torch.no_grad():
-                s, next_target_q = target_q_network(obs)
+                s, next_target_q = target_q_network(torch.tensor(obs, device=device))
                 next_oc_out = oc_head(s, next_target_q, current_option, epsilon, True)
-                td_target = rewards + (1 - dones) * args.gamma * (
-                        (1 - next_oc_out.termination) * batched_index(current_option, next_target_q) +
-                        next_oc_out.termination * next_target_q.max(-1)
+                td_target = torch.tensor(rewards, device=device) + (1 - torch.tensor(dones, device=device, dtype=torch.float32)) * args.gamma * (
+                        (1 - next_oc_out.beta) * batched_index(current_option, next_target_q) +
+                        next_oc_out.beta * next_target_q.max(-1)[0]
                 )  # y
             detached_q = q.detach()
             q_sw = batched_index(current_option, detached_q)  # value of continuing option w
-            v_s = detached_q.max(-1)  # value of terminating at state
+            v_s = detached_q.max(-1)[0]  # value of terminating at state
             pg_loss = (-oc_output.logprob * (td_target - q_sw)).mean()  # PG with baseline
             entropy_loss = (-oc_output.entropy).mean()  # entropy loss
             term_loss = (oc_output.beta * (q_sw - v_s + args.term_reg)).mean()
@@ -421,9 +426,13 @@ if __name__ == "__main__":
             # offline critic update
             data = rb.sample(args.batch_size)
             with torch.no_grad():
-                target_max, _ = target_q_network(data.next_observations)[-1].max(dim=-1)
-                td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
-            old_val = q_network(data.observations).gather(1, data.actions).squeeze()
+                next_detached_features, target_q = target_q_network(data.next_observations)
+                target_max = target_q.max(-1)[0]
+                next_termprobs = oc_head.term_probs(next_detached_features, data.actions)
+                td_target = data.rewards.flatten() + args.gamma * (1. - data.dones.flatten()) * ((1 - next_termprobs) * batched_index(data.actions.squeeze(-1), target_q) +
+                                                                             next_termprobs * target_max)
+                # td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
+            old_val = batched_index(data.actions.squeeze(-1), q_network(data.observations)[-1])
             loss = F.mse_loss(td_target, old_val)
 
             if global_step % 100 == 0:
