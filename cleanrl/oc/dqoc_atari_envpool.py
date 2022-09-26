@@ -92,15 +92,15 @@ import random
 import time
 from collections import deque
 from distutils.util import strtobool
-from typing import Final
+from typing import Final, Tuple, NamedTuple
 
 import envpool
 import gym
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
-from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 from stable_baselines3.common.buffers import ReplayBuffer
 
@@ -128,12 +128,10 @@ def parse_args() -> argparse.Namespace:
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="Pong-v5",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=int(2e9),  # 250K steps per epoch, 8000 epochs
+    parser.add_argument("--total-timesteps", type=int, default=int(1e7),
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=1e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=32,
-        help="total timesteps of the experiments")
     parser.add_argument("--buffer-size", type=int, default=1000000,
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
@@ -214,6 +212,17 @@ class RecordEpisodeStatistics(gym.Wrapper):
         )
 
 
+@torch.jit.script
+def batched_index(idx: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+    """Return contents of t at n-D array idx. Leading dim of t must match dims of idx"""
+    dim = len(idx.shape)
+    assert idx.shape == t.shape[:dim]
+    num = idx.numel()
+    t_flat = t.view((num,) + t.shape[dim:])
+    s_flat = t_flat[torch.arange(num, device=t.device), idx.view(-1)]
+    return s_flat.view(t.shape[:dim] + t.shape[dim + 1:])
+
+
 def layer_init(layer: nn.Module, std: float = nn.init.calculate_gain('relu'), bias_const: float = 0.):
     """Orthogonal layer initialization"""
     torch.nn.init.orthogonal_(layer.weight, std)
@@ -221,12 +230,10 @@ def layer_init(layer: nn.Module, std: float = nn.init.calculate_gain('relu'), bi
     return layer
 
 
-class Agent(nn.Module):
-    num_options: Final[int]
-    num_actions: Final[int]
-    def __init__(self, envs, args):
+class QNetwork(nn.Module):
+    def __init__(self, args):
         super().__init__()
-        # Base DQN
+        # Base Nature CNN
         self.network = nn.Sequential(
             layer_init(nn.Conv2d(4, 32, 8, stride=4)),
             nn.ReLU(inplace=True),
@@ -238,30 +245,56 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64 * 7 * 7, 512)),
             nn.ReLU(inplace=True),
         )
+        self.critic = layer_init(nn.Linear(512, args.num_options), std=1.)
+
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Return processed features (no gradient) and critic output Q(s,w)"""
+        x = self.network(x / 255.)
+        return x.detach(), self.critic(x)
+
+
+class ActorOutput(NamedTuple):
+    termination: torch.Tensor
+    beta: torch.Tensor
+    option: torch.Tensor
+    action: torch.Tensor
+    logprob: torch.Tensor
+    entropy: torch.Tensor
+
+
+class ActorHeads(nn.Module):
+    num_actions: Final[int]
+    num_options: Final[int]
+
+    def __init__(self, envs, args):
+        super().__init__()
         self.num_options = args.num_options
         self.num_actions = envs.single_action_space.n
         self.termination = layer_init(nn.Linear(512, args.num_options), std=0.01)
         self.option_actor = layer_init(nn.Linear(512, int(envs.single_action_space.n * args.num_options)), std=0.01)
-        self.critic = layer_init(nn.Linear(512, args.num_options), std=1.)
 
-    def forward(self, x: torch.Tensor, current_option: torch.Tensor, current_epsilon: float = 1.):
-        """Return (termination, next option, term_probs), (log_pi, a), q"""
-        x = self.network(x / 255.)
-        B = x.shape[-2]  # batch size for eps-greedy
-        # Detach termination and option actors
-        beta = torch.sigmoid(self.termination(x.detach()))
-        term = torch.bernoulli(torch.take_along_dim(beta, current_option, -1))
-        pi = self.option_actor(x.detach()).reshape(-1, self.num_options, self.num_actions)
-        log_pi_w = torch.log_softmax(torch.take_along_dim(pi, current_option, -2), -1)
-        a = torch.multinomial(log_pi_w.exp(), 1)
-        q = self.critic(x)
-        new_option = current_option
-        if term:
-            new_option = torch.where(torch.rand(B) < current_epsilon,
-                                     torch.randint(0, self.num_options, B),
-                                     q.argmax(-1))
-        return (term, new_option, beta), (log_pi_w.gather(-1, a).squeeze(-1), a), q
-
+    def forward(self, detached_features: torch.Tensor, q: torch.Tensor, option_on_arrival: torch.Tensor, current_epsilon: float = 1.,
+                random_action_phase: bool = False) -> ActorOutput:
+        """Sample termination. Sample new option if terminal. Sample new action from option"""
+        w = option_on_arrival.unsqueeze(-1)
+        beta = torch.sigmoid(self.termination(detached_features).gather(-1, w).squeeze(-1))  # Termination probability of current option
+        if random_action_phase: termination = torch.ones_like(option_on_arrival, dtype=torch.bool)  # Always terminate in random action phase
+        else: termination = torch.bernoulli(beta)  # Sample termination
+        # Epsilon-greedy option when terminal
+        if termination.any():
+            candidate_option = torch.where(torch.rand_like(current_option, dtype=torch.float32) < current_epsilon,
+                                           torch.randint_like(current_option, 0, self.num_options),
+                                           q.argmax(-1))
+            option = torch.where(termination, candidate_option, option_on_arrival)
+        else:
+            option = option_on_arrival
+        pi_logits = self.option_actor(detached_features).reshape(-1, self.num_options, self.num_actions)
+        logprobs = torch.log_softmax(batched_index(option, pi_logits), -1)  # Log prob for all actions under each option
+        probs = logprobs.exp()
+        entropy = (-(logprobs * probs)).sum(-1)  # Entropy of distributions
+        action = torch.multinomial(probs, 1)
+        logprob = logprobs.gather(-1, action).squeeze(-1)
+        return ActorOutput(termination, beta, option, action, logprob, entropy)
 
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
@@ -304,74 +337,93 @@ if __name__ == "__main__":
     envs = envpool.make(
         args.env_id,
         env_type="gym",
-        num_envs=args.num_envs,
         episodic_life=True,
         reward_clip=True,
         seed=args.seed,
     )
-    envs.num_envs = args.num_envs
+    envs.num_envs = 1
     envs.single_action_space = envs.action_space
     envs.single_observation_space = envs.observation_space
     envs = RecordEpisodeStatistics(envs)
     assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
-    oc_network = Agent(envs, args).to(device)
-    optimizer = optim.RMSprop(oc_network.parameters(), lr=args.learning_rate, alpha=0.95, eps=1e-2)
-    target_network = Agent(envs, args).to(device)
-    target_network.load_state_dict(oc_network.state_dict())
+    q_network = QNetwork(args).to(device)
+    optimizer = optim.RMSprop(q_network.parameters(), lr=args.learning_rate, alpha=0.95, eps=1e-2)
+    target_q_network = QNetwork(args).to(device)
+    target_q_network.load_state_dict(q_network.state_dict())
+    oc_head = ActorHeads(envs, args).to(device)
+    oc_optim = optim.SGD(oc_head.parameters(), lr=args.learning_rate)
 
     rb = ReplayBuffer(
         args.buffer_size,
         envs.single_observation_space,
         envs.single_action_space,
         device,
-        optimize_memory_usage=False,
-        handle_timeout_termination=True,
+        optimize_memory_usage=True,
+        handle_timeout_termination=False,
     )
     start_time = time.time()
 
-    current_option = torch.randint(0, args.num_options, args.num_envs, dtype=torch.int64)
+    current_option = torch.randint(0, args.num_options, (envs.num_envs,), dtype=torch.int64, device=device)
 
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
     for global_step in range(args.total_timesteps):
-        # ALGO LOGIC: put action logic here
+        # ALGO LOGIC: put
+        # action logic here
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
-        if random.random() < epsilon:
-            actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
-        else:
-            q_values = oc_network(torch.Tensor(obs).to(device))
-            actions = torch.argmax(q_values, dim=1).cpu().numpy()
+        detached_features, q = q_network(torch.tensor(obs, device=device))
+        oc_output = oc_head(detached_features, q.detach(), current_option, epsilon, global_step <= args.learning_starts)
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards, dones, infos = envs.step(actions)
+        next_obs, rewards, dones, info = envs.step(oc_output.action.cpu().numpy())
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        for info in infos:
-            if "episode" in info.keys():
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                writer.add_scalar("charts/epsilon", epsilon, global_step)
-                break
+        if "episode" in info.keys():
+            print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+            writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+            writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+            writer.add_scalar("charts/epsilon", epsilon, global_step)
+            break
 
         # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
         real_next_obs = next_obs.copy()
         for idx, d in enumerate(dones):
             if d:
-                real_next_obs[idx] = infos[idx]["terminal_observation"]
-        rb.add(obs, real_next_obs, actions, rewards, dones, infos)
+                real_next_obs[idx] = info[idx]["terminal_observation"]
+        rb.add(obs, real_next_obs, oc_output.option.cpu().numpy(), rewards, dones, info)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
 
         # ALGO LOGIC: training.
         if global_step > args.learning_starts and global_step % args.train_frequency == 0:
+            # online actor update. Need target Q for next obs
+            with torch.no_grad():
+                s, next_target_q = target_q_network(obs)
+                next_oc_out = oc_head(s, next_target_q, current_option, epsilon, True)
+                td_target = rewards + (1 - dones) * args.gamma * (
+                        (1 - next_oc_out.termination) * batched_index(current_option, next_target_q) +
+                        next_oc_out.termination * next_target_q.max(-1)
+                )  # y
+            detached_q = q.detach()
+            q_sw = batched_index(current_option, detached_q)  # value of continuing option w
+            v_s = detached_q.max(-1)  # value of terminating at state
+            pg_loss = (-oc_output.logprob * (td_target - q_sw)).mean()  # PG with baseline
+            entropy_loss = (-oc_output.entropy).mean()  # entropy loss
+            term_loss = (oc_output.beta * (q_sw - v_s + args.term_reg)).mean()
+            actor_loss = pg_loss + term_loss + args.ent_coef * entropy_loss
+            oc_optim.zero_grad(True)
+            actor_loss.backward()
+            oc_optim.step()
+
+
+            # offline critic update
             data = rb.sample(args.batch_size)
             with torch.no_grad():
-                target_max, _ = target_network(data.next_observations).max(dim=1)
+                target_max, _ = target_q_network(data.next_observations)[-1].max(dim=-1)
                 td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
-            old_val = oc_network(data.observations).gather(1, data.actions).squeeze()
+            old_val = q_network(data.observations).gather(1, data.actions).squeeze()
             loss = F.mse_loss(td_target, old_val)
 
             if global_step % 100 == 0:
@@ -381,13 +433,13 @@ if __name__ == "__main__":
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
             # optimize the model
-            optimizer.zero_grad()
+            optimizer.zero_grad(True)
             loss.backward()
             optimizer.step()
 
             # update the target network
             if global_step % args.target_network_frequency == 0:
-                target_network.load_state_dict(oc_network.state_dict())
+                target_q_network.load_state_dict(q_network.state_dict())
 
     envs.close()
     writer.close()
