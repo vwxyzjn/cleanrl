@@ -386,6 +386,7 @@ if __name__ == "__main__":
         agent_policy.zero_grad(True)  # don't clone gradients
         old_agent_policy = deepcopy(agent_policy)
         old_agent_policy.eval()
+        agent_value.eval()
         for epoch in range(args.distill_update_epochs):
             np.random.shuffle(b_inds)
             for start in range(0, args.batch_size, args.distill_batch_size):
