@@ -2,8 +2,8 @@
 
 ## Prerequisites
 
-* >=3.7.1,<3.10 (not yet 3.10)
-* [Poetry](https://python-poetry.org)
+* Python >=3.7.1,<3.10 (not yet 3.10)
+* [Poetry 1.2.1+](https://python-poetry.org)
 
 Simply run the following command for a quick start
 
