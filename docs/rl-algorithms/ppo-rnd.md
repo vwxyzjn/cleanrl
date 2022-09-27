@@ -38,7 +38,7 @@ Below are our single-file implementations of TD3:
 ### Usage
 
 ```bash
-poetry install -E envpool
+poetry install --with envpool
 python cleanrl/ppo_rnd_envpool.py --help
 python cleanrl/ppo_rnd_envpool.py --env-id MontezumaRevenge-v5
 ```

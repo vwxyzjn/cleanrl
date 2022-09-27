@@ -47,12 +47,12 @@ spyder = ["spyder"]
 You can install them using the following command
 
 ```bash
-poetry install -E atari
-poetry install -E pybullet
-poetry install -E mujoco
-poetry install -E procgen
-poetry install -E envpool
-poetry install -E pettingzoo
+poetry install --with atari
+poetry install --with pybullet
+poetry install --with mujoco
+poetry install --with procgen
+poetry install --with envpool
+poetry install --with pettingzoo
 ```
 
 ## Install via `pip`

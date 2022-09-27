@@ -136,7 +136,7 @@ The [ppo_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_at
 ### Usage
 
 ```bash
-poetry install -E atari
+poetry install --with atari
 python cleanrl/ppo_atari.py --help
 python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
 ```
@@ -211,7 +211,7 @@ The [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 ### Usage
 
 ```bash
-poetry install -E atari
+poetry install --with atari
 python cleanrl/ppo_continuous_action.py --help
 python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
 ```
@@ -290,7 +290,7 @@ The [ppo_atari_lstm.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/p
 ### Usage
 
 ```bash
-poetry install -E atari
+poetry install --with atari
 python cleanrl/ppo_atari_lstm.py --help
 python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
 ```
@@ -364,7 +364,7 @@ The [ppo_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanr
 ### Usage
 
 ```bash
-poetry install -E envpool
+poetry install --with envpool
 python cleanrl/ppo_atari_envpool.py --help
 python cleanrl/ppo_atari_envpool.py --env-id Breakout-v5
 ```
@@ -430,7 +430,7 @@ The [ppo_procgen.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_
 ### Usage
 
 ```bash
-poetry install -E procgen
+poetry install --with procgen
 python cleanrl/ppo_procgen.py --help
 python cleanrl/ppo_procgen.py --env-id starpilot
 ```
@@ -509,7 +509,7 @@ The [ppo_atari_multigpu.py](https://github.com/vwxyzjn/cleanrl/blob/master/clean
 ### Usage
 
 ```bash
-poetry install -E atari
+poetry install --with atari
 python cleanrl/ppo_atari_multigpu.py --help
 
 # `--nproc_per_node=2` specifies how many subprocesses we spawn for training with data parallelism
@@ -759,7 +759,7 @@ Tracked experiments and game play videos:
 ### Usage
 
 ```bash
-poetry install -E "pettingzoo atari"
+poetry install --with pettingzoo,atari
 poetry run AutoROM --accept-license
 python cleanrl/ppo_pettingzoo_ma_atari.py --help
 python cleanrl/ppo_pettingzoo_ma_atari.py --env-id pong_v3

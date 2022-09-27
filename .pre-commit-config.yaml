@@ -46,26 +46,26 @@ repos:
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-atari.txt
-        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-atari.txt", "-E", "atari"]
+        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-atari.txt", "--with", "atari"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-pybullet.txt
-        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-pybullet.txt", "-E", "pybullet"]
+        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-pybullet.txt", "--with", "pybullet"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-mujoco.txt
-        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-mujoco.txt", "-E", "mujoco"]
+        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-mujoco.txt", "--with", "mujoco"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-procgen.txt
-        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-procgen.txt", "-E", "procgen"]
+        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-procgen.txt", "--with", "procgen"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-envpool.txt
-        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-envpool.txt", "-E", "envpool"]
+        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-envpool.txt", "--with", "envpool"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-pettingzoo.txt
-        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-pettingzoo.txt", "-E", "pettingzoo"]
+        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-pettingzoo.txt", "--with", "pettingzoo"]
         stages: [manual]
         
