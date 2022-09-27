@@ -3,7 +3,7 @@ name = "isaacgym"
 version = "1.0.preview4"
 description = ""
 authors = ["Costa Huang <costa.huang@outlook.com>"]
-include = ["isaacgym", "examples"]
+include = ["isaacgym/**/*", "examples/**/*"]
 packages = [
     { include = "isaacgym" },
 ]

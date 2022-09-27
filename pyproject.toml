@@ -88,8 +88,8 @@ awscli = "^1.25.71"
 [tool.poetry.group.isaacgym]
 optional = true
 [tool.poetry.group.isaacgym.dependencies]
-isaacgym = {path = "cleanrl/ppo_continuous_action_isaacgym/isaacgym", develop = true}
 isaacgymenvs = {git = "https://github.com/vwxyzjn/IsaacGymEnvs.git", rev = "poetry"}
+isaacgym = {path = "cleanrl/ppo_continuous_action_isaacgym/isaacgym", develop = true}
 
 [build-system]
 requires = ["poetry-core"]
