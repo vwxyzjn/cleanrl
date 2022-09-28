@@ -283,6 +283,8 @@ if __name__ == "__main__":
             value_optimizer.param_groups[0]["lr"] = frac * args.value_learning_rate
             distill_optimizer.param_groups[0]["lr"] = frac * args.distill_learning_rate
 
+        agent_policy.eval()
+        agent_value.eval()
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
             obs[step] = next_obs
@@ -326,6 +328,7 @@ if __name__ == "__main__":
         b_values = values.reshape(-1)
 
         # Policy network optimization
+        agent_policy.train()
         b_inds = np.arange(args.batch_size)
         clipfracs = []
         for epoch in range(args.policy_update_epochs):
@@ -366,6 +369,7 @@ if __name__ == "__main__":
                     break
 
         # Value network optimization
+        agent_value.train()
         for epoch in range(args.value_update_epochs):
             np.random.shuffle(b_inds)
             for start in range(0, args.batch_size, args.value_batch_size):
@@ -385,6 +389,7 @@ if __name__ == "__main__":
         # Value network to policy network distillation
         agent_policy.zero_grad(True)  # don't clone gradients
         old_agent_policy = deepcopy(agent_policy)
+        agent_policy.train()
         old_agent_policy.eval()
         agent_value.eval()
         for epoch in range(args.distill_update_epochs):
