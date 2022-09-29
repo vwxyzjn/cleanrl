@@ -381,7 +381,7 @@ if __name__ == "__main__":
             v_s = values.mean(-1)
             next_value = agent.bootstrap_utility(next_obs, options[-1], next_done, args.option_epsilon)
             # Leave in GAE format for max compatibility
-            advantages = torch.zeros_like(rewards).to(device)
+            advantages = torch.zeros_like(rewards)
             lastgaelam = 0
             for t in reversed(range(args.num_steps)):
                 if t == args.num_steps - 1:
