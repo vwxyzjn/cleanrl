@@ -22,6 +22,13 @@ Weird tricks:
     Only updates an option if we have at least 160 datapoints with that option (otherwise save those in a dataset, use it later)
     Termination loss has 5e-7 learning rate (not detaul 3e-4)
 
+Errors:
+    - General issues in non-weightsharing derivation being used in weight sharing
+    - GAE is computed using Q(s, w) as baseline, bootstrapped from Q(s', w), and used for intra- AND inter-option policies
+        - But baseline must be action-independent. Inter-option policy baseline should be V(s) (or maybe U(s', w))
+    - Termination advantages should use beta(s', w) and A(s',w), but actually use A(s,w)
+    - Inter-option policy advantage should use V(s') as baseline, bootstrap off V(s'')
+
 Execution:
     o = env.reset()  # Start episode
     option = pi.get_option(o)  # Start with option
@@ -41,7 +48,7 @@ import random
 import time
 from collections import deque
 from distutils.util import strtobool
-from typing import Final, NamedTuple
+from typing import Final, NamedTuple, Tuple
 
 import envpool
 import gym
@@ -185,6 +192,14 @@ class Agent(nn.Module):
         self.actor_logstd = nn.Parameter(torch.zeros(1, self.num_options, self.num_actions))
         self.option_actor = layer_init(nn.Linear(64, self.num_options), std=0.01)  # is detached in original implement
 
+    @torch.jit.export
+    def get_option_logprobs_and_values(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+        """Log probability and q value for each option in state x"""
+        x = self.critic_body(x)
+        pi_lp = torch.log_softmax(self.option_actor(x.detach()), -1)
+        q = self.critic(x)
+        return pi_lp, q
+
 
     def step(self, x: Tensor, option_on_arrival: Tensor, is_done: Tensor) -> StepOutput:
         """Sample termination, then new option if needed. Pick action, return values"""
@@ -253,9 +268,9 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = envpool.make_gym(args.gym_id, num_envs=args.num_envs)
+    envs = envpool.make_gym(args.env_id, num_envs=args.num_envs)
     envs.is_vector_env = True
-    envs.single_action_space = envs.single_action_space
+    envs.single_action_space = envs.action_space
     envs.single_observation_space = envs.observation_space
     envs = gym.wrappers.RecordEpisodeStatistics(envs)
     envs = gym.wrappers.NormalizeObservation(envs)
