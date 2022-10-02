@@ -49,7 +49,6 @@ import time
 from collections import deque
 from distutils.util import strtobool
 from typing import Final, NamedTuple, Tuple
-import math
 
 import envpool
 import gym
@@ -90,7 +89,7 @@ def parse_args():
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=3e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=8,
+    parser.add_argument("--num-envs", type=int, default=1,
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=2048,
         help="the number of steps to run in each environment per policy rollout")
@@ -143,15 +142,14 @@ class Tanh(nn.Module):
 
 
 class StepOutput(NamedTuple):
-    termination: Tensor  # t
-    option: Tensor  # w
-    action: Tensor  # a
-    betas: Tensor  # beta(s, w_)
-    option_logprobs: Tensor  # lp(w|s)
-    logprobs: Tensor  # lp(a|s, w)
-    qs: Tensor  # Q(s, .)
-    v: Tensor  # V(s)
-    us: Tensor  # U(s, w_)
+    termination: Tensor
+    option: Tensor
+    action: Tensor
+    betas: Tensor
+    option_logprobs: Tensor
+    logprobs: Tensor
+    qs: Tensor
+    v: Tensor
 
 
 @torch.jit.script
@@ -165,14 +163,6 @@ def batched_index(idx: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
     return s_flat.view(t.shape[:dim] + t.shape[dim + 1:])
 
 
-def body(num_obs: int) -> nn.Sequential:
-    """Base 2-layer MLP with Tanh nonlinearities"""
-    return nn.Sequential(layer_init(nn.Linear(num_obs, 64)),
-                         Tanh(),
-                         layer_init(nn.Linear(64, 64)),
-                         Tanh())
-
-
 class Agent(nn.Module):
     num_actions: Final[int]
     num_options: Final[int]
@@ -182,86 +172,70 @@ class Agent(nn.Module):
         self.num_actions = int(np.prod(envs.single_action_space.shape))
         self.num_options = args.num_options
         num_obs = int(np.prod(envs.single_observation_space.shape))
-        self.critic = body(num_obs).append(layer_init(nn.Linear(64, self.num_options), 1.))
-        self.termination = body(num_obs).append(layer_init(nn.Linear(64, self.num_options), 1e-2))
-        self.actor_mean = body(num_obs).append(layer_init(nn.Linear(64, int(self.num_actions * self.num_options)), std=0.01))
+        # Critic body shared by termination and critic
+        self.critic_body = nn.Sequential(
+            layer_init(nn.Linear(num_obs, 64)),
+            Tanh(),
+            layer_init(nn.Linear(64, 64)),
+            Tanh(),
+        )
+        self.critic = layer_init(nn.Linear(64, self.num_options), 1.)
+        self.termination = layer_init(nn.Linear(64, self.num_options), 1e-2)  # is detached in original implement
+        # Actor body shared by both actors
+        self.actor_body = nn.Sequential(
+            layer_init(nn.Linear(num_obs, 64)),
+            Tanh(),
+            layer_init(nn.Linear(64, 64)),
+            Tanh(),
+        )
+        self.actor_mean = layer_init(nn.Linear(64, int(self.num_actions * self.num_options)), std=0.01)
         self.actor_logstd = nn.Parameter(torch.zeros(1, self.num_options, self.num_actions))
-        self.option_actor = body(num_obs).append(layer_init(nn.Linear(64, self.num_options), std=0.01))
+        self.option_actor = layer_init(nn.Linear(64, self.num_options), std=0.01)  # is detached in original implement
 
     @torch.jit.export
-    def get_value(self, x: Tensor):
-        """Return various bootstrap values"""
+    def get_option_logprobs_and_values(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+        """Log probability and q value for each option in state x"""
+        x = self.critic_body(x)
+        pi_lp = torch.log_softmax(self.option_actor(x.detach()), -1)
         q = self.critic(x)
-        option_probs = torch.softmax(self.option_actor(x), -1)
-        v = (q * option_probs).sum(-1)
-        betas = F.sigmoid(self.termination(x))
-        u = (1. - betas) * q + betas * v.unsqueeze(-1)
-        return q, v, u
+        return pi_lp, q
 
-    @torch.jit.export
+
     def step(self, x: Tensor, option_on_arrival: Tensor, is_done: Tensor) -> StepOutput:
         """Sample termination, then new option if needed. Pick action, return values"""
-        # Check termination on entering state x
-        betas = F.sigmoid(self.termination(x))
-        beta = batched_index(option_on_arrival, betas)
-        term = torch.bernoulli(beta)
-        # Choose new option where terminated (or where new episode)
-        option_logprobs = torch.log_softmax(self.option_actor(x), -1)
-        option_probs = option_logprobs.exp()
+        x_qt = self.critic_body(x)
+        q = self.critic(x_qt)
+        beta = F.sigmoid(self.termination(x_qt.detach()))
+        term = torch.bernoulli(batched_index(option_on_arrival, beta))  # Sample termination
+        x_a = self.actor_body(x)
+        option_logprobs = torch.log_softmax(self.option_actor(x_a.detach()), -1)
+        v = (option_logprobs.exp() * q).sum(-1)
         option = torch.where((term + is_done) > 0,
-                             torch.multinomial(option_probs, 1).squeeze(-1),
+                             torch.multinomial(option_logprobs.exp(), 1),
                              option_on_arrival)
-        option_logprob = option_logprobs.gather(-1, option.unsqueeze(-1)).squeeze(-1)
-        # Choose action from selected option(s)
-        all_action_mean = self.actor_mean(x).reshape(-1, self.num_options, self.num_actions)
-        all_action_logstd = self.actor_logstd.expand_as(all_action_mean)
-        action_mean = batched_index(option, all_action_mean)
-        action_logstd = batched_index(option, all_action_logstd)
+        option_logprob = option_logprobs.gather(-1, option).squeeze(-1)
+        action_mean = batched_index(option, self.actor_mean(x_a).reshape(-1, self.num_options, self.num_actions))
+        action_logstd = batched_index(option.unsqueeze(0), self.actor_logstd).expand_as(action_mean)
         action_std = action_logstd.exp()
-        action = torch.normal(action_mean, action_std)
-        action_logprob = (-((action - action_mean) ** 2) / (2 * action_std ** 2) -  # from torch.Normal
-                          action_logstd - math.log(math.sqrt(2 * math.pi))).sum(-1)
-        # Get q value of each option, policy-weighted average V, and utility U
-        q = self.critic(x)
-        v = (q * option_probs).sum(-1)
-        u = (1. - betas) * q + betas * v.unsqueeze(-1)
-        return StepOutput(term, option, action, beta, option_logprob, action_logprob, q, v, u)
-
-    @torch.jit.export
-    def unroll(self, xs: Tensor, options_on_arrival: Tensor, options: Tensor, actions: Tensor):
-        """Compute gradients over a batch of data"""
-        # Probability of terminating previous option in each step
-        prev_termprobs = F.sigmoid(batched_index(options_on_arrival, self.termination(xs)))
-        # Probability of selecting chosen option in each step
-        all_option_logprobs = torch.log_softmax(self.option_actor(xs), -1)
-        option_logprobs = all_option_logprobs.gather(-1, options.unsqueeze(-1)).squeeze(-1)
-        option_entropy = (-all_option_logprobs * all_option_logprobs.exp()).sum(-1)
-        # Probability of selecting chosen action in each step
-        all_action_mean = self.actor_mean(xs).reshape(-1, self.num_options, self.num_actions)
-        all_action_logstd = self.actor_logstd.expand_as(all_action_mean)
-        action_mean = batched_index(options, all_action_mean)
-        action_logstd = batched_index(options, all_action_logstd)
-        action_std = action_logstd.exp()
-        action_logprob = (-((actions - action_mean) ** 2) / (2 * action_std ** 2) -  # from torch.Normal
-                          action_logstd - math.log(math.sqrt(2 * math.pi))).sum(-1)
-        action_entropy = (0.5 + 0.5 * math.log(2 * math.pi) + action_logstd).sum(-1)
-        # Value of selected option
-        q_sw = batched_index(options, self.critic(xs))
-        return (prev_termprobs, option_logprobs, option_entropy), (action_logprob, action_entropy), q_sw
+        # TODO: Replace with jit-compatible sampling
+        probs = Normal(action_mean, action_std)
+        action = probs.sample()
+        action_logprob = probs.log_prob(action).sum(-1)
+        return StepOutput(term, option, action, beta, option_logprob, action_logprob, q, v)
 
 
-@torch.jit.script
-def gae(v_tm1_t: Tensor, r_t: Tensor, gamma_t: Tensor, lambda_: float = 1., norm_adv: bool = False) -> Tuple[Tensor, Tensor]:
-    """Generalized advantage estimation with lambda-returns"""
-    v_tm1, v_t = v_tm1_t[:-1], v_tm1_t[1:]
-    deltas = (r_t + gamma_t * v_t - v_tm1)
-    adv = torch.zeros_like(v_t)
-    lastgaelam = torch.zeros_like(v_t[0])
-    for t in torch.arange(v_t.shape[0] - 1, -1, -1, device=v_t.device):
-        lastgaelam = adv[t] = deltas[t] + gamma_t[t] * lambda_ * lastgaelam
-    ret = adv + v_tm1
-    if norm_adv: adv = (adv - adv.mean()) / (adv.std() + 1e-8)
-    return adv, ret
+
+    def get_value(self, x):
+        return self.critic(x)
+
+    def get_action_and_value(self, x, action=None):
+        action_mean = self.actor_mean(x)
+        action_logstd = self.actor_logstd.expand_as(action_mean)
+        action_std = torch.exp(action_logstd)
+        probs = Normal(action_mean, action_std)
+        if action is None:
+            action = probs.sample()
+        return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
 
 
 if __name__ == "__main__":
@@ -298,9 +272,9 @@ if __name__ == "__main__":
     envs.is_vector_env = True
     envs.single_action_space = envs.action_space
     envs.single_observation_space = envs.observation_space
-    # envs = gym.wrappers.RecordEpisodeStatistics(envs)
-    # envs = gym.wrappers.NormalizeObservation(envs)
-    # envs = gym.wrappers.NormalizeReward(envs)
+    envs = gym.wrappers.RecordEpisodeStatistics(envs)
+    envs = gym.wrappers.NormalizeObservation(envs)
+    envs = gym.wrappers.NormalizeReward(envs)
 
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
@@ -310,24 +284,16 @@ if __name__ == "__main__":
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape, device=device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape, device=device)
-    options_buffer = torch.zeros((args.num_steps + 1, args.num_envs), dtype=torch.int64, device=device)
-    options = options_buffer[1:]
-    options_on_arrival = options_buffer[:-1]
-    betas_on_arrival = torch.zeros((args.num_steps, args.num_envs), device=device)
     logprobs = torch.zeros((args.num_steps, args.num_envs), device=device)
-    option_logprobs = torch.zeros((args.num_steps, args.num_envs), device=device)
     rewards = torch.zeros((args.num_steps, args.num_envs), device=device)
-    dones = torch.zeros((args.num_steps + 1, args.num_envs), device=device)
-    qvalues = torch.zeros((args.num_steps + 1, args.num_envs, args.num_options), device=device)
-    vvalues = torch.zeros((args.num_steps + 1, args.num_envs), device=device)
-    uvalues = torch.zeros((args.num_steps + 1, args.num_envs, args.num_options), device=device)
+    dones = torch.zeros((args.num_steps, args.num_envs), device=device)
+    values = torch.zeros((args.num_steps, args.num_envs), device=device)
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
-    next_obs = torch.tensor(envs.reset(), device=device, dtype=torch.float32)
-    next_done = torch.ones(args.num_envs, device=device)
-    next_option = torch.zeros(args.num_envs, device=device, dtype=torch.int64)
+    next_obs = torch.tensor(envs.reset(), device=device)
+    next_done = torch.zeros(args.num_envs, device=device)
     num_updates = args.total_timesteps // args.batch_size
 
     for update in range(1, num_updates + 1):
@@ -341,47 +307,53 @@ if __name__ == "__main__":
             global_step += 1 * args.num_envs
             obs[step] = next_obs
             dones[step] = next_done
-            options_on_arrival[step] = next_option
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                oc_output = agent.step(next_obs, next_option, next_done)
-                next_option = options[step] = oc_output.option
-                actions[step] = action = oc_output.action
-                betas_on_arrival[step] = oc_output.betas
-                option_logprobs[step] = oc_output.option_logprobs
-                logprobs[step] = oc_output.logprobs
-                qvalues[step], vvalues[step], uvalues[step] = oc_output[-3:]
+                action, logprob, _, value = agent.get_action_and_value(next_obs)
+                values[step] = value.flatten()
+            actions[step] = action
+            logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, done, info = envs.step(action.cpu().numpy())
             rewards[step] = torch.tensor(reward, device=device).view(-1)
-            next_obs, next_done = torch.tensor(next_obs, device=device, dtype=torch.float32), torch.Tensor(done, device=device)
+            next_obs, next_done = torch.Tensor(next_obs, device=device), torch.Tensor(done, device=device)
 
-            # for item in info:
-            #     if "episode" in item.keys():
-            #         print(f"global_step={global_step}, episodic_return={item['episode']['r']}")
-            #         writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
-            #         writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
-            #         break
+            for item in info:
+                if "episode" in item.keys():
+                    print(f"global_step={global_step}, episodic_return={item['episode']['r']}")
+                    writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
+                    writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
+                    break
 
         # bootstrap value if not done
         with torch.no_grad():
-            qvalues[-1], vvalues[-1], uvalues[-1] = agent.get_value(next_obs)
-            q_sw = batched_index(qvalues[:-1], options)
-            dones[-1] = next_done
-            advantages, returns
-            advantages = torch.zeros_like(rewards, device=device)
-            option_advantages = torch.zeros_like(rewards, device=device)
-            lastgaelam = 0
-            for t in reversed(range(args.num_steps)):
-                nextnonterminal = 1.0 - dones[t + 1]
-                nextvalues = values[t + 1]
-                delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
-                advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
-            returns = advantages + qvalues[:-1]
-            termination_advantages = qvalues[:-1] - vvalues[:-1] + args.delib_cost
-
+            next_value = agent.get_value(next_obs).reshape(1, -1)
+            if args.gae:
+                advantages = torch.zeros_like(rewards, device=device)
+                lastgaelam = 0
+                for t in reversed(range(args.num_steps)):
+                    if t == args.num_steps - 1:
+                        nextnonterminal = 1.0 - next_done
+                        nextvalues = next_value
+                    else:
+                        nextnonterminal = 1.0 - dones[t + 1]
+                        nextvalues = values[t + 1]
+                    delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
+                    advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
+                returns = advantages + values
+            else:
+                returns = torch.zeros_like(rewards, device=device)
+                for t in reversed(range(args.num_steps)):
+                    if t == args.num_steps - 1:
+                        nextnonterminal = 1.0 - next_done
+                        next_return = next_value
+                    else:
+                        nextnonterminal = 1.0 - dones[t + 1]
+                        next_return = returns[t + 1]
+                    returns[t] = rewards[t] + args.gamma * nextnonterminal * next_return
+                advantages = returns - values
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
