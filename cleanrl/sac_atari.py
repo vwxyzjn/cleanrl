@@ -71,6 +71,8 @@ def parse_args():
         help="Entropy regularization coefficient.")
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=True, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
+    parser.add_argument("--autotune-coeff", type=float, default=0.8,
+        help="coefficient for scaling the autotune entropy target")
     args = parser.parse_args()
     # fmt: on
     return args
@@ -79,7 +81,6 @@ def parse_args():
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         env = gym.make(env_id)
-        env.spec.max_episode_length = 27000
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
@@ -232,7 +233,7 @@ if __name__ == "__main__":
 
     # Automatic entropy tuning
     if args.autotune:
-        target_entropy = -0.98 * torch.log(1 / torch.tensor(envs.single_action_space.n))
+        target_entropy = -args.autotune_coeff * torch.log(1 / torch.tensor(envs.single_action_space.n))
         log_alpha = torch.zeros(1, requires_grad=True, device=device)
         alpha = log_alpha.exp().item()
         a_optimizer = optim.Adam([log_alpha], lr=args.policy_lr, eps=1e-4)
