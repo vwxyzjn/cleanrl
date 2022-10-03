@@ -60,11 +60,6 @@ ale-py = "0.7.4"
 AutoROM = {extras = ["accept-rom-license"], version = "^0.4.2"}
 opencv-python = "^4.6.0.66"
 
-[tool.poetry.group.pybullet]
-optional = true
-[tool.poetry.group.pybullet.dependencies]
-pybullet = "3.1.8"
-
 [tool.poetry.group.procgen]
 optional = true
 [tool.poetry.group.procgen.dependencies]
@@ -75,7 +70,6 @@ You can install them using the following command
 
 ```bash
 poetry install --with atari
-poetry install --with pybullet
 poetry install --with mujoco
 poetry install --with procgen
 poetry install --with envpool
@@ -93,7 +87,6 @@ While we recommend using `poetry` to manage environments and dependencies, the t
 ```bash
 pip install -r requirements/requirements.txt
 pip install -r requirements/requirements-atari.txt
-pip install -r requirements/requirements-pybullet.txt
 pip install -r requirements/requirements-mujoco.txt
 pip install -r requirements/requirements-procgen.txt
 pip install -r requirements/requirements-envpool.txt

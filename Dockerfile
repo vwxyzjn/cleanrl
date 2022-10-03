@@ -13,8 +13,6 @@ COPY pyproject.toml pyproject.toml
 COPY poetry.lock poetry.lock
 RUN poetry install
 RUN poetry install --with atari
-RUN poetry install --with pybullet
-
 # install mujoco
 RUN apt-get -y install wget unzip software-properties-common \
     libgl1-mesa-dev \

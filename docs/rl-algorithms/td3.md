@@ -36,12 +36,9 @@ The [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 ### Usage
 
 ```bash
-poetry install
-poetry install --with pybullet
-python cleanrl/td3_continuous_action.py --help
-python cleanrl/td3_continuous_action.py --env-id HopperBulletEnv-v0
 poetry install --with mujoco # only works in Linux
-python cleanrl/td3_continuous_action.py --env-id Hopper-v3
+python cleanrl/td3_continuous_action.py --help
+python cleanrl/td3_continuous_action.py --env-id HalfCheetah-v4
 ```
 
 ### Explanation of the logged metrics

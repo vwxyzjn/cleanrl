@@ -31,14 +31,14 @@ python cleanrl/ppo.py --env-id CartPole-v1
 python cleanrl/c51.py --env-id CartPole-v1
 ```
 
-## PyBullet
+## MuJoCo
 ```
 poetry shell
 
-poetry install --with pybullet
-python cleanrl/td3_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
-python cleanrl/ddpg_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
-python cleanrl/sac_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
+poetry install --with mujoco
+python cleanrl/td3_continuous_action.py --env-id HalfCheetah-v4
+python cleanrl/ddpg_continuous_action.py --env-id HalfCheetah-v4
+python cleanrl/sac_continuous_action.py --env-id HalfCheetah-v4
 ```
 
 ## Procgen 

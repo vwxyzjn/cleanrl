@@ -7,7 +7,6 @@ from distutils.util import strtobool
 
 import gym
 import numpy as np
-import pybullet_envs  # noqa
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

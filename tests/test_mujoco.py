@@ -1,7 +1,7 @@
 import subprocess
 
 
-def test_pybullet():
+def test_mujoco():
     """
     Test classic control
     """

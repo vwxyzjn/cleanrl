@@ -37,12 +37,9 @@ The [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/c
 ### Usage
 
 ```bash
-poetry install
-poetry install --with pybullet
-python cleanrl/ddpg_continuous_action.py --help
-python cleanrl/ddpg_continuous_action.py --env-id HopperBulletEnv-v0
 poetry install --with mujoco # only works in Linux
-python cleanrl/ddpg_continuous_action.py --env-id Hopper-v3
+python cleanrl/ddpg_continuous_action.py --help
+python cleanrl/ddpg_continuous_action.py --env-id Hopper-v4
 ```
 
 ### Explanation of the logged metrics

@@ -46,14 +46,14 @@ The [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 ```bash
 poetry install
 
-# Pybullet
-poetry install --with pybullet
+# MuJoCo
+poetry install --with mujoco
 
 ## Default
-python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0
+python cleanrl/sac_continuous_action.py --env-id HalfCheetah-v4
 
 ## Without Automatic entropy coef. tuning
-python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0 --autotune False --alpha 0.2
+python cleanrl/sac_continuous_action.py --env-id HalfCheetah-v4 --autotune False --alpha 0.2
 ```
 
 ### Explanation of the logged metrics

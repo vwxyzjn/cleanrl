@@ -1,4 +1,4 @@
-poetry install --with mujoco,pybullet
+poetry install --with mujoco
 python -c "import mujoco_py"
 OMP_NUM_THREADS=1 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 InvertedPendulum-v2 Humanoid-v2 Pusher-v2 \

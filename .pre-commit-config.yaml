@@ -49,10 +49,6 @@ repos:
         args: ["--without-hashes", "-o", "requirements/requirements-atari.txt", "--with", "atari"]
         stages: [manual]
       - id: poetry-export
-        name: poetry-export requirements-pybullet.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-pybullet.txt", "--with", "pybullet"]
-        stages: [manual]
-      - id: poetry-export
         name: poetry-export requirements-mujoco.txt
         args: ["--without-hashes", "-o", "requirements/requirements-mujoco.txt", "--with", "mujoco"]
         stages: [manual]

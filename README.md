@@ -87,11 +87,11 @@ python cleanrl/ppo_atari_envpool.py --env-id BreakoutNoFrameskip-v4
 # Side effects such as lower sample efficiency might occur
 poetry run python ppo_atari_envpool.py --clip-coef=0.2 --num-envs=16 --num-minibatches=8 --num-steps=128 --update-epochs=3
 
-# pybullet
-poetry install --with pybullet
-python cleanrl/td3_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
-python cleanrl/ddpg_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
-python cleanrl/sac_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
+# mujoco
+poetry install --with mujoco
+python cleanrl/td3_continuous_action.py --env-id HalfCheetah-v4
+python cleanrl/ddpg_continuous_action.py --env-id HalfCheetah-v4
+python cleanrl/sac_continuous_action.py --env-id HalfCheetah-v4
 
 # procgen
 poetry install --with procgen

@@ -11,7 +11,7 @@ Good luck and have fun!
 ```bash
 poetry install
 poetry install --with atari
-poetry install --with pybullet
+poetry install --with mujoco
 ```
 
 Then you can run the scripts under the poetry environment in two ways: `poetry run` or `poetry shell`. 
