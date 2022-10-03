@@ -68,4 +68,15 @@ repos:
         name: poetry-export requirements-pettingzoo.txt
         args: ["--without-hashes", "-o", "requirements/requirements-pettingzoo.txt", "--with", "pettingzoo"]
         stages: [manual]
-        
+      - id: poetry-export
+        name: poetry-export requirements-jax.txt
+        args: ["--without-hashes", "-o", "requirements/requirements-jax.txt", "--with", "jax"]
+        stages: [manual]
+      - id: poetry-export
+        name: poetry-export requirements-docs.txt
+        args: ["--without-hashes", "-o", "requirements/requirements-docs.txt", "--with", "docs"]
+        stages: [manual]
+      - id: poetry-export
+        name: poetry-export requirements-cloud.txt
+        args: ["--without-hashes", "-o", "requirements/requirements-cloud.txt", "--with", "cloud"]
+        stages: [manual]

@@ -14,11 +14,22 @@ poetry install
 
 <script id="asciicast-443647" src="https://asciinema.org/a/443647.js" async></script>
 
+
+!!! note "`poetry install` hangs / stucks"
+
+    Since 1.2+ `poetry` added some keyring authentication mechanisms that may cause poetry install` hangs / stucks. See [:material-github: python-poetry/poetry#1917](https://github.com/python-poetry/poetry/issues/1917). To fix this issue, try
+
+    ```bash
+    export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
+    poetry install
+    ```
+
+
 !!! note "Working with different CUDA versions for `torch`"
 
     By default, the `torch` wheel is built with CUDA 10.2. If you are using newer NVIDIA GPUs (e.g., 3060 TI), you may need to specifically install CUDA 11.3 wheels by overriding the `torch` dependency with `pip`:
 
-    ```
+    ```bash
     poetry run pip install "torch==1.12.1" --upgrade --extra-index-url https://download.pytorch.org/whl/cu113
     ```
 
@@ -69,6 +80,10 @@ poetry install --with mujoco
 poetry install --with procgen
 poetry install --with envpool
 poetry install --with pettingzoo
+poetry install --with jax
+poetry install --with optuna
+poetry install --with docs
+poetry install --with cloud
 ```
 
 ## Install via `pip`
