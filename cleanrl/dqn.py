@@ -171,11 +171,12 @@ if __name__ == "__main__":
             writer.add_scalar("charts/episodic_length", l, global_step)
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
-        real_next_obs = next_obs.copy()
-        for idx, d in enumerate(terminateds):
-            if d:
-                real_next_obs[idx] = infos[idx]["final_observation"]
-        rb.add(obs, real_next_obs, actions, rewards, terminateds, infos)
+        real_next_obs = next_obs
+        if "final_observation" in infos:
+            real_next_obs = next_obs.copy()
+            for idx, d in enumerate(infos["_final_observation"]):
+                if d:
+                    real_next_obs[idx] = infos["final_observation"][idx]
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
