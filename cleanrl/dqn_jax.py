@@ -187,13 +187,13 @@ if __name__ == "__main__":
         next_obs, rewards, terminateds, _, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        for info in infos:
-            if "episode" in info.keys():
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                writer.add_scalar("charts/epsilon", epsilon, global_step)
-                break
+        if "episode" in infos:
+            first_idx = infos["_episode"].nonzero()[0][0]
+            r = infos["episode"]["r"][first_idx]
+            l = infos["episode"]["l"][first_idx]
+            print(f"global_step={global_step}, episodic_return={r}")
+            writer.add_scalar("charts/episodic_return", r, global_step)
+            writer.add_scalar("charts/episodic_length", l, global_step)
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
