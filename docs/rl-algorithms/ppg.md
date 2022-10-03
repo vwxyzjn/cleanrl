@@ -30,7 +30,7 @@ Below are our single-file implementations of PPG:
 ### Usage
 
 ```bash
-poetry install -E procgen
+poetry install --with procgen
 python cleanrl/ppg_procgen.py --help
 python cleanrl/ppg_procgen.py --env-id "bigfish"
 ```

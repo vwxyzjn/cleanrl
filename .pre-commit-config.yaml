@@ -38,34 +38,45 @@ repos:
           - --ignore-words-list=nd,reacher,thist,ths,magent
           - --skip=docs/css/termynal.css,docs/js/termynal.js
   - repo: https://github.com/python-poetry/poetry
-    rev: 1.2.0b1
+    rev: 1.2.1
     hooks:
       - id: poetry-export
         name: poetry-export requirements.txt
-        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements.txt"]
+        args: ["--without-hashes", "-o", "requirements/requirements.txt"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-atari.txt
-        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-atari.txt", "-E", "atari"]
+        args: ["--without-hashes", "-o", "requirements/requirements-atari.txt", "--with", "atari"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-pybullet.txt
-        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-pybullet.txt", "-E", "pybullet"]
+        args: ["--without-hashes", "-o", "requirements/requirements-pybullet.txt", "--with", "pybullet"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-mujoco.txt
-        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-mujoco.txt", "-E", "mujoco"]
+        args: ["--without-hashes", "-o", "requirements/requirements-mujoco.txt", "--with", "mujoco"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-procgen.txt
-        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-procgen.txt", "-E", "procgen"]
+        args: ["--without-hashes", "-o", "requirements/requirements-procgen.txt", "--with", "procgen"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-envpool.txt
-        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-envpool.txt", "-E", "envpool"]
+        args: ["--without-hashes", "-o", "requirements/requirements-envpool.txt", "--with", "envpool"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-pettingzoo.txt
-        args: ["-f", "requirements.txt", "--without-hashes", "-o", "requirements/requirements-pettingzoo.txt", "-E", "pettingzoo"]
+        args: ["--without-hashes", "-o", "requirements/requirements-pettingzoo.txt", "--with", "pettingzoo"]
         stages: [manual]
-        
+      - id: poetry-export
+        name: poetry-export requirements-jax.txt
+        args: ["--without-hashes", "-o", "requirements/requirements-jax.txt", "--with", "jax"]
+        stages: [manual]
+      - id: poetry-export
+        name: poetry-export requirements-docs.txt
+        args: ["--without-hashes", "-o", "requirements/requirements-docs.txt", "--with", "docs"]
+        stages: [manual]
+      - id: poetry-export
+        name: poetry-export requirements-cloud.txt
+        args: ["--without-hashes", "-o", "requirements/requirements-cloud.txt", "--with", "cloud"]
+        stages: [manual]
