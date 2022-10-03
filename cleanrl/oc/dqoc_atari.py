@@ -8,7 +8,7 @@ import random
 import time
 from distutils.util import strtobool
 from functools import partial
-from typing import Final, Tuple, NamedTuple, List, Dict, Any
+from typing import Any, Dict, Final, List, NamedTuple, Tuple
 
 import gym
 import numpy as np
@@ -70,7 +70,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--train-frequency", type=int, default=4,
         help="the frequency of training")
     parser.add_argument("--num-options", type=int, default=8,
-        help="the number of options avaialble")
+        help="the number of options available")
     parser.add_argument("--term-reg", type=float, default=0.01,
         help="regularization term added to option advantage to encourage longer options")
     parser.add_argument("--ent-coef", type=float, default=0.01,
@@ -107,9 +107,7 @@ class ReplayBuffer(ReplayBuffer):
         self.observations[self.pos] = np.array(obs).copy()
 
         if self.optimize_memory_usage:
-            self.observations[(self.pos + 1) % self.buffer_size] = np.array(
-                next_obs
-            ).copy()
+            self.observations[(self.pos + 1) % self.buffer_size] = np.array(next_obs).copy()
         else:
             self.next_observations[self.pos] = np.array(next_obs).copy()
 
@@ -189,9 +187,7 @@ class ActorHeads(nn.Module):
         self.num_options = args.num_options
         self.num_actions = envs.single_action_space.n
         self.termination = layer_init(nn.Linear(512, args.num_options), std=0.01)
-        self.option_actor = layer_init(
-            nn.Linear(512, int(envs.single_action_space.n * args.num_options)), std=0.01
-        )
+        self.option_actor = layer_init(nn.Linear(512, int(envs.single_action_space.n * args.num_options)), std=0.01)
 
     def forward(
         self,
@@ -206,44 +202,31 @@ class ActorHeads(nn.Module):
             batched_index(option_on_arrival, self.termination(detached_features))
         )  # Termination probability of current option
         if random_action_phase:
-            termination = torch.ones_like(
-                option_on_arrival, dtype=torch.bool
-            )  # Always terminate in random action phase
+            termination = torch.ones_like(option_on_arrival, dtype=torch.bool)  # Always terminate in random action phase
         else:
             termination = torch.bernoulli(beta)  # Sample termination
         # Epsilon-greedy option when terminal
         if termination.any():
             candidate_option = torch.where(
-                torch.rand_like(option_on_arrival, dtype=torch.float32)
-                < current_epsilon,
+                torch.rand_like(option_on_arrival, dtype=torch.float32) < current_epsilon,
                 torch.randint_like(option_on_arrival, 0, self.num_options),
                 q.argmax(-1),
             )
             option = torch.where(termination > 0, candidate_option, option_on_arrival)
         else:
             option = option_on_arrival
-        pi_logits = self.option_actor(detached_features).reshape(
-            -1, self.num_options, self.num_actions
-        )
-        logprobs = torch.log_softmax(
-            batched_index(option, pi_logits), -1
-        )  # Log prob for all actions under each option
+        pi_logits = self.option_actor(detached_features).reshape(-1, self.num_options, self.num_actions)
+        logprobs = torch.log_softmax(batched_index(option, pi_logits), -1)  # Log prob for all actions under each option
         probs = logprobs.exp()
         entropy = (-(logprobs * probs)).sum(-1)  # Entropy of distributions
         action = torch.multinomial(probs, 1)
         logprob = logprobs.gather(-1, action).squeeze(-1)
-        return ActorOutput(
-            termination, beta, option, action.squeeze(-1), logprob, entropy
-        )
+        return ActorOutput(termination, beta, option, action.squeeze(-1), logprob, entropy)
 
     @torch.jit.export
-    def term_probs(
-        self, next_detached_features: torch.Tensor, options_on_arrival: torch.Tensor
-    ):
+    def term_probs(self, next_detached_features: torch.Tensor, options_on_arrival: torch.Tensor):
         """No sampling, just get term probs for options at bootstrap step"""
-        return batched_index(
-            options_on_arrival.squeeze(-1), self.termination(next_detached_features)
-        )
+        return batched_index(options_on_arrival.squeeze(-1), self.termination(next_detached_features))
 
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
@@ -317,8 +300,7 @@ if __name__ == "__main__":
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
         "hyperparameters",
-        "|param|value|\n|-|-|\n%s"
-        % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
+        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
     # TRY NOT TO MODIFY: seeding
@@ -330,22 +312,14 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id)])
-    envs = gym.wrappers.RecordEpisodeStatistics(
-        envs
-    )  # must be outside to avoid losing statistics to autoreset
-    envs = gym.wrappers.TransformReward(
-        envs, partial(np.clip, a_min=-1.0, a_max=1.0)
-    )  # reward clipping after stats
+    envs = gym.wrappers.RecordEpisodeStatistics(envs)  # must be outside to avoid losing statistics to autoreset
+    envs = gym.wrappers.TransformReward(envs, partial(np.clip, a_min=-1.0, a_max=1.0))  # reward clipping after stats
     if args.capture_video:
         envs = gym.wrappers.RecordVideo(envs, f"videos/{run_name}")
-    assert isinstance(
-        envs.single_action_space, gym.spaces.Discrete
-    ), "only discrete action space is supported"
+    assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = torch.jit.script(QNetwork(args).to(device))
-    q_optim = optim.RMSprop(
-        q_network.parameters(), lr=args.learning_rate, alpha=0.95, eps=1e-2
-    )
+    q_optim = optim.RMSprop(q_network.parameters(), lr=args.learning_rate, alpha=0.95, eps=1e-2)
     target_q_network = torch.jit.script(QNetwork(args).to(device))
     target_q_network.load_state_dict(q_network.state_dict())
     oc_head = torch.jit.script(ActorHeads(envs, args).to(device))
@@ -361,9 +335,7 @@ if __name__ == "__main__":
     )
     start_time = time.time()
 
-    current_option = torch.randint(
-        0, args.num_options, (envs.num_envs,), dtype=torch.int64, device=device
-    )
+    current_option = torch.randint(0, args.num_options, (envs.num_envs,), dtype=torch.int64, device=device)
 
     # TRY NOT TO MODIFY: start the game
     obs, info = envs.reset(seed=args.seed)
@@ -386,22 +358,14 @@ if __name__ == "__main__":
         )
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards, dones, truncateds, info = envs.step(
-            oc_output.action.cpu().numpy()
-        )
+        next_obs, rewards, dones, truncateds, info = envs.step(oc_output.action.cpu().numpy())
         dones = np.array(dones) | np.array(truncateds)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "episode" in info.keys():
-            print(
-                f"global_step={global_step}, episodic_return={info['episode']['r'][0]}"
-            )
-            writer.add_scalar(
-                "charts/episodic_return", info["episode"]["r"][0], global_step
-            )
-            writer.add_scalar(
-                "charts/episodic_length", info["episode"]["l"][0], global_step
-            )
+            print(f"global_step={global_step}, episodic_return={info['episode']['r'][0]}")
+            writer.add_scalar("charts/episodic_return", info["episode"]["r"][0], global_step)
+            writer.add_scalar("charts/episodic_length", info["episode"]["l"][0], global_step)
             writer.add_scalar("charts/epsilon", epsilon, global_step)
 
         # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
@@ -414,7 +378,7 @@ if __name__ == "__main__":
         obs = next_obs
 
         # ALGO LOGIC: training.
-        if (global_step > args.learning_starts):
+        if global_step > args.learning_starts:
             # online actor update. Need target Q for next obs
             with torch.no_grad():
                 s, next_target_q = target_q_network(torch.tensor(obs, device=device))
@@ -444,12 +408,8 @@ if __name__ == "__main__":
             if global_step % args.train_frequency == 0:
                 data = rb.sample(args.batch_size)
                 with torch.no_grad():
-                    next_detached_features, next_target_q = target_q_network(
-                        data.next_observations
-                    )
-                    next_termprobs = oc_head.term_probs(
-                        next_detached_features, data.actions
-                    )
+                    next_detached_features, next_target_q = target_q_network(data.next_observations)
+                    next_termprobs = oc_head.term_probs(next_detached_features, data.actions)
                     td_target = compute_td_target(
                         data.rewards.flatten(),
                         data.dones.flatten(),
@@ -458,9 +418,7 @@ if __name__ == "__main__":
                         data.actions.flatten(),
                         args.gamma,
                     )
-                old_val = batched_index(
-                    data.actions.flatten(), q_network(data.observations)[-1]
-                )
+                old_val = batched_index(data.actions.flatten(), q_network(data.observations)[-1])
                 q_loss = critic_loss(td_target, old_val)
 
                 # optimize the model

@@ -141,12 +141,10 @@ def batched_index(idx: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
     num = idx.numel()
     t_flat = t.view((num,) + t.shape[dim:])
     s_flat = t_flat[torch.arange(num, device=t.device), idx.view(-1)]
-    return s_flat.view(t.shape[:dim] + t.shape[dim + 1:])
+    return s_flat.view(t.shape[:dim] + t.shape[dim + 1 :])
 
 
-def layer_init(
-        layer, std: float = nn.init.calculate_gain("relu"), bias_const: float = 0.0
-):
+def layer_init(layer, std: float = nn.init.calculate_gain("relu"), bias_const: float = 0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
@@ -180,11 +178,11 @@ class Agent(nn.Module):
         return self.network(x / 255.0)
 
     def sample_option(
-            self,
-            option_on_arrival: Tensor,
-            qs: Tensor,
-            terminations: Tensor,
-            current_epsilon: float = 0.1,
+        self,
+        option_on_arrival: Tensor,
+        qs: Tensor,
+        terminations: Tensor,
+        current_epsilon: float = 0.1,
     ) -> Tensor:
         candidate_option = torch.where(
             torch.rand_like(option_on_arrival, dtype=torch.float32) < current_epsilon,
@@ -194,11 +192,11 @@ class Agent(nn.Module):
         return torch.where(terminations > 0, candidate_option, option_on_arrival)
 
     def step(
-            self,
-            x: Tensor,
-            option_on_arrival: Tensor,
-            is_done: Tensor,
-            current_epsilon: float = 0.1,
+        self,
+        x: Tensor,
+        option_on_arrival: Tensor,
+        is_done: Tensor,
+        current_epsilon: float = 0.1,
     ):
         """Basic single step on receiving new observation.
 
@@ -209,26 +207,23 @@ class Agent(nn.Module):
         term_w = torch.bernoulli(beta_w)  # Sample terminations
         option = self.sample_option(option_on_arrival, q, term_w + is_done, current_epsilon)  # also terminate on episode end
         pi_w = torch.softmax(
-            batched_index(
-                option, self.actor(x).reshape(-1, self.num_options, self.num_actions)
-            ),
+            batched_index(option, self.actor(x).reshape(-1, self.num_options, self.num_actions)),
             -1,
         )
         a = torch.multinomial(pi_w, 1)  # action under new option
         return (term_w, option, a.squeeze(-1)), beta_w, q
 
     def bootstrap_utility(
-            self,
-            next_x: Tensor,
-            option_on_arrival: Tensor,
-            is_done: Tensor,
-            current_epsilon: float = 0.1,
+        self,
+        next_x: Tensor,
+        option_on_arrival: Tensor,
+        is_done: Tensor,
+        current_epsilon: float = 0.1,
     ):
         """Single step at end of rollout. Value of next state is function of termination probs"""
         x = self.features(next_x)
         q = self.critic(x)
-        beta_w = torch.sigmoid(
-            batched_index(option_on_arrival, self.termination(x)))  # Termination prob of current option
+        beta_w = torch.sigmoid(batched_index(option_on_arrival, self.termination(x)))  # Termination prob of current option
         v = q.max(-1)[0] * (1 - current_epsilon) + q.mean(-1) * current_epsilon
         u = (1 - beta_w) * batched_index(option_on_arrival, q) + beta_w * v  # utility on arrival
         return torch.where(is_done > 0, 0, u)  # bootstrap is 0 if next step is a start state
@@ -250,9 +245,7 @@ class Agent(nn.Module):
         entropy = (-logprobs * probs).sum(-1)
         logprob = logprobs.gather(-1, actions.view(-1, 1)).squeeze(-1)
         q_sw = batched_index(options.flatten(), qs)
-        betas = torch.sigmoid(
-            batched_index(options_on_arrival.flatten(), self.termination(x))
-        )
+        betas = torch.sigmoid(batched_index(options_on_arrival.flatten(), self.termination(x)))
         return logprob, entropy, q_sw, betas
 
 
@@ -274,8 +267,7 @@ if __name__ == "__main__":
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
         "hyperparameters",
-        "|param|value|\n|-|-|\n%s"
-        % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
+        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
     # TRY NOT TO MODIFY: seeding
@@ -299,14 +291,10 @@ if __name__ == "__main__":
     envs.single_action_space = envs.action_space
     envs.single_observation_space = envs.observation_space
     envs = RecordEpisodeStatistics(envs)
-    assert isinstance(
-        envs.action_space, gym.spaces.Discrete
-    ), "only discrete action space is supported"
+    assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent = Agent(envs, args).to(device)
-    optimizer = optim.RMSprop(
-        agent.parameters(), args.learning_rate, alpha=0.99, eps=0.1
-    )
+    optimizer = optim.RMSprop(agent.parameters(), args.learning_rate, alpha=0.99, eps=0.1)
 
     # ALGO Logic: Storage setup
     obs = torch.zeros(
@@ -318,9 +306,7 @@ if __name__ == "__main__":
         dtype=torch.int64,
         device=device,
     )
-    options_buffer = torch.zeros(
-        (args.num_steps + 1, args.num_envs), dtype=torch.int64, device=device
-    )
+    options_buffer = torch.zeros((args.num_steps + 1, args.num_envs), dtype=torch.int64, device=device)
     options = options_buffer[1:]
     options_on_arrival = options_buffer[:-1]
     betas_on_arrival = torch.zeros((args.num_steps, args.num_envs), device=device)
@@ -355,23 +341,25 @@ if __name__ == "__main__":
                     (terminations, options[step], actions[step]),
                     betas_on_arrival[step],
                     values[step],
-                ) = agent.step(
-                    next_obs, options_on_arrival[step], next_done, args.option_epsilon
-                )
+                ) = agent.step(next_obs, options_on_arrival[step], next_done, args.option_epsilon)
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, done, info = envs.step(actions[step].cpu().numpy())
             rewards[step] = torch.tensor(reward, device=device)
-            rewards[step, terminations > 0] -= (args.delib_cost)  # Subtract deliberation cost from rewards if we chose to terminate
-            next_obs, next_done = torch.tensor(next_obs, device=device), torch.tensor(
-                done, device=device, dtype=torch.float32
-            )
+            rewards[
+                step, terminations > 0
+            ] -= args.delib_cost  # Subtract deliberation cost from rewards if we chose to terminate
+            next_obs, next_done = torch.tensor(next_obs, device=device), torch.tensor(done, device=device, dtype=torch.float32)
 
             for idx, d in enumerate(done):
                 if d and info["lives"][idx] == 0:
                     print(f"global_step={global_step}, episodic_return={info['r'][idx]}")
                     avg_returns.append(info["r"][idx])
-                    writer.add_scalar("charts/avg_episodic_return", np.average(avg_returns), global_step, )
+                    writer.add_scalar(
+                        "charts/avg_episodic_return",
+                        np.average(avg_returns),
+                        global_step,
+                    )
                     writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
                     writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
 
@@ -391,7 +379,7 @@ if __name__ == "__main__":
                     nextnonterminal = 1.0 - dones[t + 1]
                     nextvalues = q_sw[t + 1]
                 delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - q_sw[t]
-                advantages[t] = lastgaelam = (delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam)
+                advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
             returns = advantages + q_sw
 
         # unclipped a2oc loss
