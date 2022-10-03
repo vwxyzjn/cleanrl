@@ -15,9 +15,9 @@ poetry install
 <script id="asciicast-443647" src="https://asciinema.org/a/443647.js" async></script>
 
 
-!!! note "`poetry install` hangs / stucks"
+!!! warning "`poetry install` hangs / stucks"
 
-    Since 1.2+ `poetry` added some keyring authentication mechanisms that may cause poetry install` hangs / stucks. See [:material-github: python-poetry/poetry#1917](https://github.com/python-poetry/poetry/issues/1917). To fix this issue, try
+    Since 1.2+ `poetry` added some keyring authentication mechanisms that may cause `poetry install` hang or stuck. See [:material-github: python-poetry/poetry#1917](https://github.com/python-poetry/poetry/issues/1917). To fix this issue, try
 
     ```bash
     export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
