@@ -33,7 +33,7 @@ def parse_args():
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="weather to capture videos of the agent performances (check out `videos` folder)")
+        help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="CartPole-v1",
@@ -86,7 +86,6 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -206,12 +205,13 @@ if __name__ == "__main__":
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_terminated = torch.Tensor(next_obs).to(device), torch.Tensor(terminated).to(device)
 
-            for item in info:
-                if "episode" in item.keys():
-                    print(f"global_step={global_step}, episodic_return={item['episode']['r']}")
-                    writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
-                    break
+            if "episode" in info:
+                first_idx = info["_episode"].nonzero()[0][0]
+                r = info["episode"]["r"][first_idx]
+                l = info["episode"]["l"][first_idx]
+                print(f"global_step={global_step}, episodic_return={r}")
+                writer.add_scalar("charts/episodic_return", r, global_step)
+                writer.add_scalar("charts/episodic_length", l, global_step)
 
         # bootstrap value if not terminated
         with torch.no_grad():

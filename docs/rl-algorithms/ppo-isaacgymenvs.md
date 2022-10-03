@@ -68,7 +68,7 @@ rm -rf temp_isaacgym
 
 # if your global python version is not either 3.7 nor 3.8, you need to tell poetry specifically to use a 3.7 or 3.8 python
 # e.g., `poetry env use /home/costa/.pyenv/versions/3.7.8/bin/python`
-poetry install -E isaacgym
+poetry install --with isaacgym
 # if you are using NVIDIA's 30xx GPU, you need to specifically install cuda 11.3 wheels
 # `poetry run pip install torch --upgrade --extra-index-url https://download.pytorch.org/whl/cu113`
 poetry run python cleanrl/ppo_continuous_action_isaacgym/ppo_continuous_action_isaacgym.py --help

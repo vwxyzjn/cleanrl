@@ -62,7 +62,7 @@ def parse_args():
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="weather to capture videos of the agent performances (check out `videos` folder)")
+        help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="Ant",
@@ -224,9 +224,10 @@ if __name__ == "__main__":
         seed=args.seed,
         task=args.env_id,
         num_envs=args.num_envs,
-        sim_device="cuda:0",
-        rl_device="cuda:0",
-        graphics_device_id=0,
+        sim_device="cuda:0" if torch.cuda.is_available() and args.cuda else "cpu",
+        rl_device="cuda:0" if torch.cuda.is_available() and args.cuda else "cpu",
+        graphics_device_id=0 if torch.cuda.is_available() and args.cuda else -1,
+        headless=False if torch.cuda.is_available() and args.cuda else True,
         multi_gpu=False,
         virtual_screen_capture=args.capture_video,
         force_render=False,
