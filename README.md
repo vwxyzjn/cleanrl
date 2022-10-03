@@ -10,6 +10,16 @@
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 
 
+# ⚠️ NOTE: Gym 0.26.1 Migration
+
+This branch is an ongoing effort to integrate the latest gym into CleanRL. Checkout [vwxyzjn/cleanrl#277](https://github.com/vwxyzjn/cleanrl/pull/277) for the current progress. 
+
+Things that work:
+* `dqn.py`
+* `dqn_jax.py`
+* `ppo.py`
+
+----------
 
 CleanRL is a Deep Reinforcement Learning library that provides high-quality single-file implementation with research-friendly features. The implementation is clean and simple, yet we can scale it to run thousands of experiments using AWS Batch. The highlight features of CleanRL are:
 
