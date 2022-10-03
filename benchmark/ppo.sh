@@ -7,28 +7,28 @@ OMP_NUM_THREADS=1 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --num-seeds 3 \
     --workers 9
 
-poetry install -E atari
+poetry install --with atari
 OMP_NUM_THREADS=1 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --env-ids PongNoFrameskip-v4 BeamRiderNoFrameskip-v4 BreakoutNoFrameskip-v4 \
     --command "poetry run python cleanrl/ppo_atari.py --track --capture-video" \
     --num-seeds 3 \
     --workers 3
 
-poetry install -E atari
+poetry install --with atari
 OMP_NUM_THREADS=1 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --env-ids PongNoFrameskip-v4 BeamRiderNoFrameskip-v4 BreakoutNoFrameskip-v4 \
     --command "poetry run python cleanrl/ppo_atari_lstm.py --track --capture-video" \
     --num-seeds 3 \
     --workers 3
 
-poetry install -E envpool
+poetry install --with envpool
 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --env-ids Pong-v5 BeamRider-v5 Breakout-v5 \
     --command "poetry run python cleanrl/ppo_atari_envpool.py --track --capture-video" \
     --num-seeds 3 \
     --workers 1
 
-poetry install -E "mujoco pybullet"
+poetry install --with mujoco,pybullet
 poetry run python -c "import mujoco_py"
 OMP_NUM_THREADS=1 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 \
@@ -36,21 +36,21 @@ OMP_NUM_THREADS=1 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --num-seeds 3 \
     --workers 9
 
-poetry install -E procgen
+poetry install --with procgen
 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --env-ids starpilot bossfight bigfish \
     --command "poetry run python cleanrl/ppo_procgen.py --track --capture-video" \
     --num-seeds 3 \
     --workers 1
 
-poetry install -E atari
+poetry install --with atari
 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --env-ids PongNoFrameskip-v4 BeamRiderNoFrameskip-v4 BreakoutNoFrameskip-v4 \
     --command "poetry run torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --track --capture-video" \
     --num-seeds 3 \
     --workers 1
 
-poetry install -E "pettingzoo atari"
+poetry install --with pettingzoo,atari
 poetry run AutoROM --accept-license
 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --env-ids pong_v3 surround_v2 tennis_v3  \
@@ -60,7 +60,7 @@ xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
 
 # IMPORTANT: see specific Isaac Gym installation at
 # https://docs.cleanrl.dev/rl-algorithms/ppo/#usage_8
-poetry install -E "isaacgym"
+poetry install --with isaacgym
 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --env-ids Cartpole Ant Humanoid BallBalance Anymal  \
     --command "poetry run python cleanrl/ppo_continuous_action_isaacgym/ppo_continuous_action_isaacgym.py --track --capture-video" \

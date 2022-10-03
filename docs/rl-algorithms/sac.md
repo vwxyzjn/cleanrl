@@ -47,7 +47,7 @@ The [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 poetry install
 
 # Pybullet
-poetry install -E pybullet
+poetry install --with pybullet
 
 ## Default
 python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0
