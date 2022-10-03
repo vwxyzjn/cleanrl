@@ -31,15 +31,17 @@ Good luck have fun :rocket:
 
 ## Citing CleanRL
 
-If you use CleanRL in your work, please cite our technical [paper](https://arxiv.org/abs/2111.08819):
+If you use CleanRL in your work, please cite our technical [paper](https://www.jmlr.org/papers/volume23/21-1342/21-1342.pdf):
 
 ```bibtex
-@article{huang2021cleanrl,
-    title={CleanRL: High-quality Single-file Implementations of Deep Reinforcement Learning Algorithms}, 
-    author={Shengyi Huang and Rousslan Fernand Julien Dossa and Chang Ye and Jeff Braga},
-    year={2021},
-    eprint={2111.08819},
-    archivePrefix={arXiv},
-    primaryClass={cs.LG}
+@article{JMLR:v23:21-1342,
+  author  = {Shengyi Huang and Rousslan Fernand Julien Dossa and Chang Ye and Jeff Braga and Dipam Chakraborty and Kinal Mehta and JoÃ£o G.M. AraÃºjo},
+  title   = {CleanRL: High-quality Single-file Implementations of Deep Reinforcement Learning Algorithms},
+  journal = {Journal of Machine Learning Research},
+  year    = {2022},
+  volume  = {23},
+  number  = {274},
+  pages   = {1--18},
+  url     = {http://jmlr.org/papers/v23/21-1342.html}
 }
 ```
