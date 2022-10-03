@@ -472,7 +472,7 @@ if __name__ == "__main__":
                 # Inter-option policy loss
                 pg_loss1 = -mb_option_advantages * option_ratio
                 pg_loss2 = -mb_option_advantages * torch.clamp(option_ratio, 1 - args.clip_coef, 1 + args.clip_coef)
-                option_pg_loss = torch.maximum(pg_loss1, pg_loss2).mean()
+                option_pg_loss = (torch.maximum(pg_loss1, pg_loss2) * newbetas.detach()).mean()
 
                 # Termination loss
                 termination_loss = (newbetas * b_termination_advantages[mb_inds]).mean()
