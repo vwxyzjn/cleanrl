@@ -430,10 +430,10 @@ if __name__ == "__main__":
                 int_delta = curiosity_rewards[t] + args.int_gamma * int_nextvalues * int_nextnonterminal - int_values[t]
                 ext_advantages[t] = ext_lastgaelam = (
                     ext_delta + args.gamma * args.gae_lambda * ext_nextnonterminal * ext_lastgaelam
-                    )
+                )
                 int_advantages[t] = int_lastgaelam = (
                     int_delta + args.int_gamma * args.gae_lambda * int_nextnonterminal * int_lastgaelam
-                    )
+                )
             ext_returns = ext_advantages + ext_values
             int_returns = int_advantages + int_values
 
