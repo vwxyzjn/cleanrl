@@ -49,8 +49,6 @@ def parse_args():
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument("--gae", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Use GAE for advantage computation")
     parser.add_argument("--gamma", type=float, default=0.999,
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
@@ -413,50 +411,31 @@ if __name__ == "__main__":
         with torch.no_grad():
             next_value_ext, next_value_int = agent.get_value(next_obs)
             next_value_ext, next_value_int = next_value_ext.reshape(1, -1), next_value_int.reshape(1, -1)
-            if args.gae:
-                ext_advantages = torch.zeros_like(rewards, device=device)
-                int_advantages = torch.zeros_like(curiosity_rewards, device=device)
-                ext_lastgaelam = 0
-                int_lastgaelam = 0
-                for t in reversed(range(args.num_steps)):
-                    if t == args.num_steps - 1:
-                        ext_nextnonterminal = 1.0 - next_done
-                        int_nextnonterminal = 1.0
-                        ext_nextvalues = next_value_ext
-                        int_nextvalues = next_value_int
-                    else:
-                        ext_nextnonterminal = 1.0 - dones[t + 1]
-                        int_nextnonterminal = 1.0
-                        ext_nextvalues = ext_values[t + 1]
-                        int_nextvalues = int_values[t + 1]
-                    ext_delta = rewards[t] + args.gamma * ext_nextvalues * ext_nextnonterminal - ext_values[t]
-                    int_delta = curiosity_rewards[t] + args.int_gamma * int_nextvalues * int_nextnonterminal - int_values[t]
-                    ext_advantages[t] = ext_lastgaelam = (
-                        ext_delta + args.gamma * args.gae_lambda * ext_nextnonterminal * ext_lastgaelam
-                    )
-                    int_advantages[t] = int_lastgaelam = (
-                        int_delta + args.int_gamma * args.gae_lambda * int_nextnonterminal * int_lastgaelam
-                    )
-                ext_returns = ext_advantages + ext_values
-                int_returns = int_advantages + int_values
-            else:
-                ext_returns = torch.zeros_like(rewards, device=device)
-                int_returns = torch.zeros_like(curiosity_rewards, device=device)
-                for t in reversed(range(args.num_steps)):
-                    if t == args.num_steps - 1:
-                        ext_nextnonterminal = 1.0 - next_done
-                        int_nextnonterminal = 1.0
-                        ext_next_return = next_value_ext
-                        int_next_return = next_value_int
-                    else:
-                        ext_nextnonterminal = 1.0 - dones[t + 1]
-                        int_nextnonterminal = 1.0
-                        ext_next_return = ext_returns[t + 1]
-                        int_next_return = int_returns[t + 1]
-                    ext_returns[t] = rewards[t] + args.gamma * ext_nextnonterminal * ext_next_return
-                    int_returns[t] = curiosity_rewards[t] + args.int_gamma * int_nextnonterminal * int_next_return
-                ext_advantages = ext_returns - ext_values
-                int_advantages = int_returns - int_values
+            ext_advantages = torch.zeros_like(rewards, device=device)
+            int_advantages = torch.zeros_like(curiosity_rewards, device=device)
+            ext_lastgaelam = 0
+            int_lastgaelam = 0
+            for t in reversed(range(args.num_steps)):
+                if t == args.num_steps - 1:
+                    ext_nextnonterminal = 1.0 - next_done
+                    int_nextnonterminal = 1.0
+                    ext_nextvalues = next_value_ext
+                    int_nextvalues = next_value_int
+                else:
+                    ext_nextnonterminal = 1.0 - dones[t + 1]
+                    int_nextnonterminal = 1.0
+                    ext_nextvalues = ext_values[t + 1]
+                    int_nextvalues = int_values[t + 1]
+                ext_delta = rewards[t] + args.gamma * ext_nextvalues * ext_nextnonterminal - ext_values[t]
+                int_delta = curiosity_rewards[t] + args.int_gamma * int_nextvalues * int_nextnonterminal - int_values[t]
+                ext_advantages[t] = ext_lastgaelam = (
+                    ext_delta + args.gamma * args.gae_lambda * ext_nextnonterminal * ext_lastgaelam
+                )
+                int_advantages[t] = int_lastgaelam = (
+                    int_delta + args.int_gamma * args.gae_lambda * int_nextnonterminal * int_lastgaelam
+                )
+            ext_returns = ext_advantages + ext_values
+            int_returns = int_advantages + int_values
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
