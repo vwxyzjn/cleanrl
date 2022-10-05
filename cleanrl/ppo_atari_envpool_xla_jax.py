@@ -279,6 +279,7 @@ if __name__ == "__main__":
         step: int,
         key: jax.random.PRNGKey,
     ):
+        """sample action, calculate value, logprob, entropy, and update storage"""
         hidden = network.apply(agent_state.params.network_params, next_obs)
         logits = actor.apply(agent_state.params.actor_params, hidden)
         # sample action: Gumbel-softmax trick
@@ -303,6 +304,7 @@ if __name__ == "__main__":
         x: np.ndarray,
         action: np.ndarray,
     ):
+        """calculate value, logprob of supplied `action`, and entropy"""
         hidden = network.apply(params.network_params, x)
         logits = actor.apply(params.actor_params, hidden)
         logprob = jax.nn.log_softmax(logits)[jnp.arange(action.shape[0]), action]

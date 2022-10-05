@@ -16,6 +16,7 @@ def test_ppo_rnd_envpool():
         check=True,
     )
 
+
 def test_ppo_atari_envpool_xla_jax():
     subprocess.run(
         "python cleanrl/ppo_atari_envpool_xla_jax.py --num-envs 8 --num-steps 6 --update-epochs 1 --num-minibatches 1 --total-timesteps 256",
