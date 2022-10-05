@@ -467,6 +467,15 @@ python cleanrl/ppo_atari_envpool_xla_jax.py --env-id Breakout-v5
 
 See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`. In [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) we omit logging `losses/old_approx_kl` and `losses/clipfrac` for brevity.
 
+Additionally, we record the following metric:
+
+* `charts/avg_episodic_return`: the average value of the *latest* episodic returns of `args.num_envs=8` envs
+* `charts/avg_episodic_length`: the average value of the *latest* episodic lengths of `args.num_envs=8` envs
+
+???+ info
+
+    Note that we use `charts/avg_episodic_return` in place of `charts/episodic_return` and `charts/episodic_length` because under the EnvPool's XLA interface, we can only record fixed-shape metrics where as there could be a variable number of raw episodic returns / lengths. To resolve this challenge, we create variables (e.g., `returned_episode_returns`, `returned_episode_lengths`) to keep track of the *latest* episodic returns / lengths of each environment and average them for reporting purposes.
+
 ### Implementation details
 
 [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) uses a customized `RecordEpisodeStatistics` to work with EnvPool's experimental [XLA interface](https://envpool.readthedocs.io/en/latest/content/xla_interface.html) but has the same other implementation details as `ppo_atari.py` (see [related docs](/rl-algorithms/ppo/#implementation-details_1)) except that [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) does not use the value function clipping for simplicity. 
