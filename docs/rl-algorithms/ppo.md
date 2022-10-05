@@ -484,7 +484,7 @@ Additionally, we record the following metric:
 
 To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5184afc2b7d5032b56e6689175a17b7bad172771%2Fbenchmark%2Fppo.sh%23L25-L30&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F0f72ce08fa1099f45a8cf6cba837be602bd9f87b%2Fbenchmark%2Fppo.sh%23L76-L91&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
 
 
 Below are the average episodic returns for `ppo_atari_envpool_xla_jax.py`. Notice it has the same sample efficiency as `ppo_atari.py`, but runs about 3x faster.
