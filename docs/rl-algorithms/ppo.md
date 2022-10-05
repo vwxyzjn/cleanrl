@@ -363,6 +363,7 @@ The [ppo_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanr
 ???+ bug
 
     EnvPool's vectorized environment **does not behave the same** as gym's vectorized environment, which causes a compatibility bug in our PPO implementation. When an action $a$ results in an episode termination or truncation, the environment generates $s_{last}$ as the terminated or truncated state; we then use $s_{new}$ to denote the initial state of the new episodes. Here is how the bahviors differ:
+
     * Under the vectorized environment of `envpool<=0.6.4`, the `obs` in `obs, reward, done, info = env.step(action)` is the truncated state $s_{last}$
     * Under the vectorized environment of `gym==0.23.1`, the `obs` in `obs, reward, done, info = env.step(action)` is the initial state $s_{new}$.
 
@@ -444,6 +445,7 @@ The [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/maste
 ???+ bug
 
     EnvPool's vectorized environment **does not behave the same** as gym's vectorized environment, which causes a compatibility bug in our PPO implementation. When an action $a$ results in an episode termination or truncation, the environment generates $s_{last}$ as the terminated or truncated state; we then use $s_{new}$ to denote the initial state of the new episodes. Here is how the bahviors differ:
+
     * Under the vectorized environment of `envpool<=0.6.4`, the `obs` in `obs, reward, done, info = env.step(action)` is the truncated state $s_{last}$
     * Under the vectorized environment of `gym==0.23.1`, the `obs` in `obs, reward, done, info = env.step(action)` is the initial state $s_{new}$.
 
