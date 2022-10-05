@@ -37,10 +37,10 @@ The [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 
 ```bash
 poetry install
-poetry install -E pybullet
+poetry install --with pybullet
 python cleanrl/td3_continuous_action.py --help
 python cleanrl/td3_continuous_action.py --env-id HopperBulletEnv-v0
-poetry install -E mujoco # only works in Linux
+poetry install --with mujoco # only works in Linux
 python cleanrl/td3_continuous_action.py --env-id Hopper-v3
 ```
 
@@ -176,11 +176,11 @@ The [td3_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/maste
 ### Usage
 
 ```bash
-poetry install -E "mujoco jax"
+poetry install --with mujoco,jax
 poetry run pip install --upgrade "jax[cuda]==0.3.14" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 poetry run python -c "import mujoco_py"
 python cleanrl/td3_continuous_action_jax.py --help
-poetry install -E mujoco # only works in Linux
+poetry install --with mujoco # only works in Linux
 python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v3
 ```
 
