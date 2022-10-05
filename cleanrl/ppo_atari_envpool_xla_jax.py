@@ -1,5 +1,4 @@
-# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_continuous_actionpy
-# https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpool_xla_jaxpy
 import argparse
 import os
 import random
@@ -42,7 +41,7 @@ def parse_args():
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="weather to capture videos of the agent performances (check out `videos` folder)")
+        help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="Pong-v5",
@@ -57,8 +56,6 @@ def parse_args():
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument("--gae", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Use GAE for advantage computation")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
@@ -309,6 +306,7 @@ if __name__ == "__main__":
         hidden = network.apply(params.network_params, x)
         logits = actor.apply(params.actor_params, hidden)
         logprob = jax.nn.log_softmax(logits)[jnp.arange(action.shape[0]), action]
+        # normalize the logits https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
         logits = logits - jax.scipy.special.logsumexp(logits, axis=-1, keepdims=True)
         logits = logits.clip(min=jnp.finfo(logits.dtype).min)
         p_log_p = logits * jax.nn.softmax(logits)
@@ -375,8 +373,6 @@ if __name__ == "__main__":
             return loss, (pg_loss, v_loss, entropy_loss, jax.lax.stop_gradient(approx_kl))
 
         ppo_loss_grad_fn = jax.value_and_grad(ppo_loss, has_aux=True)
-
-        # clipfracs = []
         for _ in range(args.update_epochs):
             key, subkey = jax.random.split(key)
             b_inds = jax.random.permutation(subkey, args.batch_size, independent=True)
@@ -433,9 +429,7 @@ if __name__ == "__main__":
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
         writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
-        # writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
-        # writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/loss", loss.item(), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
