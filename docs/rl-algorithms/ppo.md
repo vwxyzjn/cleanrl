@@ -480,6 +480,14 @@ Additionally, we record the following metric:
 
 [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) uses a customized `RecordEpisodeStatistics` to work with EnvPool's experimental [XLA interface](https://envpool.readthedocs.io/en/latest/content/xla_interface.html) but has the same other implementation details as `ppo_atari.py` (see [related docs](/rl-algorithms/ppo/#implementation-details_1)) except that [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) does not use the value function clipping for simplicity. 
 
+
+???+ info
+    
+    We benchmarked the PPO implementation w/ and w/o value function clipping, finding no significant difference in performance, which is consistent with the findings in Andrychowicz et al.[^2]. See the related report [part 1](https://wandb.ai/costa-huang/cleanRL/reports/CleanRL-PPO-JAX-EnvPool-s-XLA-w-and-w-o-value-loss-clipping-vs-openai-baselins-PPO-part-1---VmlldzoyNzQ3MzQ1) and [part 2](https://wandb.ai/costa-huang/cleanRL/reports/CleanRL-PPO-JAX-EnvPool-s-XLA-w-and-w-o-value-loss-clipping-vs-openai-baselins-PPO-part-2---VmlldzoyNzQ3MzUw).
+
+    ![](../ppo/ppo_atari_envpool_xla_jax/hns_ppo_vs_baselines2.svg)
+
+
 ### Experiment results
 
 To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
@@ -1060,3 +1068,5 @@ Tracked experiments and game play videos:
 {!rl-algorithms/ppo-isaacgymenvs.md!}
 
 [^1]: Huang, Shengyi; Dossa, Rousslan Fernand Julien; Raffin, Antonin; Kanervisto, Anssi; Wang, Weixun (2022). The 37 Implementation Details of Proximal Policy Optimization. ICLR 2022 Blog Track https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/
+
+[^2]: Andrychowicz, Marcin, Anton Raichuk, Piotr Stańczyk, Manu Orsini, Sertan Girgin, Raphael Marinier, Léonard Hussenot et al. "What matters in on-policy reinforcement learning? a large-scale empirical study." International Conference on Learning Representations 2021, https://openreview.net/forum?id=nIAxjsniDzg
