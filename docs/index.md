@@ -25,7 +25,7 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 
 You can read more about CleanRL in our [technical paper](https://arxiv.org/abs/2111.08819) and [documentation](https://docs.cleanrl.dev/).
 
-Good luck have fun :rocket:
+CleanRL only contains implementations of **online** deep reinforcement learning algorithms. If you are looking for **offline** algorithms, please check out [tinkoff-ai/CORL](https://github.com/tinkoff-ai/CORL), which shares a similar design philosophy as CleanRL.
 
 !!! warning
     
