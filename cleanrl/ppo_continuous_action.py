@@ -47,8 +47,6 @@ def parse_args():
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument("--gae", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Use GAE for advantage computation")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
@@ -222,30 +220,18 @@ if __name__ == "__main__":
         # bootstrap value if not terminated
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)
-            if args.gae:
-                advantages = torch.zeros_like(rewards).to(device)
-                lastgaelam = 0
-                for t in reversed(range(args.num_steps)):
-                    if t == args.num_steps - 1:
-                        nextnonterminal = 1.0 - next_terminated
-                        nextvalues = next_value
-                    else:
-                        nextnonterminal = 1.0 - terminateds[t + 1]
-                        nextvalues = values[t + 1]
-                    delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
-                    advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
-                returns = advantages + values
-            else:
-                returns = torch.zeros_like(rewards).to(device)
-                for t in reversed(range(args.num_steps)):
-                    if t == args.num_steps - 1:
-                        nextnonterminal = 1.0 - next_terminated
-                        next_return = next_value
-                    else:
-                        nextnonterminal = 1.0 - terminateds[t + 1]
-                        next_return = returns[t + 1]
-                    returns[t] = rewards[t] + args.gamma * nextnonterminal * next_return
-                advantages = returns - values
+            advantages = torch.zeros_like(rewards).to(device)
+            lastgaelam = 0
+            for t in reversed(range(args.num_steps)):
+                if t == args.num_steps - 1:
+                    nextnonterminal = 1.0 - next_terminated
+                    nextvalues = next_value
+                else:
+                    nextnonterminal = 1.0 - terminateds[t + 1]
+                    nextvalues = values[t + 1]
+                delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
+                advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
+            returns = advantages + values
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
