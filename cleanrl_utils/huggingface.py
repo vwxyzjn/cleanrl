@@ -1,11 +1,13 @@
 import argparse
 import os
-from typing import List
-import numpy as np
 from pathlib import Path
 from pprint import pformat
+from typing import List
+
+import numpy as np
 
 HUGGINGFACE_VIDEO_PREVIEW_FILE_NAME = "replay.mp4"
+
 
 def upload_to_hub(
     args: argparse.Namespace,
@@ -16,7 +18,7 @@ def upload_to_hub(
     video_folder_path: str = "",
 ):
     # Step 1: lazy import and create / read a huggingface repo
-    from huggingface_hub import HfApi, upload_folder, Repository
+    from huggingface_hub import HfApi, upload_folder
     from huggingface_hub.repocard import metadata_eval_result, metadata_save
 
     api = HfApi()
@@ -38,7 +40,7 @@ def upload_to_hub(
         video_files = [str(item) for item in Path(video_folder_path).glob("*.mp4")]
         print(video_files)
         # sort by the number in the file name
-        video_files = sorted(video_files, key=lambda x: int(''.join(filter(str.isdigit, os.path.splitext(x)[0]))))
+        video_files = sorted(video_files, key=lambda x: int("".join(filter(str.isdigit, os.path.splitext(x)[0]))))
         for file in video_files:
             api.upload_file(path_or_fileobj=file, path_in_repo=file, repo_id=repo_id)
         api.upload_file(path_or_fileobj=file, path_in_repo=HUGGINGFACE_VIDEO_PREVIEW_FILE_NAME, repo_id=repo_id)
@@ -63,10 +65,10 @@ found [here](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/{args.exp_na
     # metadata
     metadata = {}
     metadata["tags"] = [
-            args.env_id,
-            "deep-reinforcement-learning",
-            "reinforcement-learning",
-            "custom-implementation",
+        args.env_id,
+        "deep-reinforcement-learning",
+        "reinforcement-learning",
+        "custom-implementation",
     ]
     eval = metadata_eval_result(
         model_pretty_name=algo_name,

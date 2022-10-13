@@ -1,9 +1,10 @@
 import random
 from typing import Callable
 
-import torch
 import gym
 import numpy as np
+import torch
+
 
 def evaluate(
     model_path: str,

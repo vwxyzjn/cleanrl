@@ -217,8 +217,8 @@ if __name__ == "__main__":
     if args.save_model:
         torch.save(q_network.state_dict(), f"runs/{run_name}/q_network.pth")
         print(f"model saved to ./runs/{run_name}/q_network.pth")
-
         from cleanrl_utils.evals.dqn_eval import evaluate
+
         episodic_returns = evaluate(
             f"runs/{run_name}/q_network.pth",
             make_env,
@@ -234,6 +234,7 @@ if __name__ == "__main__":
 
         if args.upload_model:
             from cleanrl_utils.huggingface import upload_to_hub
+
             repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
             repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
             upload_to_hub(args, episodic_returns, repo_id, "DQN", f"runs/{run_name}", f"videos/{run_name}-eval")
