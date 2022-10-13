@@ -36,8 +36,8 @@ CleanRL only contains implementations of **online** deep reinforcement learning 
 If you use CleanRL in your work, please cite our technical [paper](https://www.jmlr.org/papers/volume23/21-1342/21-1342.pdf):
 
 ```bibtex
-@article{JMLR:v23:21-1342,
-  author  = {Shengyi Huang and Rousslan Fernand Julien Dossa and Chang Ye and Jeff Braga and Dipam Chakraborty and Kinal Mehta and JoÃ£o G.M. AraÃºjo},
+@article{huang2022cleanrl,
+  author  = {Shengyi Huang and Rousslan Fernand Julien Dossa and Chang Ye and Jeff Braga and Dipam Chakraborty and Kinal Mehta and João G.M. Araújo},
   title   = {CleanRL: High-quality Single-file Implementations of Deep Reinforcement Learning Algorithms},
   journal = {Journal of Machine Learning Research},
   year    = {2022},
