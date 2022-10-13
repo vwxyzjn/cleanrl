@@ -93,7 +93,7 @@ class Tuner:
 
                     # read metric from tensorboard
                     ea = event_accumulator.EventAccumulator(
-                        f"runs/{experiment['run_name']}",
+                        f"runs/{experiment['run_name']}"
                     )
                     ea.Reload()
                     metric_values = [
