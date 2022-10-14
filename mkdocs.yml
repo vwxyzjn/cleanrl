@@ -93,7 +93,7 @@ nav:
     - advanced/resume-training.md
   - Community:
     - contribution.md
-    - made-with-cleanrl.md
+    - cleanrl-supported-papers-projects.md
   - Cloud Integration: 
     - cloud/installation.md
     - cloud/submit-experiments.md
