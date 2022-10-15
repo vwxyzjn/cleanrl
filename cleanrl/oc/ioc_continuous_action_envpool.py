@@ -49,9 +49,9 @@ def parse_args():
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=3e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=16,
+    parser.add_argument("--num-envs", type=int, default=1,
         help="the number of parallel game environments")
-    parser.add_argument("--num-steps", type=int, default=128,
+    parser.add_argument("--num-steps", type=int, default=2048,
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
@@ -75,6 +75,10 @@ def parse_args():
         help="coefficient of the value function")
     parser.add_argument("--term-coef", type=float, default=1. / 600,
         help="coefficient of the termination loss")
+    parser.add_argument("--int-coef", type=float, default=1.,
+        help="coefficient of the interest loss")
+    parser.add_argument("--int-threshold", type=float, default=0.,
+        help="threshold of interest below which options won't be considered")
     parser.add_argument("--max-grad-norm", type=float, default=1.,
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
@@ -204,11 +208,13 @@ def body(num_obs: int) -> nn.Sequential:
 class Agent(nn.Module):
     num_actions: Final[int]
     num_options: Final[int]
+    interest_threshold: Final[float] = 0.0
 
     def __init__(self, envs, args):
         super().__init__()
         self.num_actions = int(np.prod(envs.single_action_space.shape))
         self.num_options = args.num_options
+        self.interest_threshold = args.int_threshold
         num_obs = int(np.prod(envs.single_observation_space.shape))
         self.critic = body(num_obs).append(layer_init(nn.Linear(64, self.num_options), 1.0))
         self.termination = body(num_obs).append(layer_init(nn.Linear(64, self.num_options), 1e-2))
@@ -219,9 +225,10 @@ class Agent(nn.Module):
         )
         self.actor_logstd = nn.Parameter(torch.zeros(1, self.num_options, self.num_actions))
         self.option_actor = body(num_obs).append(layer_init(nn.Linear(64, self.num_options), std=0.01))
+        self.interest = body(num_obs).append(layer_init(nn.Linear(64, self.num_options), std=0.01))
 
     @torch.jit.export
-    def get_value(self, x: Tensor):
+    def get_bsv(self, x: Tensor):
         """Return various bootstrap values"""
         q = self.critic(x)
         option_probs = torch.softmax(self.option_actor(x), -1)
@@ -229,6 +236,17 @@ class Agent(nn.Module):
         betas = torch.sigmoid(self.termination(x))
         u = (1.0 - betas) * q + betas * v.unsqueeze(-1)
         return q, v, u
+
+    def interest_modulated_option_policy(self, x: Tensor) -> Tuple[Tensor, Tensor]:
+        I = torch.sigmoid(self.interest(x))
+        pi_w = torch.softmax(self.option_actor(x), -1)
+        with torch.no_grad():
+            mask = I > self.interest_threshold
+            mask[~mask.any(-1)] = True  # If we masked out all options, remove mask
+            masked_I = I * mask
+        pi_wi = pi_w * masked_I  # modulate
+        pi_wi /= pi_wi.sum(-1, keepdim=True)  # normalize
+        return pi_wi, I
 
     @torch.jit.export
     def step(self, x: Tensor, option_on_arrival: Tensor, is_done: Tensor) -> StepOutput:
@@ -238,9 +256,9 @@ class Agent(nn.Module):
         beta = batched_index(option_on_arrival, betas)
         term = torch.bernoulli(beta)
         # Choose new option where terminated (or where new episode)
-        option_logprobs = torch.log_softmax(self.option_actor(x), -1)
-        option_probs = option_logprobs.exp()
-        option = torch.where((term + is_done) > 0, torch.multinomial(option_probs, 1).squeeze(-1), option_on_arrival)
+        probs_I = self.interest_modulated_option_policy(x)[0]
+        option_logprobs = torch.log(probs_I)
+        option = torch.where((term + is_done) > 0, torch.multinomial(probs_I, 1).squeeze(-1), option_on_arrival)
         option_logprob = option_logprobs.gather(-1, option.unsqueeze(-1)).squeeze(-1)
         # Choose action from selected option(s)
         all_action_mean = self.actor_mean(x).reshape(-1, self.num_options, self.num_actions)
@@ -256,7 +274,7 @@ class Agent(nn.Module):
         ).sum(-1)
         # Get q value of each option, policy-weighted average V, and utility U
         q = self.critic(x)
-        v = (q * option_probs).sum(-1)
+        v = (q * probs_I).sum(-1)
         u = (1.0 - betas) * q + betas * v.unsqueeze(-1)
         return StepOutput(term, option, action, beta, option_logprob, action_logprob, q, v, u)
 
@@ -266,6 +284,9 @@ class Agent(nn.Module):
         # Probability of terminating previous option in each step
         prev_termprobs = torch.sigmoid(batched_index(options_on_arrival, self.termination(xs)))
         # Probability of selecting chosen option in each step
+        option_interest = torch.sigmoid(self.interest(xs))
+        mask = option_interest > self.interest_threshold
+        mask[~mask.any(-1)] = True  # If we masked out all options, remove mask
         all_option_logprobs = torch.log_softmax(self.option_actor(xs), -1)
         option_logprobs = all_option_logprobs.gather(-1, options.unsqueeze(-1)).squeeze(-1)
         option_entropy = (-all_option_logprobs * all_option_logprobs.exp()).sum(-1)
@@ -317,7 +338,7 @@ if __name__ == "__main__":
             sync_tensorboard=True,
             config=vars(args),
             name=run_name,
-            monitor_gym=False,
+            monitor_gym=True,
             save_code=True,
         )
     writer = SummaryWriter(f"runs/{run_name}")
@@ -496,9 +517,9 @@ if __name__ == "__main__":
                     + termination_loss * args.term_coef
                 )
 
-                optimizer.zero_grad(True)
+                optimizer.zero_grad()
                 loss.backward()
-                grad_norm = nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
+                nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
 
             if args.target_kl is not None:
@@ -517,12 +538,11 @@ if __name__ == "__main__":
         writer.add_scalar("losses/termination_loss", termination_loss.item(), global_step)
         writer.add_scalar("losses/termination_frequency", terminations.mean().item(), global_step)
         writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
-        writer.add_scalar("losses/option_entropy", option_entropy_loss.item(), global_step)
+        writer.add_scalar("losses/entropy", option_entropy_loss.item(), global_step)
         writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
-        writer.add_scalar("losses/max_grad_norm", grad_norm.item(), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 

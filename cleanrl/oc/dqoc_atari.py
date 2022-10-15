@@ -1,7 +1,7 @@
 # Implementation of original option critic
 # Reference implementation: https://github.com/jeanharb/option_critic
 # DQN-style option-critic for atari
-
+# TODO: Slow. Can we do PG updates on the rollouts at the same cadence as critic updates?
 import argparse
 import os
 import random

@@ -13,14 +13,11 @@ GAE computation based on value of current option (Q(s, w))
 Observation normalization but not reward
 Per-iteration advantage normalization, no vloss clipping
 
-Consider: PG and termination loss based on s'. Q and policy loss based on s.
-    Don't resample termination and option for s' after rollout
-
 Weird tricks:
     rewards are divided by 10 (if using options)
     loops over options, then over epochs (so updates 1 option, then the next, then the next)
     Only updates an option if we have at least 160 datapoints with that option (otherwise save those in a dataset, use it later)
-    Termination loss has 5e-7 learning rate (not detaul 3e-4)
+    Termination loss has 5e-7 learning rate (not default 3e-4)
 
 Errors:
     - General issues in non-weightsharing derivation being used in weight sharing
@@ -28,18 +25,6 @@ Errors:
         - But baseline must be action-independent. Inter-option policy baseline should be V(s) (or maybe U(s', w))
     - Termination advantages should use beta(s', w) and A(s',w), but actually use A(s,w)
     - Inter-option policy advantage should use V(s') as baseline, bootstrap off V(s'')
-
-Execution:
-    o = env.reset()  # Start episode
-    option = pi.get_option(o)  # Start with option
-    loop:
-        a, lp_a, Q = pi.act(o, option)
-        o, r, new = env.step(a)
-        rew /= 10 (if options)
-        term = pi.get_term(o)
-        if term: option = pi.get_option(o)
-        if new: o = env.reset(); option = pi.get_option()
-        if t == T: yield accumulated sequences + bootstrap * (1 - new)
 """
 
 import argparse
@@ -207,9 +192,6 @@ def layer_init(layer: nn.Module, std: float = 2**0.5, bias_const: float = 0.0):
 class Tanh(nn.Module):
     """In-place tanh module"""
 
-    def __init__(self):
-        super().__init__()
-
     def forward(self, input: Tensor) -> Tensor:
         return torch.tanh_(input)
 
@@ -254,7 +236,10 @@ class Agent(nn.Module):
         self.critic = layer_init(nn.Linear(64, self.num_options), 1.0)
         self.termination = layer_init(nn.Linear(64, self.num_options), 1e-2)
         self.actor_body = body(num_obs)  # shared by intra- and inter-option actors, inter-option detached
-        self.actor_mean = layer_init(nn.Linear(64, int(self.num_actions * self.num_options)), std=0.01)
+        self.actor_mean = nn.Sequential(
+            layer_init(nn.Linear(64, int(self.num_actions * self.num_options)), std=0.01),
+            nn.Unflatten(-1, (self.num_options, self.num_actions)),
+        )
         self.actor_logstd = nn.Parameter(torch.zeros(1, self.num_options, self.num_actions))
         self.option_actor = layer_init(nn.Linear(64, self.num_options), std=0.01)
 
@@ -330,7 +315,7 @@ def gae(v_tm1_t: Tensor, r_t: Tensor, gamma_t: Tensor, lambda_: float = 1.0) -> 
     deltas = r_t + gamma_t * v_t - v_tm1
     adv = torch.zeros_like(v_t)
     lastgaelam = torch.zeros_like(v_t[0])
-    for t in torch.arange(v_t.shape[0] - 1, -1, -1, device=v_t.device):
+    for t in range(v_t.shape[0] - 1, -1, -1):
         lastgaelam = adv[t] = deltas[t] + gamma_t[t] * lambda_ * lastgaelam
     ret = adv + v_tm1
     return adv, ret
@@ -452,16 +437,13 @@ if __name__ == "__main__":
             # deliberation cost where we terminated without being forced to
             rewards -= args.delib_cost * (terminations * (1.0 - dones[:-1]))
             qvalues[-1], vvalues[-1] = agent.get_value(next_obs)
-            # bootstrap action advantage with U(s', w). Option advantage is just V(s')
-            q_tm1_t = torch.cat(
-                (batched_index(options, qvalues[:-1]), batched_index(options[-1], uvalues[-1]).unsqueeze(0)), 0
-            )
+            # bootstrap both advantages with V(s') (should be Q(s', w') from original)
+            q_tm1_t = torch.cat((batched_index(options, qvalues[:-1]), vvalues[-1].unsqueeze(0)), 0)
             dones[-1] = next_done
             gamma_t = 1.0 - dones[1:]
             advantages, returns = gae(q_tm1_t, rewards, gamma_t, args.gae_lambda)
-            # Mask termination advantage where termination was forced by episode reset
-            q_on_arrival = batched_index(options_on_arrival, qvalues[:-1])
-            termination_advantages = (q_on_arrival - vvalues[:-1] + args.delib_cost) * (1.0 - dones[:-1])
+            # Carry over off-by-one error from implementation (q value of selected option instead of prev)
+            termination_advantages = q_tm1_t[:-1] - vvalues[:-1] + args.delib_cost
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
@@ -529,9 +511,9 @@ if __name__ == "__main__":
                     + termination_loss * args.term_coef
                 )
 
-                optimizer.zero_grad()
+                optimizer.zero_grad(True)
                 loss.backward()
-                nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
+                grad_norm = nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
 
             if args.target_kl is not None:
@@ -550,11 +532,12 @@ if __name__ == "__main__":
         writer.add_scalar("losses/termination_loss", termination_loss.item(), global_step)
         writer.add_scalar("losses/termination_frequency", terminations.mean().item(), global_step)
         writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
-        writer.add_scalar("losses/entropy", option_entropy_loss.item(), global_step)
+        writer.add_scalar("losses/option_entropy", option_entropy_loss.item(), global_step)
         writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
+        writer.add_scalar("losses/max_grad_norm", grad_norm.item(), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 

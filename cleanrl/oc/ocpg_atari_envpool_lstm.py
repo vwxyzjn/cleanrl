@@ -1,13 +1,13 @@
-# Implementation of Advantage Option Critic (A2OC in paper, but no asynchrony)
-# Reference: https://github.com/jeanharb/a2oc_delib
-# Paper: https://arxiv.org/pdf/1709.04571.pdf
+# Option-Critic Policy Gradients (i.e., a2oc with shared-weight derivation)
+# Paper: https://arxiv.org/abs/1912.13408 (weight sharing derivation)
+# Reference repo: https://github.com/mattriemer/ocpg (private)
 import argparse
 import os
 import random
 import time
 from collections import deque
 from distutils.util import strtobool
-from typing import Final, Tuple
+from typing import Final, NamedTuple, Tuple
 
 import envpool
 import gym
@@ -19,6 +19,7 @@ import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
 Tensor = torch.Tensor
+LSTMState = Tuple[torch.Tensor, torch.Tensor]
 
 
 def parse_args():
@@ -46,7 +47,7 @@ def parse_args():
                         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=int(8e7),
                         help="total timesteps of the experiments")
-    parser.add_argument("--learning-rate", type=float, default=0.0007,
+    parser.add_argument("--learning-rate", type=float, default=2.5e-4,
                         help="the learning rate of the optimizer")
     parser.add_argument("--num-envs", type=int, default=16,
                         help="the number of parallel game environments")
@@ -60,19 +61,19 @@ def parse_args():
                         help="the lambda for the general advantage estimation")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
                         help="Toggles advantages normalization")
-    parser.add_argument("--option-epsilon", type=float, default=0.1,
-                        help="epsilon for epilon-greedy option selection")
     parser.add_argument("--ent-coef", type=float, default=0.01,
+                        help="coefficient of the entropy")
+    parser.add_argument("--option-ent-coef", type=float, default=0.01,
                         help="coefficient of the entropy")
     parser.add_argument("--delib-cost", type=float, default=0.02,
                         help="cost for terminating an option. subtracted from reward, added to termination advantage")
-    parser.add_argument("--delib-cost-in-reward", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+    parser.add_argument("--delib-cost-in-reward", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
                         help="if true, subtract cost from immediate reward (in addition to adding to termination advantage")
-    parser.add_argument("--vf-coef", type=float, default=1.,
+    parser.add_argument("--vf-coef", type=float, default=0.5,
                         help="coefficient of the value function")
     parser.add_argument("--term-coef", type=float, default=1.,
                         help="coefficient of the value function")
-    parser.add_argument("--num-options", type=int, default=8,
+    parser.add_argument("--num-options", type=int, default=16,
                         help="the number of options available")
     parser.add_argument("--max-grad-norm", type=float, default=1.,
                         help="the maximum norm for the gradient clipping")
@@ -127,102 +128,129 @@ def batched_index(idx: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
     return s_flat.view(t.shape[:dim] + t.shape[dim + 1 :])
 
 
-def layer_init(layer, std: float = nn.init.calculate_gain("relu"), bias_const: float = 0.0):
-    torch.nn.init.orthogonal_(layer.weight, std)
-    torch.nn.init.constant_(layer.bias, bias_const)
+def layer_init(layer: nn.Module, std: float = nn.init.calculate_gain("relu"), bias_const: float = 0.0):
+    for n, p in layer.named_parameters():
+        if "bias" in n:
+            torch.nn.init.constant_(p, bias_const)
+        elif "weight" in n:
+            torch.nn.init.orthogonal_(p, std)
     return layer
+
+
+class StepOutput(NamedTuple):
+    termination: Tensor  # t
+    option: Tensor  # w
+    action: Tensor  # a
+    betas: Tensor  # beta(s, w_)
+    option_logprobs: Tensor  # lp(w|s)
+    logprobs: Tensor  # lp(a|s, w)
+    qs: Tensor  # Q(s, .)
+    v: Tensor  # V(s)
 
 
 class Agent(nn.Module):
     num_options: Final[int]
     num_actions: Final[int]
-    option_epsilon: Final[int]
 
     def __init__(self, envs, args):
         super().__init__()
-        # Base A3C CNN
+        # 4-layer CNN with 2x2 maxpools and relu
         self.network = nn.Sequential(
-            layer_init(nn.Conv2d(4, 16, 8, stride=4)),
+            layer_init(nn.Conv2d(1, 32, 5, stride=1, padding=2)),
+            nn.MaxPool2d(2, 2),
             nn.ReLU(inplace=True),
-            layer_init(nn.Conv2d(16, 32, 4, stride=2)),
+            layer_init(nn.Conv2d(32, 32, 5, stride=1, padding=1)),
             nn.ReLU(inplace=True),
+            nn.MaxPool2d(2, 2),
+            layer_init(nn.Conv2d(32, 64, 4, stride=1, padding=1)),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2, 2),
+            layer_init(nn.Conv2d(64, 64, 3, stride=1, padding=1)),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2, 2),
             nn.Flatten(),
-            layer_init(nn.Linear(32 * 9 * 9, 256)),
-            nn.ReLU(inplace=True),
         )
+        self.lstm = layer_init(nn.LSTMCell(1024, 512), 1.0)
         self.num_actions = envs.single_action_space.n
         self.num_options = args.num_options
-        self.option_epsilon = args.option_epsilon
-        self.actor = layer_init(nn.Linear(256, int(self.num_actions * self.num_options)), std=0.01)
-        self.critic = layer_init(nn.Linear(256, self.num_options), std=1)
-        self.termination = layer_init(nn.Linear(256, self.num_options), std=0.01)
-
-    def features(self, x: Tensor) -> Tensor:
-        """Flattened output of CNN"""
-        return self.network(x / 255.0)
-
-    @torch.jit.export
-    def get_bsv(self, next_x: Tensor, option_on_arrival: Tensor) -> Tensor:
-        """Bootstrap value. U(s', w) = beta(s', w)V(s') + (1 - beta(s', w))Q(s', w)"""
-        next_x = self.features(next_x)
-        qs = self.critic(next_x)
-        v = (1.0 - self.option_epsilon) * qs.max(-1)[0] + self.option_epsilon * qs.mean(-1)
-        beta = torch.sigmoid(batched_index(option_on_arrival, self.termination(next_x)))
-        u = (1.0 - beta) * batched_index(option_on_arrival, qs) + beta * v
-        return u
-
-    def sample_option(
-        self,
-        option_on_arrival: Tensor,
-        qs: Tensor,
-        terminations: Tensor,
-    ) -> Tensor:
-        """Sample option using epsilon-greedy sampling"""
-        candidate_option = torch.where(
-            torch.rand_like(option_on_arrival, dtype=torch.float32) < self.option_epsilon,
-            torch.randint_like(option_on_arrival, 0, self.num_options),
-            qs.argmax(-1),
+        self.actor = nn.Sequential(
+            layer_init(nn.Linear(512, int(self.num_actions * self.num_options)), std=0.01),
+            nn.Unflatten(-1, (self.num_options, self.num_actions)),
         )
-        return torch.where(terminations > 0, candidate_option, option_on_arrival)
+        self.option_actor = layer_init(nn.Linear(512, self.num_options), std=0.01)
+        self.critic = layer_init(nn.Linear(512, self.num_options), std=1.0)
+        self.termination = layer_init(nn.Linear(512, self.num_options), std=0.01)
+
+    def get_state(self, x: Tensor, s: LSTMState) -> LSTMState:
+        return self.lstm(self.network(x / 255.0), s)
 
     @torch.jit.export
-    def step(
-        self,
-        x: Tensor,
-        option_on_arrival: Tensor,
-        is_done: Tensor,
-    ):
-        """Basic single step on receiving new observation.
-
-        Determine terminations, pick new options, get actions and values"""
-        x = self.features(x)
-        qs = self.critic(x)  # Q for each option
-        v = (1.0 - self.option_epsilon) * qs.max(-1)[0] + self.option_epsilon * qs.mean(-1)
-        beta_w = torch.sigmoid(batched_index(option_on_arrival, self.termination(x)))  # Termination prob of current option
-        term_w = torch.bernoulli(beta_w)  # Sample terminations
-        option = self.sample_option(option_on_arrival, qs, term_w + is_done)  # also terminate on episode end
-        pi_w = torch.softmax(
-            batched_index(option, self.actor(x).reshape(-1, self.num_options, self.num_actions)),
-            -1,
-        )
-        a = torch.multinomial(pi_w, 1)  # action under new option
-        return (term_w, option, a.squeeze(-1)), beta_w, (qs, v)
-
-    @torch.jit.export
-    def unroll(self, xs: Tensor, options_on_arrival: Tensor, options: Tensor, actions: Tensor):
-        """Unroll with gradients. Get logprob of actions, entropy of intra-option policies, value of selected option, termination probability of option on arrival"""
-        x = self.features(xs)
+    def step(self, x: Tensor, s: LSTMState, option_on_arrival: Tensor, is_done: Tensor) -> Tuple[StepOutput, LSTMState]:
+        reset_state = 1.0 - is_done.unsqueeze(-1)
+        s = self.get_state(x, (s[0] * reset_state, s[1] * reset_state))
+        x = s[0]
+        # Termination probs and sample
+        betas = torch.sigmoid(self.termination(x))
+        beta_w = batched_index(option_on_arrival, betas)
+        term_w = torch.bernoulli(beta_w)
+        # Option logprobs and probs. Sample where terminal or episode start
+        option_logprobs = torch.log_softmax(self.option_actor(x), -1)
+        option_probs = option_logprobs.exp()
+        option = torch.where((term_w + is_done) > 0, torch.multinomial(option_probs, 1).squeeze(-1), option_on_arrival)
+        option_logprob = option_logprobs.gather(-1, option.unsqueeze(-1)).squeeze(-1)
+        # Sample action using new option
+        action_logprobs = torch.log_softmax(batched_index(option, self.actor(x)), -1)
+        action_probs = action_logprobs.exp()
+        action = torch.multinomial(action_probs, 1).squeeze(-1)
+        action_logprob = action_logprobs.gather(-1, action.unsqueeze(-1)).squeeze(-1)
+        # Value of each option, average value of ocpg
         qs = self.critic(x)
-        logprobs = torch.log_softmax(
-            batched_index(options, self.actor(x).reshape(-1, self.num_options, self.num_actions)),
-            -1,
-        )
-        probs = logprobs.exp()
-        entropy = (-logprobs * probs).sum(-1)
-        logprob = logprobs.gather(-1, actions.unsqueeze(-1)).squeeze(-1)
-        q_sw = batched_index(options, qs)
-        betas = torch.sigmoid(batched_index(options_on_arrival, self.termination(x)))
-        return logprob, entropy, q_sw, betas
+        v = (qs * option_probs).sum(-1)
+        return StepOutput(term_w, option, action, beta_w, option_logprob, action_logprob, qs, v), s
+
+    @torch.jit.export
+    def unroll(
+        self, xs: Tensor, initial_s: LSTMState, options_on_arrival: Tensor, options: Tensor, actions: Tensor, is_dones: Tensor
+    ):
+        reset_state = 1.0 - is_dones.unsqueeze(-1)
+        T, B = is_dones.shape
+        fs = []
+        s = initial_s
+        # Batch process through cnn
+        xs = self.network(xs.view((T * B,) + xs.shape[2:]) / 255.0).view(T, B, -1)
+        # loop through lstm with resets where episode terminated
+        for x, r in zip(xs, reset_state):
+            s = self.lstm(x, (s[0] * r, s[1] * r))
+            fs.append(s[0])
+        fs = torch.stack(fs, 0)  # (T, B, -1)
+        # Probability of terminating previous option in each step
+        prev_termprobs = torch.sigmoid(batched_index(options_on_arrival, self.termination(fs)))
+        # Probability of selecting chosen option in each step
+        all_option_logprobs = torch.log_softmax(self.option_actor(fs), -1)
+        option_logprobs = all_option_logprobs.gather(-1, options.unsqueeze(-1)).squeeze(-1)
+        option_entropy = (-all_option_logprobs * all_option_logprobs.exp()).sum(-1)
+        # Probability of selecting chosen action in each step
+        action_logprobs = torch.log_softmax(batched_index(options, self.actor(fs)), -1)
+        action_logprob = action_logprobs.gather(-1, actions.unsqueeze(-1)).squeeze(-1)
+        action_entropy = (-action_logprobs * action_logprobs.exp()).sum(-1)
+        # Value of selected option
+        q_sw = batched_index(options, self.critic(fs))
+        return (prev_termprobs, option_logprobs, option_entropy), (action_logprob, action_entropy), q_sw
+
+    @torch.jit.export
+    def get_bsv(
+        self, next_x: Tensor, next_s: LSTMState, option_on_arrival: Tensor, next_is_done: Tensor
+    ) -> Tuple[Tensor, Tensor]:
+        """Bootstrap intra-option value using U(s', w), inter-option value using V(s')"""
+        next_reset = 1.0 - next_is_done.unsqueeze(-1)
+        x = self.get_state(next_x, (next_s[0] * next_reset, next_s[1] * next_reset))[0]
+        qs = self.critic(x)
+        option_probs = torch.softmax(self.option_actor(x), -1)
+        v = (qs * option_probs).sum(-1)
+        q_w_tm1 = batched_index(option_on_arrival, qs)
+        betas = torch.sigmoid(batched_index(option_on_arrival, self.termination(x)))
+        u = (1.0 - betas) * q_w_tm1 + betas * v
+        return u, v
 
 
 @torch.jit.script
@@ -281,6 +309,7 @@ if __name__ == "__main__":
         episodic_life=True,
         reward_clip=True,
         seed=args.seed,
+        stack_num=1,
     )
     envs.num_envs = args.num_envs
     envs.single_action_space = envs.action_space
@@ -309,7 +338,7 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs), device=device)
     dones = torch.zeros((args.num_steps + 1, args.num_envs), device=device)
     qvalues = torch.zeros((args.num_steps, args.num_envs, args.num_options), device=device)  # for each option
-    vvalues = torch.zeros((args.num_steps, args.num_envs), device=device)  # eps-greedy
+    vvalues = torch.zeros((args.num_steps + 1, args.num_envs), device=device)  # Average
     terminations = torch.zeros((args.num_steps, args.num_envs), device=device)
     avg_returns = deque(maxlen=20)
 
@@ -320,9 +349,14 @@ if __name__ == "__main__":
     next_obs = torch.tensor(envs.reset(), device=device)
     next_done = torch.ones(args.num_envs, device=device)
     next_option = torch.zeros(args.num_envs, device=device, dtype=torch.int64)
+    next_lstm_state = (
+        torch.zeros(args.num_envs, agent.lstm.hidden_size, device=device),
+        torch.zeros(args.num_envs, agent.lstm.hidden_size, device=device),
+    )  # hidden and cell states (see https://youtu.be/8HyCNIVRbSU)
     num_updates = args.total_timesteps // args.batch_size
 
     for update in range(1, num_updates + 1):
+        initial_lstm_state = (next_lstm_state[0].clone(), next_lstm_state[1].clone())
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
@@ -338,10 +372,15 @@ if __name__ == "__main__":
             # ALGO LOGIC: action logic
             with torch.no_grad():
                 (
-                    (terminations[step], next_option, actions[step]),
+                    terminations[step],
+                    next_option,
+                    actions[step],
                     betas_on_arrival[step],
-                    (qvalues[step], vvalues[step]),
-                ) = agent.step(next_obs, next_option, next_done)
+                    _,
+                    _,
+                    qvalues[step],
+                    vvalues[step],
+                ), next_lstm_state = agent.step(next_obs, next_lstm_state, next_option, next_done)
                 options[step] = next_option
 
             # TRY NOT TO MODIFY: execute the game and log data.
@@ -366,32 +405,38 @@ if __name__ == "__main__":
             dones[-1] = next_done
             if args.delib_cost_in_reward:  # Switching cost if not forced to terminate
                 rewards -= args.delib_cost * (terminations * (1.0 - dones[:-1]))
-            q_tm1_t = torch.cat(
-                (
-                    batched_index(options, qvalues),
-                    agent.get_bsv(next_obs, next_option).unsqueeze(0),
-                ),
-                0,
-            )
+            u, vvalues[-1] = agent.get_bsv(next_obs, next_lstm_state, next_option, next_done)
+            q_tm1_t = torch.cat((batched_index(options, qvalues), u.unsqueeze(0)), 0)
             # Lambda=1 simplifies to discounted return
-            advantages, returns = gae(q_tm1_t, rewards, (1.0 - dones[1:]) * args.gamma, 1.0)
+            gamma_t = (1.0 - dones[1:]) * args.gamma
+            advantages, returns = gae(q_tm1_t, rewards, gamma_t, args.gae_lambda)
+            option_advantages = gae(vvalues, rewards, gamma_t, args.gae_lambda)[0]
             if args.norm_adv:
                 advantages = normalize(advantages)
-            termination_advantage = batched_index(options_on_arrival, qvalues) - vvalues + args.delib_cost
+                option_advantages = normalize(option_advantages)
+            termination_advantage = (batched_index(options_on_arrival, qvalues) - vvalues[:-1] + args.delib_cost) * (
+                1.0 - dones[:-1]
+            )
 
         # unclipped a2oc loss
-        lp, ent, new_q_sw, betas = agent.unroll(
-            obs.reshape((-1,) + envs.single_observation_space.shape),
-            options_on_arrival.reshape(-1),
-            options.reshape(-1),
-            actions.reshape((-1,) + envs.single_action_space.shape),
+        (betas, option_lp, option_ent), (lp, ent), new_q_sw = agent.unroll(
+            obs, initial_lstm_state, options_on_arrival, options, actions, dones[:-1]
         )
-        pg_loss = (-lp * advantages.reshape(-1)).mean()
+        pg_loss = (-lp * advantages).mean()
         entropy_loss = -ent.mean()
-        termination_loss = (betas * termination_advantage.reshape(-1)).mean()
-        v_loss = F.mse_loss(new_q_sw, returns.reshape(-1))
+        option_pg_loss = (-option_lp * option_advantages).mean()
+        option_entropy_loss = -option_ent.mean()
+        termination_loss = (betas * termination_advantage).mean()
+        v_loss = F.mse_loss(new_q_sw, returns)
 
-        loss = pg_loss + args.ent_coef * entropy_loss + args.vf_coef * v_loss + args.term_coef * termination_loss
+        loss = (
+            pg_loss
+            + args.ent_coef * entropy_loss
+            + option_pg_loss
+            + args.option_ent_coef * option_entropy_loss
+            + args.vf_coef * v_loss
+            + args.term_coef * termination_loss
+        )
 
         optimizer.zero_grad(True)
         loss.backward()
@@ -406,9 +451,11 @@ if __name__ == "__main__":
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
+        writer.add_scalar("losses/option_policy_loss", option_pg_loss.item(), global_step)
         writer.add_scalar("losses/termination_loss", termination_loss.item(), global_step)
         writer.add_scalar("losses/termination_frequency", terminations.mean().item(), global_step)
         writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
+        writer.add_scalar("losses/option_entropy", option_entropy_loss.item(), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         writer.add_scalar("losses/max_grad_norm", grad_norm, global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))

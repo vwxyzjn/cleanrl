@@ -1,6 +1,7 @@
-# Proximal Policy Option Critic (PPOC) Original implementation
-# Paper: https://arxiv.org/pdf/1712.00004.pdf
-# Reference repo: https://github.com/mklissa/PPOC
+# Multi-updates option critic (MOC)
+# Paper: https://arxiv.org/pdf/2112.03097.pdf
+# Reference repo: https://github.com/mklissa/MOC
+# TODO: Everything
 
 import argparse
 import math
@@ -16,6 +17,7 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 
@@ -85,6 +87,8 @@ def parse_args():
         help="cost for switching options")
     parser.add_argument("--delib-cost-in-reward", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if true, subtract cost from immediate reward (in addition to adding to termination advantage")
+    parser.add_argument("--eta", type=float, default=0.8,
+        help="weight of updates to non-sampled options")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
@@ -180,6 +184,7 @@ class StepOutput(NamedTuple):
     betas: Tensor  # beta(s, w_)
     option_logprobs: Tensor  # lp(w|s)
     logprobs: Tensor  # lp(a|s, w)
+    prob_curr_opt: Tensor  # (1-eta) * pi(w|s)
     qs: Tensor  # Q(s, .)
     v: Tensor  # V(s)
     us: Tensor  # U(s, w_)
@@ -204,11 +209,13 @@ def body(num_obs: int) -> nn.Sequential:
 class Agent(nn.Module):
     num_actions: Final[int]
     num_options: Final[int]
+    eta: Final[float]
 
     def __init__(self, envs, args):
         super().__init__()
         self.num_actions = int(np.prod(envs.single_action_space.shape))
         self.num_options = args.num_options
+        self.eta = args.eta
         num_obs = int(np.prod(envs.single_observation_space.shape))
         self.critic = body(num_obs).append(layer_init(nn.Linear(64, self.num_options), 1.0))
         self.termination = body(num_obs).append(layer_init(nn.Linear(64, self.num_options), 1e-2))
@@ -221,7 +228,7 @@ class Agent(nn.Module):
         self.option_actor = body(num_obs).append(layer_init(nn.Linear(64, self.num_options), std=0.01))
 
     @torch.jit.export
-    def get_value(self, x: Tensor):
+    def get_bsv(self, x: Tensor):
         """Return various bootstrap values"""
         q = self.critic(x)
         option_probs = torch.softmax(self.option_actor(x), -1)
@@ -245,20 +252,26 @@ class Agent(nn.Module):
         # Choose action from selected option(s)
         all_action_mean = self.actor_mean(x).reshape(-1, self.num_options, self.num_actions)
         all_action_logstd = self.actor_logstd.expand_as(all_action_mean)
+        all_action_std = all_action_logstd.exp()
         action_mean = batched_index(option, all_action_mean)
-        action_logstd = batched_index(option, all_action_logstd)
-        action_std = action_logstd.exp()
+        action_std = batched_index(option, all_action_std)
         action = torch.normal(action_mean, action_std)
-        action_logprob = (
-            -((action - action_mean) ** 2) / (2 * action_std**2)
-            - action_logstd  # from torch.Normal
+        all_action_logprob = (
+            -((action.unsqueeze(-2) - all_action_mean) ** 2) / (2 * all_action_std**2)
+            - all_action_logstd  # from torch.Normal
             - math.log(math.sqrt(2 * math.pi))
         ).sum(-1)
         # Get q value of each option, policy-weighted average V, and utility U
         q = self.critic(x)
         v = (q * option_probs).sum(-1)
         u = (1.0 - betas) * q + betas * v.unsqueeze(-1)
-        return StepOutput(term, option, action, beta, option_logprob, action_logprob, q, v, u)
+        # Termination-weighted probability of any option given option on arrival
+        # Probability we didn't terminate and previous option is new option + probability we terminate * probability of each
+        prev_term_prob = torch.where(is_done > 0, 1.0, beta).unsqueeze(-1)  # Guaranteed termination on episode start
+        prob_curr_opt = (1.0 - prev_term_prob) * F.one_hot(option_on_arrival, self.num_options) + prev_term_prob * option_probs
+        # Further weight by eta. If eta is 0, 1 for sampled option, 0 all else. Otherwise, weight
+        prob_curr_opt = (1.0 - self.eta) * F.one_hot(option, self.num_options) + self.eta * prob_curr_opt
+        return StepOutput(term, option, action, betas, option_logprob, all_action_logprob, prob_curr_opt, q, v, u)
 
     @torch.jit.export
     def unroll(self, xs: Tensor, options_on_arrival: Tensor, options: Tensor, actions: Tensor):
@@ -272,18 +285,16 @@ class Agent(nn.Module):
         # Probability of selecting chosen action in each step
         all_action_mean = self.actor_mean(xs).reshape(-1, self.num_options, self.num_actions)
         all_action_logstd = self.actor_logstd.expand_as(all_action_mean)
-        action_mean = batched_index(options, all_action_mean)
-        action_logstd = batched_index(options, all_action_logstd)
-        action_std = action_logstd.exp()
-        action_logprob = (
-            -((actions - action_mean) ** 2) / (2 * action_std**2)
-            - action_logstd  # from torch.Normal
+        all_action_std = all_action_logstd.exp()
+        all_action_logprob = (
+            -((actions.unsqueeze(-2) - all_action_mean) ** 2) / (2 * all_action_std**2)
+            - all_action_logstd  # from torch.Normal
             - math.log(math.sqrt(2 * math.pi))
         ).sum(-1)
-        action_entropy = (0.5 + 0.5 * math.log(2 * math.pi) + action_logstd).sum(-1)
+        all_action_entropy = (0.5 + 0.5 * math.log(2 * math.pi) + all_action_logstd).sum(-1)
         # Value of selected option
-        q_sw = batched_index(options, self.critic(xs))
-        return (prev_termprobs, option_logprobs, option_entropy), (action_logprob, action_entropy), q_sw
+        qs = self.critic(xs)
+        return (prev_termprobs, option_logprobs, option_entropy), (all_action_logprob, all_action_entropy), qs
 
 
 @torch.jit.script
@@ -303,6 +314,12 @@ def gae(v_tm1_t: Tensor, r_t: Tensor, gamma_t: Tensor, lambda_: float = 1.0) -> 
 def normalize(x: Tensor) -> Tensor:
     """Scripted per-epoch normalization"""
     return (x - x.mean()) / (x.std() + 1e-8)
+
+
+@torch.jit.script
+def multi_normalize(x: Tensor) -> Tensor:
+    """Scripted per-epoch, per-option"""
+    return (x - x.mean(0, keepdim=True)) / (x.std(0, keepdim=True) + 1e-8)
 
 
 if __name__ == "__main__":
@@ -356,9 +373,10 @@ if __name__ == "__main__":
     options_buffer = torch.zeros((args.num_steps + 1, args.num_envs), dtype=torch.int64, device=device)
     options = options_buffer[1:]
     options_on_arrival = options_buffer[:-1]
-    betas_on_arrival = torch.zeros((args.num_steps, args.num_envs), device=device)
-    logprobs = torch.zeros((args.num_steps, args.num_envs), device=device)
+    betas = torch.zeros((args.num_steps, args.num_envs, args.num_options), device=device)
+    logprobs = torch.zeros((args.num_steps, args.num_envs, args.num_options), device=device)
     option_logprobs = torch.zeros((args.num_steps, args.num_envs), device=device)
+    prob_current_options = torch.zeros((args.num_steps, args.num_envs, args.num_options), device=device)
     rewards = torch.zeros((args.num_steps, args.num_envs), device=device)
     dones = torch.zeros((args.num_steps + 1, args.num_envs), device=device)
     qvalues = torch.zeros((args.num_steps + 1, args.num_envs, args.num_options), device=device)
@@ -393,9 +411,10 @@ if __name__ == "__main__":
                 terminations[step] = oc_output.termination
                 next_option = options[step] = oc_output.option
                 actions[step] = action = oc_output.action
-                betas_on_arrival[step] = oc_output.betas
+                betas[step] = oc_output.betas
                 option_logprobs[step] = oc_output.option_logprobs
                 logprobs[step] = oc_output.logprobs
+                prob_current_options[step] = oc_output.prob_curr_opt
                 qvalues[step], vvalues[step], uvalues[step] = oc_output[-3:]
 
             # TRY NOT TO MODIFY: execute the game and log data.
@@ -415,13 +434,14 @@ if __name__ == "__main__":
             if args.delib_cost_in_reward:
                 rewards -= args.delib_cost * (terminations * (1.0 - dones[:-1]))
             qvalues[-1], vvalues[-1], uvalues[-1] = agent.get_bsv(next_obs)
-            # bootstrap action advantage with U(s', w). Option advantage is just V(s')
-            q_tm1_t = torch.cat(
-                (batched_index(options, qvalues[:-1]), batched_index(options[-1], uvalues[-1]).unsqueeze(0)), 0
-            )
             dones[-1] = next_done
             gamma_t = 1.0 - dones[1:]
-            advantages, returns = gae(q_tm1_t, rewards, gamma_t, args.gae_lambda)
+            # Likelihood of sampled action under each option (applied to immediate reward)
+            action_is_ratios = (batched_index(options, logprobs).unsqueeze(-1) - logprobs).exp()
+            # U(s', w) already accounts for termination and policy-weighted likelihood of w'
+            advantages, returns = gae(
+                uvalues, rewards.unsqueeze(-1) * action_is_ratios, gamma_t.unsqueeze(-1), args.gae_lambda
+            )
             option_advantages = gae(vvalues, rewards, gamma_t, args.gae_lambda)[0]
             # Mask termination advantage where termination was forced by episode reset
             q_on_arrival = batched_index(options_on_arrival, qvalues[:-1])
@@ -429,16 +449,17 @@ if __name__ == "__main__":
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
-        b_logprobs = logprobs.reshape(-1)
+        b_logprobs = logprobs.reshape(-1, args.num_options)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
-        b_advantages = advantages.reshape(-1)
-        b_returns = returns.reshape(-1)
-        b_qvalues = q_tm1_t[:-1].reshape(-1)  # q values of selected options
+        b_advantages = advantages.reshape(-1, args.num_options)
+        b_returns = returns.reshape(-1, args.num_options)
+        b_qvalues = qvalues[:-1].reshape(-1, args.num_options)  # q values of selected options
         b_option_advantages = option_advantages.reshape(-1)
         b_termination_advantages = termination_advantages.reshape(-1)
         b_option_logprobs = option_logprobs.reshape(-1)
         b_options = options.reshape(-1)
         b_options_on_arrival = options_on_arrival.reshape(-1)
+        b_prob_curr_opt = prob_current_options.reshape(-1, args.num_options)
 
         # Optimizing the policy and value network
         b_inds = np.arange(args.batch_size)
@@ -466,13 +487,13 @@ if __name__ == "__main__":
                 mb_advantages = b_advantages[mb_inds]
                 mb_option_advantages = b_option_advantages[mb_inds]
                 if args.norm_adv:
-                    mb_advantages = normalize(mb_advantages)
+                    mb_advantages = multi_normalize(mb_advantages)
                     mb_option_advantages = normalize(mb_option_advantages)
 
                 # Intra-option policy loss
                 pg_loss1 = -mb_advantages * ratio
                 pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
-                pg_loss = torch.maximum(pg_loss1, pg_loss2).mean()
+                pg_loss = (torch.maximum(pg_loss1, pg_loss2) * b_prob_curr_opt[mb_inds]).sum(-1).mean()
 
                 # Inter-option policy loss
                 pg_loss1 = -mb_option_advantages * option_ratio
@@ -483,10 +504,10 @@ if __name__ == "__main__":
                 termination_loss = (newbetas * b_termination_advantages[mb_inds]).mean()
 
                 # Value loss
-                v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
+                v_loss = 0.5 * (b_prob_curr_opt[mb_inds] * (newvalue - b_returns[mb_inds]) ** 2).sum(-1).mean()
 
                 # Both entropy losses
-                entropy_loss = -entropy.mean()
+                entropy_loss = (-entropy * b_prob_curr_opt[mb_inds]).sum(-1).mean()
                 option_entropy_loss = -option_entropy.mean()
                 loss = (
                     pg_loss

@@ -1,6 +1,22 @@
 # Implementation of Advantage Option Critic (A2OC in paper, but no asynchrony)
 # Reference: https://github.com/jeanharb/a2oc_delib
 # Paper: https://arxiv.org/pdf/1709.04571.pdf
+# TODO: LOBOTOMIZE
+"""More notes
+
+Gradient clipping norm is 40...but that's for varied-length summed losses (instead of mean). It's also "global" (not norm)
+They use variable length asynchronous rollouts (5-30, whenever option terminates or episode ends)
+
+- end_ep = done OR (death and args.death_ends_episode)
+  - envpool already sets done signal by default when death (without resetting whole thing), so that's w/e
+- RMSProp, LR=0.0007 with linear annealing to 0
+- Discounted return, bootstrapped with V (if terminates in next_obs) or Q
+- Deliberation cost subtracted directly from reward (on switch).
+- Deliberation cost and termination regularizer combined and added to termination advantage
+- Reward clipped to <-1, 0, 1>. envpool does this, saves raw reward in info
+
+"""
+
 import argparse
 import os
 import random
@@ -64,17 +80,17 @@ def parse_args():
                         help="epsilon for epilon-greedy option selection")
     parser.add_argument("--ent-coef", type=float, default=0.01,
                         help="coefficient of the entropy")
-    parser.add_argument("--delib-cost", type=float, default=0.02,
+    parser.add_argument("--delib-cost", type=float, default=0.,
                         help="cost for terminating an option. subtracted from reward, added to termination advantage")
     parser.add_argument("--delib-cost-in-reward", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-                        help="if true, subtract cost from immediate reward (in addition to adding to termination advantage")
+        help="if true, subtract cost from immediate reward (in addition to adding to termination advantage")
     parser.add_argument("--vf-coef", type=float, default=1.,
                         help="coefficient of the value function")
     parser.add_argument("--term-coef", type=float, default=1.,
                         help="coefficient of the value function")
     parser.add_argument("--num-options", type=int, default=8,
                         help="the number of options available")
-    parser.add_argument("--max-grad-norm", type=float, default=1.,
+    parser.add_argument("--max-grad-norm", type=float, default=0.5,
                         help="the maximum norm for the gradient clipping")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
@@ -88,6 +104,13 @@ class RecordEpisodeStatistics(gym.Wrapper):
         self.num_envs = getattr(env, "num_envs", 1)
         self.episode_returns = None
         self.episode_lengths = None
+        # get if the env has lives
+        self.has_lives = False
+        env.reset()
+        info = env.step(np.zeros(self.num_envs, dtype=int))[-1]
+        if info["lives"].sum() > 0:
+            self.has_lives = True
+            print("env has lives")
 
     def reset(self, **kwargs):
         observations = super().reset(**kwargs)
@@ -104,8 +127,13 @@ class RecordEpisodeStatistics(gym.Wrapper):
         self.episode_lengths += 1
         self.returned_episode_returns[:] = self.episode_returns
         self.returned_episode_lengths[:] = self.episode_lengths
-        self.episode_returns *= 1 - infos["terminated"]
-        self.episode_lengths *= 1 - infos["terminated"]
+        all_lives_exhausted = infos["lives"] == 0
+        if self.has_lives:
+            self.episode_returns *= 1 - all_lives_exhausted
+            self.episode_lengths *= 1 - all_lives_exhausted
+        else:
+            self.episode_returns *= 1 - dones
+            self.episode_lengths *= 1 - dones
         infos["r"] = self.returned_episode_returns
         infos["l"] = self.returned_episode_lengths
         return (
@@ -161,15 +189,10 @@ class Agent(nn.Module):
         """Flattened output of CNN"""
         return self.network(x / 255.0)
 
-    @torch.jit.export
-    def get_bsv(self, next_x: Tensor, option_on_arrival: Tensor) -> Tensor:
-        """Bootstrap value. U(s', w) = beta(s', w)V(s') + (1 - beta(s', w))Q(s', w)"""
-        next_x = self.features(next_x)
-        qs = self.critic(next_x)
-        v = (1.0 - self.option_epsilon) * qs.max(-1)[0] + self.option_epsilon * qs.mean(-1)
-        beta = torch.sigmoid(batched_index(option_on_arrival, self.termination(next_x)))
-        u = (1.0 - beta) * batched_index(option_on_arrival, qs) + beta * v
-        return u
+    def get_v(self, x: Tensor) -> Tensor:
+        """Average option value"""
+        qs = self.critic(self.features(x))
+        return (1.0 - self.option_epsilon) * qs.max(-1)[0] + self.option_epsilon * self.option_epsilon
 
     def sample_option(
         self,
@@ -256,7 +279,7 @@ if __name__ == "__main__":
             sync_tensorboard=True,
             config=vars(args),
             name=run_name,
-            monitor_gym=False,
+            monitor_gym=True,
             save_code=True,
         )
     writer = SummaryWriter(f"runs/{run_name}")
@@ -289,8 +312,7 @@ if __name__ == "__main__":
     assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent = Agent(envs, args).to(device)
-    agent = torch.jit.script(agent)
-    optimizer = optim.Adam(agent.parameters(), args.learning_rate, eps=1e-5)
+    optimizer = optim.RMSprop(agent.parameters(), args.learning_rate, alpha=0.99, eps=0.1)
 
     # ALGO Logic: Storage setup
     obs = torch.zeros(
@@ -363,20 +385,13 @@ if __name__ == "__main__":
 
         # bootstrap value if not done
         with torch.no_grad():
-            dones[-1] = next_done
             if args.delib_cost_in_reward:  # Switching cost if not forced to terminate
                 rewards -= args.delib_cost * (terminations * (1.0 - dones[:-1]))
-            q_tm1_t = torch.cat(
-                (
-                    batched_index(options, qvalues),
-                    agent.get_bsv(next_obs, next_option).unsqueeze(0),
-                ),
-                0,
-            )
+            q_tm1_t = torch.cat((batched_index(options, qvalues), agent.get_v(next_obs).unsqueeze(0)), 0)
             # Lambda=1 simplifies to discounted return
-            advantages, returns = gae(q_tm1_t, rewards, (1.0 - dones[1:]) * args.gamma, 1.0)
+            advantage, returns = gae(q_tm1_t, rewards, (1.0 - dones[1:]) * args.gamma, 1.0)
             if args.norm_adv:
-                advantages = normalize(advantages)
+                advantage = normalize(advantage)
             termination_advantage = batched_index(options_on_arrival, qvalues) - vvalues + args.delib_cost
 
         # unclipped a2oc loss
@@ -386,12 +401,12 @@ if __name__ == "__main__":
             options.reshape(-1),
             actions.reshape((-1,) + envs.single_action_space.shape),
         )
-        pg_loss = (-lp * advantages.reshape(-1)).mean()
+        pg_loss = (-lp * advantage.reshape(-1)).mean()
         entropy_loss = -ent.mean()
         termination_loss = (betas * termination_advantage.reshape(-1)).mean()
         v_loss = F.mse_loss(new_q_sw, returns.reshape(-1))
 
-        loss = pg_loss + args.ent_coef * entropy_loss + args.vf_coef * v_loss + args.term_coef * termination_loss
+        loss = pg_loss + args.ent_coef * entropy_loss + v_loss * args.vf_coef + termination_loss * args.term_coef
 
         optimizer.zero_grad(True)
         loss.backward()
