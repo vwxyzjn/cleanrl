@@ -1,7 +1,6 @@
 # Multi-updates option critic (MOC)
 # Paper: https://arxiv.org/pdf/2112.03097.pdf
 # Reference repo: https://github.com/mklissa/MOC
-# TODO: Everything
 
 import argparse
 import math

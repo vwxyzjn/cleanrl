@@ -418,7 +418,7 @@ if __name__ == "__main__":
                 betas_on_arrival[step] = oc_output.betas
                 option_logprobs[step] = oc_output.option_logprobs
                 logprobs[step] = oc_output.logprobs
-                qvalues[step], vvalues[step], uvalues[step] = oc_output[-3:]
+                qvalues[step], vvalues[step] = oc_output[-2:]
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, done, truncated, info = envs.step(action.cpu().numpy())

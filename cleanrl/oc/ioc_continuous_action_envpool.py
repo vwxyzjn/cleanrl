@@ -49,9 +49,9 @@ def parse_args():
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=3e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=1,
+    parser.add_argument("--num-envs", type=int, default=16,
         help="the number of parallel game environments")
-    parser.add_argument("--num-steps", type=int, default=2048,
+    parser.add_argument("--num-steps", type=int, default=128,
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
@@ -205,6 +205,19 @@ def body(num_obs: int) -> nn.Sequential:
     return nn.Sequential(layer_init(nn.Linear(num_obs, 64)), Tanh(), layer_init(nn.Linear(64, 64)), Tanh())
 
 
+def modulate_policy_with_interest(pi_w: Tensor, interest: Tensor, interest_threshold: float = 0.0) -> Tensor:
+    """Apply sigmoid interest function to policy over options, return valid categorical distribution"""
+    if interest_threshold > 0:
+        with torch.no_grad():
+            mask = interest > interest_threshold  # mask out interest less than threshold
+            mask[~mask.all(-1)] = True  # unmask if we masked all
+        interest = interest * mask.float()  # apply mask to interest
+    pi_I = pi_w * interest  # multiply by interest in each option
+    pi_I = pi_I / pi_I.sum(-1, keepdim=True)  # normalize back into a probability distribution
+    pi_I = torch.clamp(pi_I, 0.0, 1.0)  # prevent gradient explosions
+    return pi_I
+
+
 class Agent(nn.Module):
     num_actions: Final[int]
     num_options: Final[int]
@@ -232,21 +245,12 @@ class Agent(nn.Module):
         """Return various bootstrap values"""
         q = self.critic(x)
         option_probs = torch.softmax(self.option_actor(x), -1)
-        v = (q * option_probs).sum(-1)
+        I = torch.sigmoid(self.interest(x))
+        pi_I = modulate_policy_with_interest(option_probs, I, self.interest_threshold)
+        v = (q * pi_I).sum(-1)
         betas = torch.sigmoid(self.termination(x))
         u = (1.0 - betas) * q + betas * v.unsqueeze(-1)
         return q, v, u
-
-    def interest_modulated_option_policy(self, x: Tensor) -> Tuple[Tensor, Tensor]:
-        I = torch.sigmoid(self.interest(x))
-        pi_w = torch.softmax(self.option_actor(x), -1)
-        with torch.no_grad():
-            mask = I > self.interest_threshold
-            mask[~mask.any(-1)] = True  # If we masked out all options, remove mask
-            masked_I = I * mask
-        pi_wi = pi_w * masked_I  # modulate
-        pi_wi /= pi_wi.sum(-1, keepdim=True)  # normalize
-        return pi_wi, I
 
     @torch.jit.export
     def step(self, x: Tensor, option_on_arrival: Tensor, is_done: Tensor) -> StepOutput:
@@ -256,7 +260,9 @@ class Agent(nn.Module):
         beta = batched_index(option_on_arrival, betas)
         term = torch.bernoulli(beta)
         # Choose new option where terminated (or where new episode)
-        probs_I = self.interest_modulated_option_policy(x)[0]
+        option_probs = torch.softmax(self.option_actor(x), -1)
+        I = torch.sigmoid(self.interest(x))
+        probs_I = modulate_policy_with_interest(option_probs, I, self.interest_threshold)
         option_logprobs = torch.log(probs_I)
         option = torch.where((term + is_done) > 0, torch.multinomial(probs_I, 1).squeeze(-1), option_on_arrival)
         option_logprob = option_logprobs.gather(-1, option.unsqueeze(-1)).squeeze(-1)
@@ -284,10 +290,12 @@ class Agent(nn.Module):
         # Probability of terminating previous option in each step
         prev_termprobs = torch.sigmoid(batched_index(options_on_arrival, self.termination(xs)))
         # Probability of selecting chosen option in each step
-        option_interest = torch.sigmoid(self.interest(xs))
-        mask = option_interest > self.interest_threshold
-        mask[~mask.any(-1)] = True  # If we masked out all options, remove mask
-        all_option_logprobs = torch.log_softmax(self.option_actor(xs), -1)
+        option_probs = torch.softmax(self.option_actor(xs), -1)
+        I = torch.sigmoid(self.interest(xs))
+        # pi_I_wgrad = modulate_policy_with_interest(option_probs, I.detach(), self.interest_threshold)  # Gradient through option policy
+        # pi_I_igrad = modulate_policy_with_interest(option_probs.detach(), I)  # Gradient through interest function
+        pi_I = modulate_policy_with_interest(option_probs, I, self.interest_threshold)  # Gradient through both
+        all_option_logprobs = torch.log(pi_I)
         option_logprobs = all_option_logprobs.gather(-1, options.unsqueeze(-1)).squeeze(-1)
         option_entropy = (-all_option_logprobs * all_option_logprobs.exp()).sum(-1)
         # Probability of selecting chosen action in each step

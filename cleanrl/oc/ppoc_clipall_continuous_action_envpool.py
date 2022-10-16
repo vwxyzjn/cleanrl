@@ -1,4 +1,4 @@
-# Proximal Policy Option Critic (PPOC) corrected implementation
+# Proximal Policy Option Critic (PPOC) corrected implementation, with clipping for termination policy
 # Paper: https://arxiv.org/pdf/1712.00004.pdf
 # Reference repo: https://github.com/mklissa/PPOC
 
@@ -73,7 +73,7 @@ def parse_args():
         help="coefficient of the option entropy")
     parser.add_argument("--vf-coef", type=float, default=0.5,
         help="coefficient of the value function")
-    parser.add_argument("--term-coef", type=float, default=1. / 600,
+    parser.add_argument("--term-coef", type=float, default=1.,
         help="coefficient of the termination loss")
     parser.add_argument("--max-grad-norm", type=float, default=1.,
         help="the maximum norm for the gradient clipping")
@@ -439,6 +439,7 @@ if __name__ == "__main__":
         b_option_logprobs = option_logprobs.reshape(-1)
         b_options = options.reshape(-1)
         b_options_on_arrival = options_on_arrival.reshape(-1)
+        b_betas_on_arrival = betas_on_arrival.reshape(-1)
 
         # Optimizing the policy and value network
         b_inds = np.arange(args.batch_size)
@@ -479,8 +480,14 @@ if __name__ == "__main__":
                 pg_loss2 = -mb_option_advantages * torch.clamp(option_ratio, 1 - args.clip_coef, 1 + args.clip_coef)
                 option_pg_loss = (torch.maximum(pg_loss1, pg_loss2) * newbetas.detach()).mean()
 
-                # Termination loss
-                termination_loss = (newbetas * b_termination_advantages[mb_inds]).mean()
+                # Clipped termination loss
+                # Advantage is for NOT terminating (continuing previous option) as opposed to terminating (w/prob beta)
+                # So flip the sign and switch max for min
+                term_ratio = newbetas / b_betas_on_arrival[mb_inds]
+                pg_loss1 = b_termination_advantages[mb_inds] * term_ratio
+                pg_loss2 = b_termination_advantages[mb_inds] * torch.clamp(term_ratio, 1 - args.clip_coef, 1 + args.clip_coef)
+                termination_loss = torch.minimum(pg_loss1, pg_loss2).mean()
+                # termination_loss = (newbetas * b_termination_advantages[mb_inds]).mean()
 
                 # Value loss
                 v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
