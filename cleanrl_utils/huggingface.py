@@ -19,11 +19,7 @@ def upload_to_hub(
     video_folder_path: str = "",
 ):
     # Step 1: lazy import and create / read a huggingface repo
-    from huggingface_hub import (
-        CommitOperationAdd,
-        CommitOperationDelete,
-        HfApi,
-    )
+    from huggingface_hub import CommitOperationAdd, CommitOperationDelete, HfApi
     from huggingface_hub.repocard import metadata_eval_result, metadata_save
 
     api = HfApi()
