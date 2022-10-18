@@ -10,7 +10,7 @@ HUGGINGFACE_VIDEO_PREVIEW_FILE_NAME = "replay.mp4"
 HUGGINGFACE_README_FILE_NAME = "README.md"
 
 
-def upload_to_hub(
+def push_to_hub(
     args: argparse.Namespace,
     episodic_returns: List,
     repo_id: str,
