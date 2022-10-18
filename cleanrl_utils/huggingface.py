@@ -7,6 +7,7 @@ from typing import List
 import numpy as np
 
 HUGGINGFACE_VIDEO_PREVIEW_FILE_NAME = "replay.mp4"
+HUGGINGFACE_README_FILE_NAME = "README.md"
 
 
 def upload_to_hub(
@@ -18,7 +19,11 @@ def upload_to_hub(
     video_folder_path: str = "",
 ):
     # Step 1: lazy import and create / read a huggingface repo
-    from huggingface_hub import HfApi, upload_folder
+    from huggingface_hub import (
+        CommitOperationAdd,
+        CommitOperationDelete,
+        HfApi,
+    )
     from huggingface_hub.repocard import metadata_eval_result, metadata_save
 
     api = HfApi()
@@ -32,18 +37,17 @@ def upload_to_hub(
 
     # Step 2: clean up data
     # delete previous tfevents and mp4 files
+    operations = []
     for file in api.list_repo_files(repo_id=repo_id):
         if ".tfevents" in file or ".mp4" in file:
-            api.delete_file(file, repo_id=repo_id)
-    # fetch mp4 files
-    if video_folder_path:
-        video_files = [str(item) for item in Path(video_folder_path).glob("*.mp4")]
-        print(video_files)
-        # sort by the number in the file name
-        video_files = sorted(video_files, key=lambda x: int("".join(filter(str.isdigit, os.path.splitext(x)[0]))))
-        for file in video_files:
-            api.upload_file(path_or_fileobj=file, path_in_repo=file, repo_id=repo_id)
-        api.upload_file(path_or_fileobj=file, path_in_repo=HUGGINGFACE_VIDEO_PREVIEW_FILE_NAME, repo_id=repo_id)
+            operations += [CommitOperationDelete(path_in_repo=file)]
+
+    api.create_commit(
+        repo_id=repo_id,
+        operations=operations,
+        commit_message="clean up previous tfevents and mp4 files",
+    )
+    operations = []
 
     # Step 3: Generate the model card
     model_card = f"""
@@ -85,10 +89,23 @@ found [here](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/{args.exp_na
     with open(readme_path, "w", encoding="utf-8") as f:
         f.write(readme)
     metadata_save(readme_path, metadata)
-    repo_url = upload_folder(
+
+    # fetch mp4 files
+    if video_folder_path:
+        video_files = [str(item) for item in Path(video_folder_path).glob("*.mp4")]
+        # sort by the number in the file name
+        video_files = sorted(video_files, key=lambda x: int("".join(filter(str.isdigit, os.path.splitext(x)[0]))))
+        for file in video_files:
+            operations += [CommitOperationAdd(path_or_fileobj=file, path_in_repo=file)]
+        operations += [CommitOperationAdd(path_or_fileobj=file, path_in_repo=HUGGINGFACE_VIDEO_PREVIEW_FILE_NAME)]
+
+    # fetch folder files
+    for item in [str(item) for item in Path(folder_path).glob("*")]:
+        operations += [CommitOperationAdd(path_or_fileobj=item, path_in_repo=os.path.relpath(item, folder_path))]
+
+    api.create_commit(
         repo_id=repo_id,
-        folder_path=folder_path,
-        path_in_repo="",
+        operations=operations,
         commit_message="pushing model",
     )
     return repo_url
