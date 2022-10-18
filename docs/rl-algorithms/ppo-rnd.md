@@ -22,6 +22,16 @@ Our single-file implementations of RND:
 
     Note that `ppo_rnd_envpool.py` does not work in Windows :fontawesome-brands-windows: and MacOs :fontawesome-brands-apple:. See envpool's built wheels here: [https://pypi.org/project/envpool/#files](https://pypi.org/project/envpool/#files)
 
+???+ bug
+
+    EnvPool's vectorized environment **does not behave the same** as gym's vectorized environment, which causes a compatibility bug in our PPO implementation. When an action $a$ results in an episode termination or truncation, the environment generates $s_{last}$ as the terminated or truncated state; we then use $s_{new}$ to denote the initial state of the new episodes. Here is how the bahviors differ:
+
+    * Under the vectorized environment of `envpool<=0.6.4`, the `obs` in `obs, reward, done, info = env.step(action)` is the truncated state $s_{last}$
+    * Under the vectorized environment of `gym==0.23.1`, the `obs` in `obs, reward, done, info = env.step(action)` is the initial state $s_{new}$.
+
+    This causes the $s_{last}$ to be off by one. 
+    See [:material-github: sail-sg/envpool#194](https://github.com/sail-sg/envpool/issues/194) for more detail. However, it does not seem to impact performance, so we take a note here and await for the upstream fix.
+
 
 ## Implemented Variants
 
@@ -38,7 +48,7 @@ Below are our single-file implementations of TD3:
 ### Usage
 
 ```bash
-poetry install -E envpool
+poetry install --with envpool
 python cleanrl/ppo_rnd_envpool.py --help
 python cleanrl/ppo_rnd_envpool.py --env-id MontezumaRevenge-v5
 ```
