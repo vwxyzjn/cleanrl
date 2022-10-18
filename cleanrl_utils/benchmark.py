@@ -42,4 +42,4 @@ if __name__ == "__main__":
         executor = ThreadPoolExecutor(max_workers=args.workers, thread_name_prefix="cleanrl-benchmark-worker-")
         for command in commands:
             executor.submit(run_experiment, command)
-        executor.shutdown(wait=True, cancel_futures=False)
+        executor.shutdown(wait=True)
