@@ -12,6 +12,8 @@ def parse_args():
         help="the command to run")
     parser.add_argument("--num-seeds", type=int, default=3,
         help="the number of random seeds")
+    parser.add_argument("--start-seed", type=int, default=1,
+        help="the number of random seeds")
     parser.add_argument('--workers', type=int, default=0,
         help='the number of eval workers to run benchmark experimenets (skips evaluation when set to 0)')
     args = parser.parse_args()
@@ -32,7 +34,7 @@ if __name__ == "__main__":
     commands = []
     for seed in range(1, args.num_seeds + 1):
         for env_id in args.env_ids:
-            commands += [" ".join([args.command, "--env-id", env_id, "--seed", str(seed)])]
+            commands += [" ".join([args.command, "--env-id", env_id, "--seed", str(args.start_seed + seed)])]
 
     print(commands)
 
