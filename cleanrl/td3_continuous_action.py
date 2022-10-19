@@ -206,11 +206,11 @@ if __name__ == "__main__":
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
             with torch.no_grad():
-                clipped_noise = (torch.randn_like(torch.Tensor(actions[0])) * args.policy_noise).clamp(
+                clipped_noise = (torch.randn_like(data.actions, device=device) * args.policy_noise).clamp(
                     -args.noise_clip, args.noise_clip
-                )
+                ) * target_actor.action_scale
 
-                next_state_actions = (target_actor(data.next_observations) + clipped_noise.to(device)).clamp(
+                next_state_actions = (target_actor(data.next_observations) + clipped_noise).clamp(
                     envs.single_action_space.low[0], envs.single_action_space.high[0]
                 )
                 qf1_next_target = qf1_target(data.next_observations, next_state_actions)
