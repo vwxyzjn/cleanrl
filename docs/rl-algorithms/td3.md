@@ -123,12 +123,12 @@ Below are the average episodic returns for [`td3_continuous_action.py`](https://
 
 | Environment      | [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) | [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py) (Fujimoto et al., 2018, Table 1)[^2]  |
 | ----------- | ----------- | ----------- | 
-| HalfCheetah      | 9018.31 ± 1078.31      |9636.95 ± 859.065  |
-| Walker2d   | 4246.07 ± 1210.84     |  4682.82 ± 539.64 | 
-| Hopper   | 3391.78 ± 232.21        |  3564.07 ± 114.74 | 
-| Humanoid |  4822.64 ± 321.85      |  not available | 
-| Pusher |  -42.24 ± 6.74      |  not available | 
-| InvertedPendulum |    964.59 ± 43.91    | 1000.00 ± 0.00  | 
+| HalfCheetah      | 9449.94 ± 1586.49      |9636.95 ± 859.065  |
+| Walker2d   | 3851.55 ± 335.29     |  4682.82 ± 539.64 | 
+| Hopper   | 3162.21 ± 261.08        |  3564.07 ± 114.74 | 
+| Humanoid |  5011.05 ± 254.89      |  not available | 
+| Pusher |  -37.49 ± 10.22      |  not available | 
+| InvertedPendulum |    996.81 ± 4.50    | 1000.00 ± 0.00  | 
 
 
 
