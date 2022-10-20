@@ -220,7 +220,7 @@ The [dqn_atari_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dq
 
 ```bash
 poetry install --with atari,jax
-poetry run pip install --upgrade "jax[cuda]==0.3.14" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 python cleanrl/dqn_atari_jax.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/dqn_atari_jax.py --env-id PongNoFrameskip-v4
 ```

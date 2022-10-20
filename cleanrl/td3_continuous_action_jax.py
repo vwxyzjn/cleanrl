@@ -199,10 +199,13 @@ if __name__ == "__main__":
         # TODO Maybe pre-generate a lot of random keys
         # also check https://jax.readthedocs.io/en/latest/jax.random.html
         key, noise_key = jax.random.split(key, 2)
-        clipped_noise = jnp.clip(
-            (jax.random.normal(noise_key, actions[0].shape) * args.policy_noise),
-            -args.noise_clip,
-            args.noise_clip,
+        clipped_noise = (
+            jnp.clip(
+                (jax.random.normal(noise_key, actions.shape) * args.policy_noise),
+                -args.noise_clip,
+                args.noise_clip,
+            )
+            * actor.action_scale
         )
         next_state_actions = jnp.clip(
             actor.apply(actor_state.target_params, next_observations) + clipped_noise,
