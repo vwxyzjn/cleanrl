@@ -229,7 +229,7 @@ if __name__ == "__main__":
             actions = np.array(
                 [
                     (
-                        jax.device_get(actions)[0] + np.random.normal(action_bias, action_scale * args.exploration_noise)[0]
+                        jax.device_get(actions)[0] + np.random.normal(0, action_scale * args.exploration_noise)[0]
                     ).clip(envs.single_action_space.low, envs.single_action_space.high)
                 ]
             )
