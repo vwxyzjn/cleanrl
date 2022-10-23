@@ -418,7 +418,7 @@ if __name__ == "__main__":
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         for info in infos:
             if "episode" in info.keys():
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                print(f"global_step={global_step + 1}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 break
@@ -482,7 +482,8 @@ if __name__ == "__main__":
                 writer.add_scalar("losses/qf_loss", qf_loss_value.item(), global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss_value.item(), global_step)
                 writer.add_scalar("losses/alpha", ent_coef_value.item(), global_step)
-                print("SPS:", int(global_step / (time.time() - start_time)))
+                if tqdm is None:
+                    print("SPS:", int(global_step / (time.time() - start_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
                 if args.autotune:
                     writer.add_scalar("losses/alpha_loss", ent_coef_loss.item(), global_step)
