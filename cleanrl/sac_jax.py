@@ -6,7 +6,7 @@ import random
 import time
 from distutils.util import strtobool
 from functools import partial
-from typing import Any, NamedTuple, Optional, Sequence, Union
+from typing import Any, NamedTuple, Optional, Sequence
 
 import flax
 import flax.linen as nn
