@@ -105,10 +105,6 @@ class Actor(nn.Module):
     log_std_min: float = -20
     log_std_max: float = 2
 
-    def get_std(self):
-        # Make it work with gSDE
-        return jnp.array(0.0)
-
     @nn.compact
     def __call__(self, x: jnp.ndarray) -> tfd.Distribution:
         x = nn.Dense(self.n_units)(x)
@@ -303,7 +299,7 @@ if __name__ == "__main__":
         )
 
     else:
-        raise NotImplementedError()
+        raise NotImplementedError("Constant entropy coefficient (alpha) is not implemented yet")
         # ent_coef = args.alpha
 
     # Define update functions here to limit the need for static argname
