@@ -49,8 +49,6 @@ def parse_args():
         help="target smoothing coefficient (default: 0.005)")
     parser.add_argument("--batch-size", type=int, default=256,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--exploration-noise", type=float, default=0.1,
-        help="the scale of exploration noise")
     parser.add_argument("--learning-starts", type=int, default=5e3,
         help="timestep to start learning")
     parser.add_argument("--policy-lr", type=float, default=3e-4,
@@ -61,8 +59,6 @@ def parse_args():
         help="the frequency of training policy (delayed)")
     parser.add_argument("--target-network-frequency", type=int, default=1, # Denis Yarats' implementation delays this by 2.
         help="the frequency of updates for the target nerworks")
-    parser.add_argument("--noise-clip", type=float, default=0.5,
-        help="noise clip parameter of the Target Policy Smoothing Regularization")
     parser.add_argument("--alpha", type=float, default=0.2,
             help="Entropy regularization coefficient.")
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=True, nargs="?", const=True,
