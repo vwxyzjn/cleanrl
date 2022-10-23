@@ -22,6 +22,12 @@ from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.vec_env import DummyVecEnv
 from torch.utils.tensorboard import SummaryWriter
 
+# Add progress bar if available
+try:
+    from tqdm.rich import tqdm
+except ImportError:
+    tqdm = None
+
 tfp = tensorflow_probability.substrates.jax
 tfd = tfp.distributions
 
@@ -286,9 +292,6 @@ if __name__ == "__main__":
         tx=optax.adam(learning_rate=args.q_lr),
     )
 
-    actor.apply = jax.jit(actor.apply)
-    qf.apply = jax.jit(qf.apply)
-
     # Automatic entropy tuning
     if args.autotune:
         ent_coef = EntropyCoef(ent_coef_init=1.0)
@@ -314,7 +317,7 @@ if __name__ == "__main__":
         next_observations: np.ndarray,
         rewards: np.ndarray,
         dones: np.ndarray,
-        key,
+        key: jax.random.KeyArray,
     ):
         key, noise_key = jax.random.split(key, 2)
         # sample action from the actor
@@ -352,7 +355,7 @@ if __name__ == "__main__":
         qf_state: RLTrainState,
         ent_coef_state: TrainState,
         observations: np.ndarray,
-        key,
+        key: jax.random.KeyArray,
     ):
         key, noise_key = jax.random.split(key, 2)
 
@@ -398,7 +401,10 @@ if __name__ == "__main__":
 
     # TRY NOT TO MODIFY: start the game
     obs = envs.reset()
-    for global_step in range(args.total_timesteps):
+
+    # Display progress bar if available
+    generator = tqdm(range(args.total_timesteps)) if tqdm is not None else range(args.total_timesteps)
+    for global_step in generator:
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
             actions = np.array([envs.action_space.sample() for _ in range(envs.num_envs)])
