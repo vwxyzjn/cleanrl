@@ -172,6 +172,7 @@ class SB3Adapter:
     actor: Actor
     actor_state: RLTrainState
     key: jax.random.KeyArray
+    action_space: gym.spaces.Box
 
     def predict(self, observations: np.ndarray, deterministic=True, state=None, episode_start=None):
         if deterministic:
@@ -179,6 +180,11 @@ class SB3Adapter:
         else:
             self.key, noise_key = jax.random.split(self.key, 2)
             actions = sample_action(self.actor, self.actor_state, observations, noise_key)
+
+        # Clip due to numerical instability
+        actions = np.clip(actions, -1, 1)
+        # Rescale to proper domain when using squashing
+        actions = unscale_action(self.action_space, actions)
 
         return actions, None
 
@@ -476,7 +482,7 @@ if __name__ == "__main__":
 
         if args.eval_freq > 0 and (global_step + 1) % args.eval_freq == 0:
             eval_key, agent_key = jax.random.split(eval_key, 2)
-            agent = SB3Adapter(actor, actor_state, agent_key)
+            agent = SB3Adapter(actor, actor_state, agent_key, eval_envs.action_space)
             mean_return, std_return = evaluate_policy(
                 agent, eval_envs, n_eval_episodes=args.n_eval_episodes, deterministic=True
             )
