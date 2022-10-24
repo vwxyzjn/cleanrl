@@ -35,3 +35,8 @@ def test_pybullet():
         shell=True,
         check=True,
     )
+    subprocess.run(
+        "python cleanrl/sac_continuous_action_jax.py --learning-starts 200 --total-timesteps 205",
+        shell=True,
+        check=True,
+    )
