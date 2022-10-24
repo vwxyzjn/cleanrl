@@ -82,7 +82,7 @@ class VectorCritic(nn.Module):
     n_critics: int = 2
 
     @nn.compact
-    def __call__(self, obs: jnp.ndarray, action: jnp.ndarray):
+    def __call__(self, obs: jnp.ndarray, action: jnp.ndarray) -> jnp.ndarray:
         # Idea taken from https://github.com/perrin-isir/xpag
         # Similar to https://github.com/tinkoff-ai/CORL for PyTorch
         vmap_critic = nn.vmap(
@@ -121,14 +121,19 @@ class Actor(nn.Module):
 
 
 @partial(jax.jit, static_argnames="actor")
-def sample_action(actor, actor_state, obervations, key):
+def sample_action(
+    actor: Actor,
+    actor_state: TrainState,
+    obervations: jnp.ndarray,
+    key: jax.random.KeyArray,
+) -> jnp.array:
     dist = actor.apply(actor_state.params, obervations)
     action = dist.sample(seed=key)
     return action
 
 
 @partial(jax.jit, static_argnames="actor")
-def select_action(actor, actor_state, obervations):
+def select_action(actor: Actor, actor_state: TrainState, obervations: jnp.ndarray) -> jnp.array:
     return actor.apply(actor_state.params, obervations).mode()
 
 
@@ -299,15 +304,14 @@ if __name__ == "__main__":
         )
 
     else:
-        raise NotImplementedError("Constant entropy coefficient (alpha) is not implemented yet")
-        # ent_coef = args.alpha
+        ent_coef_value = jnp.array(args.alpha)
 
     # Define update functions here to limit the need for static argname
     @jax.jit
     def update_critic(
         actor_state: TrainState,
         qf_state: RLTrainState,
-        ent_coef_state: TrainState,
+        ent_coef_value: jnp.ndarray,
         observations: np.ndarray,
         actions: np.ndarray,
         next_observations: np.ndarray,
@@ -321,8 +325,6 @@ if __name__ == "__main__":
         next_state_actions = dist.sample(seed=noise_key)
         next_log_prob = dist.log_prob(next_state_actions)
 
-        ent_coef_value = ent_coef.apply({"params": ent_coef_state.params})
-
         qf_next_values = qf.apply(qf_state.target_params, next_observations, next_state_actions)
 
         next_q_values = jnp.min(qf_next_values, axis=0)
@@ -334,14 +336,14 @@ if __name__ == "__main__":
         def mse_loss(params):
             # shape is (n_critics, batch_size, 1)
             current_q_values = qf.apply(params, observations, actions)
-            return ((target_q_values - current_q_values) ** 2).mean()
+            return ((target_q_values - current_q_values) ** 2).mean(), current_q_values.mean()
 
-        qf_loss_value, grads = jax.value_and_grad(mse_loss, has_aux=False)(qf_state.params)
+        (qf_loss_value, qf_values), grads = jax.value_and_grad(mse_loss, has_aux=True)(qf_state.params)
         qf_state = qf_state.apply_gradients(grads=grads)
 
         return (
             qf_state,
-            (qf_loss_value, ent_coef_value),
+            (qf_loss_value, qf_values),
             key,
         )
 
@@ -349,7 +351,7 @@ if __name__ == "__main__":
     def update_actor(
         actor_state: RLTrainState,
         qf_state: RLTrainState,
-        ent_coef_state: TrainState,
+        ent_coef_value: jnp.ndarray,
         observations: np.ndarray,
         key: jax.random.KeyArray,
     ):
@@ -364,7 +366,6 @@ if __name__ == "__main__":
             qf_pi = qf.apply(qf_state.params, observations, actor_actions)
             # Take min among all critics
             min_qf_pi = jnp.min(qf_pi, axis=0)
-            ent_coef_value = ent_coef.apply({"params": ent_coef_state.params})
             actor_loss = (ent_coef_value * log_prob - min_qf_pi).mean()
             return actor_loss, -log_prob.mean()
 
@@ -375,8 +376,8 @@ if __name__ == "__main__":
 
     @jax.jit
     def update_temperature(ent_coef_state: TrainState, entropy: float):
-        def temperature_loss(temp_params):
-            ent_coef_value = ent_coef.apply({"params": temp_params})
+        def temperature_loss(params):
+            ent_coef_value = ent_coef.apply({"params": params})
             ent_coef_loss = ent_coef_value * (entropy - target_entropy).mean()
             return ent_coef_loss
 
@@ -448,10 +449,13 @@ if __name__ == "__main__":
                 data.rewards.numpy().flatten(),
             )
 
-            qf_state, (qf_loss_value, ent_coef_value), key = update_critic(
+            if args.autotune:
+                ent_coef_value = ent_coef.apply({"params": ent_coef_state.params})
+
+            qf_state, (qf_loss_value, qf_values), key = update_critic(
                 actor_state,
                 qf_state,
-                ent_coef_state,
+                ent_coef_value,
                 data.observations,
                 data.actions,
                 data.next_observations,
@@ -464,7 +468,7 @@ if __name__ == "__main__":
                 (actor_state, qf_state, actor_loss_value, key, entropy) = update_actor(
                     actor_state,
                     qf_state,
-                    ent_coef_state,
+                    ent_coef_value,
                     data.observations,
                     key,
                 )
@@ -477,8 +481,7 @@ if __name__ == "__main__":
                 qf_state = soft_update(args.tau, qf_state)
 
             if global_step % 100 == 0:
-                # writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
-                # writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
+                writer.add_scalar("losses/qf_values", qf_values.mean().item(), global_step)
                 writer.add_scalar("losses/qf_loss", qf_loss_value.item(), global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss_value.item(), global_step)
                 writer.add_scalar("losses/alpha", ent_coef_value.item(), global_step)
