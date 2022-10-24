@@ -4,6 +4,7 @@ import argparse
 import os
 import random
 import time
+from dataclasses import dataclass
 from distutils.util import strtobool
 from functools import partial
 from typing import Any, NamedTuple, Optional, Sequence
@@ -19,6 +20,8 @@ import pybullet_envs  # noqa
 import tensorflow_probability
 from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
+from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import DummyVecEnv
 from torch.utils.tensorboard import SummaryWriter
 
@@ -124,17 +127,17 @@ class Actor(nn.Module):
 def sample_action(
     actor: Actor,
     actor_state: TrainState,
-    obervations: jnp.ndarray,
+    observations: jnp.ndarray,
     key: jax.random.KeyArray,
 ) -> jnp.array:
-    dist = actor.apply(actor_state.params, obervations)
+    dist = actor.apply(actor_state.params, observations)
     action = dist.sample(seed=key)
     return action
 
 
 @partial(jax.jit, static_argnames="actor")
-def select_action(actor: Actor, actor_state: TrainState, obervations: jnp.ndarray) -> jnp.array:
-    return actor.apply(actor_state.params, obervations).mode()
+def select_action(actor: Actor, actor_state: TrainState, observations: jnp.ndarray) -> jnp.array:
+    return actor.apply(actor_state.params, observations).mode()
 
 
 def scale_action(action_space: gym.spaces.Box, action: np.ndarray) -> np.ndarray:
@@ -158,6 +161,26 @@ def unscale_action(action_space: gym.spaces.Box, scaled_action: np.ndarray) -> n
     """
     low, high = action_space.low, action_space.high
     return low + (0.5 * (scaled_action + 1.0) * (high - low))
+
+
+@dataclass
+class SB3Adapter:
+    """
+    Adapter in order to use ``evaluate_policy()`` from Stable-Baselines3.
+    """
+
+    actor: Actor
+    actor_state: RLTrainState
+    key: jax.random.KeyArray
+
+    def predict(self, observations: np.ndarray, deterministic=True, state=None, episode_start=None):
+        if deterministic:
+            actions = select_action(self.actor, self.actor_state, observations)
+        else:
+            self.key, noise_key = jax.random.split(self.key, 2)
+            actions = sample_action(self.actor, self.actor_state, observations, noise_key)
+
+        return actions, None
 
 
 class EntropyCoef(nn.Module):
@@ -190,6 +213,15 @@ def parse_args():
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to capture videos of the agent performances (check out `videos` folder)")
+    parser.add_argument(
+        "--eval-freq",
+        help="Evaluate the agent every n steps (if negative, no evaluation). "
+        "During hyperparameter optimization n-evaluations is used instead",
+        default=-1,
+        type=int,
+    )
+    parser.add_argument("--n-eval-episodes", help="Number of episodes to use for evaluation", default=10, type=int)
+    parser.add_argument("--n-eval-envs", help="Number of environments for evaluation", default=5, type=int)
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="HopperBulletEnv-v0",
@@ -265,10 +297,15 @@ if __name__ == "__main__":
     random.seed(args.seed)
     np.random.seed(args.seed)
     key = jax.random.PRNGKey(args.seed)
+    # Use a separate key, so running with/without eval doesn't affect the results
+    eval_key = jax.random.PRNGKey(args.seed)
 
     # env setup
     envs = DummyVecEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.action_space, gym.spaces.Box), "only continuous action space is supported"
+
+    if args.eval_freq > 0:
+        eval_envs = make_vec_env(args.env_id, n_envs=args.n_eval_envs, seed=args.seed)
 
     # Create networks
     key, actor_key, qf_key, ent_key = jax.random.split(key, 4)
@@ -436,6 +473,14 @@ if __name__ == "__main__":
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
+
+        if args.eval_freq > 0 and (global_step + 1) % args.eval_freq == 0:
+            eval_key, agent_key = jax.random.split(eval_key, 2)
+            agent = SB3Adapter(actor, actor_state, agent_key)
+            mean_return, std_return = evaluate_policy(agent, eval_envs, n_eval_episodes=args.n_eval_episodes)
+            print(f"global_step={global_step + 1}, mean_eval_return={mean_return:.2f} +/- {std_return:.2f}")
+            writer.add_scalar("charts/eval_mean_ep_return", mean_return, global_step)
+            writer.add_scalar("charts/eval_std_ep_return", std_return, global_step)
 
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
