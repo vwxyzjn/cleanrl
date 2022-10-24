@@ -477,7 +477,9 @@ if __name__ == "__main__":
         if args.eval_freq > 0 and (global_step + 1) % args.eval_freq == 0:
             eval_key, agent_key = jax.random.split(eval_key, 2)
             agent = SB3Adapter(actor, actor_state, agent_key)
-            mean_return, std_return = evaluate_policy(agent, eval_envs, n_eval_episodes=args.n_eval_episodes)
+            mean_return, std_return = evaluate_policy(
+                agent, eval_envs, n_eval_episodes=args.n_eval_episodes, deterministic=True
+            )
             print(f"global_step={global_step + 1}, mean_eval_return={mean_return:.2f} +/- {std_return:.2f}")
             writer.add_scalar("charts/eval_mean_ep_return", mean_return, global_step)
             writer.add_scalar("charts/eval_std_ep_return", std_return, global_step)
