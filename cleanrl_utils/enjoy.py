@@ -22,8 +22,8 @@ def parse_args():
 
     parser.add_argument("--hf-entity", type=str, default="cleanrl",
         help="the user or org name of the model repository from the Hugging Face Hub")
-    parser.add_argument("--hf-repo", type=str, default="",
-        help="the hf repo (e.g., cleanrl/BreakoutNoFrameskip-v4-dqn_atari-seed1)")
+    parser.add_argument("--hf-repository", type=str, default="",
+        help="the huggingface repo (e.g., cleanrl/BreakoutNoFrameskip-v4-dqn_atari-seed1)")
     parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4",
         help="the id of the environment")
     return parser.parse_args()
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     if not args.hf_repo:
         args.hf_repo = f"{args.hf_entity}/{args.env_id}-{args.exp_name}-seed{args.seed}"
     print(args.hf_repo)
-    model_path = hf_hub_download(repo_id=args.hf_repo, filename="q_network.pth")
+    model_path = hf_hub_download(repo_id=args.hf_repository, filename="q_network.pth")
     evaluate(
         model_path,
         make_env,
