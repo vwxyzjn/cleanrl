@@ -12,15 +12,15 @@ def evaluate(
     env_id: str,
     eval_episodes: int,
     run_name: str,
-    QNetwork: torch.nn.Module,
+    Model: torch.nn.Module,
     device: torch.device,
     epsilon: float = 0.05,
     capture_video: bool = True,
 ):
     envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
-    q_network = QNetwork(envs).to(device)
-    q_network.load_state_dict(torch.load(model_path))
-    q_network.eval()
+    model = Model(envs).to(device)
+    model.load_state_dict(torch.load(model_path))
+    model.eval()
 
     obs = envs.reset()
     episodic_returns = []
@@ -28,7 +28,7 @@ def evaluate(
         if random.random() < epsilon:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            q_values = q_network(torch.Tensor(obs).to(device))
+            q_values = model(torch.Tensor(obs).to(device))
             actions = torch.argmax(q_values, dim=1).cpu().numpy()
         next_obs, _, _, infos = envs.step(actions)
         for info in infos:
@@ -52,8 +52,22 @@ if __name__ == "__main__":
         "CartPole-v1",
         eval_episodes=10,
         run_name=f"eval",
-        QNetwork=QNetwork,
+        Model=QNetwork,
         device="cpu",
-        epsilon=0.05,
         capture_video=False,
     )
+
+    # from cleanrl.dqn_atari import QNetwork, make_env
+
+    # model_path = hf_hub_download(repo_id="vwxyzjn/BreakoutNoFrameskip-v4-dqn_atari-seed1", filename="q_network.pth")
+    # evaluate(
+    #     model_path,
+    #     make_env,
+    #     "BreakoutNoFrameskip-v4",
+    #     eval_episodes=10,
+    #     run_name=f"eval",
+    #     Model=QNetwork,
+    #     device="cpu",
+    #     epsilon=0.05,
+    #     capture_video=False,
+    # )

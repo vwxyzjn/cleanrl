@@ -225,7 +225,7 @@ if __name__ == "__main__":
             args.env_id,
             eval_episodes=10,
             run_name=f"{run_name}-eval",
-            QNetwork=QNetwork,
+            Model=QNetwork,
             device=device,
             epsilon=0.05,
         )
