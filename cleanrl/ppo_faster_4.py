@@ -221,7 +221,7 @@ def mb_ppo_loss(
             clip_coef,
         )
         v_loss_clipped = (v_clipped - mb_returns) ** 2
-        v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
+        v_loss_max = torch.maximum(v_loss_unclipped, v_loss_clipped)
         v_loss = 0.5 * v_loss_max.mean()
     else:
         v_loss = 0.5 * ((newvalue - mb_returns) ** 2).mean()
