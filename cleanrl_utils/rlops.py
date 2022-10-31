@@ -1,0 +1,167 @@
+import argparse
+from typing import List
+import expt
+import matplotlib.pyplot as plt
+import wandb
+import wandb.apis.reports as wb  # noqa
+from expt import Hypothesis, Run
+from expt.plot import GridPlot
+wandb.require("report-editing")
+api = wandb.Api()
+
+
+def parse_args():
+    # fmt: off
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--exp-name", type=str, default="ddpg_continuous_action_jax",
+        help="the name of this experiment")
+    parser.add_argument("--wandb-project-name", type=str, default="cleanrl",
+        help="the wandb's project name")
+    parser.add_argument("--wandb-entity", type=str, default="openrlbenchmark",
+        help="the entity (team) of wandb's project")
+    parser.add_argument("--tags", nargs="+", default=["v1.0.0b2-9-g4605546", "latest"],
+        help="the tags of the runsets")
+    parser.add_argument("--env-ids", nargs="+", default=["Hopper-v2", "Walker2d-v2", "HalfCheetah-v2"],
+        help="the ids of the environment to compare")
+    parser.add_argument("--output-filename", type=str, default="compare.png",
+        help="the output filename of the plot")
+    # fmt: on
+    return parser.parse_args()
+
+
+def create_hypothesis(name: str, wandb_runs: List[wandb.apis.public.Run]) -> Hypothesis:
+    runs = []
+    for idx, run in enumerate(wandb_runs):
+        wandb_run = run.history()
+        if "videos" in wandb_run:
+            wandb_run = wandb_run.drop(columns=["videos"], axis=1)
+        runs += [Run(f"seed{idx}", wandb_run)]
+    return Hypothesis(name, runs)
+
+
+class Runset:
+    def __init__(self, name: str, filters: dict, entity: str, project: str, groupby: str = ""):
+        self.name = name
+        self.filters = filters
+        self.entity = entity
+        self.project = project
+        self.groupby = groupby
+
+    @property
+    def runs(self):
+        return wandb.Api().runs(path=f"{self.entity}/{self.project}", filters=self.filters)
+
+    @property
+    def report_runset(self):
+        return wb.RunSet(
+            name=self.name,
+            entity=self.entity,
+            project=self.project,
+            filters={"$or": [self.filters]},
+            groupby=[self.groupby] if len(self.groupby) > 0 else None,
+        )
+
+
+def compare(
+    runsetss: List[List[Runset]],
+    env_ids: List[str],
+    output_filename: str = "compare.png",
+):
+    blocks = []
+    for idx, env_id in enumerate(env_ids):
+        blocks += [
+            wb.PanelGrid(
+                runsets=[
+                    runsets[idx].report_runset for runsets in runsetss
+                ],
+                panels=[
+                    wb.LinePlot(
+                        x="global_step",
+                        y=["charts/episodic_return"],
+                        title=env_id,
+                        title_x="Steps",
+                        title_y="Episodic Return",
+                        max_runs_to_show=100,
+                        smoothing_factor=0.8,
+                        groupby_rangefunc="stderr",
+                        legend_template="${runsetName}",
+                    ),
+                    wb.LinePlot(
+                        x="_runtime",
+                        y=["charts/episodic_return"],
+                        title=env_id,
+                        title_y="Episodic Return",
+                        max_runs_to_show=100,
+                        smoothing_factor=0.8,
+                        groupby_rangefunc="stderr",
+                        legend_template="${runsetName}",
+                    ),
+                    # wb.MediaBrowser(
+                    #     num_columns=2,
+                    #     media_keys="videos",
+                    # ),
+                ],
+            ),
+        ]
+    
+    for idx, env_id in enumerate(env_ids):
+        ex = expt.Experiment("Comparison")
+        for runsets in runsetss:
+            print(runsets[idx].name)
+            h = create_hypothesis(runsets[idx].name, runsets[idx].runs)
+            ex.add_hypothesis(h)
+        ex.plot(
+            ax=g[env_id],
+            title=env_id,
+            x="_runtime",
+            y="charts/episodic_return",
+            err_style="band",
+            std_alpha=0.1,
+            rolling=50,
+            n_samples=400,
+            legend=False,
+        )
+
+    g.add_legend(ax=g.axes[-1, -1], loc="upper left", bbox_to_anchor=(0, 1))
+    # Some post-processing with matplotlib API so that the plot looks nicer
+    for ax in g.axes_active:
+        ax.xaxis.set_label_text("")
+        ax.yaxis.set_label_text("")
+
+    print(f"saving figure to {output_filename}")
+    plt.savefig(f"{output_filename}")
+    plt.savefig(f"{output_filename.replace('.png', '.pdf')}")
+    return blocks
+
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    g = GridPlot(y_names=args.env_ids)
+    blocks = []
+    runsetss = []
+    for tag in args.tags:
+        print(tag)
+        runsets = [Runset(
+            name=f"CleanRL's {args.exp_name} ({tag})",
+            filters={"$and": [
+                {"config.env_id.value": env_id},
+                {"tags": tag},
+                {"config.exp_name.value": args.exp_name}
+            ]},
+            entity=args.wandb_entity,
+            project=args.wandb_project_name,
+            groupby="exp_name",
+        ) for env_id in args.env_ids]
+        print(len(runsets[0].runs))
+        runsetss += [runsets]
+
+    blocks = compare(runsetss, args.env_ids, output_filename="compare.png")
+    print("saving report")
+    report = wb.Report(
+        project="cleanrl",
+        title=f"Regression Report: {args.exp_name} ({args.tags})",
+        blocks=blocks,
+    )
+    report.save()
+    print(f"view the generated report at {report.url}")
