@@ -35,21 +35,31 @@ def run_experiment(command: str):
 
 
 def autotag() -> str:
-    git_tag = subprocess.check_output(["git", "describe", "--tags"]).decode("ascii").strip()
-    git_commit = subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"]).decode("ascii").strip()
+    wandb_tag = ""
+    print("autotag feature is enabled")
+    try:
+        git_tag = subprocess.check_output(["git", "describe", "--tags"]).decode("ascii").strip()
+        wandb_tag = f"{git_tag}"
+        print(f"identified git tag: {git_tag}")
+    except subprocess.CalledProcessError:
+        return wandb_tag
 
-    # try finding the pull request number on github
-    prs = requests.get(f"https://api.github.com/repos/vwxyzjn/cleanrl/commits/{git_commit}/pulls")
-    if prs.status_code == 200:
-        prs = prs.json()
-        if len(prs) > 0:
-            pr = prs[0]
-            pr_number = pr["number"]
-            pr["title"]
-            pr["html_url"]
-            wandb_tag = f"{git_tag},pr{pr_number}"
-        else:
-            wandb_tag = f"{git_tag}"
+    git_commit = subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"]).decode("ascii").strip()
+    try:
+        # try finding the pull request number on github
+        prs = requests.get(f"https://api.github.com/repos/vwxyzjn/cleanrl/commits/{git_commit}/pulls")
+        if prs.status_code == 200:
+            prs = prs.json()
+            if len(prs) > 0:
+                pr = prs[0]
+                pr_number = pr["number"]
+                pr["title"]
+                pr["html_url"]
+                wandb_tag += f",pr-{pr_number}"
+        print(f"identified github pull request: {pr_number}")
+    except Exception as e:
+        print(e)
+
     return wandb_tag
 
 
@@ -61,7 +71,8 @@ if __name__ == "__main__":
                 "WANDB_TAGS is already set. Please unset it before running this script or run the script with --auto-tag False"
             )
         wandb_tag = autotag()
-        os.environ["WANDB_TAGS"] = wandb_tag
+        if len(wandb_tag) > 0:
+            os.environ["WANDB_TAGS"] = wandb_tag
 
     commands = []
     for seed in range(1, args.num_seeds + 1):
