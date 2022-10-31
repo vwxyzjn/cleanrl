@@ -116,10 +116,10 @@ class Actor(nn.Module):
         self.fc_logstd = nn.Linear(256, np.prod(env.single_action_space.shape))
         # action rescaling
         self.register_buffer(
-            "action_scale", torch.tensor((max_action - min_action) / 2.0, dtype=torch.float32)
+            "action_scale", torch.tensor((env.action_space.high - env.action_space.low) / 2.0, dtype=torch.float32)
         )
         self.register_buffer(
-            "action_bias", torch.tensor((max_action + min_action) / 2.0, dtype=torch.float32)
+            "action_bias", torch.tensor((env.action_space.high + env.action_space.low) / 2.0, dtype=torch.float32)
         )
 
     def forward(self, x):
