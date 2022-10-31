@@ -1,11 +1,15 @@
 import argparse
+from distutils.util import strtobool
 from typing import List
+
 import expt
 import matplotlib.pyplot as plt
+import numpy as np
 import wandb
 import wandb.apis.reports as wb  # noqa
 from expt import Hypothesis, Run
 from expt.plot import GridPlot
+
 wandb.require("report-editing")
 api = wandb.Api()
 
@@ -25,6 +29,8 @@ def parse_args():
         help="the ids of the environment to compare")
     parser.add_argument("--output-filename", type=str, default="compare.png",
         help="the output filename of the plot")
+    parser.add_argument("--report", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="if toggled, a wandb report will be created")
     # fmt: on
     return parser.parse_args()
 
@@ -65,15 +71,14 @@ class Runset:
 def compare(
     runsetss: List[List[Runset]],
     env_ids: List[str],
+    ncols: int,
     output_filename: str = "compare.png",
 ):
     blocks = []
     for idx, env_id in enumerate(env_ids):
         blocks += [
             wb.PanelGrid(
-                runsets=[
-                    runsets[idx].report_runset for runsets in runsetss
-                ],
+                runsets=[runsets[idx].report_runset for runsets in runsetss],
                 panels=[
                     wb.LinePlot(
                         x="global_step",
@@ -103,15 +108,25 @@ def compare(
                 ],
             ),
         ]
-    
+
+    nrows = np.ceil(len(env_ids) / ncols).astype(int)
+    figsize = (ncols * 4, nrows * 3)
+    fig, axes = plt.subplots(
+        nrows=nrows,
+        ncols=ncols,
+        figsize=figsize,
+        # sharex=True,
+        # sharey=True,
+    )
+
     for idx, env_id in enumerate(env_ids):
         ex = expt.Experiment("Comparison")
         for runsets in runsetss:
-            print(runsets[idx].name)
             h = create_hypothesis(runsets[idx].name, runsets[idx].runs)
             ex.add_hypothesis(h)
+        ax = axes.flatten()[idx]
         ex.plot(
-            ax=g[env_id],
+            ax=ax,
             title=env_id,
             x="_runtime",
             y="charts/episodic_return",
@@ -122,15 +137,16 @@ def compare(
             legend=False,
         )
 
-    g.add_legend(ax=g.axes[-1, -1], loc="upper left", bbox_to_anchor=(0, 1))
-    # Some post-processing with matplotlib API so that the plot looks nicer
-    for ax in g.axes_active:
-        ax.xaxis.set_label_text("")
-        ax.yaxis.set_label_text("")
+    h, l = ax.get_legend_handles_labels()
+    fig.legend(h, l, loc="upper center", ncol=2)
+    fig.subplots_adjust(top=0.9)
+    # remove the empty axes
+    for ax in axes.flatten()[len(env_ids) :]:
+        ax.remove()
 
     print(f"saving figure to {output_filename}")
-    plt.savefig(f"{output_filename}")
-    plt.savefig(f"{output_filename.replace('.png', '.pdf')}")
+    plt.savefig(f"{output_filename}", bbox_inches="tight")
+    plt.savefig(f"{output_filename.replace('.png', '.pdf')}", bbox_inches="tight")
     return blocks
 
 
@@ -141,27 +157,25 @@ if __name__ == "__main__":
     blocks = []
     runsetss = []
     for tag in args.tags:
-        print(tag)
-        runsets = [Runset(
-            name=f"CleanRL's {args.exp_name} ({tag})",
-            filters={"$and": [
-                {"config.env_id.value": env_id},
-                {"tags": tag},
-                {"config.exp_name.value": args.exp_name}
-            ]},
-            entity=args.wandb_entity,
-            project=args.wandb_project_name,
-            groupby="exp_name",
-        ) for env_id in args.env_ids]
-        print(len(runsets[0].runs))
+        runsets = [
+            Runset(
+                name=f"CleanRL's {args.exp_name} ({tag})",
+                filters={"$and": [{"config.env_id.value": env_id}, {"tags": tag}, {"config.exp_name.value": args.exp_name}]},
+                entity=args.wandb_entity,
+                project=args.wandb_project_name,
+                groupby="exp_name",
+            )
+            for env_id in args.env_ids
+        ]
         runsetss += [runsets]
 
-    blocks = compare(runsetss, args.env_ids, output_filename="compare.png")
-    print("saving report")
-    report = wb.Report(
-        project="cleanrl",
-        title=f"Regression Report: {args.exp_name} ({args.tags})",
-        blocks=blocks,
-    )
-    report.save()
-    print(f"view the generated report at {report.url}")
+    blocks = compare(runsetss, args.env_ids, output_filename="compare.png", ncols=2)
+    if args.report:
+        print("saving report")
+        report = wb.Report(
+            project="cleanrl",
+            title=f"Regression Report: {args.exp_name} ({args.tags})",
+            blocks=blocks,
+        )
+        report.save()
+        print(f"view the generated report at {report.url}")
