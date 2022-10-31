@@ -23,7 +23,7 @@ def parse_args():
         help="the wandb's project name")
     parser.add_argument("--wandb-entity", type=str, default="openrlbenchmark",
         help="the entity (team) of wandb's project")
-    parser.add_argument("--tags", nargs="+", default=["v1.0.0b2-9-g4605546", "latest"],
+    parser.add_argument("--tags", nargs="+", default=["v1.0.0b2-9-g4605546", "rlops-pilot"],
         help="the tags of the runsets")
     parser.add_argument("--env-ids", nargs="+", default=["Hopper-v2", "Walker2d-v2", "HalfCheetah-v2"],
         help="the ids of the environment to compare")
