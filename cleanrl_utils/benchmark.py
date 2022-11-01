@@ -47,14 +47,12 @@ def autotag() -> str:
     git_commit = subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"]).decode("ascii").strip()
     try:
         # try finding the pull request number on github
-        prs = requests.get(f"https://api.github.com/repos/vwxyzjn/cleanrl/commits/{git_commit}/pulls")
+        prs = requests.get(f"https://api.github.com/search/issues?q=repo:vwxyzjn/cleanrl+is:pr+{git_commit}")
         if prs.status_code == 200:
             prs = prs.json()
-            if len(prs) > 0:
-                pr = prs[0]
+            if len(prs["items"]) > 0:
+                pr = prs["items"][0]
                 pr_number = pr["number"]
-                pr["title"]
-                pr["html_url"]
                 wandb_tag += f",pr-{pr_number}"
         print(f"identified github pull request: {pr_number}")
     except Exception as e:
