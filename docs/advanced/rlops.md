@@ -1,6 +1,6 @@
 # RLops
 
-This doucment describes how to we do "RLops" to valide new features / bug fixes and avoid introducing regressions.
+This document describes how to we do "RLops" to validate new features / bug fixes and avoid introducing regressions.
 
 
 ## Background

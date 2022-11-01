@@ -12,7 +12,7 @@ def parse_args():
         help="the wandb's project name")
     parser.add_argument("--wandb-entity", type=str, default="openrlbenchmark",
         help="the entity (team) of wandb's project")
-    
+
     parser.add_argument("--add", type=str, default="", 
         help="the tag to be added to any runs with the `--source-tag`")
     parser.add_argument("--remove", type=str, default="", 
@@ -26,7 +26,7 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     print(args)
-    runs = api.runs(path=f"{args.wandb_entity}/{args.wandb_project_name}", filters={"tags": {"$in": [args.to]}})
+    runs = api.runs(path=f"{args.wandb_entity}/{args.wandb_project_name}", filters={"tags": {"$in": [args.source_tag]}})
     for run in runs:
         tags = run.tags
         if args.add:
