@@ -2,6 +2,7 @@ import argparse
 import os
 import shlex
 import subprocess
+from distutils.util import strtobool
 
 import requests
 
@@ -73,7 +74,7 @@ if __name__ == "__main__":
             os.environ["WANDB_TAGS"] = wandb_tag
 
     commands = []
-    for seed in range(0, args.num_seeds + 1):
+    for seed in range(0, args.num_seeds):
         for env_id in args.env_ids:
             commands += [" ".join([args.command, "--env-id", env_id, "--seed", str(args.start_seed + seed)])]
 
