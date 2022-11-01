@@ -157,16 +157,21 @@ if __name__ == "__main__":
     blocks = []
     runsetss = []
     for tag in args.tags:
-        runsets = [
-            Runset(
-                name=f"CleanRL's {args.exp_name} ({tag})",
-                filters={"$and": [{"config.env_id.value": env_id}, {"tags": tag}, {"config.exp_name.value": args.exp_name}]},
-                entity=args.wandb_entity,
-                project=args.wandb_project_name,
-                groupby="exp_name",
-            )
-            for env_id in args.env_ids
-        ]
+        runsets = []
+        for env_id in args.env_ids:
+            runsets += [
+                Runset(
+                    name=f"CleanRL's {args.exp_name} ({tag})",
+                    filters={
+                        "$and": [{"config.env_id.value": env_id}, {"tags": tag}, {"config.exp_name.value": args.exp_name}]
+                    },
+                    entity=args.wandb_entity,
+                    project=args.wandb_project_name,
+                    groupby="exp_name",
+                )
+            ]
+            print(f"CleanRL's {args.exp_name} ({tag}) in {env_id} has {len(runsets[0].runs)} runs")
+            assert len(runsets[0].runs) > 0, f"CleanRL's {args.exp_name} ({tag}) in {env_id} has no runs"
         runsetss += [runsets]
 
     blocks = compare(runsetss, args.env_ids, output_filename="compare.png", ncols=2)
