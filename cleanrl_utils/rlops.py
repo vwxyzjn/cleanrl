@@ -8,7 +8,7 @@ import numpy as np
 import wandb
 import wandb.apis.reports as wb  # noqa
 from expt import Hypothesis, Run
-from expt.plot import GridPlot
+from rich.console import Console
 
 wandb.require("report-editing")
 api = wandb.Api()
@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument("--wandb-entity", type=str, default="openrlbenchmark",
         help="the entity (team) of wandb's project")
     parser.add_argument("--tags", nargs="+", default=["v1.0.0b2-9-g4605546", "rlops-pilot"],
-        help="the tags of the runsets")
+        help='the tags of the runsets (e.g., `--tags v1.0.0b2-9-g4605546 rlops-pilot` and you can also use `--tags "v1.0.0b2-9-g4605546;latest"` to filter runs with multiple tags)')
     parser.add_argument("--env-ids", nargs="+", default=["Hopper-v2", "Walker2d-v2", "HalfCheetah-v2"],
         help="the ids of the environment to compare")
     parser.add_argument("--output-filename", type=str, default="compare.png",
@@ -152,26 +152,30 @@ def compare(
 
 if __name__ == "__main__":
     args = parse_args()
-
-    g = GridPlot(y_names=args.env_ids)
+    console = Console()
     blocks = []
     runsetss = []
-    for tag in args.tags:
+    for tag_str in args.tags:
+        tag_group = tag_str.split(";")
+        tags = [{"tags": tag} for tag in tag_group]
+
         runsets = []
         for env_id in args.env_ids:
             runsets += [
                 Runset(
-                    name=f"CleanRL's {args.exp_name} ({tag})",
+                    name=f"CleanRL's {args.exp_name} ({tag_str})",
                     filters={
-                        "$and": [{"config.env_id.value": env_id}, {"tags": tag}, {"config.exp_name.value": args.exp_name}]
+                        "$and": [{"config.env_id.value": env_id}, *tags, {"config.exp_name.value": args.exp_name}]
                     },
                     entity=args.wandb_entity,
                     project=args.wandb_project_name,
                     groupby="exp_name",
                 )
             ]
-            print(f"CleanRL's {args.exp_name} ({tag}) in {env_id} has {len(runsets[0].runs)} runs")
-            assert len(runsets[0].runs) > 0, f"CleanRL's {args.exp_name} ({tag}) in {env_id} has no runs"
+            console.print(f"CleanRL's {args.exp_name} [green]({tag_str})[/] in {env_id} has {len(runsets[-1].runs)} runs")
+            for run in runsets[-1].runs:
+                console.print(f"┣━━ [link={run.url}]{run.name}[/link] with tags = {run.tags}")
+            assert len(runsets[0].runs) > 0, f"CleanRL's {args.exp_name} ({tag_str}) in {env_id} has no runs"
         runsetss += [runsets]
 
     blocks = compare(runsetss, args.env_ids, output_filename="compare.png", ncols=2)
