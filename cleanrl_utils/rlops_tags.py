@@ -25,13 +25,23 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    print(args)
     runs = api.runs(path=f"{args.wandb_entity}/{args.wandb_project_name}", filters={"tags": {"$in": [args.source_tag]}})
+    confirmation_str = "You are about to make the following changes:\n"
+    modified_runs = []
     for run in runs:
         tags = run.tags
         if args.add:
+            confirmation_str += f"Adding the tag '{args.add}' to {run.name}, which has tags {str(tags)}\n"
             tags.append(args.add)
         if args.remove:
+            confirmation_str += f"Removing the tag '{args.remove}' from {run.name}, which has tags {str(tags)}\n"
             tags.remove(args.remove)
         run.tags = tags
-        run.update()
+        modified_runs.append(run)
+
+    print(confirmation_str)
+    response = input("Are you sure you want to proceed? (y/n):")
+    if response.lower() == "y":
+        for run in modified_runs:
+            print(f"Updating {run.name}")
+            run.update()
