@@ -244,19 +244,7 @@ Below are the average episodic returns for [`ddpg_continuous_action.py`](https:/
 
 Learning curves:
 
-<div class="grid-container">
-<img src="../ddpg/HalfCheetah-v2.png">
-
-<img src="../ddpg/Walker2d-v2.png">
-
-<img src="../ddpg/Hopper-v2.png">
-
-<img src="../ddpg/Humanoid-v2.png">
-
-<img src="../ddpg/Pusher-v2.png">
-
-<img src="../ddpg/InvertedPendulum-v2.png">
-</div>
+<img loading="lazy" src="../ddpg/ddpg.png">
 
 <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-DDPG--VmlldzoxNjkyMjc1" style="width:100%; height:500px" title="MuJoCo: CleanRL's DDPG"></iframe>
 
