@@ -17,45 +17,110 @@ DRL is brittle and has a series of reproducibility issues — even bug fixes som
 
 ### (Step 1) Run the benchmark
 
-We usually ran the benchmark experiments through [`benchmark.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl_utils/benchmark.py), such as the following:
+Given a new feature, we create a PR and then run the benchmark experiments through [`benchmark.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl_utils/benchmark.py), such as the following:
 
 ```bash
-poetry install
-OMP_NUM_THREADS=1 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
-    --env-ids CartPole-v1 Acrobot-v1 MountainCar-v0 \
-    --command "poetry run python cleanrl/ppo.py --cuda False --track --capture-video" \
+poetry install --with mujoco,pybullet
+python -c "import mujoco_py"
+xvfb-run -a python -m cleanrl_utils.benchmark \
+    --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 \
+    --command "poetry run python cleanrl/ddpg_continuous_action.py --track --capture-video" \
     --num-seeds 3 \
-    --workers 9
+    --workers 1
 ```
 
-under the hood, this script will invoke an `autotag` feature that tries to tag the the experiments with version control information, such as the git tag (e.g., `v1.0.0b1-4-g4ea73d9`) and the github PR number (e.g., `pr-308`). This is useful for us to compare the performance of the same algorithm across different versions.
+under the hood, this script will invoke an `--autotag` feature that tries to tag the the experiments with version control information, such as the git tag (e.g., `v1.0.0b2-8-g6081d30`) and the github PR number (e.g., `pr-299`). This is useful for us to compare the performance of the same algorithm across different versions.
 
 
 ### (Step 2) Regression check
 
-Let's say our latest experiments is tagged with `v1.0.0b2-9-g4605546`. We can then run the following command to compare its performance with the the current version `latest`:
+Let's say our latest experiments is tagged with `pr-299`. We can then run the following command to compare its performance with our pilot experiments `rlops-pilot`. Note that the pilot experiments include all experiments before we started using RLops (i.e., `rlops-pilot` is the baseline).
 
 
 ```bash
-python rlops.py --exp-name ddpg_continuous_action_jax \
+python -m cleanrl_utils.rlops --exp-name ddpg_continuous_action \
     --wandb-project-name cleanrl \
     --wandb-entity openrlbenchmark \
-    --tags v1.0.0b2-9-g4605546 rlops-pilot \
-    --env-ids Hopper-v2 Walker2d-v2 HalfCheetah-v2 \
+    --tags 'pr-299' 'rlops-pilot' \
+    --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 \
     --output-filename compare.png \
+    --scan-history \
     --report
 ```
-which could generate wandb reports with the following figure and corresponding tables.
+```
+CleanRL's ddpg_continuous_action (pr-299) in HalfCheetah-v2 has 3 runs
+┣━━ HalfCheetah-v2__ddpg_continuous_action__4__1667280971 with tags = ['pr-299', 'v1.0.0b2-8-g6081d30']
+┣━━ HalfCheetah-v2__ddpg_continuous_action__3__1667271574 with tags = ['pr-299', 'v1.0.0b2-8-g6081d30']
+┣━━ HalfCheetah-v2__ddpg_continuous_action__2__1667261986 with tags = ['pr-299', 'v1.0.0b2-8-g6081d30']
+CleanRL's ddpg_continuous_action (pr-299) in Walker2d-v2 has 3 runs
+┣━━ Walker2d-v2__ddpg_continuous_action__4__1667284233 with tags = ['pr-299', 'v1.0.0b2-8-g6081d30']
+┣━━ Walker2d-v2__ddpg_continuous_action__3__1667274709 with tags = ['pr-299', 'v1.0.0b2-8-g6081d30']
+┣━━ Walker2d-v2__ddpg_continuous_action__2__1667265261 with tags = ['pr-299', 'v1.0.0b2-8-g6081d30']
+CleanRL's ddpg_continuous_action (pr-299) in Hopper-v2 has 3 runs
+┣━━ Hopper-v2__ddpg_continuous_action__4__1667287363 with tags = ['pr-299', 'v1.0.0b2-8-g6081d30']
+┣━━ Hopper-v2__ddpg_continuous_action__3__1667277826 with tags = ['pr-299', 'v1.0.0b2-8-g6081d30']
+┣━━ Hopper-v2__ddpg_continuous_action__2__1667268434 with tags = ['pr-299', 'v1.0.0b2-8-g6081d30']
+CleanRL's ddpg_continuous_action (rlops-pilot) in HalfCheetah-v2 has 3 runs
+┣━━ HalfCheetah-v2__ddpg_continuous_action__3__1651008691 with tags = ['latest', 'rlops-pilot']
+┣━━ HalfCheetah-v2__ddpg_continuous_action__2__1651004631 with tags = ['latest', 'rlops-pilot']
+┣━━ HalfCheetah-v2__ddpg_continuous_action__1__1651000539 with tags = ['latest', 'rlops-pilot']
+CleanRL's ddpg_continuous_action (rlops-pilot) in Walker2d-v2 has 3 runs
+┣━━ Walker2d-v2__ddpg_continuous_action__3__1651008768 with tags = ['latest', 'rlops-pilot']
+┣━━ Walker2d-v2__ddpg_continuous_action__2__1651004640 with tags = ['latest', 'rlops-pilot']
+┣━━ Walker2d-v2__ddpg_continuous_action__1__1651000539 with tags = ['latest', 'rlops-pilot']
+CleanRL's ddpg_continuous_action (rlops-pilot) in Hopper-v2 has 3 runs
+┣━━ Hopper-v2__ddpg_continuous_action__3__1651008797 with tags = ['latest', 'rlops-pilot']
+┣━━ Hopper-v2__ddpg_continuous_action__2__1651004715 with tags = ['latest', 'rlops-pilot']
+┣━━ Hopper-v2__ddpg_continuous_action__1__1651000539 with tags = ['latest', 'rlops-pilot']
+               CleanRL's ddpg_continuous_action (pr-299) CleanRL's ddpg_continuous_action (rlops-pilot)
+HalfCheetah-v2                         10323.36 ± 112.39                               9327.00 ± 161.20
+Walker2d-v2                            1841.98 ± 1240.35                               1173.64 ± 612.88
+Hopper-v2                               1000.18 ± 636.04                               1167.50 ± 962.93
+```
 
-<img width="1195" alt="image" src="https://user-images.githubusercontent.com/5555347/196775462-2ef25c47-72dd-426d-88b8-9d74e5062936.png">
 
+which could generate the table above, which reports the mean and standard deviation of the performance of the algorithm in the last 20 episodes. 
+
+the following image and a wandb report.
+
+![](./compare.png)
+
+<iframe loading="lazy" src="Regression Report: ddpg_continuous_action (['pr-299', 'rlops-pilot'])" style="width:100%; height:500px" title="MuJoCo: CleanRL's DDPG + JAX"></iframe>
+
+
+
+!!! info+
+
+    **Support for multiple tags, their inclusions and exclusions, and filter by users**: The syntax looks like `--tags "tag1;tag2!tag3;tag4?user1"`, where tag1 and tag2 are included, tag3 and tag4 are excluded, and user1 is included. Here are some examples:
+
+    ```bash
+    python -m cleanrl_utils.rlops --exp-name ddpg_continuous_action_jax \
+        --wandb-project-name cleanrl \
+        --wandb-entity openrlbenchmark \
+        --tags 'pr-298?costa-huang' 'rlops-pilot?costa-huang' \
+        --env-ids Hopper-v2 Walker2d-v2 HalfCheetah-v2 \
+        --output-filename compare.png \
+        --report
+
+    python -m cleanrl_utils.rlops --exp-name ddpg_continuous_action_jax \
+        --wandb-project-name cleanrl \
+        --wandb-entity openrlbenchmark \
+        --tags 'pr-298?joaogui1' 'rlops-pilot?joaogui1' \
+        --env-ids Hopper-v2 Walker2d-v2 HalfCheetah-v2 \
+        --output-filename compare.png \
+        --report
+    ```
+
+
+!!! warning
+
+    The `-m cleanrl_utils.rlops` script is still in its early stage. Please feel free to open an issue if you have any questions or suggestions.
 
 ### (Step 3) Merge the PR
 
 Once we confirm there is no regression in the performance, we can merge the PR. Furthermore, we will label the new experiments as `latest` (and remove the tag `latest` for `v1.0.0b2-7-gxfd3d3` correspondingly. 
 
 ```bash
-python rlops_tags.py --add latest --source-tag v1.0.0b2-9-g4605546
-python rlops_tags.py --remove latest --source-tag rlops-pilot
-```
+python -m -m cleanrl_utils.rlops_tags --add latest --source-tag v1.0.0b2-9-g4605546
+python -m -m cleanrl_utils.rlops_tags --remove latest --source-tag rlops-pilot
 ```

@@ -91,6 +91,7 @@ nav:
   - Advanced:
     - advanced/hyperparameter-tuning.md
     - advanced/resume-training.md
+    - advanced/rlops.md
   - Community:
     - contribution.md
     - cleanrl-supported-papers-projects.md
