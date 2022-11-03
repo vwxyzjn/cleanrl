@@ -83,9 +83,9 @@ which could generate the table above, which reports the mean and standard deviat
 
 the following image and a wandb report.
 
-![](./compare.png)
+![](./rlops.png)
 
-<iframe loading="lazy" src="Regression Report: ddpg_continuous_action (['pr-299', 'rlops-pilot'])" style="width:100%; height:500px" title="MuJoCo: CleanRL's DDPG + JAX"></iframe>
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl-cache/reports/Regression-Report-ddpg_continuous_action-pr-299-rlops-pilot---VmlldzoyODkyNTcy" style="width:100%; height:500px" title="Regression Report: ddpg_continuous_action (['pr-299', 'rlops-pilot'])"></iframe>
 
 
 
