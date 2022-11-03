@@ -1,7 +1,9 @@
 import argparse
 
 import wandb
+from rich.console import Console
 
+from rlops import parse_str
 api = wandb.Api()
 
 
@@ -12,7 +14,8 @@ def parse_args():
         help="the wandb's project name")
     parser.add_argument("--wandb-entity", type=str, default="openrlbenchmark",
         help="the entity (team) of wandb's project")
-
+    parser.add_argument("--exp-name", type=str, default="ddpg_continuous_action_jax",
+        help="the name of this experiment")
     parser.add_argument("--add", type=str, default="", 
         help="the tag to be added to any runs with the `--source-tag`")
     parser.add_argument("--remove", type=str, default="", 
@@ -25,21 +28,32 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    runs = api.runs(path=f"{args.wandb_entity}/{args.wandb_project_name}", filters={"tags": {"$in": [args.source_tag]}})
+    console = Console()
+    include_tag_groups, exclude_tag_groups, user = parse_str(args.source_tag)
+    runs = api.runs(path=f"{args.wandb_entity}/{args.wandb_project_name}", filters={
+        "$and": [
+            *include_tag_groups,
+            *exclude_tag_groups,
+            *user,
+            {"config.exp_name.value": args.exp_name},
+        ]
+    })
     confirmation_str = "You are about to make the following changes:\n"
     modified_runs = []
     for run in runs:
         tags = run.tags
-        if args.add:
-            confirmation_str += f"Adding the tag '{args.add}' to {run.name}, which has tags {str(tags)}\n"
-            tags.append(args.add)
-        if args.remove:
-            confirmation_str += f"Removing the tag '{args.remove}' from {run.name}, which has tags {str(tags)}\n"
-            tags.remove(args.remove)
-        run.tags = tags
-        modified_runs.append(run)
+        if args.add and args.add not in tags:
+                confirmation_str += f"Adding the tag '{args.add}' to [link={run.url}]{run.name}[/link], which has tags {str(tags)}\n"
+                tags.append(args.add)
+                run.tags = tags
+                modified_runs.append(run)
+        if args.remove and args.remove in tags:
+                confirmation_str += f"Removing the tag '{args.remove}' from [link={run.url}]{run.name}[/link], which has tags {str(tags)}\n"
+                tags.remove(args.remove)
+                run.tags = tags
+                modified_runs.append(run)
 
-    print(confirmation_str)
+    console.print(confirmation_str)
     response = input("Are you sure you want to proceed? (y/n):")
     if response.lower() == "y":
         for run in modified_runs:
