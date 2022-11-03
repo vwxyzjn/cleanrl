@@ -122,13 +122,26 @@ It also generates the following image and a wandb report.
 
 ### (Step 3) Update the documentation
 
-Once we confirm there is no regression in the performance, we can update the documentation to display the new benchmark results. The previous command `python -m cleanrl_utils.rlops ...` gives us a table like below and a `compare.png` as the learning curve.
+Once we confirm there is no regression in the performance, we can update the documentation to display the new benchmark results. Run the previous command without comparing previous tags:
+
+```bash
+python -m cleanrl_utils.rlops --exp-name ddpg_continuous_action \
+    --wandb-project-name cleanrl \
+    --wandb-entity openrlbenchmark \
+    --tags 'pr-299' \
+    --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 \
+    --output-filename compare.png \
+    --scan-history \
+    --metric-last-n-average-window 100
+```
+
+which gives us a table like below and a `compare.png` as the learning curve.
 
 ```
-               CleanRL's ddpg_continuous_action (pr-299) CleanRL's ddpg_continuous_action (rlops-pilot)
-HalfCheetah-v2                         10210.57 ± 196.22                              9205.65 ± 1093.88
-Walker2d-v2                             1661.14 ± 250.01                               1447.09 ± 260.24
-Hopper-v2                               1007.44 ± 148.29                               1126.37 ± 278.02
+               CleanRL's ddpg_continuous_action (pr-299)
+HalfCheetah-v2                         10210.57 ± 196.22
+Walker2d-v2                             1661.14 ± 250.01
+Hopper-v2                               1007.44 ± 148.29
 ```
 
 We will use them to update the [experimental result section](https://github.com/vwxyzjn/cleanrl/blob/master/docs/rl-algorithms/ddpg.md#experiment-results) in the docs and replace the learning curves with the new ones. 

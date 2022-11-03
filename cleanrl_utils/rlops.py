@@ -1,6 +1,6 @@
 import argparse
 from distutils.util import strtobool
-from typing import List
+from typing import Dict, List
 
 import expt
 import matplotlib.pyplot as plt
@@ -178,33 +178,43 @@ def compare(
     return blocks
 
 
+def parse_str(tag_str: str) -> List[List[Dict]]:
+    """
+    Extract the user, include tags, and exclude tags from the tag string `tag_str`.
+
+    `tag_str` has the syntax "tag1;tag2!tag3;tag4?user1", where the tag1 and tag2 are the
+    include tags, tag3 and tag4 are the exclude tags, and user1 is the user
+
+    :param tag_str: a string of the form
+    :return: a list of filters for wandb
+    """
+    user = []
+    if "?" in tag_str:
+        user = tag_str.split("?")[1]
+        tag_str = tag_str.split("?")[0]
+    # extract exclude tags
+    exclude_tag_groups = []
+    if "!" in tag_str:
+        exclude_tag_groups = tag_str.split("!")[1].split(";")
+        tag_str = tag_str.split("!")[0]
+    # extract include tags
+    include_tag_groups = tag_str.split(";")
+
+    # convert to wandb filters
+    include_tag_groups = [{"tags": {"$in": [tag]}} for tag in include_tag_groups]
+    exclude_tag_groups = [{"tags": {"$nin": [tag]}} for tag in exclude_tag_groups]
+    user = [{"username": user}] if len(user) > 0 else []
+
+    return include_tag_groups, exclude_tag_groups, user
+
+
 if __name__ == "__main__":
     args = parse_args()
     console = Console()
     blocks = []
     runsetss = []
     for tag_str in args.tags:
-
-        # tag_str has the syntax "tag1;tag2!tag3;tag4?user1"
-        # where the tag1 and tag2 are the include tags, tag3 and tag4 are the exclude tags, and user1 is the user
-        # extract user, include tags, exclude tags
-        user = []
-        if "?" in tag_str:
-            user = tag_str.split("?")[1]
-            tag_str = tag_str.split("?")[0]
-        # extract exclude tags
-        exclude_tag_groups = []
-        if "!" in tag_str:
-            exclude_tag_groups = tag_str.split("!")[1].split(";")
-            tag_str = tag_str.split("!")[0]
-        # extract include tags
-        include_tag_groups = tag_str.split(";")
-
-        # convert to wandb filters
-        include_tag_groups = [{"tags": {"$in": [tag]}} for tag in include_tag_groups]
-        exclude_tag_groups = [{"tags": {"$nin": [tag]}} for tag in exclude_tag_groups]
-        user = [{"username": user}] if len(user) > 0 else []
-
+        include_tag_groups, exclude_tag_groups, user = parse_str(tag_str)
         runsets = []
         for env_id in args.env_ids:
             runsets += [
