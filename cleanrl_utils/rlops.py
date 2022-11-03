@@ -1,4 +1,5 @@
 import argparse
+import os
 from distutils.util import strtobool
 from typing import Dict, List
 
@@ -28,7 +29,7 @@ def parse_args():
         help='the tags of the runsets (e.g., `--tags v1.0.0b2-9-g4605546 rlops-pilot` and you can also use `--tags "v1.0.0b2-9-g4605546;latest"` to filter runs with multiple tags)')
     parser.add_argument("--env-ids", nargs="+", default=["Hopper-v2", "Walker2d-v2", "HalfCheetah-v2"],
         help="the ids of the environment to compare")
-    parser.add_argument("--output-filename", type=str, default="compare.png",
+    parser.add_argument("--output-filename", type=str, default="rlops_static/compare.png",
         help="the output filename of the plot")
     parser.add_argument("--rolling", type=int, default=100,
         help="the rolling window for smoothing the curves")
@@ -173,6 +174,7 @@ def compare(
         ax.remove()
 
     print(f"saving figure to {output_filename}")
+    os.makedirs(os.path.dirname(output_filename), exist_ok=True)
     plt.savefig(f"{output_filename}", bbox_inches="tight")
     plt.savefig(f"{output_filename.replace('.png', '.pdf')}", bbox_inches="tight")
     return blocks
@@ -245,7 +247,7 @@ if __name__ == "__main__":
     blocks = compare(
         runsetss,
         args.env_ids,
-        output_filename="compare.png",
+        output_filename=args.output_filename,
         ncols=2,
         rolling=args.rolling,
         metric_last_n_average_window=args.metric_last_n_average_window,
