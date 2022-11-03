@@ -5,6 +5,7 @@ from typing import List
 import expt
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import wandb
 import wandb.apis.reports as wb  # noqa
 from expt import Hypothesis, Run
@@ -29,16 +30,25 @@ def parse_args():
         help="the ids of the environment to compare")
     parser.add_argument("--output-filename", type=str, default="compare.png",
         help="the output filename of the plot")
+    parser.add_argument("--rolling", type=int, default=100,
+        help="the rolling window for smoothing the curves")
+    parser.add_argument("--metric-last-n-average-window", type=int, default=100,
+        help="the last n number of episodes to average metric over in the result table")
+    parser.add_argument("--scan-history", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="if toggled, we will pull the complete metrics from wandb instead of sampling 500 data points (recommended for generating tables)")
     parser.add_argument("--report", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, a wandb report will be created")
     # fmt: on
     return parser.parse_args()
 
 
-def create_hypothesis(name: str, wandb_runs: List[wandb.apis.public.Run]) -> Hypothesis:
+def create_hypothesis(name: str, wandb_runs: List[wandb.apis.public.Run], scan_history: bool = False) -> Hypothesis:
     runs = []
     for idx, run in enumerate(wandb_runs):
-        wandb_run = run.history()
+        if scan_history:
+            wandb_run = pd.DataFrame([row for row in run.scan_history()])
+        else:
+            wandb_run = run.history()
         if "videos" in wandb_run:
             wandb_run = wandb_run.drop(columns=["videos"], axis=1)
         runs += [Run(f"seed{idx}", wandb_run)]
@@ -72,6 +82,9 @@ def compare(
     runsetss: List[List[Runset]],
     env_ids: List[str],
     ncols: int,
+    rolling: int,
+    metric_last_n_average_window: int,
+    scan_history: bool = False,
     output_filename: str = "compare.png",
 ):
     blocks = []
@@ -119,23 +132,38 @@ def compare(
         # sharey=True,
     )
 
+    result_table = pd.DataFrame(index=env_ids, columns=[runsets[0].name for runsets in runsetss])
     for idx, env_id in enumerate(env_ids):
         ex = expt.Experiment("Comparison")
         for runsets in runsetss:
-            h = create_hypothesis(runsets[idx].name, runsets[idx].runs)
+            h = create_hypothesis(runsets[idx].name, runsets[idx].runs, scan_history)
             ex.add_hypothesis(h)
+
+        # for each run `i` get the average of the last `rolling` episodes as r_i
+        # then take the average and std of r_i as the results.
+        result = []
+        for hypothesis in ex.hypotheses:
+            raw_result = []
+            for run in hypothesis.runs:
+                raw_result += [run.df["charts/episodic_return"].dropna()[-metric_last_n_average_window:].mean()]
+            raw_result = np.array(raw_result)
+            result += [f"{raw_result.mean():.2f} ± {raw_result.std():.2f}"]
+        result_table.loc[env_id] = result
+
         ax = axes.flatten()[idx]
         ex.plot(
             ax=ax,
             title=env_id,
-            x="_runtime",
+            x="global_step",
             y="charts/episodic_return",
             err_style="band",
             std_alpha=0.1,
-            rolling=50,
-            n_samples=400,
+            rolling=rolling,
+            # n_samples=500,
             legend=False,
         )
+
+    print(result_table)
 
     h, l = ax.get_legend_handles_labels()
     fig.legend(h, l, loc="upper center", ncol=2)
@@ -156,8 +184,26 @@ if __name__ == "__main__":
     blocks = []
     runsetss = []
     for tag_str in args.tags:
-        tag_group = tag_str.split(";")
-        tags = [{"tags": tag} for tag in tag_group]
+
+        # tag_str has the syntax "tag1;tag2!tag3;tag4?user1"
+        # where the tag1 and tag2 are the include tags, tag3 and tag4 are the exclude tags, and user1 is the user
+        # extract user, include tags, exclude tags
+        user = []
+        if "?" in tag_str:
+            user = tag_str.split("?")[1]
+            tag_str = tag_str.split("?")[0]
+        # extract exclude tags
+        exclude_tag_groups = []
+        if "!" in tag_str:
+            exclude_tag_groups = tag_str.split("!")[1].split(";")
+            tag_str = tag_str.split("!")[0]
+        # extract include tags
+        include_tag_groups = tag_str.split(";")
+
+        # convert to wandb filters
+        include_tag_groups = [{"tags": {"$in": [tag]}} for tag in include_tag_groups]
+        exclude_tag_groups = [{"tags": {"$nin": [tag]}} for tag in exclude_tag_groups]
+        user = [{"username": user}] if len(user) > 0 else []
 
         runsets = []
         for env_id in args.env_ids:
@@ -165,20 +211,36 @@ if __name__ == "__main__":
                 Runset(
                     name=f"CleanRL's {args.exp_name} ({tag_str})",
                     filters={
-                        "$and": [{"config.env_id.value": env_id}, *tags, {"config.exp_name.value": args.exp_name}]
+                        "$and": [
+                            {"config.env_id.value": env_id},
+                            *include_tag_groups,
+                            *exclude_tag_groups,
+                            *user,
+                            {"config.exp_name.value": args.exp_name},
+                        ]
                     },
                     entity=args.wandb_entity,
                     project=args.wandb_project_name,
                     groupby="exp_name",
                 )
             ]
-            console.print(f"CleanRL's {args.exp_name} [green]({tag_str})[/] in {env_id} has {len(runsets[-1].runs)} runs")
+            console.print(
+                f"CleanRL's {args.exp_name} [green]({tag_str})[/] in [purple]{env_id}[/] has {len(runsets[-1].runs)} runs"
+            )
             for run in runsets[-1].runs:
                 console.print(f"┣━━ [link={run.url}]{run.name}[/link] with tags = {run.tags}")
             assert len(runsets[0].runs) > 0, f"CleanRL's {args.exp_name} ({tag_str}) in {env_id} has no runs"
         runsetss += [runsets]
 
-    blocks = compare(runsetss, args.env_ids, output_filename="compare.png", ncols=2)
+    blocks = compare(
+        runsetss,
+        args.env_ids,
+        output_filename="compare.png",
+        ncols=2,
+        rolling=args.rolling,
+        metric_last_n_average_window=args.metric_last_n_average_window,
+        scan_history=args.scan_history,
+    )
     if args.report:
         print("saving report")
         report = wb.Report(
