@@ -85,6 +85,11 @@ Hopper-v2                               1007.44 ± 148.29                       
 
 which could generate the table above, which reports the mean and standard deviation of the performance of the algorithm in the last 100 episodes by scanning the entire training data (enabled by `--scan-history`).
 
+!!! info
+
+    To make the script run faster, we can choose not to use `--scan-history` which allows wandb to sample 500 data points from the training data. This is the default behavior and is much faster.
+
+
 It also generates the following image and a wandb report.
 
 ![](./rlops/rlops.png)
@@ -164,15 +169,15 @@ python -m cleanrl_utils.rlops_tags \
 ```
 ```
 You are about to make the following changes:
-Adding the tag 'latest' to Pusher-v2__ddpg_continuous_action__3__1667429781, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
-Adding the tag 'latest' to Humanoid-v2__ddpg_continuous_action__3__1667425897, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
-Adding the tag 'latest' to InvertedPendulum-v2__ddpg_continuous_action__3__1667422863, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
-Adding the tag 'latest' to Pusher-v2__ddpg_continuous_action__2__1667419688, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
-Adding the tag 'latest' to Humanoid-v2__ddpg_continuous_action__2__1667415702, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
-Adding the tag 'latest' to InvertedPendulum-v2__ddpg_continuous_action__2__1667412699, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
-Adding the tag 'latest' to Pusher-v2__ddpg_continuous_action__1__1667409617, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
-Adding the tag 'latest' to Humanoid-v2__ddpg_continuous_action__1__1667405668, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
-Adding the tag 'latest' to InvertedPendulum-v2__ddpg_continuous_action__1__1667402741, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
+Adding the tag 'latest' to HalfCheetah-v2__ddpg_continuous_action__3__1667429781, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
+Adding the tag 'latest' to Hopper-v2__ddpg_continuous_action__3__1667425897, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
+Adding the tag 'latest' to Walker2d-v2__ddpg_continuous_action__3__1667422863, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
+Adding the tag 'latest' to HalfCheetah-v2__ddpg_continuous_action__2__1667419688, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
+Adding the tag 'latest' to Hopper-v2__ddpg_continuous_action__2__1667415702, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
+Adding the tag 'latest' to Walker2d-v2__ddpg_continuous_action__2__1667412699, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
+Adding the tag 'latest' to HalfCheetah-v2__ddpg_continuous_action__1__1667409617, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
+Adding the tag 'latest' to Hopper-v2__ddpg_continuous_action__1__1667405668, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
+Adding the tag 'latest' to Walker2d-v2__ddpg_continuous_action__1__1667402741, which has tags ['pr-299', 'v1.0.0b2-8-g6081d30']
 
 Are you sure you want to proceed? (y/n):
 ```
@@ -190,15 +195,15 @@ python -m cleanrl_utils.rlops_tags \
     --wandb-entity openrlbenchmark
 ```
 ```
-Removing the tag 'latest' from InvertedPendulum-v2__ddpg_continuous_action__1__1656400724, which has tags ['latest', 'rlops-pilot']
-Removing the tag 'latest' from InvertedPendulum-v2__ddpg_continuous_action__2__1656400725, which has tags ['latest', 'rlops-pilot']
-Removing the tag 'latest' from Pusher-v2__ddpg_continuous_action__1__1656400725, which has tags ['latest', 'rlops-pilot']
-Removing the tag 'latest' from InvertedPendulum-v2__ddpg_continuous_action__3__1656400724, which has tags ['latest', 'rlops-pilot']
-Removing the tag 'latest' from Humanoid-v2__ddpg_continuous_action__2__1656400724, which has tags ['latest', 'rlops-pilot']
-Removing the tag 'latest' from Humanoid-v2__ddpg_continuous_action__3__1656400724, which has tags ['latest', 'rlops-pilot']
-Removing the tag 'latest' from Pusher-v2__ddpg_continuous_action__2__1656400724, which has tags ['latest', 'rlops-pilot']
-Removing the tag 'latest' from Pusher-v2__ddpg_continuous_action__3__1656400724, which has tags ['latest', 'rlops-pilot']
-Removing the tag 'latest' from Humanoid-v2__ddpg_continuous_action__1__1656400724, which has tags ['latest', 'rlops-pilot']
+Removing the tag 'latest' from Walker2d-v2__ddpg_continuous_action__1__1656400724, which has tags ['latest', 'rlops-pilot']
+Removing the tag 'latest' from Walker2d-v2__ddpg_continuous_action__2__1656400725, which has tags ['latest', 'rlops-pilot']
+Removing the tag 'latest' from HalfCheetah-v2__ddpg_continuous_action__1__1656400725, which has tags ['latest', 'rlops-pilot']
+Removing the tag 'latest' from Walker2d-v2__ddpg_continuous_action__3__1656400724, which has tags ['latest', 'rlops-pilot']
+Removing the tag 'latest' from Hopper-v2__ddpg_continuous_action__2__1656400724, which has tags ['latest', 'rlops-pilot']
+Removing the tag 'latest' from Hopper-v2__ddpg_continuous_action__3__1656400724, which has tags ['latest', 'rlops-pilot']
+Removing the tag 'latest' from HalfCheetah-v2__ddpg_continuous_action__2__1656400724, which has tags ['latest', 'rlops-pilot']
+Removing the tag 'latest' from HalfCheetah-v2__ddpg_continuous_action__3__1656400724, which has tags ['latest', 'rlops-pilot']
+Removing the tag 'latest' from Hopper-v2__ddpg_continuous_action__1__1656400724, which has tags ['latest', 'rlops-pilot']
 
 Are you sure you want to proceed? (y/n):
 ```
