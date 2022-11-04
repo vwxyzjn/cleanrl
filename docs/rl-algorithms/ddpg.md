@@ -292,12 +292,11 @@ To run benchmark experiments, see :material-github: [benchmark/ddpg.sh](https://
 
 Below are the average episodic returns for [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
 
-| Environment      | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (RTX 3060 TI) | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (VM w/ TPU) | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) (RTX 2060) | [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018, Table 1)[^2]    |
+| Environment      | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (RTX 3060 TI) | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (VM w/ TPU) | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) (RTX 3060 TI) | [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018, Table 1)[^2]    |
 | ----------- | ----------- | ----------- | ----------- | ----------- |
-| HalfCheetah |  9910.53 ± 673.49 | 9790.72 ± 1494.85   | 10210.57 ± 196.22      |8577.29  |
-| Walker2d |  1397.60 ± 677.12  | 1314.83 ± 689.71 | 1661.14 ± 250.01     |  3098.11 | 
-| Hopper |  1603.5 ± 727.281  | 1602.20 ± 696.11 | 1007.44 ± 148.29         |  1860.02 | 
-
+| HalfCheetah |  9592.25 ± 135.10 | 9125.06 ± 1477.58  | 10210.57 ± 196.22      |8577.29  |
+| Walker2d |  1083.15 ± 567.65  | 1303.82 ± 448.41 | 1661.14 ± 250.01     |  3098.11 | 
+| Hopper |  1275.28 ± 209.60  | 1145.05 ± 41.95 | 1007.44 ± 148.29         |  1860.02 |     
 
 ???+ info
 
