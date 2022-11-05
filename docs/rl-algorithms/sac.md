@@ -13,7 +13,7 @@ The SAC algorithm's initial proposal, and later updates and improvements can be 
 * [Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor](https://arxiv.org/abs/1801.01290)
 * [Composable Deep Reinforcement Learning for Robotic Manipulation](https://arxiv.org/abs/1803.06773)
 * [Soft Actor-Critic Algorithms and Applications](https://arxiv.org/abs/1812.05905)
-<!-- * [Soft Actor-Critic for Discrete Action Settings](https://arxiv.org/abs/1910.07207) No peer review, preprint only -->
+* [Soft Actor-Critic for Discrete Action Settings](https://arxiv.org/abs/1910.07207) No peer review, preprint only
 
 Reference resources:
 
@@ -24,24 +24,27 @@ Reference resources:
 * :material-github: [denisyarats/pytorch_sac](https://github.com/denisyarats/pytorch_sac)
 * :material-github: [haarnoja/softqlearning](https://github.com/haarnoja/softqlearning)
 * :material-github: [rail-berkeley/softlearning](https://github.com/rail-berkeley/softlearning)
+* :material-github: [p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch](https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch)
+* :material-github: [toshikwa/sac-discrete.pytorch](github.com/toshikwa/sac-discrete.pytorch)
 
 | Variants Implemented      | Description |
 | ----------- | ----------- |
-| :material-github: [`sac_continuous_actions.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_continuous_actionpy) | For continuous action space |
+| :material-github: [`sac_continuous_actions.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_continuous_actionpy) | For continuous action spaces |
+| :material-github: [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_continuous_actionpy) | For discrete action spaces |
 
-Below is our single-file implementations of SAC:
+Below are our single-file implementations of SAC:
 
 ## `sac_continuous_action.py`
 
 The [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) has the following features:
 
-* For continuous action space.
+* For continuous action spaces.
 * Works with the `Box` observation space of low-level features.
 * Works with the `Box` (continuous) action space.
 * Numerically stable stochastic policy based on :material-github: [openai/spinningup](https://github.com/openai/spinningup/tree/master/spinup/algos/tf1/sac) and [pranz24/pytorch-soft-actor-critic](https://github.com/pranz24/pytorch-soft-actor-critic) implementations.
 * Supports automatic entropy coefficient $\alpha$ tuning, enabled by default.
 
-### Usage
+### Usage for continuous action spaces
 
 ```bash
 poetry install
@@ -56,9 +59,34 @@ python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0
 python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0 --autotune False --alpha 0.2
 ```
 
-### Explanation of the logged metrics
+## `sac_atari.py`
 
-Running python cleanrl/ddpg_continuous_action.py will automatically record various metrics such as actor or value losses in Tensorboard. Below is the documentation for these metrics:
+The [sac_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) has the following features:
+
+* For discrete action spaces.
+* Works with the `Box` observation space of low-level features.
+* Works with the `Discrete` action spaces.
+* Improved stability and wall-clock efficiency through updates only every n-th step.
+* Supports automatic entropy coefficient $\alpha$ tuning, enabled by default.
+
+### Usage for discrete action spaces
+
+```bash
+poetry install
+
+# Atari
+poetry install -E atari
+
+## Default
+python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4
+
+## Without Automatic entropy coef. tuning
+python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4 --autotune False --alpha 0.2
+```
+
+## Explanation of the logged metrics
+
+Running `python cleanrl/sac_continuous_action.py` or `python cleanrl/sac_atari.py` will automatically record various metrics such as actor or value losses in Tensorboard. Below is the documentation for these metrics:
 
 * `charts/episodic_return`: the episodic return of the game during training
 
@@ -79,6 +107,13 @@ $$ where $a' \sim \pi( \cdot \vert s')$, $\text{log} \pi( \cdot \vert s')$ appro
 
 Here, $\min_{\theta_{1,2}}Q_{\theta_i^{'}}(s',a')$ takes the minimum *Soft Q-value network* estimate between the two target Q-value networks $Q_{\theta_1^{'}}$ and $Q_{\theta_2^{'}}$ for the next state and action pair, so as to reduce over-estimation bias.
 
+In SAC-discrete, the state space is discrete. It is therefore possible to use the full action distribution to calculate the Soft Q-targets instead of relying on a Monte Carlo approximation from a single Q-value:
+$$
+    y = r(s, a) + \gamma \, {\color{orange}\pi (a | s^\prime)^{\mathsf T}} \Big(\min_{\theta_{1,2}} {\color{orange}Q_{\theta_i^{'}}(s')} - \alpha \, \log \pi( \cdot \vert s')\Big)~,
+$$
+
+Note how in the discrete setting the Q-function $Q_{\theta_i^{'}}(s')$ is a mapping $Q:S \rightarrow \mathbb R^{|\mathcal A|}$ only taking states as arguments and outputting Q-values for all actions. Using all this available information and additionally weighing the target by the corresponding action selection probability reduces variance of the gradient.
+
 * `losses/qf_loss`: averages `losses/qf1_loss` and `losses/qf2_loss` for comparison with algorithms using a single Q-value network.
 
 * `losses/actor_loss`: Given the stochastic nature of the policy in SAC, the actor (or policy) objective is formulated so as to maximize the likelihood of actions $a \sim \pi( \cdot \vert s)$ that would result in high Q-value estimate $Q(s, a)$. Additionally, the policy objective encourages the policy to maintain its entropy high enough to help explore, discover, and capture multi-modal optimal policies.
@@ -91,12 +126,19 @@ $$
 
 where the action is sampled using the reparameterization trick[^1]: $a = \mu_{\phi}(s) + \epsilon \, \sigma_{\phi}(s)$ with $\epsilon \sim \mathcal{N}(0, 1)$, $\text{log} \pi_{\phi}( \cdot \vert s')$ approximates the entropy of the policy, and $\mathcal{D}$ is the replay buffer storing samples of the agent during training.
 
+SAC-discrete exploits the discrete action space for the actor target in similar fashion. The action probability-weighted objective is given as:
+
+$$
+    \text{max}_{\phi} \, J_{\pi}(\phi) = \mathbb{E}_{s \sim \mathcal{D}} \bigg[ {\color{orange}\pi (a | s)^{\mathsf T}} \Big(\text{min}_{i=1,2} Q_{\theta_i}(s) - \alpha \, \log\pi_{\phi}(a \vert s) \Big) \bigg]
+$$
+
+Unlike for continuous action spaces, there is *no need for the reparameterization trick* due to using a Categorical policy.
 
 * `losses/alpha`: $\alpha$ coefficient for *entropy regularization* of the policy.
 
-* `losses/alpha_loss`: In the policy's objective defined above, the coefficient of the _entropy bonus_ $\alpha$ is kept fixed all across the training.
-As suggested by the authors in Section 5 of the [_Soft Actor-Critic And Applications_](https://arxiv.org/abs/1812.05905) paper, the original purpose of augmenting the standard reward with the entropy of the policy is to *encourage exploration* of not well enough explored states (thus high entropy).
-Conversely, for states where the policy has already learned a near-optimal policy, it would be preferable to reduce the entropy bonus of the policy, so that it does not _become sub-optimal due to the entropy maximization incentive_.
+* `losses/alpha_loss`: In the policy's objective defined above, the coefficient of the *entropy bonus* $\alpha$ is kept fixed all across the training.
+As suggested by the authors in Section 5 of the [*Soft Actor-Critic And Applications*](https://arxiv.org/abs/1812.05905) paper, the original purpose of augmenting the standard reward with the entropy of the policy is to *encourage exploration* of not well enough explored states (thus high entropy).
+Conversely, for states where the policy has already learned a near-optimal policy, it would be preferable to reduce the entropy bonus of the policy, so that it does not *become sub-optimal due to the entropy maximization incentive*.
 
 Therefore, having a fixed value for $\alpha$ does not fit this desideratum of matching the entropy bonus with the knowledge of the policy at an arbitrary state during its training.
 
@@ -106,10 +148,19 @@ $$
     \alpha^{*}_t = \text{argmin}_{\alpha_t} \mathbb{E}_{a_t \sim \pi^{*}_t} \big[ -\alpha_t \, \text{log}\pi^{*}_t(a_t \vert s_t; \alpha_t) - \alpha_t \mathcal{H} \big],
 $$
 
-where $\mathcal{H}$ represents the _target entropy_, the desired lower bound for the expected entropy of the policy over the trajectory distribution induced by the latter.
-As a heuristic for the _target entropy_, the authors use the dimension of the action space of the task.
+where $\mathcal{H}$ represents the *target entropy*, the desired lower bound for the expected entropy of the policy over the trajectory distribution induced by the latter.
+As a heuristic for the *target entropy*, the authors use the dimension of the action space of the task.
+
+This target is again weighted by the policy's action selection probabilities to reduce gradient variance in SAC-discrete:
+
+$$
+    \alpha^{*}_t = \text{argmin}_{\alpha_t} \mathbb{E}_{a_t \sim \pi^{*}_t} \, {\color{orange}\pi (a | s)^{\mathsf T}}\big[ -\alpha_t \, \log\pi^{*}_t(a_t \vert s_t; \alpha_t) - \alpha_t \tau \mathcal{H} \big],
+$$
+
+Since SAC-discrete uses a Categorical policy in a discrete action space, a different entropy target is required. The author uses the maximum entropy Categorical distribution (assigning uniform probability to all available actions) scaled by a factor of $\tau$ instead.
 
 ### Implementation details
+
 CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) implementation is based on :material-github: [openai/spinningup](https://github.com/openai/spinningup/tree/master/spinup/algos/pytorch/sac).
 
 1. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) uses a *numerically stable* estimation method for the standard deviation $\sigma$ of the policy, which squashes it into a range of reasonable values for a standard deviation:
@@ -158,9 +209,51 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
             self.action_bias = self.action_bias.to(device)
             return super(Actor, self).to(device)
     ```
+
     Note that unlike :material-github: [openai/spinningup](https://github.com/openai/spinningup/tree/master/spinup/algos/tf1/sac)'s implementation which uses `LOG_STD_MIN = -20`, CleanRL's uses `LOG_STD_MIN = -5` instead.
 
-2. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) uses different learning rates for the policy and the Soft Q-value networks optimization.
+2. [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) uses the action selection probabilities of the policy in multiple places to *reduce the variance of gradient estimates*. The target for the Soft Q-value estimate is weighted accordingly:
+
+    ```python hl_lines="7"
+    # CRITIC training
+    with torch.no_grad():
+        _, next_state_log_pi, next_state_action_probs = actor.get_action(data.next_observations)
+        qf1_next_target = qf1_target(data.next_observations)
+        qf2_next_target = qf2_target(data.next_observations)
+        # we can use the action probabilities instead of MC sampling to estimate the expectation
+        min_qf_next_target = next_state_action_probs * (
+            torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
+        )
+    ```
+
+    A similar action-probability weighting can be used for the actor gradient:
+
+    ```python hl_lines="8"
+    # ACTOR training
+    _, log_pi, pi_probs = actor.get_action(data.observations)
+    with torch.no_grad():
+        qf1_pi = qf1(data.observations)
+        qf2_pi = qf2(data.observations)
+        min_qf_pi = torch.min(qf1_pi, qf2_pi)
+    # no need for reparameterization, the expectation can be calculated for discrete actions
+    actor_loss = (pi_probs * ((alpha * log_pi) - min_qf_pi)).mean()
+    ```
+
+    Lastly, this variance reduction scheme is also used when automatic entropy tuning is enabled:
+
+    ```python hl_lines="4"
+    with torch.no_grad():
+            _, log_pi, action_probs = actor.get_action(data.observations)
+        # use action probabilities for temperate loss
+        alpha_loss = (action_probs * (-log_alpha * (log_pi + target_entropy))).mean()
+
+        a_optimizer.zero_grad()
+        alpha_loss.backward()
+        a_optimizer.step()
+        alpha = log_alpha.exp().item()
+    ```
+
+3. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) uses different learning rates for the policy and the Soft Q-value networks optimization.
 
     ```python
         parser.add_argument("--policy-lr", type=float, default=3e-4,
@@ -168,9 +261,11 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
         parser.add_argument("--q-lr", type=float, default=1e-3,
             help="the learning rate of the Q network network optimizer")
     ```
+
     while [openai/spinningup](https://github.com/openai/spinningup/blob/038665d62d569055401d91856abb287263096178/spinup/algos/tf1/sac/sac.py#L44)'s uses a single learning rate of `lr=1e-3` for both components.
 
-    Note that in case it is used, the *automatic entropy coefficient* $\alpha$'s tuning shares the `q-lr` learning rate:
+    Note that in case it is used, the *automatic entropy coefficient* $\alpha$'s tuning shares the `q-lr` learning rate for both [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) and and [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py). The example below highlights this for [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py):
+
     ```python hl_lines="6"
         # Automatic entropy tuning
         if args.autotune:
@@ -182,9 +277,11 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
             alpha = args.alpha
     ```
 
-3. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) uses `--batch-size=256` while :material-github: [openai/spinningup](https://github.com/openai/spinningup/blob/038665d62d569055401d91856abb287263096178/spinup/algos/tf1/sac/sac.py#L44)'s uses `--batch-size=100` by default.
+4. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) uses `--batch-size=256` while :material-github: [openai/spinningup](https://github.com/openai/spinningup/blob/038665d62d569055401d91856abb287263096178/spinup/algos/tf1/sac/sac.py#L44)'s uses `--batch-size=100` by default.
 
-### Experiment results
+5. [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) uses `--target-entropy-scale=0.88` while the [SAC-discrete paper](https://arxiv.org/abs/1910.07207) uses `--target-entropy-scale=0.98` due to improved stability when training for more than 100k steps. Tuning this parameter to the environment at hand is advised and can lead to significant performance gains.
+
+### Pybullet experiment results for SAC
 
 To run benchmark experiments, see :material-github: [benchmark/sac.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/sac.sh). Specifically, execute the following command:
 
@@ -201,7 +298,6 @@ The table below compares the results of CleanRL's [`sac_continuous_action.py`](h
 | Walker2d-v2     | 4418.15 ± 592.82         | ~4,800           |
 | Hopper-v2       | 2685.76 ± 762.16         | ~3,250           |
 
-
 Learning curves:
 
 <div class="grid-container">
@@ -212,10 +308,43 @@ Learning curves:
 
 <div></div>
 
-
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-SAC--VmlldzoxNzI1NDM0" style="width:100%; height:1200px" title="MuJoCo: CleanRL's DDPG"></iframe>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-SAC--VmlldzoxNzI1NDM0" style="width:100%; height:1200px" title="MuJoCo: CleanRL's SAC"></iframe>
 
+<!-- FIXME: Must fix everything here for sac_atari -->
+### Atari experiment results for SAC-discrete
+
+To run benchmark experiments, see :material-github: [benchmark/sac_atari.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/sac_atari.sh). Specifically, execute the following command:
+
+<!-- FIXME: This must be updates for sac_atari -->
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F2e2dc9c6ede5e5e5df3eaea73c458bb9a83507d2%2Fbenchmark%2Fsac.sh%23L1-L7&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+The table below compares the results of CleanRL's [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) with the [original paper results](https://arxiv.org/abs/1910.07207).
+
+???+ info
+    Note that the results table above references the *training episodic return* for [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) without evaluation mode. The CleanRL version uses a different target entropy scale parameter compared to the author's code to increase stability for longer training runs.
+
+<!-- FIXME: These values are wrong for cleanRL's sac atari -->
+| Environment      | [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) |[SAC for Discrete Action Settings](https://arxiv.org/abs/1910.07207) @ 100k steps|
+| --------------- | ------------------ | ---------------- |
+| PongNoFrameskip-v4  | 10310.37 ± 1873.21       | -20.98 ± 0.0        |
+| BreakoutNoFrameskip-v4     | 4418.15 ± 592.82         | -           |
+| BeamRiderNoFrameskip-v4       | 2685.76 ± 762.16         | 432.1 ± 44.0           |
+
+Learning curves:
+
+<div class="grid-container">
+    <img src="../sac/PongNoFrameskip-v4.png">
+    <img src="../sac/BreakoutNoFrameskip-v4.png">
+    <img src="../sac/BeamRiderNoFrameskip-v4.png">
+</div>
+
+<div></div>
+
+<!-- 
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-SAC--VmlldzoxNzI1NDM0" style="width:100%; height:1200px" title="MuJoCo: CleanRL's SAC"></iframe> -->
 
 [^1]:Diederik P Kingma, Max Welling (2016). Auto-Encoding Variational Bayes. ArXiv, abs/1312.6114. https://arxiv.org/abs/1312.6114
