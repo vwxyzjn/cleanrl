@@ -16,7 +16,7 @@
 - [ ] I have updated the documentation and previewed the changes via `mkdocs serve`.
 - [ ] I have updated the tests accordingly (if applicable).
 
-If you are adding new algorithms or your change could result in performance difference, you may need to (re-)run tracked experiments. See https://github.com/vwxyzjn/cleanrl/pull/137 as an example PR. 
+If you are adding new algorithms or your change could result in performance difference, you may need to (re-)run tracked experiments. See https://github.com/vwxyzjn/cleanrl/pull/137 as an example PR. Feel free to remove this section if you don't need it.
 - [ ] I have contacted [vwxyzjn](https://github.com/vwxyzjn) to obtain access to the [openrlbenchmark W&B team](https://wandb.ai/openrlbenchmark) (**required**).
 - [ ] I have tracked applicable experiments in [openrlbenchmark/cleanrl](https://wandb.ai/openrlbenchmark/cleanrl) with `--capture-video` flag toggled on (**required**).
 - [ ] I have added additional documentation and previewed the changes via `mkdocs serve`.
