@@ -10,13 +10,24 @@ Original paper:
 
 * [Exploration by Random Network Distillation](https://arxiv.org/abs/1810.12894)
 
-Our single-file implementations of RND:
+## Implemented Variants
 
-* [ppo_rnd_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py)
-    * Uses the blazing fast [Envpool](https://github.com/sail-sg/envpool) vectorized environment.
-    * For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
-    * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
-    * Works with the `Discerete` action space
+
+| Variants Implemented      | Description |
+| ----------- | ----------- |
+| :material-github: [`ppo_rnd_envpool.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py), :material-file-document: [docs](/rl-algorithms/ppo-rnd/#ppo_rnd_envpoolpy) | For Atari games, uses EnvPool. |
+
+
+Below are our single-file implementations of RND:
+
+## `ppo_rnd_envpool.py`
+
+The [ppo_rnd_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py) has the following features:
+
+* Uses the blazing fast [Envpool](https://github.com/sail-sg/envpool) vectorized environment.
+* For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+* Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
+* Works with the `Discerete` action space
 
 ???+ warning
 
@@ -32,18 +43,6 @@ Our single-file implementations of RND:
     This causes the $s_{last}$ to be off by one. 
     See [:material-github: sail-sg/envpool#194](https://github.com/sail-sg/envpool/issues/194) for more detail. However, it does not seem to impact performance, so we take a note here and await for the upstream fix.
 
-
-## Implemented Variants
-
-
-| Variants Implemented      | Description |
-| ----------- | ----------- |
-| :material-github: [`ppo_rnd_envpool.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py), :material-file-document: [docs](/rl-algorithms/ppo-rnd/#ppo_rnd_envpoolpy) | For continuous action space |
-
-
-Below are our single-file implementations of TD3:
-
-## `ppo_rnd_envpool.py`
 
 ### Usage
 
