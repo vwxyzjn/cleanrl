@@ -88,7 +88,7 @@ with the Bellman update target is $y = r + \gamma \, Q^{'}(s', a')$ and the repl
 
 To run benchmark experiments, see :material-github: [benchmark/dqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/dqn.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fe2d3c76b362b566798bfbb311f5bad467285504a%2Fbenchmark%2Fdqn.sh%23L9-L13&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fdqn.sh%23L8-L13&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 Below are the average episodic returns for `dqn_atari.py`. 
 
@@ -175,7 +175,7 @@ The [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py) shar
 
 To run benchmark experiments, see :material-github: [benchmark/dqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/dqn.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fe2d3c76b362b566798bfbb311f5bad467285504a%2Fbenchmark%2Fdqn.sh%23L2-L6&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fdqn.sh%23L2-L6&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 Below are the average episodic returns for `dqn.py`. 
 
@@ -241,7 +241,7 @@ See [related docs](/rl-algorithms/dqn/#implementation-details) for `dqn_atari.py
 
 To run benchmark experiments, see :material-github: [benchmark/dqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/dqn.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Ff27b6d78be725aa71a0cf9f06caafce60450943a%2Fbenchmark%2Fdqn.sh%23L23-L29&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fdqn.sh%23L23-L29&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 
 Below are the average episodic returns for [`dqn_atari_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari_jax.py) (3 random seeds).
@@ -301,7 +301,7 @@ See [related docs](/rl-algorithms/dqn/#implementation-details_1) for `dqn.py`.
 
 To run benchmark experiments, see :material-github: [benchmark/dqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/dqn.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Ff27b6d78be725aa71a0cf9f06caafce60450943a%2Fbenchmark%2Fdqn.sh%23L15-L21&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fdqn.sh%23L15-L21&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 Below are the average episodic returns for [`dqn_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_jax.py) (3 random seeds).
 
