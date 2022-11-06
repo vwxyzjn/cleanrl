@@ -12,7 +12,7 @@ CleanRL has become an increasingly popular deep reinforcement learning library, 
 
 * Huang, Shengyi, Rousslan Fernand Julien Dossa, Antonin Raffin, Anssi Kanervisto, and Weixun Wang. "The 37 Implementation Details of Proximal Policy Optimization." International Conference on Learning Representations 2022 Blog Post Track, [https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/)
 
-* Huang, Shengyi, and Santiago Ontañón. "A closer look at invalid action masking in policy gradient algorithms." The International FLAIRS Conference Proceedings, 35. [https://](https://)journals.flvc.org/FLAIRS/article/view/130584
+* Huang, Shengyi, and Santiago Ontañón. "A closer look at invalid action masking in policy gradient algorithms." The International FLAIRS Conference Proceedings, 35. [https://journals.flvc.org/FLAIRS/article/view/130584](https://journals.flvc.org/FLAIRS/article/view/130584)
 
 * Schmidt, Dominik, and Thomas Schmied. "Fast and Data-Efficient Training of Rainbow: an Experimental Study on Atari." Deep Reinforcement Learning Workshop at the 35th Conference on Neural Information Processing Systems, [https://arxiv.org/abs/2111.10247](https://arxiv.org/abs/2111.10247)
 
