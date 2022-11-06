@@ -17,9 +17,9 @@ def parse_args():
     parser.add_argument("--num-seeds", type=int, default=3,
         help="the number of random seeds")
     parser.add_argument("--start-seed", type=int, default=1,
-        help="the number of random seeds")
-    parser.add_argument('--workers', type=int, default=0,
-        help='the number of eval workers to run benchmark experimenets (skips evaluation when set to 0)')
+        help="the number of the starting seed")
+    parser.add_argument("--workers", type=int, default=0,
+        help="the number of workers to run benchmark experimenets")
     parser.add_argument("--auto-tag", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, the runs will be tagged with the output from `git describe --tags` (e.g., v1.0.0b2-11-g5db4db7)")
     args = parser.parse_args()
@@ -78,7 +78,9 @@ if __name__ == "__main__":
         for env_id in args.env_ids:
             commands += [" ".join([args.command, "--env-id", env_id, "--seed", str(args.start_seed + seed)])]
 
-    print(commands)
+    print("======= commands to run:")
+    for command in commands:
+        print(command)
 
     if args.workers > 0:
         from concurrent.futures import ThreadPoolExecutor
