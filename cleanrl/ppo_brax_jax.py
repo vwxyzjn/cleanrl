@@ -6,20 +6,14 @@ import time
 from distutils.util import strtobool
 from typing import Sequence
 
-
-from brax import envs
-import jax
-import jax.numpy as jnp
-from brax import jumpy as jp
-from brax.envs import env as brax_env
-from brax.envs import wrappers
 import flax
 import flax.linen as nn
-import gym
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+from brax import envs
+from brax.envs import wrappers
 from flax.linen.initializers import constant, orthogonal
 from flax.training.train_state import TrainState
 from torch.utils.tensorboard import SummaryWriter
@@ -167,18 +161,19 @@ if __name__ == "__main__":
     key, network_key, actor_key, critic_key = jax.random.split(key, 4)
     local_devices_to_use = 1
     key_envs = jax.random.split(key, args.num_envs // 1)
-    key_envs = jnp.reshape(key_envs,
-                            (local_devices_to_use, -1) + key_envs.shape[1:])
+    key_envs = jnp.reshape(key_envs, (local_devices_to_use, -1) + key_envs.shape[1:])
 
     # env setup
     env = envs.get_environment(env_name=args.env_id)
     env = wrappers.wrap_for_training(env, episode_length=1000, action_repeat=1)
     reset_fn = jax.jit(jax.vmap(env.reset))
     step_env_fn = jax.jit(jax.vmap(env.step))
+
     @jax.jit
     def reset(key_envs):
         handle = reset_fn(key_envs)
         return handle, handle.obs.squeeze()
+
     @jax.jit
     def step_env(handle, actions):
         handle = step_env_fn(handle, actions.reshape(1, *actions.shape))
@@ -200,15 +195,10 @@ if __name__ == "__main__":
             episode_returns=(new_episode_return) * (1 - next_done),
             episode_lengths=(new_episode_length) * (1 - next_done),
             # only update the `returned_episode_returns` if the episode is done
-            returned_episode_returns=jnp.where(
-                next_done, new_episode_return, episode_stats.returned_episode_returns
-            ),
-            returned_episode_lengths=jnp.where(
-                next_done, new_episode_length, episode_stats.returned_episode_lengths
-            ),
+            returned_episode_returns=jnp.where(next_done, new_episode_return, episode_stats.returned_episode_returns),
+            returned_episode_lengths=jnp.where(next_done, new_episode_length, episode_stats.returned_episode_lengths),
         )
         return episode_stats, handle, (next_obs, reward, next_done, info)
-
 
     def linear_schedule(count):
         # anneal learning rate linearly after one training iteration which contains
@@ -246,14 +236,13 @@ if __name__ == "__main__":
         rewards=jnp.zeros((args.num_steps, args.num_envs)),
     )
 
-
     @jax.jit
     def get_action_and_value(
         agent_state: TrainState,
-        next_obs: np.ndarray, 
-        next_done: np.ndarray, 
+        next_obs: np.ndarray,
+        next_done: np.ndarray,
         storage: Storage,
-        step: int, 
+        step: int,
         key: jax.random.PRNGKey,
     ):
         action_mean, action_logstd = actor.apply(agent_state.params.actor_params, next_obs)
