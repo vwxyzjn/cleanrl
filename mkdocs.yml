@@ -28,14 +28,7 @@ theme:
         name: Switch to dark mode
 
 plugins:
-  - meta
-  - blog:
-      post_url_date_format: yyyy
-      post_url_format: "{slug}"
-      # archive: false
-      categories: false
   - search
-  - tags
 #adding git repo
 repo_url: https://github.com/vwxyzjn/cleanrl
 repo_name: vwxyzjn/cleanrl
@@ -104,8 +97,6 @@ nav:
   - Cloud Integration: 
     - cloud/installation.md
     - cloud/submit-experiments.md
-  - Blog:
-    - blog/index.md
 #footer
 extra:
   social:
