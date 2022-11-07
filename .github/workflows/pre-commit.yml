@@ -22,3 +22,5 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - uses: pre-commit/action@v2.0.3
+        with:
+          extra_args: --hook-stage manual
