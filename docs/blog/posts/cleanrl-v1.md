@@ -12,7 +12,7 @@ categories:
 # CleanRL v1 Release
 
 
-🎉 We are thrilled to announce the v1.0.0 CleanRL Release. CleanRL has come a long way making high-quality deep reinforcement learning implementations easy to understand and reproducible. Along with our [CleanRL paper's recent publication in Journal of Machine Learning Research](https://www.jmlr.org/papers/v23/21-1342.html), our v1.0.0 release includes reworked documentation, new algorithm variants, support for google's new ML framework [JAX](https://github.com/google/jax), hyperparameter tuning utilties, and more. This release is a major milestone for the project and we are excited to share it with you. Over 90 PRs were merged to make this release possible. We would like to thank all the contributors who made this release possible.
+🎉 We are thrilled to announce the v1.0.0 CleanRL Release. CleanRL has come a long way making high-quality deep reinforcement learning implementations easy to understand and reproducible. Along with our [CleanRL paper's recent publication in Journal of Machine Learning Research](https://www.jmlr.org/papers/v23/21-1342.html), our v1.0.0 release includes reworked documentation, new algorithm variants, support for google's new ML framework [JAX](https://github.com/google/jax), hyperparameter tuning utilities, and more. This release is a major milestone for the project and we are excited to share it with you. Over 90 PRs were merged to make this release possible. We would like to thank all the contributors who made this release possible.
 
 
 <!-- more -->
@@ -105,7 +105,7 @@ To ensure our single-file implementations can run without error, we also added C
 
 <img src="/static/blog/cleanrl-v1/github-action.png">
 
-### Hyperparameter tuning utilties
+### Hyperparameter tuning utilities
 
 We now have preliminary support for hyperparameter tuning via `optuna` (see [docs](https://docs.cleanrl.dev/advanced/hyperparameter-tuning/)), which is designed to help researchers to find **a single set** of hyperparameters that work well with a kind of games. The current API looks like below:
 
@@ -228,7 +228,7 @@ if __name__ == "__main__":
 
 How do we know the effect of a new feature / bug fix? DRL is brittle and has a series of reproducibility issues — even bug fixes sometimes could introduce performance regression (e.g., see [how a bug fix of contact force in MuJoCo results in worse performance for PPO](https://github.com/openai/gym/pull/2762#discussion_r853488897)). Therefore, it is essential to understand how the proposed changes impact the performance of the algorithms. 
 
-We built a prototype tool that allows us to compare the performance of the library at different versions of the tracked experiment. With this tool, we can confidently merge new features / bug fixes without worrying about introducing catastrophic regression. The users can run commands such as:
+We are working a prototype tool that allows us to compare the performance of the library at different versions of the tracked experiment ([:material-github: vwxyzjn/cleanrl#307](https://github.com/vwxyzjn/cleanrl/pull/307)). With this tool, we can confidently merge new features / bug fixes without worrying about introducing catastrophic regression. The users can run commands such as:
 
 ```bash
 python -m cleanrl_utils.rlops --exp-name ddpg_continuous_action \
