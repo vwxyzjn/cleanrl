@@ -66,11 +66,11 @@ We also improved the [contribution guide](https://github.com/vwxyzjn/cleanrl/blo
 We now support JAX-based learning algorithm varaints, which are usually faster than the `torch` equivalent! Here are the docs of the new JAX-based DQN, TD3, and DDPG implementations:
 
 
-* [`dqn_atari_jax.py`](https://docs.cleanrl.dev/rl-algorithms/dqn/#dqn_atari_jaxpy) @kinalmehta in [:material-github: vwxyzjn/cleanrl#222](https://github.com/vwxyzjn/cleanrl/pull/222)
-* [`dqn_jax.py`](https://docs.cleanrl.dev/rl-algorithms/dqn/#dqn_jaxpy) @kinalmehta in [:material-github: vwxyzjn/cleanrl#222](https://github.com/vwxyzjn/cleanrl/pull/222)
-* [`td3_continuous_action_jax.py`](https://docs.cleanrl.dev/rl-algorithms/td3/#td3_continuous_action_jaxpy) by @joaogui1 in [:material-github: vwxyzjn/cleanrl#225](https://github.com/vwxyzjn/cleanrl/pull/225)
-* [`ddpg_continuous_action_jax.py`](https://docs.cleanrl.dev/rl-algorithms/td3/#td3_continuous_action_jaxpy) by @vwxyzjn in [:material-github: vwxyzjn/cleanrl#187](https://github.com/vwxyzjn/cleanrl/pull/187)
-* [`ppo_atari_envpool_xla_jax.py`](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpool_xla_jaxpy) by @vwxyzjn in [:material-github: vwxyzjn/cleanrl#227](https://github.com/vwxyzjn/cleanrl/pull/227)
+* [`dqn_atari_jax.py`](https://docs.cleanrl.dev/rl-algorithms/dqn/#dqn_atari_jaxpy) [@kinalmehta](https://github.com/kinalmehta) in [:material-github: vwxyzjn/cleanrl#222](https://github.com/vwxyzjn/cleanrl/pull/222)
+* [`dqn_jax.py`](https://docs.cleanrl.dev/rl-algorithms/dqn/#dqn_jaxpy) [@kinalmehta](https://github.com/kinalmehta) in [:material-github: vwxyzjn/cleanrl#222](https://github.com/vwxyzjn/cleanrl/pull/222)
+* [`td3_continuous_action_jax.py`](https://docs.cleanrl.dev/rl-algorithms/td3/#td3_continuous_action_jaxpy) by [@joaogui1](https://github.com/joaogui1) in [:material-github: vwxyzjn/cleanrl#225](https://github.com/vwxyzjn/cleanrl/pull/225)
+* [`ddpg_continuous_action_jax.py`](https://docs.cleanrl.dev/rl-algorithms/td3/#td3_continuous_action_jaxpy) by [@vwxyzjn](https://github.com/vwxyzjn) in [:material-github: vwxyzjn/cleanrl#187](https://github.com/vwxyzjn/cleanrl/pull/187)
+* [`ppo_atari_envpool_xla_jax.py`](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpool_xla_jaxpy) by [@vwxyzjn](https://github.com/vwxyzjn) in [:material-github: vwxyzjn/cleanrl#227](https://github.com/vwxyzjn/cleanrl/pull/227)
 
 For example, below are the benchmark of DDPG + JAX (see docs [here](/rl-algorithms/ddpg/#ddpg_continuous_action_jaxpy) for further detail):
 
@@ -82,11 +82,11 @@ For example, below are the benchmark of DDPG + JAX (see docs [here](/rl-algorith
 
 Other new algorithm variants include multi-GPU PPO, PPO prototype that works with [Isaac Gym](https://github.com/NVIDIA-Omniverse/IsaacGymEnvs), multi-agent Atari PPO, and refactored PPG and PPO-RND implementations:
 
-* [`ppo_atari_multigpu.pu`](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_multigpupy) by @vwxyzjn in [:material-github: vwxyzjn/cleanrl#178]( https://github.com/vwxyzjn/cleanrl/pull/178)
-* [`ppo_continuous_action_isaacgym.py`](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_continuous_action_isaacgympy) by @vwxyzjn in [:material-github: vwxyzjn/cleanrl#233](https://github.com/vwxyzjn/cleanrl/pull/233)
-* [`ppo_pettingzoo_ma_atari.py`](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_pettingzoo_ma_ataripy) by @vwxyzjn in [:material-github: vwxyzjn/cleanrl#188](https://github.com/vwxyzjn/cleanrl/pull/188)
-* [`ppg_procgen.py`](https://docs.cleanrl.dev/rl-algorithms/ppg/#ppg_procgenpy) by @Dipamc77 in [:material-github: vwxyzjn/cleanrl#186](https://github.com/vwxyzjn/cleanrl/pull/186)
-* [`ppo_rnd_envpoolpy.py`](https://docs.cleanrl.dev/rl-algorithms/ppo-rnd/#ppo_rnd_envpoolpy) by @yooceii in [:material-github: vwxyzjn/cleanrl#151](https://github.com/vwxyzjn/cleanrl/pull/151)
+* [`ppo_atari_multigpu.pu`](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_multigpupy) by [@vwxyzjn](https://github.com/vwxyzjn) in [:material-github: vwxyzjn/cleanrl#178]( https://github.com/vwxyzjn/cleanrl/pull/178)
+* [`ppo_continuous_action_isaacgym.py`](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_continuous_action_isaacgympy) by [@vwxyzjn](https://github.com/vwxyzjn) in [:material-github: vwxyzjn/cleanrl#233](https://github.com/vwxyzjn/cleanrl/pull/233)
+* [`ppo_pettingzoo_ma_atari.py`](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_pettingzoo_ma_ataripy) by [@vwxyzjn](https://github.com/vwxyzjn) in [:material-github: vwxyzjn/cleanrl#188](https://github.com/vwxyzjn/cleanrl/pull/188)
+* [`ppg_procgen.py`](https://docs.cleanrl.dev/rl-algorithms/ppg/#ppg_procgenpy) by [@Dipamc77](https://github.com/Dipamc77) in [:material-github: vwxyzjn/cleanrl#186](https://github.com/vwxyzjn/cleanrl/pull/186)
+* [`ppo_rnd_envpoolpy.py`](https://docs.cleanrl.dev/rl-algorithms/ppo-rnd/#ppo_rnd_envpoolpy) by [@yooceii](https://github.com/yooceii) in [:material-github: vwxyzjn/cleanrl#151](https://github.com/vwxyzjn/cleanrl/pull/151)
 
 
 
@@ -257,5 +257,5 @@ which generates the following image
 
 ## Thanks
 
-I would like to cordially thank the core dev members @dosssman @yooceii @Dipamc @kinalmehta @bragajj for their efforts in helping maintain the CleanRL repository.  I would also like to give a shout-out to our new contributors @cool-RR, @Howuhh, @jseppanen, @joaogui1, @ALPH2H, @ElliotMunro200, @WillDudley, and @sdpkjc.
+I would like to cordially thank the core dev members [@dosssman](https://github.com/dosssman) [@yooceii](https://github.com/yooceii) [@Dipamc](https://github.com/Dipamc) [@kinalmehta](https://github.com/kinalmehta) [@bragajj](https://github.com/bragajj) for their efforts in helping maintain the CleanRL repository.  I would also like to give a shout-out to our new contributors [@cool](https://github.com/cool)-RR, [@Howuhh](https://github.com/Howuhh), [@jseppanen](https://github.com/jseppanen), [@joaogui1](https://github.com/joaogui1), [@ALPH2H](https://github.com/ALPH2H), [@ElliotMunro200](https://github.com/ElliotMunro200), [@WillDudley](https://github.com/WillDudley), and [@sdpkjc](https://github.com/sdpkjc).
 
