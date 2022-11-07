@@ -22,13 +22,13 @@ categories:
 One of the biggest change of the v1 release is the added documentation at [docs.cleanrl.dev](https://docs.cleanrl.dev). Having great documentation is important for building a reliable and reproducible project. We have reworked the documentation to make it easier to understand and use. For each implemented algorithm, we have documented as much as we can to promote transparency:
 
 * [Short description of the algorithm and references](/rl-algorithms/ppo/#overview)
-* [A list of implemented varaint](/rl-algorithms/ppo/#implemented-variants)
+* [A list of implemented variant](/rl-algorithms/ppo/#implemented-variants)
 * [The usage information](/rl-algorithms/ppo/#usage)
 * [The explanation of the logged metrics](/rl-algorithms/ppo/#explanation-of-the-logged-metrics)
 * [The documentation of implementation details](/rl-algorithms/ppo/#implementation-details)
 * [Experimental results](/rl-algorithms/ppo/#experiment-results)
 
-Here is a list of the algorithm varaints and their documentation:
+Here is a list of the algorithm variants and their documentation:
 
 
 | Algorithm      | Variants Implemented |
@@ -63,7 +63,7 @@ We also improved the [contribution guide](https://github.com/vwxyzjn/cleanrl/blo
 
 ## New algorithm variants, support for JAX
 
-We now support JAX-based learning algorithm varaints, which are usually faster than the `torch` equivalent! Here are the docs of the new JAX-based DQN, TD3, and DDPG implementations:
+We now support JAX-based learning algorithm variants, which are usually faster than the `torch` equivalent! Here are the docs of the new JAX-based DQN, TD3, and DDPG implementations:
 
 
 * [`dqn_atari_jax.py`](https://docs.cleanrl.dev/rl-algorithms/dqn/#dqn_atari_jaxpy) [@kinalmehta](https://github.com/kinalmehta) in [:material-github: vwxyzjn/cleanrl#222](https://github.com/vwxyzjn/cleanrl/pull/222)
@@ -101,7 +101,7 @@ We added a pre-commit utility to help contributors to format their code, check f
 <img src="/static/pre-commit.png">
 
 
-To ensure our single-file implementations can run without error, we also added CI/CD pipeline which now runs end-to-end test cases for all the algorithm varaints. The pipeline also tests builds across different operating systems, such as Linux, macOS, and Windows (see [here](https://github.com/vwxyzjn/cleanrl/actions/runs/3401991711/usage) as an example). GitHub actions are free for open source projects, and we are very happy to have this tool to help us maintain the project. 
+To ensure our single-file implementations can run without error, we also added CI/CD pipeline which now runs end-to-end test cases for all the algorithm variants. The pipeline also tests builds across different operating systems, such as Linux, macOS, and Windows (see [here](https://github.com/vwxyzjn/cleanrl/actions/runs/3401991711/usage) as an example). GitHub actions are free for open source projects, and we are very happy to have this tool to help us maintain the project. 
 
 <img src="/static/blog/cleanrl-v1/github-action.png">
 
