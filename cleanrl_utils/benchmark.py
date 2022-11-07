@@ -21,7 +21,7 @@ def parse_args():
     parser.add_argument("--workers", type=int, default=0,
         help="the number of workers to run benchmark experimenets")
     parser.add_argument("--auto-tag", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, the runs will be tagged with the output from `git describe --tags` (e.g., v1.0.0b2-11-g5db4db7)")
+        help="if toggled, the runs will be tagged with git tags, commit, and pull request number if possible")
     args = parser.parse_args()
     # fmt: on
     return args
@@ -89,3 +89,5 @@ if __name__ == "__main__":
         for command in commands:
             executor.submit(run_experiment, command)
         executor.shutdown(wait=True)
+    else:
+        print("not running the experiments because --workers is set to 0; just printing the commands to run")
