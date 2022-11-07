@@ -160,7 +160,7 @@ which will run the `ppo.py` script with `--cuda False --track --capture-video` a
 
 ## What’s next?
 
-It is an exciting time and new improvements are coming to CleanRL. We plan to add more JAX-based implementations, huggingface integration, and some RLops prototypes. CleanRL is a community-based project and we always welcome new contributors. If there is an algorithm or new feature you would like to contribute, feel free to chat with us on our [discord channel](https://discord.gg/D6RCjA6sVT) or raise a GitHub issue. 
+It is an exciting time and new improvements are coming to CleanRL. We plan to add more JAX-based implementations, huggingface integration, some RLops prototypes, and support Gymnasium. CleanRL is a community-based project and we always welcome new contributors. If there is an algorithm or new feature you would like to contribute, feel free to chat with us on our [discord channel](https://discord.gg/D6RCjA6sVT) or raise a GitHub issue. 
 
 ### More JAX implementations
 
@@ -245,6 +245,13 @@ python -m cleanrl_utils.rlops --exp-name ddpg_continuous_action \
 which generates the following image
 
 <img max-width="500px" src="/static/blog/cleanrl-v1/rlops.png">
+
+
+### Support for Gymnasium
+
+[Farama-Foundation/Gymnasium](https://github.com/Farama-Foundation/Gymnasium) is the next generation of [`openai/gym`](https://github.com/openai/gym) that will continue to be maintained and introduce new features. Please see their [announcement](https://farama.org/Announcing-The-Farama-Foundation) for further detail. We are migrating to `gymnasium` and the progress can be tracked in [:material-github: vwxyzjn/cleanrl#277](https://github.com/vwxyzjn/cleanrl/pull/277).
+
+<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Today we&#39;re launching the Farama Foundation, a new nonprofit dedicated to open source reinforcement learning, and we&#39;re beginning by maintaining and standardizing all the major open source reinforcement learning environments. Read more here: <a href="https://t.co/kQqFMQdVqn">https://t.co/kQqFMQdVqn</a></p>&mdash; Farama Foundation (@FaramaFound) <a href="https://twitter.com/FaramaFound/status/1584936111461502977?ref_src=twsrc%5Etfw">October 25, 2022</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 
 
 ## New CleanRL Supported Publications
