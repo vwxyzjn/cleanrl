@@ -14,7 +14,7 @@ categories:
 
 🎉 We are thrilled to announce the v1.0.0 CleanRL Release. CleanRL has come a long way making high-quality deep reinforcement learning implementations easy to understand and reproducible. Along with our [CleanRL paper's recent publication in Journal of Machine Learning Research](https://www.jmlr.org/papers/v23/21-1342.html), our v1.0.0 release includes reworked documentation, new algorithm variants, support for google's new ML framework [JAX](https://github.com/google/jax), hyperparameter tuning utilities, and more. This release is a major milestone for the project and we are excited to share it with you. Over 90 PRs were merged to make this release possible. We would like to thank all the contributors who made this release possible.
 
-More detailed release notes are available at [v1.0.0b1][https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0b1], [v1.0.0b2](https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0b2), and [v1.0.0][https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0].
+More detailed release notes are available at [v1.0.0b1](https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0b1), [v1.0.0b2](https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0b2), and [v1.0.0][https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0].
 
 
 <!-- more -->
