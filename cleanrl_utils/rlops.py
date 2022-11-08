@@ -196,7 +196,7 @@ if __name__ == "__main__":
     console = Console()
     blocks = []
     runsetss = []
-    colors = sns.color_palette(n_colors=len(args.filters))
+    colors = sns.color_palette(n_colors=len(args.filters)).as_hex()
     for filter_str, color in zip(args.filters, colors):
         print("=========", filter_str)
         parse_result = urlparse(filter_str)
