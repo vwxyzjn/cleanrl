@@ -1,18 +1,18 @@
 import argparse
 import os
 from distutils.util import strtobool
-from typing import Dict, List
+from typing import List
+from urllib.parse import parse_qs, urlparse
 
 import expt
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import wandb
 import wandb.apis.reports as wb  # noqa
 from expt import Hypothesis, Run
 from rich.console import Console
-from urllib.parse import urlparse, parse_qs
-import seaborn as sns
 
 wandb.require("report-editing")
 api = wandb.Api()
@@ -55,6 +55,7 @@ def create_hypothesis(name: str, wandb_runs: List[wandb.apis.public.Run], scan_h
             wandb_run = wandb_run.drop(columns=["videos"], axis=1)
         runs += [Run(f"seed{idx}", wandb_run)]
     return Hypothesis(name, runs)
+
 
 class Runset:
     def __init__(self, name: str, filters: dict, entity: str, project: str, groupby: str = "", color: str = "#000000"):
@@ -123,13 +124,11 @@ def compare(
         )
         custom_run_colors = {}
         for runsets in runsetss:
-            custom_run_colors.update({
-                (runsets[idx].report_runset.name, runsets[idx].runs[0].config["exp_name"]): runsets[idx].color
-            })
-        pg.custom_run_colors = custom_run_colors # IMPORTANT: custom_run_colors is implemented as a custom `setter` that needs to be overwritten unlike regular dictionaries
-        blocks += [
-            pg
-        ]
+            custom_run_colors.update(
+                {(runsets[idx].report_runset.name, runsets[idx].runs[0].config["exp_name"]): runsets[idx].color}
+            )
+        pg.custom_run_colors = custom_run_colors  # IMPORTANT: custom_run_colors is implemented as a custom `setter` that needs to be overwritten unlike regular dictionaries
+        blocks += [pg]
 
     nrows = np.ceil(len(env_ids) / ncols).astype(int)
     figsize = (ncols * 4, nrows * 3)
@@ -181,7 +180,7 @@ def compare(
     # dynamically adjust the top of subplot to make room for legend
     fig.subplots_adjust(top=1 - 0.07 * num_legend_rows)
     # remove the empty axes
-    for ax in axes.flatten()[len(env_ids):]:
+    for ax in axes.flatten()[len(env_ids) :]:
         ax.remove()
 
     print(f"saving figure to {output_filename}")
@@ -224,9 +223,7 @@ if __name__ == "__main__":
                     color=color,
                 )
             ]
-            console.print(
-                f"CleanRL's {exp_name} [green]({query})[/] in [purple]{env_id}[/] has {len(runsets[-1].runs)} runs"
-            )
+            console.print(f"CleanRL's {exp_name} [green]({query})[/] in [purple]{env_id}[/] has {len(runsets[-1].runs)} runs")
             for run in runsets[-1].runs:
                 console.print(f"┣━━ [link={run.url}]{run.name}[/link] with tags = {run.tags}")
             assert len(runsets[0].runs) > 0, f"CleanRL's {exp_name} ({query}) in {env_id} has no runs"
