@@ -14,6 +14,8 @@ categories:
 
 🎉 We are thrilled to announce the v1.0.0 CleanRL Release. CleanRL has come a long way making high-quality deep reinforcement learning implementations easy to understand and reproducible. Along with our [CleanRL paper's recent publication in Journal of Machine Learning Research](https://www.jmlr.org/papers/v23/21-1342.html), our v1.0.0 release includes reworked documentation, new algorithm variants, support for google's new ML framework [JAX](https://github.com/google/jax), hyperparameter tuning utilities, and more. This release is a major milestone for the project and we are excited to share it with you. Over 90 PRs were merged to make this release possible. We would like to thank all the contributors who made this release possible.
 
+More detailed release notes are available at [v1.0.0b1][https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0b1], [v1.0.0b2](https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0b2), and [v1.0.0][https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0].
+
 
 <!-- more -->
 
@@ -66,11 +68,11 @@ We also improved the [contribution guide](https://github.com/vwxyzjn/cleanrl/blo
 We now support JAX-based learning algorithm variants, which are usually faster than the `torch` equivalent! Here are the docs of the new JAX-based DQN, TD3, and DDPG implementations:
 
 
-* [`dqn_atari_jax.py`](https://docs.cleanrl.dev/rl-algorithms/dqn/#dqn_atari_jaxpy) [@kinalmehta](https://github.com/kinalmehta) in [:material-github: vwxyzjn/cleanrl#222](https://github.com/vwxyzjn/cleanrl/pull/222)
-* [`dqn_jax.py`](https://docs.cleanrl.dev/rl-algorithms/dqn/#dqn_jaxpy) [@kinalmehta](https://github.com/kinalmehta) in [:material-github: vwxyzjn/cleanrl#222](https://github.com/vwxyzjn/cleanrl/pull/222)
-* [`td3_continuous_action_jax.py`](https://docs.cleanrl.dev/rl-algorithms/td3/#td3_continuous_action_jaxpy) by [@joaogui1](https://github.com/joaogui1) in [:material-github: vwxyzjn/cleanrl#225](https://github.com/vwxyzjn/cleanrl/pull/225)
-* [`ddpg_continuous_action_jax.py`](https://docs.cleanrl.dev/rl-algorithms/td3/#td3_continuous_action_jaxpy) by [@vwxyzjn](https://github.com/vwxyzjn) in [:material-github: vwxyzjn/cleanrl#187](https://github.com/vwxyzjn/cleanrl/pull/187)
-* [`ppo_atari_envpool_xla_jax.py`](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpool_xla_jaxpy) by [@vwxyzjn](https://github.com/vwxyzjn) in [:material-github: vwxyzjn/cleanrl#227](https://github.com/vwxyzjn/cleanrl/pull/227)
+* [`dqn_atari_jax.py`](https://docs.cleanrl.dev/rl-algorithms/dqn/#dqn_atari_jaxpy) [@kinalmehta](https://github.com/kinalmehta) in [:material-github: vwxyzjn/cleanrl#222](https://github.com/vwxyzjn/cleanrl/pull/222) (about 25% faster than `dqn_atari.py`)
+* [`dqn_jax.py`](https://docs.cleanrl.dev/rl-algorithms/dqn/#dqn_jaxpy) [@kinalmehta](https://github.com/kinalmehta) in [:material-github: vwxyzjn/cleanrl#222](https://github.com/vwxyzjn/cleanrl/pull/222) (about 4% faster than `dqn.py`)
+* [`td3_continuous_action_jax.py`](https://docs.cleanrl.dev/rl-algorithms/td3/#td3_continuous_action_jaxpy) by [@joaogui1](https://github.com/joaogui1) in [:material-github: vwxyzjn/cleanrl#225](https://github.com/vwxyzjn/cleanrl/pull/225) (about 2.5-4x faster than `td3_continuous_action.py`)
+* [`ddpg_continuous_action_jax.py`](https://docs.cleanrl.dev/rl-algorithms/ddpg/#ddpg_continuous_action_jaxpy) by [@vwxyzjn](https://github.com/vwxyzjn) in [:material-github: vwxyzjn/cleanrl#187](https://github.com/vwxyzjn/cleanrl/pull/187) (about 2.5-4x faster than `ddpg_continuous_action.py`)
+* [`ppo_atari_envpool_xla_jax.py`](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpool_xla_jaxpy) by [@vwxyzjn](https://github.com/vwxyzjn) in [:material-github: vwxyzjn/cleanrl#227](https://github.com/vwxyzjn/cleanrl/pull/227) (about 3x faster than openai/baselines' PPO)
 
 For example, below are the benchmark of DDPG + JAX (see docs [here](/rl-algorithms/ddpg/#ddpg_continuous_action_jaxpy) for further detail):
 
