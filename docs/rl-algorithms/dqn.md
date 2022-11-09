@@ -278,7 +278,7 @@ Tracked experiments and game play videos:
 
 
 ## `dqn_jax.py`
-* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  [dqn_atari_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_jax.py) is roughly 2.5-4x faster than  [dqn_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py)
+* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  [dqn_atari_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_jax.py) is roughly 4% faster than  [dqn_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py)
 * Works with the `Box` observation space of low-level features
 * Works with the `Discrete` action space
 * Works with envs like `CartPole-v1`
