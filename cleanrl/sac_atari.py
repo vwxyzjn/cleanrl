@@ -1,4 +1,4 @@
-# TODO: Must add header here
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/sac/#sac_ataripy
 import argparse
 import os
 import random
@@ -36,8 +36,7 @@ def parse_args():
         help="if toggled, cuda will be enabled by default")
     parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
-    # TODO: Must change this back to CLeanRL later
-    parser.add_argument("--wandb-project-name", type=str, default="SAC-discrete",
+    parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
         help="the wandb's project name")
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
@@ -277,7 +276,6 @@ if __name__ == "__main__":
         obs = next_obs
 
         # ALGO LOGIC: training.
-        # TODO: Try delayed update again
         if global_step > args.learning_starts and global_step % args.update_frequency == 0:
             data = rb.sample(args.batch_size)
             # CRITIC training
