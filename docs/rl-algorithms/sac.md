@@ -30,7 +30,7 @@ Reference resources:
 | Variants Implemented      | Description |
 | ----------- | ----------- |
 | :material-github: [`sac_continuous_actions.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_continuous_actionpy) | For continuous action spaces |
-| :material-github: [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_continuous_actionpy) | For discrete action spaces |
+| :material-github: [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_continuous_actionpy) | For discrete action spaces |
 
 Below are our single-file implementations of SAC:
 
@@ -61,7 +61,7 @@ python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0 --autotune F
 
 ## `sac_atari.py`
 
-The [sac_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) has the following features:
+The [sac_atari.py](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) has the following features:
 
 * For discrete action spaces.
 * Works with the `Box` observation space of low-level features.
@@ -157,7 +157,7 @@ $$
     \alpha^{*}_t = \text{argmin}_{\alpha_t} \mathbb{E}_{a_t \sim \pi^{*}_t} \, {\color{orange}\pi (a | s)^{\mathsf T}}\big[ -\alpha_t \, \log\pi^{*}_t(a_t \vert s_t; \alpha_t) - \alpha_t \tau \mathcal{H} \big],
 $$
 
-Since SAC-discrete uses a Categorical policy in a discrete action space, a different entropy target is required. The author uses the maximum entropy Categorical distribution (assigning uniform probability to all available actions) scaled by a factor of $\tau$ instead.
+Since SAC-discrete uses a Categorical policy in a discrete action space, a different entropy target is required. The author uses the maximum entropy Categorical distribution (assigning uniform probability to all available actions) scaled by a factor of $\tau~.$
 
 ### Implementation details
 
@@ -212,7 +212,7 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
 
     Note that unlike :material-github: [openai/spinningup](https://github.com/openai/spinningup/tree/master/spinup/algos/tf1/sac)'s implementation which uses `LOG_STD_MIN = -20`, CleanRL's uses `LOG_STD_MIN = -5` instead.
 
-2. [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) uses the action selection probabilities of the policy in multiple places to *reduce the variance of gradient estimates*. The target for the Soft Q-value estimate is weighted accordingly:
+2. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses the action selection probabilities of the policy in multiple places to *reduce the variance of gradient estimates*. The target for the Soft Q-value estimate is weighted accordingly:
 
     ```python hl_lines="7"
     # CRITIC training
@@ -264,7 +264,7 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
 
     while [openai/spinningup](https://github.com/openai/spinningup/blob/038665d62d569055401d91856abb287263096178/spinup/algos/tf1/sac/sac.py#L44)'s uses a single learning rate of `lr=1e-3` for both components.
 
-    Note that in case it is used, the *automatic entropy coefficient* $\alpha$'s tuning shares the `q-lr` learning rate for both [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) and and [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py). The example below highlights this for [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py):
+    Note that in case it is used, the *automatic entropy coefficient* $\alpha$'s tuning shares the `q-lr` learning rate for both [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) and and [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py). The example below highlights this for [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py):
 
     ```python hl_lines="6"
         # Automatic entropy tuning
@@ -279,11 +279,11 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
 
 4. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) uses `--batch-size=256` while :material-github: [openai/spinningup](https://github.com/openai/spinningup/blob/038665d62d569055401d91856abb287263096178/spinup/algos/tf1/sac/sac.py#L44)'s uses `--batch-size=100` by default.
 
-5. [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) uses `--target-entropy-scale=0.88` while the [SAC-discrete paper](https://arxiv.org/abs/1910.07207) uses `--target-entropy-scale=0.98` due to improved stability when training for more than 100k steps. Tuning this parameter to the environment at hand is advised and can lead to significant performance gains.
+5. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses `--target-entropy-scale=0.88` while the [SAC-discrete paper](https://arxiv.org/abs/1910.07207) uses `--target-entropy-scale=0.98` due to improved stability when training for more than 100k steps. Tuning this parameter to the environment at hand is advised and can lead to significant performance gains.
 
 ### Pybullet experiment results for SAC
 
-To run benchmark experiments, see :material-github: [benchmark/sac.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/sac.sh). Specifically, execute the following command:
+To run benchmark experiments, see :material-github: [benchmark/sac.sh](https://github.com/timoklein/cleanrl/blob/sac-discrete/benchmark/sac.sh). Specifically, execute the following command:
 
 <script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F2e2dc9c6ede5e5e5df3eaea73c458bb9a83507d2%2Fbenchmark%2Fsac.sh%23L1-L7&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
@@ -312,21 +312,19 @@ Tracked experiments and game play videos:
 
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-SAC--VmlldzoxNzI1NDM0" style="width:100%; height:1200px" title="MuJoCo: CleanRL's SAC"></iframe>
 
-<!-- FIXME: Must fix everything here for sac_atari -->
 ### Atari experiment results for SAC-discrete
 
-To run benchmark experiments, see :material-github: [benchmark/sac_atari.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/sac_atari.sh). Specifically, execute the following command:
+Run benchmarks for :material-github: [benchmark/sac_atari.sh](https://github.com/timoklein/cleanrl/blob/sac-discrete/benchmark/sac_atari.sh) by executing:
 
-<!-- FIXME: This must be updates for sac_atari -->
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F2e2dc9c6ede5e5e5df3eaea73c458bb9a83507d2%2Fbenchmark%2Fsac.sh%23L1-L7&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed-v2.js?target=https%3A%2F%2Fgithub.com%2Ftimoklein%2Fcleanrl%2Fblob%2Fsac-discrete%2Fbenchmark%2Fsac_atari.sh&style=default&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
 
-The table below compares the results of CleanRL's [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) with the [original paper results](https://arxiv.org/abs/1910.07207).
+The table below compares the results of CleanRL's [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) with the [original paper results](https://arxiv.org/abs/1910.07207).
 
 ???+ info
-    Note that the results table above references the *training episodic return* for [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) without evaluation mode. The CleanRL version uses a different target entropy scale parameter compared to the author's code to increase stability for longer training runs.
+    Note that the results table above references the *training episodic return* for [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) without evaluation mode. The CleanRL version uses a different target entropy scale parameter compared to the author's code to increase stability for longer training runs.
 
 <!-- FIXME: These values are wrong for cleanRL's sac atari -->
-| Environment      | [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) |[SAC for Discrete Action Settings](https://arxiv.org/abs/1910.07207) @ 100k steps|
+| Environment      | [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) |[SAC for Discrete Action Settings](https://arxiv.org/abs/1910.07207) @ 100k steps|
 | --------------- | ------------------ | ---------------- |
 | PongNoFrameskip-v4  | 10310.37 ± 1873.21       | -20.98 ± 0.0        |
 | BreakoutNoFrameskip-v4     | 4418.15 ± 592.82         | -           |
@@ -342,9 +340,8 @@ Learning curves:
 
 <div></div>
 
-<!-- 
-Tracked experiments and game play videos:
+Tracked experiments:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-SAC--VmlldzoxNzI1NDM0" style="width:100%; height:1200px" title="MuJoCo: CleanRL's SAC"></iframe> -->
+<iframe src="https://wandb.ai/openrlbenchmark/cleanrl/reports/CleanRL-SAC-discrete--VmlldzoyNzgxMTI2" style="width:100%; height:1200px" title="Atari: CleanRL's SAC-discrete"></iframe>
 
 [^1]:Diederik P Kingma, Max Welling (2016). Auto-Encoding Variational Bayes. ArXiv, abs/1312.6114. https://arxiv.org/abs/1312.6114
