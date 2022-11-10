@@ -323,12 +323,11 @@ The table below compares the results of CleanRL's [`sac_atari.py`](https://githu
 ???+ info
     Note that the results table above references the *training episodic return* for [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) without evaluation mode. The CleanRL version uses a different target entropy scale parameter compared to the author's code to increase stability for longer training runs.
 
-<!-- FIXME: These values are wrong for cleanRL's sac atari -->
-| Environment      | [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) |[SAC for Discrete Action Settings](https://arxiv.org/abs/1910.07207) @ 100k steps|
-| --------------- | ------------------ | ---------------- |
-| PongNoFrameskip-v4  | 10310.37 ± 1873.21       | -20.98 ± 0.0        |
-| BreakoutNoFrameskip-v4     | 4418.15 ± 592.82         | -           |
-| BeamRiderNoFrameskip-v4       | 2685.76 ± 762.16         | 432.1 ± 44.0           |
+| Environment      | [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) 100k steps |[SAC for Discrete Action Settings](https://arxiv.org/abs/1910.07207) 100k steps| [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) 5M steps | [`dqn_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py) 10M steps
+| --------------- | ------------------ | ---------------- | ---------------- | ---------------- |
+| PongNoFrameskip-v4  | ~ -20.83 ± 0.24       | -20.98 ± 0.0        |   ~19.15 ± 1.96  |     20.25 ± 0.41   |
+| BreakoutNoFrameskip-v4     | ~2.67 ± 2.05         | -           | ~376.87 ± 17.256  |  366.928 ± 39.89  |
+| BeamRiderNoFrameskip-v4       | ~388.67 ± 92.18         | 432.1 ± 44.0           |   ~8612.40 ± 1532.57 |    6673.24 ± 1434.37   |
 
 Learning curves:
 
