@@ -340,7 +340,7 @@ if __name__ == "__main__":
         logits = logits.clip(min=jnp.finfo(logits.dtype).min)
 
         # maks out truncated states during the learning pass so that they don't affect the loss
-        logits = jnp.where(mask.reshape((-1, 1)) * jnp.ones((1,4)), jnp.zeros_like(logits) -1e+8, logits)
+        logits = jnp.where(mask.reshape((-1, 1)) * jnp.ones((1,4)), -jnp.inf, logits)
         p_log_p = logits * jax.nn.softmax(logits)
         entropy = -p_log_p.sum(-1)
         value = critic.apply(params.critic_params, hidden).squeeze()
