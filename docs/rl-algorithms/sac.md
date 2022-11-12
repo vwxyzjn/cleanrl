@@ -13,7 +13,7 @@ The SAC algorithm's initial proposal, and later updates and improvements can be 
 * [Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor](https://arxiv.org/abs/1801.01290)
 * [Composable Deep Reinforcement Learning for Robotic Manipulation](https://arxiv.org/abs/1803.06773)
 * [Soft Actor-Critic Algorithms and Applications](https://arxiv.org/abs/1812.05905)
-* [Soft Actor-Critic for Discrete Action Settings](https://arxiv.org/abs/1910.07207) No peer review, preprint only
+* [Soft Actor-Critic for Discrete Action Settings](https://arxiv.org/abs/1910.07207) (No peer review, preprint only)
 
 Reference resources:
 
@@ -25,12 +25,12 @@ Reference resources:
 * :material-github: [haarnoja/softqlearning](https://github.com/haarnoja/softqlearning)
 * :material-github: [rail-berkeley/softlearning](https://github.com/rail-berkeley/softlearning)
 * :material-github: [p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch](https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch)
-* :material-github: [toshikwa/sac-discrete.pytorch](github.com/toshikwa/sac-discrete.pytorch)
+* :material-github: [toshikwa/sac-discrete.pytorch](https://github.com/toshikwa/sac-discrete.pytorch)
 
 | Variants Implemented      | Description |
 | ----------- | ----------- |
 | :material-github: [`sac_continuous_actions.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_continuous_actionpy) | For continuous action spaces |
-| :material-github: [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_continuous_actionpy) | For discrete action spaces |
+| :material-github: [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_ataripy) | For discrete action spaces |
 
 Below are our single-file implementations of SAC:
 
@@ -252,12 +252,12 @@ The metrics logged by `python cleanrl/sac_atari.py` are the same as the ones log
 
 * `losses/qf1_loss`, `losses/qf2_loss`: for each Soft Q-value network $Q_{\theta_i}$, $i \in \{1,2\}$, this metric holds the mean squared error (MSE) between the soft Q-value estimate $Q_{\theta_i}(s, a)$ and the *entropy regularized* Bellman update target estimated as $r_t + \gamma \, Q_{\theta_{i}^{'}}(s', a') + \alpha \, \mathcal{H} \big[ \pi(a' \vert s') \big]$.
 
-SAC-discrete is able to exploit the discrete action space by using the full action distribution to calculate the Soft Q-targets instead of relying on a Monte Carlo approximation from a single Q-value. The new Soft Q-target is stated below with differences to [continuous SAC target](/rl-algorithms/sac/#explanation-of-the-logged-metrics) highlighted in orange:
+SAC-discrete is able to exploit the discrete action space by using the full action distribution to calculate the Soft Q-targets instead of relying on a Monte Carlo approximation from a single Q-value. The new Soft Q-target is stated below with differences to the [continuous SAC target](/rl-algorithms/sac/#explanation-of-the-logged-metrics) highlighted in orange:
 $$
     y = r(s, a) + \gamma \, {\color{orange}\pi (a | s^\prime)^{\mathsf T}} \Big(\min_{\theta_{1,2}} {\color{orange}Q_{\theta_i^{'}}(s')} - \alpha \, \log \pi( \cdot \vert s')\Big)~,
 $$
 
-Note how in the discrete setting the Q-function $Q_{\theta_i^{'}}(s')$ is a mapping $Q:S \rightarrow \mathbb R^{|\mathcal A|}$ only taking states as arguments and outputting Q-values for all actions. Using all this available information and additionally weighing the target by the corresponding action selection probability reduces variance of the gradient.
+Note how in the discrete setting the Q-function $Q_{\theta_i^{'}}(s')$ is a mapping $Q:S \rightarrow \mathbb R^{|\mathcal A|}$ that only takes states as inputs and outputs Q-values for all actions. Using all this available information and additionally weighing the target by the corresponding action selection probability reduces variance of the gradient.
 
 * `losses/actor_loss`: Given the stochastic nature of the policy in SAC, the actor (or policy) objective is formulated so as to maximize the likelihood of actions $a \sim \pi( \cdot \vert s)$ that would result in high Q-value estimate $Q(s, a)$. Additionally, the policy objective encourages the policy to maintain its entropy high enough to help explore, discover, and capture multi-modal optimal policies.
 
@@ -298,7 +298,7 @@ Since SAC-discrete uses a Categorical policy in a discrete action space, a diffe
 Other noteworthy implementation details apart from the Atari wrapping are as follows:
 
 1. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) initializes the weights of its networks using He initialization (named after its author Kaiming He) from the paper ["Delving Deep into Rectifiers:
-Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.org/pdf/1502.01852.pdf). The corresponding function in PyTorch is `kaiming_normal_`, its documentation can be found [here](https://pytorch.org/docs/stable/nn.init.html). In essence, it means weights of each layer are initialized according to a Normal distribution with mean 0 and
+Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.org/pdf/1502.01852.pdf). The corresponding function in PyTorch is `kaiming_normal_`, its documentation can be found [here](https://pytorch.org/docs/stable/nn.init.html). In essence, it means the weights of each layer are initialized according to a Normal distribution with mean $\mu=0$ and
 
     $$
         \sigma = \frac{\text{gain}}{\sqrt{\text{fan}}}~,
@@ -324,13 +324,13 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
 
     ```python hl_lines="8"
     # ACTOR training
-    _, log_pi, pi_probs = actor.get_action(data.observations)
+    _, log_pi, action_probs = actor.get_action(data.observations)
     with torch.no_grad():
         qf1_pi = qf1(data.observations)
         qf2_pi = qf2(data.observations)
         min_qf_pi = torch.min(qf1_pi, qf2_pi)
     # no need for reparameterization, the expectation can be calculated for discrete actions
-    actor_loss = (pi_probs * ((alpha * log_pi) - min_qf_pi)).mean()
+    actor_loss = (action_probs * ((alpha * log_pi) - min_qf_pi)).mean()
     ```
 
     Lastly, this variance reduction scheme is also used when automatic entropy tuning is enabled:
@@ -349,7 +349,8 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
 
 3. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses `--target-entropy-scale=0.88` while the [SAC-discrete paper](https://arxiv.org/abs/1910.07207) uses `--target-entropy-scale=0.98` due to improved stability when training for more than 100k steps. Tuning this parameter to the environment at hand is advised and can lead to significant performance gains.
 
-4. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) performs learning updates only on every $n^{\text{th}}$ step. This leads to improved stability and prevents the agent's performance from degenerating during longer training runs. Note the difference to [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py): SAC-discrete updates every $n^{\text{th}}$ environment step and does a single update of actor and critic on every update step. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) updates the critic every step and the actor every $n^{\text{th}}$ step. It then compensates for the delayed actor updates by performing $n$ actor update steps.
+4. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) performs learning updates only on every $n^{\text{th}}$ step. This leads to improved stability and prevents the agent's performance from degenerating during longer training runs.  
+Note the difference to [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py): [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) updates every $n^{\text{th}}$ environment step and does a single update of actor and critic on every update step. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) updates the critic every step and the actor every $n^{\text{th}}$ step. It then compensates for the delayed actor updates by performing $n$ actor update steps.
 
 5. `sac_atari.py` handles truncation and termination properly like (Mnih et al., 2015)[^2] by using SB3's replay buffer's `handle_timeout_termination=True`.
 
@@ -357,7 +358,7 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
 
 Run benchmarks for :material-github: [benchmark/sac_atari.sh](https://github.com/timoklein/cleanrl/blob/sac-discrete/benchmark/sac_atari.sh) by executing:
 
-<script src="https://emgithub.com/embed-v2.js?target=https%3A%2F%2Fgithub.com%2Ftimoklein%2Fcleanrl%2Fblob%2Fsac-discrete%2Fbenchmark%2Fsac_atari.sh&style=default&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed-v2.js?target=https%3A%2F%2Fgithub.com%2Ftimoklein%2Fcleanrl%2Fblob%2Fsac-discrete%2Fbenchmark%2Fsac_atari.sh&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
 
 The table below compares the results of CleanRL's [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) with the [original paper results](https://arxiv.org/abs/1910.07207).
 

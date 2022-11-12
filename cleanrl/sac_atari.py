@@ -293,12 +293,12 @@ if __name__ == "__main__":
             q_optimizer.step()
 
             # ACTOR training
-            _, log_pi, pi_probs = actor.get_action(data.observations)
+            _, log_pi, action_probs = actor.get_action(data.observations)
             qf1_pi = qf1(data.observations)
             qf2_pi = qf2(data.observations)
             min_qf_pi = torch.min(qf1_pi, qf2_pi)
             # no need for reparameterization, the expectation can be calculated for discrete actions
-            actor_loss = (pi_probs * ((alpha * log_pi) - min_qf_pi)).mean()
+            actor_loss = (action_probs * ((alpha * log_pi) - min_qf_pi)).mean()
 
             actor_optimizer.zero_grad()
             actor_loss.backward()
