@@ -210,24 +210,6 @@ if __name__ == "__main__":
         returned_episode_lengths=jnp.zeros(args.num_envs, dtype=jnp.int32),
     )
     handle, recv, send, step_env = envs.xla()
-
-    def step_env_wrappeed(episode_stats, handle, action):
-        handle, (next_obs, reward, next_done, info) = step_env(handle, action)
-        new_episode_return = episode_stats.episode_returns + info["reward"]
-        new_episode_length = episode_stats.episode_lengths + 1
-        episode_stats = episode_stats.replace(
-            episode_returns=(new_episode_return) * (1 - info["terminated"]) * (1 - info["TimeLimit.truncated"]),
-            episode_lengths=(new_episode_length) * (1 - info["terminated"]) * (1 - info["TimeLimit.truncated"]),
-            # only update the `returned_episode_returns` if the episode is done
-            returned_episode_returns=jnp.where(
-                info["terminated"] + info["TimeLimit.truncated"], new_episode_return, episode_stats.returned_episode_returns
-            ),
-            returned_episode_lengths=jnp.where(
-                info["terminated"] + info["TimeLimit.truncated"], new_episode_length, episode_stats.returned_episode_lengths
-            ),
-        )
-        return episode_stats, handle, (next_obs, reward, next_done, info)
-
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     def linear_schedule(count):
@@ -405,7 +387,26 @@ if __name__ == "__main__":
             storage, action, key = get_action_and_value(agent_state, next_obs, next_done, storage, step, key)
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            episode_stats, handle, (next_obs, reward, next_done, _) = step_env_wrappeed(episode_stats, handle, action)
+            handle, (next_obs, reward, next_done, info) = step_env(handle, action)
+
+            # record episodic statistics
+            new_episode_return = episode_stats.episode_returns + info["reward"]
+            new_episode_length = episode_stats.episode_lengths + 1
+            episode_stats = episode_stats.replace(
+                episode_returns=(new_episode_return) * (1 - info["terminated"]) * (1 - info["TimeLimit.truncated"]),
+                episode_lengths=(new_episode_length) * (1 - info["terminated"]) * (1 - info["TimeLimit.truncated"]),
+                # only update the `returned_episode_returns` if the episode is done
+                returned_episode_returns=jnp.where(
+                    info["terminated"] + info["TimeLimit.truncated"],
+                    new_episode_return,
+                    episode_stats.returned_episode_returns,
+                ),
+                returned_episode_lengths=jnp.where(
+                    info["terminated"] + info["TimeLimit.truncated"],
+                    new_episode_length,
+                    episode_stats.returned_episode_lengths,
+                ),
+            )
             storage = storage.replace(rewards=storage.rewards.at[step].set(reward))
         return agent_state, episode_stats, next_obs, next_done, storage, key, handle, global_step
 
