@@ -5,7 +5,7 @@ import random
 import time
 from distutils.util import strtobool
 
-import gym
+import gymnasium as gym 
 import numpy as np
 import torch
 import torch.nn as nn
@@ -76,9 +76,36 @@ def parse_args():
     return args
 
 
+class Flatten(gym.ObservationWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        num_features = 0
+        lows = []
+        highs = []
+        for key in self.observation_space.spaces:
+            if len(self.observation_space.spaces[key].shape) > 0:
+                num_features += self.observation_space.spaces[key].shape[0]
+                lows += [self.observation_space.spaces[key].low]
+                highs += [self.observation_space.spaces[key].high]
+            else:
+                # handle cases where space has shape `()`
+                num_features += 1
+                lows += [np.array([self.observation_space.spaces[key].low])]
+                highs += [np.array([self.observation_space.spaces[key].high])]
+
+        self.observation_space = gym.spaces.Box(shape=(num_features,), low=np.concatenate(lows), high=np.concatenate(highs))
+
+    def observation(self, obs):
+        return np.concatenate([item if len(item.shape) > 0 else np.array([item]) for item in obs.values()])
+
+
 def make_env(env_id, seed, idx, capture_video, run_name, gamma):
     def thunk():
-        env = gym.make(env_id)
+        if capture_video:
+            env = gym.make(env_id, render_mode="rgb_array")
+        else:
+            env = gym.make(env_id)
+        env = Flatten(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
@@ -176,14 +203,15 @@ if __name__ == "__main__":
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    terminateds = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
-    next_obs = torch.Tensor(envs.reset(seed=[args.seed + i for i in range(args.num_envs)])[0]).to(device)
-    next_terminated = torch.zeros(args.num_envs).to(device)
+    next_obs, _ = envs.reset(seed = args.seed)
+    next_obs = torch.Tensor(next_obs).to(device)
+    next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
 
     for update in range(1, num_updates + 1):
@@ -196,7 +224,7 @@ if __name__ == "__main__":
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
             obs[step] = next_obs
-            terminateds[step] = next_terminated
+            dones[step] = next_done
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
@@ -206,28 +234,28 @@ if __name__ == "__main__":
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, terminated, _, info = envs.step(action.cpu().numpy())
+            next_obs, reward, terminated, truncated, infos = envs.step(action.cpu().numpy())
+            done = terminated or truncated
             rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_terminated = torch.Tensor(next_obs).to(device), torch.Tensor(terminated).to(device)
+            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
 
-            for item in info:
-                if "episode" in item.keys():
-                    print(f"global_step={global_step}, episodic_return={item['episode']['r']}")
-                    writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
-                    break
+            if 'final_info' in infos:
+                for info in infos['final_info']:
+                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
 
-        # bootstrap value if not terminated
+        # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)
             advantages = torch.zeros_like(rewards).to(device)
             lastgaelam = 0
             for t in reversed(range(args.num_steps)):
                 if t == args.num_steps - 1:
-                    nextnonterminal = 1.0 - next_terminated
+                    nextnonterminal = 1.0 - next_done
                     nextvalues = next_value
                 else:
-                    nextnonterminal = 1.0 - terminateds[t + 1]
+                    nextnonterminal = 1.0 - dones[t + 1]
                     nextvalues = values[t + 1]
                 delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
                 advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
