@@ -106,15 +106,14 @@ It also generates the following image and a wandb report.
     python -m cleanrl_utils.rlops --exp-name ddpg_continuous_action_jax \
         --wandb-project-name cleanrl \
         --wandb-entity openrlbenchmark \
-        --tags 'pr-298?costa-huang' 'rlops-pilot?costa-huang' \
+        --filters 'ddpg_continuous_action_jax?user=costa-huang&tag=rlops-pilot' 'ddpg_continuous_action_jax?user=costa-huang&tag=pr-298' \
         --env-ids Hopper-v2 Walker2d-v2 HalfCheetah-v2 \
         --output-filename compare.png \
         --report
 
-    python -m cleanrl_utils.rlops --exp-name ddpg_continuous_action_jax \
-        --wandb-project-name cleanrl \
+    python -m cleanrl_utils.rlops --wandb-project-name cleanrl \
         --wandb-entity openrlbenchmark \
-        --tags 'pr-298?joaogui1' 'rlops-pilot?joaogui1' \
+        --filters 'ddpg_continuous_action_jax?user=joaogui1&tag=rlops-pilot' 'ddpg_continuous_action_jax?user=joaogui1&tag=pr-298' \
         --env-ids Hopper-v2 Walker2d-v2 HalfCheetah-v2 \
         --output-filename compare.png \
         --report
@@ -163,7 +162,7 @@ As the last step before merging the PR, we shall update the wandb labels. We wou
 python -m cleanrl_utils.rlops_tags \
     --add latest \
     --source-tag pr-299 \
-    --exp-name ddpg_continuous_action \
+    --filters 'ddpg_continuous_action' \
     --wandb-project-name cleanrl \
     --wandb-entity openrlbenchmark
 ```
