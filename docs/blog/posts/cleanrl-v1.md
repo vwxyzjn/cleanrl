@@ -92,7 +92,7 @@ Other new algorithm variants include multi-GPU PPO, PPO prototype that works wit
 * [`ppo_atari_multigpu.pu`](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_multigpupy) by [@vwxyzjn](https://github.com/vwxyzjn) in [:material-github: vwxyzjn/cleanrl#178]( https://github.com/vwxyzjn/cleanrl/pull/178)
     * about 34% faster than `ppo_atari.py` which uses `SyncVectorEnv`.
 * [`ppo_continuous_action_isaacgym.py`](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_continuous_action_isaacgympy) by [@vwxyzjn](https://github.com/vwxyzjn) in [:material-github: vwxyzjn/cleanrl#233](https://github.com/vwxyzjn/cleanrl/pull/233)
-    * achives 4000+ score and 30M steps on IsaacGymEnvs' `Ant` in 4 mins. 
+    * achieves 4000+ score and 30M steps on IsaacGymEnvs' `Ant` in 4 mins. 
 * [`ppo_pettingzoo_ma_atari.py`](https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_pettingzoo_ma_ataripy) by [@vwxyzjn](https://github.com/vwxyzjn) in [:material-github: vwxyzjn/cleanrl#188](https://github.com/vwxyzjn/cleanrl/pull/188)
     * achieves ~4000 *episodic length* (not episodic return) in Pong, creating competitive self play agents.
 * [`ppg_procgen.py`](https://docs.cleanrl.dev/rl-algorithms/ppg/#ppg_procgenpy) by [@Dipamc77](https://github.com/Dipamc77) in [:material-github: vwxyzjn/cleanrl#186](https://github.com/vwxyzjn/cleanrl/pull/186)
