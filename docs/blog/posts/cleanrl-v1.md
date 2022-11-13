@@ -2,7 +2,7 @@
 date: 2022-10-05
 authors: [costa]
 description: >
-  🎉 We are thrilled to announce the v1.0.0 CleanRL Release. Along with our [CleanRL paper's recent publication in Journal of Machine Learning Research](https://www.jmlr.org/papers/v23/21-1342.html), our v1.0.0 release includes reworked documentation, new algorithm variants, support for google's new ML framework [JAX](https://github.com/google/jax), hyperparameter tuning utilities, and more.
+  🎉 We are thrilled to announce the v1.0.0 CleanRL Release. Along with our CleanRL paper's recent publication in Journal of Machine Learning Research (https://www.jmlr.org/papers/v23/21-1342.html), our v1.0.0 release includes reworked documentation, new algorithm variants, support for google's new ML framework JAX, hyperparameter tuning utilities, and more.
 categories:
   - Blog
 ---
