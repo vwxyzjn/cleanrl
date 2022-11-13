@@ -189,7 +189,7 @@ Then, we shall remove the tag `latest` from the previous experiments.
 python -m cleanrl_utils.rlops_tags \
     --remove latest \
     --source-tag rlops-pilot \
-    --exp-name ddpg_continuous_action \
+    --filters 'ddpg_continuous_action' \
     --wandb-project-name cleanrl \
     --wandb-entity openrlbenchmark
 ```
