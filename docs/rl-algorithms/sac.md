@@ -373,17 +373,12 @@ The table below compares the results of CleanRL's [`sac_atari.py`](https://githu
 
 Learning curves:
 
-<div class="grid-container">
-    <img src="../sac/PongNoFrameskip-v4.png">
-    <img src="../sac/BreakoutNoFrameskip-v4.png">
-    <img src="../sac/BeamRiderNoFrameskip-v4.png">
-</div>
+<img src="../sac/sac_discrete.png">
 
-<div></div>
 
 Tracked experiments:
 
-<iframe src="https://wandb.ai/openrlbenchmark/cleanrl/reports/CleanRL-SAC-discrete--VmlldzoyNzgxMTI2" style="width:100%; height:1200px" title="Atari: CleanRL's SAC-discrete"></iframe>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-sac_atari-py--VmlldzoyOTYzNjg3" style="width:100%; height:1200px" title="Atari: CleanRL's SAC-discrete"></iframe>
 
 [^1]:Diederik P Kingma, Max Welling (2016). Auto-Encoding Variational Bayes. ArXiv, abs/1312.6114. https://arxiv.org/abs/1312.6114
 
