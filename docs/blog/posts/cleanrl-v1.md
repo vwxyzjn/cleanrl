@@ -282,7 +282,3 @@ We always welcome new contributors to the project. If you are interested in cont
 * Huang, Shengyi, and Santiago Ontañón. "A closer look at invalid action masking in policy gradient algorithms." The International FLAIRS Conference Proceedings, 35. [https://journals.flvc.org/FLAIRS/article/view/130584](https://journals.flvc.org/FLAIRS/article/view/130584)
 * Schmidt, Dominik, and Thomas Schmied. "Fast and Data-Efficient Training of Rainbow: an Experimental Study on Atari." Deep Reinforcement Learning Workshop at the 35th Conference on Neural Information Processing Systems, [https://arxiv.org/abs/2111.10247](https://arxiv.org/abs/2111.10247)
 
-
-## Thanks
-
-
