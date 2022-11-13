@@ -268,7 +268,7 @@ which generates the following image
 Also, the Farama foundation is working a project called [Shimmy](https://github.com/Farama-Foundation/Shimmy) which offers conversion wrapper for [`deepmind/dm_env`](https://github.com/deepmind/dm_env) environments, such as [`dm_control`](https://github.com/deepmind/dm_control) and [`deepmind/lab`](https://github.com/deepmind/lab). This is an exciting project that will allow us to support `deepmind/dm_env` in the future.
 
 
-### Contributions
+## Contributions
 
 CleanRL has benefited from the contributions of many awesome folks. I would like to cordially thank the core dev members [@dosssman](https://github.com/dosssman) [@yooceii](https://github.com/yooceii) [@Dipamc](https://github.com/Dipamc) [@kinalmehta](https://github.com/kinalmehta) [@bragajj](https://github.com/bragajj) for their efforts in helping maintain the CleanRL repository.  I would also like to give a shout-out to our new contributors [@cool](https://github.com/cool)-RR, [@Howuhh](https://github.com/Howuhh), [@jseppanen](https://github.com/jseppanen), [@joaogui1](https://github.com/joaogui1), [@ALPH2H](https://github.com/ALPH2H), [@ElliotMunro200](https://github.com/ElliotMunro200), [@WillDudley](https://github.com/WillDudley), and [@sdpkjc](https://github.com/sdpkjc).
 
@@ -277,6 +277,7 @@ We always welcome new contributors to the project. If you are interested in cont
 
 ## New CleanRL Supported Publications
 
+* Md Masudur Rahman and Yexiang Xue. "Bootstrap Advantage Estimation for Policy Optimization in Reinforcement Learning." In Proceedings of the IEEE International Conference on Machine Learning and Applications (ICMLA), 2022. [https://arxiv.org/pdf/2210.07312.pdf](https://arxiv.org/pdf/2210.07312.pdf)
 * Weng, Jiayi, Min Lin, Shengyi Huang, Bo Liu, Denys Makoviichuk, Viktor Makoviychuk, Zichen Liu et al. "Envpool: A highly parallel reinforcement learning environment execution engine." In Thirty-sixth Conference on Neural Information Processing Systems Datasets and Benchmarks Track. [https://openreview.net/forum?id=BubxnHpuMbG](https://openreview.net/forum?id=BubxnHpuMbG)
 * Huang, Shengyi, Rousslan Fernand Julien Dossa, Antonin Raffin, Anssi Kanervisto, and Weixun Wang. "The 37 Implementation Details of Proximal Policy Optimization." International Conference on Learning Representations 2022 Blog Post Track, [https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/)
 * Huang, Shengyi, and Santiago Ontañón. "A closer look at invalid action masking in policy gradient algorithms." The International FLAIRS Conference Proceedings, 35. [https://journals.flvc.org/FLAIRS/article/view/130584](https://journals.flvc.org/FLAIRS/article/view/130584)
