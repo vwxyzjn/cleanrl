@@ -265,7 +265,7 @@ which generates the following image
 
 <blockquote class="twitter-tweet"><p lang="en" dir="ltr">Today we&#39;re launching the Farama Foundation, a new nonprofit dedicated to open source reinforcement learning, and we&#39;re beginning by maintaining and standardizing all the major open source reinforcement learning environments. Read more here: <a href="https://t.co/kQqFMQdVqn">https://t.co/kQqFMQdVqn</a></p>&mdash; Farama Foundation (@FaramaFound) <a href="https://twitter.com/FaramaFound/status/1584936111461502977?ref_src=twsrc%5Etfw">October 25, 2022</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 
-Also, the Farama foundation is working on making a project called [Shimmy](https://github.com/Farama-Foundation/Shimmy) which offers conversion wrapper for [`deepmind/dm_env`](https://github.com/deepmind/dm_env) environments, such as [`dm_control`](https://github.com/deepmind/dm_control) and [`deepmind/lab`](https://github.com/deepmind/lab). This is an exciting project that will allow us to support `deepmind/dm_env` in the future.
+Also, the Farama foundation is working a project called [Shimmy](https://github.com/Farama-Foundation/Shimmy) which offers conversion wrapper for [`deepmind/dm_env`](https://github.com/deepmind/dm_env) environments, such as [`dm_control`](https://github.com/deepmind/dm_control) and [`deepmind/lab`](https://github.com/deepmind/lab). This is an exciting project that will allow us to support `deepmind/dm_env` in the future.
 
 
 ### Contributions
