@@ -2,7 +2,7 @@
 date: 2022-10-05
 authors: [costa]
 description: >
-  🎉 I am thrilled to announce the v1.0.0b2 CleanRL Beta Release. This new release comes with exciting new features. First, we now support JAX-based learning algorithms, which are usually faster than the `torch` equivalent! Here are the docs of the new JAX-based DQN, TD3, and DDPG implementations:
+  🎉 We are thrilled to announce the v1.0.0 CleanRL Release. Along with our [CleanRL paper's recent publication in Journal of Machine Learning Research](https://www.jmlr.org/papers/v23/21-1342.html), our v1.0.0 release includes reworked documentation, new algorithm variants, support for google's new ML framework [JAX](https://github.com/google/jax), hyperparameter tuning utilities, and more.
 categories:
   - Blog
 ---
@@ -12,7 +12,7 @@ categories:
 # CleanRL v1 Release
 
 
-🎉 We are thrilled to announce the v1.0.0 CleanRL Release. CleanRL has come a long way making high-quality deep reinforcement learning implementations easy to understand and reproducible. Along with our [CleanRL paper's recent publication in Journal of Machine Learning Research](https://www.jmlr.org/papers/v23/21-1342.html), our v1.0.0 release includes reworked documentation, new algorithm variants, support for google's new ML framework [JAX](https://github.com/google/jax), hyperparameter tuning utilities, and more. This release is a major milestone for the project and we are excited to share it with you. Over 90 PRs were merged to make this release possible. We would like to thank all the contributors who made this release possible.
+🎉 We are thrilled to announce the v1.0.0 CleanRL Release. Along with our [CleanRL paper's recent publication in Journal of Machine Learning Research](https://www.jmlr.org/papers/v23/21-1342.html), our v1.0.0 release includes reworked documentation, new algorithm variants, support for google's new ML framework [JAX](https://github.com/google/jax), hyperparameter tuning utilities, and more. CleanRL has come a long way making high-quality deep reinforcement learning implementations easy to understand and reproducible. This release is a major milestone for the project and we are excited to share it with you. Over 90 PRs were merged to make this release possible. We would like to thank all the contributors who made this release possible.
 
 More detailed release notes are available at [v1.0.0b1](https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0b1), [v1.0.0b2](https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0b2), and [v1.0.0](https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0).
 
@@ -108,7 +108,7 @@ We love tools! The v1.0.0 release comes with a series of DevOps improvements, in
 
 ### DevOps
 
-We added a pre-commit utility to help contributors to format their code, check for spelling, and removing unused variables and imports before submitting a pull request (see [Contribution guide](http://127.0.0.1:8000/contribution/#pre-commit-utilities) for more detail).
+We added a pre-commit utility to help contributors to format their code, check for spelling, and removing unused variables and imports before submitting a pull request (see [Contribution guide](/contribution/#pre-commit-utilities) for more detail).
 
 <img src="/static/pre-commit.png">
 
