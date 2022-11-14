@@ -70,8 +70,6 @@ We now support JAX-based learning algorithm variants, which are usually faster t
 
 * [`dqn_atari_jax.py`](https://docs.cleanrl.dev/rl-algorithms/dqn/#dqn_atari_jaxpy) [@kinalmehta](https://github.com/kinalmehta) in [:material-github: vwxyzjn/cleanrl#222](https://github.com/vwxyzjn/cleanrl/pull/222)
     * about 25% faster than `dqn_atari.py`.
-* [`dqn_jax.py`](https://docs.cleanrl.dev/rl-algorithms/dqn/#dqn_jaxpy) [@kinalmehta](https://github.com/kinalmehta) in [:material-github: vwxyzjn/cleanrl#222](https://github.com/vwxyzjn/cleanrl/pull/222)
-    * about 4% faster than `dqn.py`.
 * [`td3_continuous_action_jax.py`](https://docs.cleanrl.dev/rl-algorithms/td3/#td3_continuous_action_jaxpy) by [@joaogui1](https://github.com/joaogui1) in [:material-github: vwxyzjn/cleanrl#225](https://github.com/vwxyzjn/cleanrl/pull/225)
     * about 2.5-4x faster than `td3_continuous_action.py`.
 * [`ddpg_continuous_action_jax.py`](https://docs.cleanrl.dev/rl-algorithms/ddpg/#ddpg_continuous_action_jaxpy) by [@vwxyzjn](https://github.com/vwxyzjn) in [:material-github: vwxyzjn/cleanrl#187](https://github.com/vwxyzjn/cleanrl/pull/187)
