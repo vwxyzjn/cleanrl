@@ -99,7 +99,7 @@ Also, `ppg_procgen.py` differs from the original  `openai/phasic-policy-gradient
 
 To run benchmark experiments, see :material-github: [benchmark/ppg.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppg.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F23cd48e620bbaf2b17eebae520b81f2803fda2db%2Fbenchmark%2Fppg.sh%23L3-L8&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fppg.sh%23L3-L8&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 
 Below are the average episodic returns for `ppg_procgen.py`, and comparison with `ppg_procgen.py` on 25M timesteps.

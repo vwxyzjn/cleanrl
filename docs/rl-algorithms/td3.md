@@ -196,7 +196,7 @@ See [related docs](/rl-algorithms/td3/#implementation-details) for `td3_continuo
 
 ### Experiment results
 
-To run benchmark experiments, see :material-github: [benchmark/ddpg.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ddpg.sh). Specifically, execute the following command:
+To run benchmark experiments, see :material-github: [benchmark/td3.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/td3.sh). Specifically, execute the following command:
 
 <script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Ftd3.sh%23L9-L16&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
 
