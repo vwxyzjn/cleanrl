@@ -5,7 +5,7 @@ import random
 import time
 from distutils.util import strtobool
 
-import gymnasium as gym 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn
@@ -183,7 +183,7 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
-    next_obs, _ = envs.reset(seed = args.seed)
+    next_obs, _ = envs.reset(seed=args.seed)
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
@@ -213,8 +213,8 @@ if __name__ == "__main__":
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
 
-            if 'final_info' in infos:
-                for info in infos['final_info']:
+            if "final_info" in infos:
+                for info in infos["final_info"]:
                     print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                     writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                     writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
