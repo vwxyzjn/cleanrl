@@ -1,8 +1,8 @@
 import argparse
 import os
+import sys
 from pathlib import Path
 from pprint import pformat
-import sys
 from typing import List
 
 import numpy as np
@@ -109,7 +109,7 @@ python {algorith_variant_filename} {" ".join(sys.argv[1:])}
     # fetch folder files
     for item in [str(item) for item in Path(folder_path).glob("*")]:
         operations += [CommitOperationAdd(path_or_fileobj=item, path_in_repo=os.path.relpath(item, folder_path))]
-    
+
     # fetch source code
     operations += [CommitOperationAdd(path_or_fileobj=sys.argv[0], path_in_repo=sys.argv[0].split("/")[-1])]
 
