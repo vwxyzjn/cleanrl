@@ -2,6 +2,7 @@ import argparse
 import os
 from pathlib import Path
 from pprint import pformat
+import sys
 from typing import List
 
 import numpy as np
@@ -46,13 +47,23 @@ def push_to_hub(
     operations = []
 
     # Step 3: Generate the model card
+    algorith_variant_filename = sys.argv[0].split("/")[-1]
     model_card = f"""
 # (CleanRL) **{algo_name}** Agent Playing **{args.env_id}**
 
 This is a trained model of a {algo_name} agent playing {args.env_id}.
-The model was trained by using [CleanRL](https://github.com/vwxyzjn/cleanrl) and the training code can be
+The model was trained by using [CleanRL](https://github.com/vwxyzjn/cleanrl) and the most up-to-date training code can be
 found [here](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/{args.exp_name}.py).
 
+## Command to reproduce the training
+
+```bash
+curl -OL https://huggingface.co/{repo_id}/raw/main/dqn.py
+curl -OL https://huggingface.co/{repo_id}/raw/main/pyproject.toml
+curl -OL https://huggingface.co/{repo_id}/raw/main/poetry.lock
+poetry install --all-extras
+python {algorith_variant_filename} {" ".join(sys.argv[1:])}
+```
 
 # Hyperparameters
 ```python
@@ -98,6 +109,14 @@ found [here](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/{args.exp_na
     # fetch folder files
     for item in [str(item) for item in Path(folder_path).glob("*")]:
         operations += [CommitOperationAdd(path_or_fileobj=item, path_in_repo=os.path.relpath(item, folder_path))]
+    
+    # fetch source code
+    operations += [CommitOperationAdd(path_or_fileobj=sys.argv[0], path_in_repo=sys.argv[0].split("/")[-1])]
+
+    # upload poetry files at the root of the repository
+    git_root = Path(__file__).parent.parent
+    operations += [CommitOperationAdd(path_or_fileobj=f"{git_root}/pyproject.toml", path_in_repo=f"pyproject.toml")]
+    operations += [CommitOperationAdd(path_or_fileobj=f"{git_root}/poetry.lock", path_in_repo=f"poetry.lock")]
 
     api.create_commit(
         repo_id=repo_id,
