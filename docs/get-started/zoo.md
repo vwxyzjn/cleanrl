@@ -19,4 +19,5 @@ We have a simple utility `enjoy.py` to load models from the hub and run them in 
 
 ```bash
 python enjoy.py --exp-name dqn --env CartPole-v1
+python enjoy.py --exp-name dqn_jax --env CartPole-v1
 ```
