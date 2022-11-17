@@ -18,6 +18,9 @@ def push_to_hub(
     algo_name: str,
     folder_path: str,
     video_folder_path: str = "",
+    revision: str = "main",
+    create_pr: bool = False,
+    private: bool = False,
 ):
     # Step 1: lazy import and create / read a huggingface repo
     from huggingface_hub import CommitOperationAdd, CommitOperationDelete, HfApi
@@ -27,6 +30,7 @@ def push_to_hub(
     repo_url = api.create_repo(
         repo_id=repo_id,
         exist_ok=True,
+        private=private,
     )
     # parse the default entity
     entity, repo = repo_url.split("/")[-2:]
@@ -39,13 +43,6 @@ def push_to_hub(
         for file in api.list_repo_files(repo_id=repo_id)
         if file.endswith(".tfevents") or file.endswith(".mp4")
     ]
-
-    api.create_commit(
-        repo_id=repo_id,
-        operations=operations,
-        commit_message="clean up previous tfevents and mp4 files",
-    )
-    operations = []
 
     # Step 3: Generate the model card
     algorith_variant_filename = sys.argv[0].split("/")[-1]
@@ -123,5 +120,8 @@ python {algorith_variant_filename} {" ".join(sys.argv[1:])}
         repo_id=repo_id,
         operations=operations,
         commit_message="pushing model",
+        revision=revision,
+        create_pr=create_pr,
     )
+    print(f"Model pushed to {repo_url}")
     return repo_url
