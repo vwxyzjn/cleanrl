@@ -34,10 +34,11 @@ def push_to_hub(
 
     # Step 2: clean up data
     # delete previous tfevents and mp4 files
-    operations = []
-    for file in api.list_repo_files(repo_id=repo_id):
-        if ".tfevents" in file or ".mp4" in file:
-            operations += [CommitOperationDelete(path_in_repo=file)]
+    operations = [
+        CommitOperationDelete(path_in_repo=file)
+        for file in api.list_repo_files(repo_id=repo_id)
+        if file.endswith(".tfevents") or file.endswith(".mp4")
+    ]
 
     api.create_commit(
         repo_id=repo_id,
