@@ -4,7 +4,9 @@ from huggingface_hub import hf_hub_download
 
 import cleanrl.dqn
 import cleanrl.dqn_atari
+import cleanrl.dqn_jax
 import cleanrl_utils.evals.dqn_eval
+import cleanrl_utils.evals.dqn_jax_eval
 
 
 def parse_args():
@@ -28,6 +30,7 @@ def parse_args():
 MODELS = {
     "dqn": (cleanrl.dqn.QNetwork, cleanrl.dqn.make_env, cleanrl_utils.evals.dqn_eval.evaluate),
     "dqn_atari": (cleanrl.dqn_atari.QNetwork, cleanrl.dqn_atari.make_env, cleanrl_utils.evals.dqn_eval.evaluate),
+    "dqn_jax": (cleanrl.dqn_jax.QNetwork, cleanrl.dqn_jax.make_env, cleanrl_utils.evals.dqn_jax_eval.evaluate),
 }
 
 
@@ -37,7 +40,7 @@ if __name__ == "__main__":
     if not args.hf_repository:
         args.hf_repository = f"{args.hf_entity}/{args.env_id}-{args.exp_name}-seed{args.seed}"
     print(args.hf_repository)
-    model_path = hf_hub_download(repo_id=args.hf_repository, filename="q_network.pth")
+    model_path = hf_hub_download(repo_id=args.hf_repository, filename=f"{args.exp_name}.cleanrl_model")
     evaluate(
         model_path,
         make_env,
@@ -45,6 +48,5 @@ if __name__ == "__main__":
         eval_episodes=10,
         run_name=f"eval",
         Model=Model,
-        device="cpu",
         capture_video=False,
     )

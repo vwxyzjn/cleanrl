@@ -212,12 +212,13 @@ if __name__ == "__main__":
                 target_network.load_state_dict(q_network.state_dict())
 
     if args.save_model:
-        torch.save(q_network.state_dict(), f"runs/{run_name}/q_network.pth")
-        print(f"model saved to ./runs/{run_name}/q_network.pth")
+        model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
+        torch.save(q_network.state_dict(),model_path)
+        print(f"model saved to {model_path}")
         from cleanrl_utils.evals.dqn_eval import evaluate
 
         episodic_returns = evaluate(
-            f"runs/{run_name}/q_network.pth",
+           model_path,
             make_env,
             args.env_id,
             eval_episodes=10,
