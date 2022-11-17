@@ -1,11 +1,11 @@
 import random
 from typing import Callable
 
-import gym
-import numpy as np
-import jax
 import flax
 import flax.linen as nn
+import gym
+import jax
+import numpy as np
 
 
 def evaluate(
@@ -17,14 +17,14 @@ def evaluate(
     Model: nn.Module,
     epsilon: float = 0.05,
     capture_video: bool = True,
-    seed = 1,
+    seed=1,
 ):
     envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
     obs = envs.reset()
     model = Model(action_dim=envs.single_action_space.n)
     q_key = jax.random.PRNGKey(seed)
     params = model.init(q_key, obs)
-    with open(model_path, 'rb') as f:
+    with open(model_path, "rb") as f:
         params = flax.serialization.from_bytes(params, f.read())
     model.apply = jax.jit(model.apply)
 

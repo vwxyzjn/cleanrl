@@ -235,12 +235,12 @@ if __name__ == "__main__":
 
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
-        torch.save(q_network.state_dict(),model_path)
+        torch.save(q_network.state_dict(), model_path)
         print(f"model saved to {model_path}")
         from cleanrl_utils.evals.dqn_eval import evaluate
 
         episodic_returns = evaluate(
-           model_path,
+            model_path,
             make_env,
             args.env_id,
             eval_episodes=10,
