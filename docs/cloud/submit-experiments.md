@@ -121,3 +121,12 @@ poetry run python -m cleanrl_utils.submit_exp \
     docker buildx inspect --bootstrap
     python -m cleanrl_utils.submit_exp -b --archs linux/arm64,linux/amd64
     ```
+
+
+### Torchx Support (Experimental)
+
+```
+poetry run torchx run --scheduler local_docker utils.python --gpu 1 --script cleanrl/cleanrl.py
+poetry run torchx run --scheduler aws_batch --scheduler_args queue=c5a-large,image_repo=vwxyzjn/cleanrl  utils.python  --script cleanrl/ppo.py
+poetry run torchx status aws_batch://torchx/c5a-large:torchx_utils_python-pn9sx3wzq0qcwd
+```
