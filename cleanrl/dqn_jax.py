@@ -92,8 +92,8 @@ class QNetwork(nn.Module):
         return x
 
 
-class TrainState(TrainState):
-    target_params: flax.core.FrozenDict
+class RLTrainState(TrainState):
+    target_params: flax.core.FrozenDict = None
 
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     q_network = QNetwork(action_dim=envs.single_action_space.n)
 
-    q_state = TrainState.create(
+    q_state = RLTrainState.create(
         apply_fn=q_network.apply,
         params=q_network.init(q_key, obs),
         target_params=q_network.init(q_key, obs),

@@ -16,7 +16,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-import pybullet_envs  # noqa
+# import pybullet_envs  # noqa
 import tensorflow_probability
 from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
@@ -36,7 +36,7 @@ tfd = tfp.distributions
 
 
 class RLTrainState(TrainState):
-    target_params: flax.core.FrozenDict
+    target_params: flax.core.FrozenDict = None
 
 
 class ReplayBufferSamplesNp(NamedTuple):
