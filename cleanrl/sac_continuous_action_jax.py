@@ -36,8 +36,75 @@ tfp = tensorflow_probability.substrates.jax
 tfd = tfp.distributions
 
 
-class RLTrainState(TrainState):
-    target_params: flax.core.FrozenDict = None
+def parse_args():
+    # fmt: off
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
+        help="the name of this experiment")
+    parser.add_argument("--seed", type=int, default=1,
+        help="seed of the experiment")
+    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="if toggled, this experiment will be tracked with Weights and Biases")
+    parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
+        help="the wandb's project name")
+    parser.add_argument("--wandb-entity", type=str, default=None,
+        help="the entity (team) of wandb's project")
+    parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="whether to capture videos of the agent performances (check out `videos` folder)")
+    parser.add_argument("--eval-freq", type=int, default=-1,
+        help="evaluate the agent every `eval_freq` steps (if negative, no evaluation)")
+    parser.add_argument("--n-eval-episodes", type=int, default=10,
+        help="number of episodes to use for evaluation")
+    parser.add_argument("--n-eval-envs", type=int, default=5,
+        help="number of environments for evaluation")
+
+    # Algorithm specific arguments
+    parser.add_argument("--env-id", type=str, default="HalfCheetah-v2",
+        help="the id of the environment")
+    parser.add_argument("--total-timesteps", type=int, default=1000000,
+        help="total timesteps of the experiments")
+    parser.add_argument("--buffer-size", type=int, default=int(1e6),
+        help="the replay memory buffer size")
+    parser.add_argument("--gamma", type=float, default=0.99,
+        help="the discount factor gamma")
+    parser.add_argument("--tau", type=float, default=0.005,
+        help="target smoothing coefficient (default: 0.005)")
+    parser.add_argument("--batch-size", type=int, default=256,
+        help="the batch size of sample from the reply memory")
+    parser.add_argument("--learning-starts", type=int, default=5e3,
+        help="timestep to start learning")
+    parser.add_argument("--policy-lr", type=float, default=3e-4,
+        help="the learning rate of the policy network optimizer")
+    parser.add_argument("--q-lr", type=float, default=1e-3,
+        help="the learning rate of the Q network network optimizer")
+    parser.add_argument("--n-critics", type=int, default=2,
+        help="the number of critic networks")
+    parser.add_argument("--policy-frequency", type=int, default=1,
+        help="the frequency of training policy (delayed)")
+    parser.add_argument("--target-network-frequency", type=int, default=1, # Denis Yarats' implementation delays this by 2.
+        help="the frequency of updates for the target nerworks")
+    parser.add_argument("--alpha", type=float, default=0.2,
+        help="entropy regularization coefficient")
+    parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="automatic tuning of the entropy coefficient")
+    args = parser.parse_args()
+    # fmt: on
+    return args
+
+
+def make_env(env_id, seed, idx, capture_video, run_name):
+    def thunk():
+        env = gym.make(env_id)
+        env = gym.wrappers.RecordEpisodeStatistics(env)
+        if capture_video:
+            if idx == 0:
+                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+        env.seed(seed)
+        env.action_space.seed(seed)
+        env.observation_space.seed(seed)
+        return env
+
+    return thunk
 
 
 class TanhTransformedDistribution(tfd.TransformedDistribution):
@@ -114,6 +181,10 @@ class Actor(nn.Module):
             tfd.MultivariateNormalDiag(loc=mean, scale_diag=jnp.exp(log_std)),
         )
         return dist
+
+
+class RLTrainState(TrainState):
+    target_params: flax.core.FrozenDict = None
 
 
 @partial(jax.jit, static_argnames="actor")
@@ -195,77 +266,6 @@ class EntropyCoef(nn.Module):
 def soft_update(tau: float, qf_state: RLTrainState) -> RLTrainState:
     qf_state = qf_state.replace(target_params=optax.incremental_update(qf_state.params, qf_state.target_params, tau))
     return qf_state
-
-
-def parse_args():
-    # fmt: off
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
-        help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=1,
-        help="seed of the experiment")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="if toggled, this experiment will be tracked with Weights and Biases")
-    parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
-        help="the wandb's project name")
-    parser.add_argument("--wandb-entity", type=str, default=None,
-        help="the entity (team) of wandb's project")
-    parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="whether to capture videos of the agent performances (check out `videos` folder)")
-    parser.add_argument("--eval-freq", type=int, default=-1,
-        help="evaluate the agent every `eval_freq` steps (if negative, no evaluation)")
-    parser.add_argument("--n-eval-episodes", type=int, default=10,
-        help="number of episodes to use for evaluation")
-    parser.add_argument("--n-eval-envs", type=int, default=5,
-        help="number of environments for evaluation")
-
-    # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="HalfCheetah-v2",
-        help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=1000000,
-        help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=int(1e6),
-        help="the replay memory buffer size")
-    parser.add_argument("--gamma", type=float, default=0.99,
-        help="the discount factor gamma")
-    parser.add_argument("--tau", type=float, default=0.005,
-        help="target smoothing coefficient (default: 0.005)")
-    parser.add_argument("--batch-size", type=int, default=256,
-        help="the batch size of sample from the reply memory")
-    parser.add_argument("--learning-starts", type=int, default=5e3,
-        help="timestep to start learning")
-    parser.add_argument("--policy-lr", type=float, default=3e-4,
-        help="the learning rate of the policy network optimizer")
-    parser.add_argument("--q-lr", type=float, default=1e-3,
-        help="the learning rate of the Q network network optimizer")
-    parser.add_argument("--n-critics", type=int, default=2,
-        help="the number of critic networks")
-    parser.add_argument("--policy-frequency", type=int, default=1,
-        help="the frequency of training policy (delayed)")
-    parser.add_argument("--target-network-frequency", type=int, default=1, # Denis Yarats' implementation delays this by 2.
-        help="the frequency of updates for the target nerworks")
-    parser.add_argument("--alpha", type=float, default=0.2,
-        help="entropy regularization coefficient")
-    parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="automatic tuning of the entropy coefficient")
-    args = parser.parse_args()
-    # fmt: on
-    return args
-
-
-def make_env(env_id, seed, idx, capture_video, run_name):
-    def thunk():
-        env = gym.make(env_id)
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env.seed(seed)
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
-        return env
-
-    return thunk
 
 
 if __name__ == "__main__":
