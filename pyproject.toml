@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cleanrl"
-version = "1.0.0-beta.0"
+version = "1.0.0b2"
 description = "High-quality single file implementation of Deep Reinforcement Learning algorithms with research-friendly features"
 authors = ["Costa Huang <costa.huang@outlook.com>"]
 include = ["cleanrl_utils"]
@@ -10,57 +10,87 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.7.1,<3.10"
-torch = "^1.7.1"
-tensorboard = "^2.5.0"
-wandb = "^0.12.1"
-pyglet = "^1.5.19"
-opencv-python = "^3.4.0"
-stable-baselines3 = "^1.1.0"
-gym = {version = "^0.23.0", extras = ["classic_control"]}
+tensorboard = "^2.10.0"
+wandb = "^0.13.3"
+gym = {version = "0.23.1", extras = ["classic_control"]}
+torch = "^1.12.1"
+stable-baselines3 = "1.2.0"
 
-# Optional dependencies
-ale-py = {version = "^0.7", optional = true}
-AutoROM = {version = "^0.4.2", optional = true, extras = ["accept-rom-license"]}
-pybullet = {version = "3.1.8", optional = true}
-procgen = {version = "^0.10.4", optional = true}
-pettingzoo = {version = "^1.15.0", optional = true}
-pygame = {version = "^2.0.1", optional = true}
-pymunk = {version = "^6.2.0", optional = true}
-pandas = {version = "~1.3", optional = true}
-seaborn = {version = "^0.11.2", optional = true}
-boto3 = {version = "^1.18.57", optional = true}
-awscli = {version = "^1.20.57", optional = true}
-pytest = {version = "^6.2.5", optional = true}
-free-mujoco-py = {version = "^2.1.6", optional = true}
-mkdocs-material = {version = "^7.3.4", optional = true}
-envpool = {version = "^0.4.3", optional = true}
-SuperSuit = {version = "^3.4.0", optional = true}
-multi-agent-ale-py = {version = "^0.1.11", optional = true}
-jax = {version = "^0.3.14", optional = true}
-jaxlib = {version = "^0.3.14", optional = true}
-flax = {version = "^0.5.2", optional = true}
-isaacgym = {path = "cleanrl/ppo_continuous_action_isaacgym/isaacgym", optional = true, develop = true} # NOTE: for some reason `develop=true` is important
-isaacgymenvs = {git = "https://github.com/vwxyzjn/IsaacGymEnvs.git", rev = "poetry", optional = true}
-markdown-include = {version = "^0.7.0", optional = true}
-numpy = "~1.21"
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^2.20.0"
 
-[tool.poetry.dev-dependencies]
-pre-commit = "^2.17.0"
+[tool.poetry.group.atari]
+optional = true
+[tool.poetry.group.atari.dependencies]
+ale-py = "0.7.4"
+AutoROM = {extras = ["accept-rom-license"], version = "^0.4.2"}
+opencv-python = "^4.6.0.66"
+
+[tool.poetry.group.pybullet]
+optional = true
+[tool.poetry.group.pybullet.dependencies]
+pybullet = "3.1.8"
+
+[tool.poetry.group.procgen]
+optional = true
+[tool.poetry.group.procgen.dependencies]
+procgen = "^0.10.7"
+
+[tool.poetry.group.pytest]
+optional = true
+[tool.poetry.group.pytest.dependencies]
+pytest = "^7.1.3"
+
+[tool.poetry.group.mujoco]
+optional = true
+[tool.poetry.group.mujoco.dependencies]
+free-mujoco-py = "^2.1.6"
+
+[tool.poetry.group.docs]
+optional = true
+[tool.poetry.group.docs.dependencies]
+mkdocs-material = "^8.4.3"
+markdown-include = "^0.7.0"
+
+[tool.poetry.group.jax]
+optional = true
+[tool.poetry.group.jax.dependencies]
+jax = "^0.3.17"
+jaxlib = "^0.3.15"
+flax = "^0.6.0"
+
+[tool.poetry.group.optuna]
+optional = true
+[tool.poetry.group.optuna.dependencies]
+optuna = "^3.0.1"
+optuna-dashboard = "^0.7.2"
+rich = "<12.0"
+
+[tool.poetry.group.envpool]
+optional = true
+[tool.poetry.group.envpool.dependencies]
+envpool = "^0.6.4"
+
+[tool.poetry.group.pettingzoo]
+optional = true
+[tool.poetry.group.pettingzoo.dependencies]
+PettingZoo = "1.18.1"
+SuperSuit = "3.4.0"
+multi-agent-ale-py = "0.1.11"
+
+
+[tool.poetry.group.cloud]
+optional = true
+[tool.poetry.group.cloud.dependencies]
+boto3 = "^1.24.70"
+awscli = "^1.25.71"
+
+[tool.poetry.group.isaacgym]
+optional = true
+[tool.poetry.group.isaacgym.dependencies]
+isaacgymenvs = {git = "https://github.com/vwxyzjn/IsaacGymEnvs.git", rev = "poetry"}
+isaacgym = {path = "cleanrl/ppo_continuous_action_isaacgym/isaacgym", develop = true}
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.extras]
-atari = ["ale-py", "AutoROM"]
-pybullet = ["pybullet"]
-procgen = ["procgen"]
-pettingzoo = ["pettingzoo", "pygame", "pymunk", "SuperSuit", "multi-agent-ale-py"]
-plot = ["pandas", "seaborn"]
-cloud = ["boto3", "awscli"]
-pytest = ["pytest"]
-mujoco = ["free-mujoco-py"]
-docs = ["mkdocs-material", "markdown-include"]
-envpool = ["envpool"]
-jax = ["jax", "jaxlib", "flax"]
-isaacgym = ["isaacgym", "isaacgymenvs"]

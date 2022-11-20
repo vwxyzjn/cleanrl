@@ -38,10 +38,10 @@ The [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/c
 
 ```bash
 poetry install
-poetry install -E pybullet
+poetry install --with pybullet
 python cleanrl/ddpg_continuous_action.py --help
 python cleanrl/ddpg_continuous_action.py --env-id HopperBulletEnv-v0
-poetry install -E mujoco # only works in Linux
+poetry install --with mujoco # only works in Linux
 python cleanrl/ddpg_continuous_action.py --env-id Hopper-v3
 ```
 
@@ -76,7 +76,7 @@ Our [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master
     ```python
     class QNetwork(nn.Module):
         def __init__(self, env):
-            super(QNetwork, self).__init__()
+            super().__init__()
             self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256)
             self.fc2 = nn.Linear(256, 256)
             self.fc3 = nn.Linear(256, 1)
@@ -91,15 +91,23 @@ Our [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master
 
     class Actor(nn.Module):
         def __init__(self, env):
-            super(Actor, self).__init__()
+            super().__init__()
             self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
             self.fc2 = nn.Linear(256, 256)
             self.fc_mu = nn.Linear(256, np.prod(env.single_action_space.shape))
+            # action rescaling
+            self.register_buffer(
+                "action_scale", torch.tensor((env.action_space.high - env.action_space.low) / 2.0, dtype=torch.float32)
+            )
+            self.register_buffer(
+                "action_bias", torch.tensor((env.action_space.high + env.action_space.low) / 2.0, dtype=torch.float32)
+            )
 
         def forward(self, x):
             x = F.relu(self.fc1(x))
             x = F.relu(self.fc2(x))
-            return torch.tanh(self.fc_mu(x))
+            x = torch.tanh(self.fc_mu(x))
+            return x * self.action_scale + self.action_bias
     ```
     while (Lillicrap et al., 2016, see Appendix 7 EXPERIMENT DETAILS)[^1] uses the following architecture (difference highlighted):
 
@@ -107,7 +115,7 @@ Our [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master
     class QNetwork(nn.Module):
         def __init__(self, env):
             super(QNetwork, self).__init__()
-            self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 400)
+            self.fc1 = nn.Linear(p.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 400)
             self.fc2 = nn.Linear(400 + np.prod(env.single_action_space.shape), 300)
             self.fc3 = nn.Linear(300, 1)
 
@@ -125,11 +133,19 @@ Our [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master
             self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 400)
             self.fc2 = nn.Linear(400, 300)
             self.fc_mu = nn.Linear(300, np.prod(env.single_action_space.shape))
+            # action rescaling
+            self.register_buffer(
+                "action_scale", torch.tensor((env.action_space.high - env.action_space.low) / 2.0, dtype=torch.float32)
+            )
+            self.register_buffer(
+                "action_bias", torch.tensor((env.action_space.high + env.action_space.low) / 2.0, dtype=torch.float32)
+            )
 
         def forward(self, x):
             x = F.relu(self.fc1(x))
             x = F.relu(self.fc2(x))
-            return torch.tanh(self.fc_mu(x))
+            x = torch.tanh(self.fc_mu(x))
+            return x * self.action_scale + self.action_bias
     ```
 
 1. [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses the following learning rates:
@@ -166,8 +182,12 @@ class Actor(nn.Module):
     def __init__(self, env):
         ...
         # action rescaling
-        self.register_buffer("action_scale", torch.FloatTensor((env.action_space.high - env.action_space.low) / 2.0))
-        self.register_buffer("action_bias", torch.FloatTensor((env.action_space.high + env.action_space.low) / 2.0))
+        self.register_buffer(
+            "action_scale", torch.tensor((env.action_space.high - env.action_space.low) / 2.0, dtype=torch.float32)
+        )
+        self.register_buffer(
+            "action_bias", torch.tensor((env.action_space.high + env.action_space.low) / 2.0, dtype=torch.float32)
+        )
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
@@ -206,12 +226,12 @@ Below are the average episodic returns for [`ddpg_continuous_action.py`](https:/
 
 | Environment      | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) | [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018, Table 1)[^2]  | [`DDPG.py`](https://github.com/sfujim/TD3/blob/master/DDPG.py) using settings from (Lillicrap et al., 2016)[^1] in (Fujimoto et al., 2018, Table 1)[^2]    |
 | ----------- | ----------- | ----------- | ----------- |
-| HalfCheetah      | 9382.32 ± 1395.52      |8577.29  | 3305.60|
-| Walker2d   | 1598.35 ± 862.66     |  3098.11 | 1843.85 |
-| Hopper   | 1313.43 ± 684.46         |  1860.02 | 2020.46 |
-| Humanoid |  897.74 ± 281.87      |  not available | 
-| Pusher |  -34.45 ± 4.47      |  not available | 
-| InvertedPendulum |    645.67 ± 270.31    | 1000.00 ± 0.00  | 
+| HalfCheetah      | 10210.57 ± 196.22      |8577.29  | 3305.60|
+| Walker2d   | 1661.14 ± 250.01     |  3098.11 | 1843.85 |
+| Hopper   | 1007.44 ± 148.29         |  1860.02 | 2020.46 |
+| Humanoid |  910.61 ± 97.58      |  not available | 
+| Pusher |  -39.39 ± 9.54      |  not available | 
+| InvertedPendulum |    684.61 ± 94.41    | 1000.00 ± 0.00  | 
 
 
 ???+ info
@@ -224,19 +244,9 @@ Below are the average episodic returns for [`ddpg_continuous_action.py`](https:/
 
 Learning curves:
 
-<div class="grid-container">
-<img src="../ddpg/HalfCheetah-v2.png">
+<img loading="lazy" src="../ddpg/ddpg.png">
 
-<img src="../ddpg/Walker2d-v2.png">
-
-<img src="../ddpg/Hopper-v2.png">
-
-<img src="../ddpg/Humanoid-v2.png">
-
-<img src="../ddpg/Pusher-v2.png">
-
-<img src="../ddpg/InvertedPendulum-v2.png">
-</div>
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-DDPG--VmlldzoxNjkyMjc1" style="width:100%; height:500px" title="MuJoCo: CleanRL's DDPG"></iframe>
 
 
 
@@ -252,11 +262,11 @@ The [ddpg_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/mast
 ### Usage
 
 ```bash
-poetry install -E "mujoco jax"
-poetry run pip install --upgrade "jax[cuda]==0.3.14" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+poetry install --with mujoco,jax
+poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 poetry run python -c "import mujoco_py"
 python cleanrl/ddpg_continuous_action_jax.py --help
-poetry install -E mujoco # only works in Linux
+poetry install --with mujoco # only works in Linux
 python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v3
 ```
 
@@ -282,12 +292,11 @@ To run benchmark experiments, see :material-github: [benchmark/ddpg.sh](https://
 
 Below are the average episodic returns for [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
 
-| Environment      | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (RTX 3060 TI) | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (VM w/ TPU) | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) (RTX 2060) | [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018, Table 1)[^2]    |
+| Environment      | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (RTX 3060 TI) | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (VM w/ TPU) | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) (RTX 3060 TI) | [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018, Table 1)[^2]    |
 | ----------- | ----------- | ----------- | ----------- | ----------- |
-| HalfCheetah |  9910.53 ± 673.49 | 9790.72 ± 1494.85   | 9382.32 ± 1395.52      |8577.29  |
-| Walker2d |  1397.60 ± 677.12  | 1314.83 ± 689.71 | 1598.35 ± 862     |  3098.11 | 
-| Hopper |  1603.5 ± 727.281  | 1602.20 ± 696.11 | 1313.43 ± 684.46         |  1860.02 | 
-
+| HalfCheetah |  9592.25 ± 135.10 | 9125.06 ± 1477.58  | 10210.57 ± 196.22      |8577.29  |
+| Walker2d |  1083.15 ± 567.65  | 1303.82 ± 448.41 | 1661.14 ± 250.01     |  3098.11 | 
+| Hopper |  1275.28 ± 209.60  | 1145.05 ± 41.95 | 1007.44 ± 148.29         |  1860.02 |     
 
 ???+ info
 

@@ -35,7 +35,7 @@ The [dqn_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_at
 ### Usage
 
 ```bash
-poetry install -E atari
+poetry install --with atari
 python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
 ```
@@ -219,8 +219,8 @@ The [dqn_atari_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dq
 ### Usage
 
 ```bash
-poetry install -E "atari jax"
-poetry run pip install --upgrade "jax[cuda]==0.3.14" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+poetry install --with atari,jax
+poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 python cleanrl/dqn_atari_jax.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/dqn_atari_jax.py --env-id PongNoFrameskip-v4
 ```

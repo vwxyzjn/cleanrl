@@ -11,8 +11,8 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.1.11]
-        os: [ubuntu-18.04]
+        poetry-version: [1.2]
+        os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -25,9 +25,9 @@ jobs:
           poetry-version: ${{ matrix.poetry-version }}
 
       - name: Install test dependencies
-        run: poetry install -E pytest
+        run: poetry install --with pytest
       - name: Install cloud dependencies
-        run: poetry install -E cloud
+        run: poetry install --with cloud
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run utils tests

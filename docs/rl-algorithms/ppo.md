@@ -136,7 +136,7 @@ The [ppo_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_at
 ### Usage
 
 ```bash
-poetry install -E atari
+poetry install --with atari
 python cleanrl/ppo_atari.py --help
 python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
 ```
@@ -211,7 +211,7 @@ The [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 ### Usage
 
 ```bash
-poetry install -E atari
+poetry install --with atari
 python cleanrl/ppo_continuous_action.py --help
 python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
 ```
@@ -290,7 +290,7 @@ The [ppo_atari_lstm.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/p
 ### Usage
 
 ```bash
-poetry install -E atari
+poetry install --with atari
 python cleanrl/ppo_atari_lstm.py --help
 python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
 ```
@@ -360,11 +360,21 @@ The [ppo_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanr
 
     Note that `ppo_atari_envpool.py` does not work in Windows :fontawesome-brands-windows: and MacOs :fontawesome-brands-apple:. See envpool's built wheels here: [https://pypi.org/project/envpool/#files](https://pypi.org/project/envpool/#files)
 
+???+ bug
+
+    EnvPool's vectorized environment **does not behave the same** as gym's vectorized environment, which causes a compatibility bug in our PPO implementation. When an action $a$ results in an episode termination or truncation, the environment generates $s_{last}$ as the terminated or truncated state; we then use $s_{new}$ to denote the initial state of the new episodes. Here is how the bahviors differ:
+
+    * Under the vectorized environment of `envpool<=0.6.4`, the `obs` in `obs, reward, done, info = env.step(action)` is the truncated state $s_{last}$
+    * Under the vectorized environment of `gym==0.23.1`, the `obs` in `obs, reward, done, info = env.step(action)` is the initial state $s_{new}$.
+
+    This causes the $s_{last}$ to be off by one. 
+    See [:material-github: sail-sg/envpool#194](https://github.com/sail-sg/envpool/issues/194) for more detail. However, it does not seem to impact performance, so we take a note here and await for the upstream fix.
+
 
 ### Usage
 
 ```bash
-poetry install -E envpool
+poetry install --with envpool
 python cleanrl/ppo_atari_envpool.py --help
 python cleanrl/ppo_atari_envpool.py --env-id Breakout-v5
 ```
@@ -416,6 +426,186 @@ Tracked experiments and game play videos:
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-Envpool--VmlldzoxODcxMzI3" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool"></iframe>
 
 
+## `ppo_atari_envpool_xla_jax.py`
+
+The [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) has the following features:
+
+* Uses the blazing fast [Envpool](https://github.com/sail-sg/envpool) vectorized environment.
+    * Uses EnvPool's experimental [XLA interface](https://envpool.readthedocs.io/en/latest/content/xla_interface.html).
+* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  
+* For Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+* Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
+* Works with the `Discrete` action space
+
+???+ warning
+
+    Note that `ppo_atari_envpool_xla_jax.py` does not work in Windows :fontawesome-brands-windows: and MacOs :fontawesome-brands-apple:. See envpool's built wheels here: [https://pypi.org/project/envpool/#files](https://pypi.org/project/envpool/#files)
+
+
+???+ bug
+
+    EnvPool's vectorized environment **does not behave the same** as gym's vectorized environment, which causes a compatibility bug in our PPO implementation. When an action $a$ results in an episode termination or truncation, the environment generates $s_{last}$ as the terminated or truncated state; we then use $s_{new}$ to denote the initial state of the new episodes. Here is how the bahviors differ:
+
+    * Under the vectorized environment of `envpool<=0.6.4`, the `obs` in `obs, reward, done, info = env.step(action)` is the truncated state $s_{last}$
+    * Under the vectorized environment of `gym==0.23.1`, the `obs` in `obs, reward, done, info = env.step(action)` is the initial state $s_{new}$.
+
+    This causes the $s_{last}$ to be off by one. 
+    See [:material-github: sail-sg/envpool#194](https://github.com/sail-sg/envpool/issues/194) for more detail. However, it does not seem to impact performance, so we take a note here and await for the upstream fix.
+
+
+
+### Usage
+
+```bash
+poetry install -E "envpool jax"
+poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+python cleanrl/ppo_atari_envpool_xla_jax.py --help
+python cleanrl/ppo_atari_envpool_xla_jax.py --env-id Breakout-v5
+```
+
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`. In [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) we omit logging `losses/old_approx_kl` and `losses/clipfrac` for brevity.
+
+Additionally, we record the following metric:
+
+* `charts/avg_episodic_return`: the average value of the *latest* episodic returns of `args.num_envs=8` envs
+* `charts/avg_episodic_length`: the average value of the *latest* episodic lengths of `args.num_envs=8` envs
+
+???+ info
+
+    Note that we use `charts/avg_episodic_return` in place of `charts/episodic_return` and `charts/episodic_length` because under the EnvPool's XLA interface, we can only record fixed-shape metrics where as there could be a variable number of raw episodic returns / lengths. To resolve this challenge, we create variables (e.g., `returned_episode_returns`, `returned_episode_lengths`) to keep track of the *latest* episodic returns / lengths of each environment and average them for reporting purposes.
+
+### Implementation details
+
+[ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) uses a customized `RecordEpisodeStatistics` to work with EnvPool's experimental [XLA interface](https://envpool.readthedocs.io/en/latest/content/xla_interface.html) but has the same other implementation details as `ppo_atari.py` (see [related docs](/rl-algorithms/ppo/#implementation-details_1)) except that [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) does not use the value function clipping for simplicity. 
+
+
+???+ info
+    
+    We benchmarked the PPO implementation w/ and w/o value function clipping, finding no significant difference in performance, which is consistent with the findings in Andrychowicz et al.[^2]. See the related report [part 1](https://wandb.ai/costa-huang/cleanRL/reports/CleanRL-PPO-JAX-EnvPool-s-XLA-w-and-w-o-value-loss-clipping-vs-openai-baselins-PPO-part-1---VmlldzoyNzQ3MzQ1) and [part 2](https://wandb.ai/costa-huang/cleanRL/reports/CleanRL-PPO-JAX-EnvPool-s-XLA-w-and-w-o-value-loss-clipping-vs-openai-baselins-PPO-part-2---VmlldzoyNzQ3MzUw).
+
+    ![](../ppo/ppo_atari_envpool_xla_jax/hns_ppo_vs_baselines2.svg)
+
+
+### Experiment results
+
+To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F0f72ce08fa1099f45a8cf6cba837be602bd9f87b%2Fbenchmark%2Fppo.sh%23L76-L91&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
+
+
+Below are the average episodic returns for `ppo_atari_envpool_xla_jax.py`. Notice it has the same sample efficiency as `ppo_atari.py`, but runs about 3x faster.
+
+???+ info
+
+    The following table and charts are generated by [atari_hns_new.py](https://github.com/openrlbenchmark/openrlbenchmark/blob/0c16fda7d7873143a632865010c74263ea487339/atari_hns_new.py),  [ours_vs_baselines_hns.py](https://github.com/openrlbenchmark/openrlbenchmark/blob/0c16fda7d7873143a632865010c74263ea487339/ours_vs_baselines_hns.py), and [ours_vs_seedrl_hns.py](https://github.com/openrlbenchmark/openrlbenchmark/blob/0c16fda7d7873143a632865010c74263ea487339/ours_vs_seedrl_hns.py).
+
+
+<!-- | Environment      | `ppo_atari_envpool_xla_jax.py` (~80 mins) | `ppo_atari.py` (~220 mins)
+| ----------- | ----------- | ----------- |
+| BreakoutNoFrameskip-v4 |   389.57 ± 29.62    | 416.31 ± 43.92 
+| PongNoFrameskip-v4 | 20.55 ± 0.37   | 20.59 ± 0.35   
+| BeamRiderNoFrameskip-v4 |   2039.83 ± 1146.62 | 2445.38 ± 528.91  
+ -->
+| Environment         |   CleanRL ppo_atari_envpool_xla_jax.py |   openai/baselines' PPO |
+|:--------------------|---------------------------------------:|------------------------:|
+| Alien-v5            |                         1744.76        |          1549.42        |
+| Amidar-v5           |                          617.137       |           546.406       |
+| Assault-v5          |                         5734.04        |          4050.78        |
+| Asterix-v5          |                         3341.9         |          3459.9         |
+| Asteroids-v5        |                         1669.3         |          1467.19        |
+| Atlantis-v5         |                            3.92929e+06 |             3.09748e+06 |
+| BankHeist-v5        |                         1192.68        |          1195.34        |
+| BattleZone-v5       |                        24937.9         |         20314.3         |
+| BeamRider-v5        |                         2447.84        |          2740.02        |
+| Berzerk-v5          |                         1082.72        |           887.019       |
+| Bowling-v5          |                           44.0681      |            62.2634      |
+| Boxing-v5           |                           92.0554      |            93.3596      |
+| Breakout-v5         |                          431.795       |           388.891       |
+| Centipede-v5        |                         2910.69        |          3688.16        |
+| ChopperCommand-v5   |                         5555.84        |           933.333       |
+| CrazyClimber-v5     |                       116114           |        111675           |
+| Defender-v5         |                        51439.2         |         50045.1         |
+| DemonAttack-v5      |                        22824.8         |         12173.9         |
+| DoubleDunk-v5       |                           -8.56781     |            -9           |
+| Enduro-v5           |                         1262.79        |          1061.12        |
+| FishingDerby-v5     |                           21.6222      |            23.8876      |
+| Freeway-v5          |                           33.1075      |            32.9167      |
+| Frostbite-v5        |                          904.346       |           924.5         |
+| Gopher-v5           |                        11369.6         |          2899.57        |
+| Gravitar-v5         |                         1141.95        |           870.755       |
+| Hero-v5             |                        24628.3         |         25984.5         |
+| IceHockey-v5        |                           -4.91917     |            -4.71505     |
+| Jamesbond-v5        |                          504.105       |           516.489       |
+| Kangaroo-v5         |                         7281.59        |          3791.5         |
+| Krull-v5            |                         9384.7         |          8672.95        |
+| KungFuMaster-v5     |                        26594.5         |         29116.1         |
+| MontezumaRevenge-v5 |                            0.240385    |             0           |
+| MsPacman-v5         |                         2461.62        |          2113.44        |
+| NameThisGame-v5     |                         5442.67        |          5713.89        |
+| Phoenix-v5          |                        14008.5         |          8693.21        |
+| Pitfall-v5          |                           -0.0801282   |            -1.47059     |
+| Pong-v5             |                           20.309       |            20.4043      |
+| PrivateEye-v5       |                           99.5283      |            21.2121      |
+| Qbert-v5            |                        16430.7         |         14283.4         |
+| Riverraid-v5        |                         8297.21        |          9267.48        |
+| RoadRunner-v5       |                        19342.2         |         40325           |
+| Robotank-v5         |                           15.45        |            16           |
+| Seaquest-v5         |                         1230.02        |          1754.44        |
+| Skiing-v5           |                       -14684.3         |        -13901.7         |
+| Solaris-v5          |                         2353.62        |          2088.12        |
+| SpaceInvaders-v5    |                         1162.16        |          1017.65        |
+| StarGunner-v5       |                        53535.9         |         40906           |
+| Surround-v5         |                           -2.94558     |            -6.08095     |
+| Tennis-v5           |                          -15.0446      |            -9.71429     |
+| TimePilot-v5        |                         6224.87        |          5775.53        |
+| Tutankham-v5        |                          238.419       |           197.929       |
+| UpNDown-v5          |                       430177           |        129459           |
+| Venture-v5          |                            0           |           115.278       |
+| VideoPinball-v5     |                        42975.3         |         32777.4         |
+| WizardOfWor-v5      |                         6247.83        |          5024.03        |
+| YarsRevenge-v5      |                        56696.7         |          8238.44        |
+| Zaxxon-v5           |                         6015.8         |          6379.79        |
+
+
+
+Median Human Normalized Score (HNS) compared to openai/baselines.
+
+![](../ppo/ppo_atari_envpool_xla_jax/hns_ppo_vs_baselines.svg)
+
+
+Learning curves (left y-axis is the return and right y-axis is the human normalized score):
+
+![](../ppo/ppo_atari_envpool_xla_jax/hms_each_game.svg)
+
+
+Percentage of human normalized score (HMS) for each game.
+![](../ppo/ppo_atari_envpool_xla_jax/runset_0_hms_bar.svg)
+
+
+???+ info
+
+    Note the original openai/baselines uses `atari-py==0.2.6` which hangs on `gym.make("DefenderNoFrameskip-v4")` and does not support SurroundNoFrameskip-v4 (see issue [:material-github: openai/atari-py#73](https://github.com/openai/atari-py/issues/73)). To get results on these environments, we use `gym==0.23.1 ale-py==0.7.4 "AutoROM[accept-rom-license]==0.4.2` and [manually register `SurroundNoFrameskip-v4` in our fork](https://github.com/vwxyzjn/baselines/blob/e2cb1c938a62fa8d7fe98187246cde08dfd57bd1/baselines/common/register_all_atari_envs.py#L2). 
+
+
+Median Human Normalized Score (HNS) compared to SEEDRL's R2D2 (data available [here](https://github.com/google-research/seed_rl/blob/66e8890261f09d0355e8bf5f1c5e41968ca9f02b/docs/seed_r2d2_atari_graphs.csv)). 
+
+![](../ppo/ppo_atari_envpool_xla_jax/hns_ppo_vs_r2d2.svg)
+
+???+ info
+
+    Note the SEEDRL's R2D2's median HNS data does not include learning curves for `Defender` and `Surround` (see [google-research/seed_rl#78](https://github.com/google-research/seed_rl/issues/78)). Also note the SEEDRL's R2D2 uses slightly different Atari preprocessing than our `ppo_atari_envpool_xla_jax.py`, so we may be comparing apples and oranges; however, the results are still informative at the scale of 57 Atari games — we would be at least comparing similar apples.
+
+
+
+Tracked experiments and game play videos:
+
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-PPO-JAX-EnvPool-s-XLA-vs-openai-baselins-PPO-part-1---VmlldzoyNjE2ODMz" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-vs-openai-baselines-Part-1"></iframe>
+
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-PPO-JAX-EnvPool-s-XLA-vs-openai-baselins-PPO-part-2---VmlldzoyNjE2ODM1" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-vs-openai-baselines-Part-2"></iframe>
+
+
 
 
 ## `ppo_procgen.py`
@@ -430,7 +620,7 @@ The [ppo_procgen.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_
 ### Usage
 
 ```bash
-poetry install -E procgen
+poetry install --with procgen
 python cleanrl/ppo_procgen.py --help
 python cleanrl/ppo_procgen.py --env-id starpilot
 ```
@@ -509,7 +699,7 @@ The [ppo_atari_multigpu.py](https://github.com/vwxyzjn/cleanrl/blob/master/clean
 ### Usage
 
 ```bash
-poetry install -E atari
+poetry install --with atari
 python cleanrl/ppo_atari_multigpu.py --help
 
 # `--nproc_per_node=2` specifies how many subprocesses we spawn for training with data parallelism
@@ -759,7 +949,7 @@ Tracked experiments and game play videos:
 ### Usage
 
 ```bash
-poetry install -E "pettingzoo atari"
+poetry install --with pettingzoo,atari
 poetry run AutoROM --accept-license
 python cleanrl/ppo_pettingzoo_ma_atari.py --help
 python cleanrl/ppo_pettingzoo_ma_atari.py --env-id pong_v3
@@ -878,3 +1068,5 @@ Tracked experiments and game play videos:
 {!rl-algorithms/ppo-isaacgymenvs.md!}
 
 [^1]: Huang, Shengyi; Dossa, Rousslan Fernand Julien; Raffin, Antonin; Kanervisto, Anssi; Wang, Weixun (2022). The 37 Implementation Details of Proximal Policy Optimization. ICLR 2022 Blog Track https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/
+
+[^2]: Andrychowicz, Marcin, Anton Raichuk, Piotr Stańczyk, Manu Orsini, Sertan Girgin, Raphael Marinier, Léonard Hussenot et al. "What matters in on-policy reinforcement learning? a large-scale empirical study." International Conference on Learning Representations 2021, https://openreview.net/forum?id=nIAxjsniDzg

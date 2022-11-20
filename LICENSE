@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2019 Costa Huang
+Copyright (c) 2019 CleanRL developers
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,10 @@ SOFTWARE.
 --------------------------------------------------------------------------------
 
 Code in `cleanrl/ppo_procgen.py` and `cleanrl/ppg_procgen.py` are adapted from https://github.com/AIcrowd/neurips2020-procgen-starter-kit/blob/142d09586d2272a17f44481a115c4bd817cf6a94/models/impala_cnn_torch.py
+
+**NOTE: the original repo did not fill out the copyright section in their license
+so the following copyright notice is copied as is per the license requirement.
+See https://github.com/AIcrowd/neurips2020-procgen-starter-kit/blob/142d09586d2272a17f44481a115c4bd817cf6a94/LICENSE#L190
 
 
 Copyright [yyyy] [name of copyright owner]

@@ -37,10 +37,10 @@ The [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 
 ```bash
 poetry install
-poetry install -E pybullet
+poetry install --with pybullet
 python cleanrl/td3_continuous_action.py --help
 python cleanrl/td3_continuous_action.py --env-id HopperBulletEnv-v0
-poetry install -E mujoco # only works in Linux
+poetry install --with mujoco # only works in Linux
 python cleanrl/td3_continuous_action.py --env-id Hopper-v3
 ```
 
@@ -116,19 +116,19 @@ Additionally, when drawing exploration noise that is added to the actions produc
 
 To run benchmark experiments, see :material-github: [benchmark/td3.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/td3.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F2e2dc9c6ede5e5e5df3eaea73c458bb9a83507d2%2Fbenchmark%2Ftd3.sh%23L1-L7&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Ftd3.sh%23L1-L7&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
 
 
 Below are the average episodic returns for [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
 
 | Environment      | [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) | [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py) (Fujimoto et al., 2018, Table 1)[^2]  |
 | ----------- | ----------- | ----------- | 
-| HalfCheetah      | 9018.31 ± 1078.31      |9636.95 ± 859.065  |
-| Walker2d   | 4246.07 ± 1210.84     |  4682.82 ± 539.64 | 
-| Hopper   | 3391.78 ± 232.21        |  3564.07 ± 114.74 | 
-| Humanoid |  4822.64 ± 321.85      |  not available | 
-| Pusher |  -42.24 ± 6.74      |  not available | 
-| InvertedPendulum |    964.59 ± 43.91    | 1000.00 ± 0.00  | 
+| HalfCheetah      | 9449.94 ± 1586.49      |9636.95 ± 859.065  |
+| Walker2d   | 3851.55 ± 335.29     |  4682.82 ± 539.64 | 
+| Hopper   | 3162.21 ± 261.08        |  3564.07 ± 114.74 | 
+| Humanoid |  5011.05 ± 254.89      |  not available | 
+| Pusher |  -37.49 ± 10.22      |  not available | 
+| InvertedPendulum |    996.81 ± 4.50    | 1000.00 ± 0.00  | 
 
 
 
@@ -176,11 +176,11 @@ The [td3_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/maste
 ### Usage
 
 ```bash
-poetry install -E "mujoco jax"
-poetry run pip install --upgrade "jax[cuda]==0.3.14" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+poetry install --with mujoco,jax
+poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 poetry run python -c "import mujoco_py"
 python cleanrl/td3_continuous_action_jax.py --help
-poetry install -E mujoco # only works in Linux
+poetry install --with mujoco # only works in Linux
 python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v3
 ```
 
@@ -198,16 +198,15 @@ See [related docs](/rl-algorithms/td3/#implementation-details) for `td3_continuo
 
 To run benchmark experiments, see :material-github: [benchmark/ddpg.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ddpg.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F5bfdd4574d25474d641278ef5c47a97932b5b9e2%2Fbenchmark%2Ftd3.sh%23L9-L16&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Ftd3.sh%23L9-L16&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
 
 Below are the average episodic returns for [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
 
-| Environment      | [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) (RTX 3060 Ti) | [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) (VM w/ TPU) | [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) (RTX 2060) | [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py) (Fujimoto et al., 2018, Table 1)[^2]  |
+| Environment      | [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) (RTX 3060 TI) | [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) (VM w/ TPU) | [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) (RTX 3060 TI) | [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py) (Fujimoto et al., 2018, Table 1)[^2]  |
 | ----------- | ----------- | ----------- | ----------- |  ----------- | 
-| HalfCheetah |  9099.93 ± 1171.83  | 9127.81 ± 965.42  | 9018.31 ± 1078.31      |9636.95 ± 859.065  |
-| Walker2d |  2874.39 ± 1684.57 | 3519.38 ± 368.02 | 4246.07 ± 1210.84     |  4682.82 ± 539.64 | 
-| Hopper |   3382.66 ± 242.52 | 3126.40 ± 558.93 | 3391.78 ± 232.21        |  3564.07 ± 114.74 | 
-
+| HalfCheetah |  9408.62 ± 473.23  | 8948.33 ± 1196.87  | 9449.94 ± 1586.49      |9636.95 ± 859.065  |
+| Walker2d |  3512.14 ± 1576.59 | 4107.63 ± 173.93  | 3851.55 ± 335.29     |  4682.82 ± 539.64 | 
+| Hopper |   2898.62 ± 485.18 | 3151.80 ± 458.68 | 3162.21 ± 261.08        |  3564.07 ± 114.74 | 
 
 
 ???+ info
