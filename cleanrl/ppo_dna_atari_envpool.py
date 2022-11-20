@@ -38,13 +38,13 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="Pong-v5",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=10000000,
+    parser.add_argument("--total-timesteps", type=int, default=50000000,
         help="total timesteps of the experiments")
     parser.add_argument("--num-envs", type=int, default=128,
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=128,
         help="the number of steps to run in each environment per policy rollout")
-    parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+    parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
@@ -227,8 +227,13 @@ if __name__ == "__main__":
         args.env_id,
         env_type="gym",
         num_envs=args.num_envs,
-        episodic_life=True,
+        episodic_life=False,  # Machado et al. 2017 (Revisitng ALE: Eval protocals) p. 6
+        repeat_action_probability=0.25,  # Machado et al. 2017 (Revisitng ALE: Eval protocals) p. 12
+        noop_max=1,  # Machado et al. 2017 (Revisitng ALE: Eval protocals) p. 12 (no-op is deprecated in favor of sticky action)
+        max_episode_steps=int(108000 / 4),  # Hessel et al. 2018 (Rainbow DQN), Table 3, Max frames per episode
+        reward_clip=True,
         seed=args.seed,
+        # full_action_space=True, # currently not supported by EnvPool Machado et al. 2017 (Revisitng ALE: Eval protocals) Table 5
     )
     envs.is_vector_env = True
     envs.num_envs = args.num_envs
