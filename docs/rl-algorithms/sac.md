@@ -91,6 +91,10 @@ $$
 
 where the action is sampled using the reparameterization trick[^1]: $a = \mu_{\phi}(s) + \epsilon \, \sigma_{\phi}(s)$ with $\epsilon \sim \mathcal{N}(0, 1)$, $\text{log} \pi_{\phi}( \cdot \vert s')$ approximates the entropy of the policy, and $\mathcal{D}$ is the replay buffer storing samples of the agent during training.
 
+???+ info
+
+    [^1]: The reparameterization trick allow us to make the sampled action differentiable. https://stackoverflow.com/a/70818755/6611317 has a good explanation of the reparameterization trick. Also see https://pytorch.org/docs/stable/distributions.html#pathwise-derivative
+
 
 * `losses/alpha`: $\alpha$ coefficient for *entropy regularization* of the policy.
 
