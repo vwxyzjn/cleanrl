@@ -143,30 +143,18 @@ class RecordEpisodeStatistics(gym.Wrapper):
 
 def compute_advantages(rewards, dones, values, next_done, next_value, gamma, gae_lambda):
     total_steps = len(rewards)
-    if gae_lambda > 0:
-        advantages = torch.zeros_like(rewards)
-        lastgaelam = 0
-        for t in reversed(range(total_steps)):
-            if t == total_steps - 1:
-                nextnonterminal = 1.0 - next_done
-                nextvalues = next_value
-            else:
-                nextnonterminal = 1.0 - dones[t + 1]
-                nextvalues = values[t + 1]
-            delta = rewards[t] + gamma * nextvalues * nextnonterminal - values[t]
-            advantages[t] = lastgaelam = delta + gamma * gae_lambda * nextnonterminal * lastgaelam
-        returns = advantages + values
-    else:
-        returns = torch.zeros_like(rewards)
-        for t in reversed(range(total_steps)):
-            if t == total_steps - 1:
-                nextnonterminal = 1.0 - next_done
-                next_return = next_value
-            else:
-                nextnonterminal = 1.0 - dones[t + 1]
-                next_return = returns[t + 1]
-            returns[t] = rewards[t] + gamma * nextnonterminal * next_return
-        advantages = returns - values
+    advantages = torch.zeros_like(rewards)
+    lastgaelam = 0
+    for t in reversed(range(total_steps)):
+        if t == total_steps - 1:
+            nextnonterminal = 1.0 - next_done
+            nextvalues = next_value
+        else:
+            nextnonterminal = 1.0 - dones[t + 1]
+            nextvalues = values[t + 1]
+        delta = rewards[t] + gamma * nextvalues * nextnonterminal - values[t]
+        advantages[t] = lastgaelam = delta + gamma * gae_lambda * nextnonterminal * lastgaelam
+    returns = advantages + values
     return advantages, returns
 
 
