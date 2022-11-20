@@ -123,9 +123,10 @@ def sample_action(
     observations: jnp.ndarray,
     key: jax.random.KeyArray,
 ) -> jnp.array:
+    key, noise_key = jax.random.split(key, 2)
     dist = actor.apply(actor_state.params, observations)
-    action = dist.sample(seed=key)
-    return action
+    action = dist.sample(seed=noise_key)
+    return action, key
 
 
 @partial(jax.jit, static_argnames="actor")
@@ -171,8 +172,7 @@ class SB3Adapter:
         if deterministic:
             actions = select_action(self.actor, self.actor_state, observations)
         else:
-            self.key, noise_key = jax.random.split(self.key, 2)
-            actions = sample_action(self.actor, self.actor_state, observations, noise_key)
+            actions, self.key = sample_action(self.actor, self.actor_state, observations, self.key)
 
         # Clip due to numerical instability
         actions = np.clip(actions, -1, 1)
@@ -191,7 +191,7 @@ class EntropyCoef(nn.Module):
         return jnp.exp(log_ent_coef)
 
 
-@partial(jax.jit, static_argnames=["tau"])
+@jax.jit
 def soft_update(tau: float, qf_state: RLTrainState) -> RLTrainState:
     qf_state = qf_state.replace(target_params=optax.incremental_update(qf_state.params, qf_state.target_params, tau))
     return qf_state
@@ -212,18 +212,15 @@ def parse_args():
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to capture videos of the agent performances (check out `videos` folder)")
-    parser.add_argument(
-        "--eval-freq",
-        help="Evaluate the agent every n steps (if negative, no evaluation). "
-        "During hyperparameter optimization n-evaluations is used instead",
-        default=-1,
-        type=int,
-    )
-    parser.add_argument("--n-eval-episodes", help="Number of episodes to use for evaluation", default=10, type=int)
-    parser.add_argument("--n-eval-envs", help="Number of environments for evaluation", default=5, type=int)
+    parser.add_argument("--eval-freq", type=int, default=-1,
+        help="evaluate the agent every `eval_freq` steps (if negative, no evaluation)")
+    parser.add_argument("--n-eval-episodes", type=int, default=10,
+        help="number of episodes to use for evaluation")
+    parser.add_argument("--n-eval-envs", type=int, default=5,
+        help="number of environments for evaluation")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="HopperBulletEnv-v0",
+    parser.add_argument("--env-id", type=str, default="HalfCheetah-v2",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -248,7 +245,7 @@ def parse_args():
     parser.add_argument("--target-network-frequency", type=int, default=1, # Denis Yarats' implementation delays this by 2.
         help="the frequency of updates for the target nerworks")
     parser.add_argument("--alpha", type=float, default=0.2,
-            help="Entropy regularization coefficient.")
+        help="entropy regularization coefficient")
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=True, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
     args = parser.parse_args()
@@ -442,8 +439,8 @@ if __name__ == "__main__":
         if global_step < args.learning_starts:
             actions = np.array([envs.action_space.sample() for _ in range(envs.num_envs)])
         else:
-            key, noise_key = jax.random.split(key, 2)
-            actions = np.array(sample_action(actor, actor_state, obs, noise_key))
+            actions, key = sample_action(actor, actor_state, obs, key)
+            actions = np.array(actions)
             # Clip due to numerical instability
             actions = np.clip(actions, -1, 1)
             # Rescale to proper domain when using squashing
