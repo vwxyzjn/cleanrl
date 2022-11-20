@@ -6,13 +6,15 @@ CleanRL has become an increasingly popular deep reinforcement learning library, 
 
 ## Publications
 
+* Md Masudur Rahman and Yexiang Xue. "Bootstrap Advantage Estimation for Policy Optimization in Reinforcement Learning." In Proceedings of the IEEE International Conference on Machine Learning and Applications (ICMLA), 2022. [https://arxiv.org/pdf/2210.07312.pdf](https://arxiv.org/pdf/2210.07312.pdf)
+
 * Centa, Matheus, and Philippe Preux. "Soft Action Priors: Towards Robust Policy Transfer." arXiv preprint arXiv:2209.09882 (2022). [https://arxiv.org/pdf/2209.09882.pdf](https://arxiv.org/pdf/2209.09882.pdf)
 
 * Weng, Jiayi, Min Lin, Shengyi Huang, Bo Liu, Denys Makoviichuk, Viktor Makoviychuk, Zichen Liu et al. "Envpool: A highly parallel reinforcement learning environment execution engine." In Thirty-sixth Conference on Neural Information Processing Systems Datasets and Benchmarks Track. [https://openreview.net/forum?id=BubxnHpuMbG](https://openreview.net/forum?id=BubxnHpuMbG)
 
 * Huang, Shengyi, Rousslan Fernand Julien Dossa, Antonin Raffin, Anssi Kanervisto, and Weixun Wang. "The 37 Implementation Details of Proximal Policy Optimization." International Conference on Learning Representations 2022 Blog Post Track, [https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/)
 
-* Huang, Shengyi, and Santiago Ontañón. "A closer look at invalid action masking in policy gradient algorithms." The International FLAIRS Conference Proceedings, 35. [https://](https://)journals.flvc.org/FLAIRS/article/view/130584
+* Huang, Shengyi, and Santiago Ontañón. "A closer look at invalid action masking in policy gradient algorithms." The International FLAIRS Conference Proceedings, 35. [https://journals.flvc.org/FLAIRS/article/view/130584](https://journals.flvc.org/FLAIRS/article/view/130584)
 
 * Schmidt, Dominik, and Thomas Schmied. "Fast and Data-Efficient Training of Rainbow: an Experimental Study on Atari." Deep Reinforcement Learning Workshop at the 35th Conference on Neural Information Processing Systems, [https://arxiv.org/abs/2111.10247](https://arxiv.org/abs/2111.10247)
 
