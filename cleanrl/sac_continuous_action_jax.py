@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 from distutils.util import strtobool
 from functools import partial
-from typing import Any, NamedTuple, Optional, Sequence
+from typing import Any, Optional, Sequence
 
 import flax
 import flax.linen as nn
@@ -16,6 +16,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+
 # import pybullet_envs  # noqa
 import tensorflow_probability
 from flax.training.train_state import TrainState
@@ -37,14 +38,6 @@ tfd = tfp.distributions
 
 class RLTrainState(TrainState):
     target_params: flax.core.FrozenDict = None
-
-
-class ReplayBufferSamplesNp(NamedTuple):
-    observations: np.ndarray
-    actions: np.ndarray
-    next_observations: np.ndarray
-    dones: np.ndarray
-    rewards: np.ndarray
 
 
 class TanhTransformedDistribution(tfd.TransformedDistribution):
@@ -493,14 +486,6 @@ if __name__ == "__main__":
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
-            # Convert to numpy
-            data = ReplayBufferSamplesNp(
-                data.observations.numpy(),
-                data.actions.numpy(),
-                data.next_observations.numpy(),
-                data.dones.numpy().flatten(),
-                data.rewards.numpy().flatten(),
-            )
 
             if args.autotune:
                 ent_coef_value = ent_coef.apply({"params": ent_coef_state.params})
@@ -509,11 +494,11 @@ if __name__ == "__main__":
                 actor_state,
                 qf_state,
                 ent_coef_value,
-                data.observations,
-                data.actions,
-                data.next_observations,
-                data.rewards,
-                data.dones,
+                data.observations.numpy(),
+                data.actions.numpy(),
+                data.next_observations.numpy(),
+                data.rewards.numpy(),
+                data.dones.numpy(),
                 key,
             )
 
@@ -522,7 +507,7 @@ if __name__ == "__main__":
                     actor_state,
                     qf_state,
                     ent_coef_value,
-                    data.observations,
+                    data.observations.numpy(),
                     key,
                 )
 
