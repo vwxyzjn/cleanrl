@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 from distutils.util import strtobool
 from functools import partial
-from typing import Any, Optional, Sequence
+from typing import Sequence
 
 import flax
 import flax.linen as nn
@@ -18,7 +18,6 @@ import numpy as np
 import optax
 
 # import pybullet_envs  # noqa
-import tensorflow_probability
 from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.env_util import make_vec_env
@@ -31,9 +30,6 @@ try:
     from tqdm.rich import tqdm
 except ImportError:
     tqdm = None
-
-tfp = tensorflow_probability.substrates.jax
-tfd = tfp.distributions
 
 
 def parse_args():
@@ -107,25 +103,6 @@ def make_env(env_id, seed, idx, capture_video, run_name):
     return thunk
 
 
-class TanhTransformedDistribution(tfd.TransformedDistribution):
-    """
-    From https://github.com/ikostrikov/walk_in_the_park
-    otherwise mode is not defined for Squashed Gaussian
-    """
-
-    def __init__(self, distribution: tfd.Distribution, validate_args: bool = False):
-        super().__init__(distribution=distribution, bijector=tfp.bijectors.Tanh(), validate_args=validate_args)
-
-    def mode(self) -> jnp.ndarray:
-        return self.bijector.forward(self.distribution.mode())
-
-    @classmethod
-    def _parameter_properties(cls, dtype: Optional[Any], num_classes=None):
-        td_properties = super()._parameter_properties(dtype, num_classes=num_classes)
-        del td_properties["bijector"]
-        return td_properties
-
-
 class Critic(nn.Module):
     n_units: int = 256
 
@@ -169,7 +146,7 @@ class Actor(nn.Module):
     log_std_max: float = 2
 
     @nn.compact
-    def __call__(self, x: jnp.ndarray) -> tfd.Distribution:
+    def __call__(self, x: jnp.ndarray):
         x = nn.Dense(self.n_units)(x)
         x = nn.relu(x)
         x = nn.Dense(self.n_units)(x)
@@ -177,10 +154,7 @@ class Actor(nn.Module):
         mean = nn.Dense(self.action_dim)(x)
         log_std = nn.Dense(self.action_dim)(x)
         log_std = jnp.clip(log_std, self.log_std_min, self.log_std_max)
-        dist = TanhTransformedDistribution(
-            tfd.MultivariateNormalDiag(loc=mean, scale_diag=jnp.exp(log_std)),
-        )
-        return dist
+        return mean, log_std
 
 
 class RLTrainState(TrainState):
@@ -194,15 +168,17 @@ def sample_action(
     observations: jnp.ndarray,
     key: jax.random.KeyArray,
 ) -> jnp.array:
-    key, noise_key = jax.random.split(key, 2)
-    dist = actor.apply(actor_state.params, observations)
-    action = dist.sample(seed=noise_key)
+    key, subkey = jax.random.split(key, 2)
+    action_mean, action_logstd = actor.apply(actor_state.params, observations)
+    action_std = jnp.exp(action_logstd)
+    action = action_mean + action_std * jax.random.normal(subkey, shape=action_mean.shape)
+    action = jnp.tanh(action)
     return action, key
 
 
 @partial(jax.jit, static_argnames="actor")
 def select_action(actor: Actor, actor_state: TrainState, observations: jnp.ndarray) -> jnp.array:
-    return actor.apply(actor_state.params, observations).mode()
+    return actor.apply(actor_state.params, observations)[0]
 
 
 def scale_action(action_space: gym.spaces.Box, action: np.ndarray) -> np.ndarray:
@@ -352,12 +328,17 @@ if __name__ == "__main__":
         dones: np.ndarray,
         key: jax.random.KeyArray,
     ):
-        key, noise_key = jax.random.split(key, 2)
+        key, subkey = jax.random.split(key, 2)
+        action_mean, action_logstd = actor.apply(actor_state.params, next_observations)
         # sample action from the actor
-        dist = actor.apply(actor_state.params, next_observations)
-        next_state_actions = dist.sample(seed=noise_key)
-        next_log_prob = dist.log_prob(next_state_actions)
-
+        action_std = jnp.exp(action_logstd)
+        next_state_actions = action_mean + action_std * jax.random.normal(subkey, shape=action_mean.shape)
+        next_log_prob = (
+            -0.5 * ((next_state_actions - action_mean) / action_std) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - action_logstd
+        )
+        next_state_actions = jnp.tanh(next_state_actions)
+        next_log_prob -= jnp.log((1 - jnp.power(next_state_actions, 2)) + 1e-6)
+        next_log_prob = next_log_prob.sum(axis=1)
         qf_next_values = qf.apply(qf_state.target_params, next_observations, next_state_actions)
 
         next_q_values = jnp.min(qf_next_values, axis=0)
@@ -388,14 +369,16 @@ if __name__ == "__main__":
         observations: np.ndarray,
         key: jax.random.KeyArray,
     ):
-        key, noise_key = jax.random.split(key, 2)
+        key, subkey = jax.random.split(key, 2)
 
         def actor_loss(params):
-
-            dist = actor.apply(params, observations)
-            actor_actions = dist.sample(seed=noise_key)
-            log_prob = dist.log_prob(actor_actions).reshape(-1, 1)
-
+            action_mean, action_logstd = actor.apply(params, observations)
+            action_std = jnp.exp(action_logstd)
+            actor_actions = action_mean + action_std * jax.random.normal(subkey, shape=action_mean.shape)
+            log_prob = -0.5 * ((actor_actions - action_mean) / action_std) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - action_logstd
+            actor_actions = jnp.tanh(actor_actions)
+            log_prob -= jnp.log((1 - jnp.power(actor_actions, 2)) + 1e-6)
+            log_prob = log_prob.sum(axis=1, keepdims=True)
             qf_pi = qf.apply(qf_state.params, observations, actor_actions)
             # Take min among all critics
             min_qf_pi = jnp.min(qf_pi, axis=0)
