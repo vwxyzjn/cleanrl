@@ -24,6 +24,10 @@ Reference resources:
 * :material-github: [denisyarats/pytorch_sac](https://github.com/denisyarats/pytorch_sac)
 * :material-github: [haarnoja/softqlearning](https://github.com/haarnoja/softqlearning)
 * :material-github: [rail-berkeley/softlearning](https://github.com/rail-berkeley/softlearning)
+* :material-github: [perrin-isir/xpag](https://github.com/perrin-isir/xpag) (for `sac_continuous_actions_jax.py`)
+* :material-github: [tinkoff-ai/CORL](https://github.com/tinkoff-ai/CORL) (for `sac_continuous_actions_jax.py`)
+* :material-github: [ikostrikov/walk_in_the_park](https://github.com/ikostrikov/walk_in_the_park) (for `sac_continuous_actions_jax.py`)
+
 
 | Variants Implemented      | Description |
 | ----------- | ----------- |
