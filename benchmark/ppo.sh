@@ -73,7 +73,7 @@ xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --workers 1
 
 
-poetry install --with envpool
+poetry install --with envpool,jax
 poetry run python -m cleanrl_utils.benchmark \
     --env-ids Alien-v5 Amidar-v5 Assault-v5 Asterix-v5 Asteroids-v5 Atlantis-v5 BankHeist-v5 BattleZone-v5 BeamRider-v5 Berzerk-v5 Bowling-v5 Boxing-v5 Breakout-v5 Centipede-v5 ChopperCommand-v5 CrazyClimber-v5 Defender-v5 DemonAttack-v5 \
     --command "poetry run python ppo_atari_envpool_xla_jax.py --track --wandb-project-name envpool-atari --wandb-entity openrlbenchmark" \

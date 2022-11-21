@@ -8,9 +8,8 @@ Try running `python -m cleanrl_utils.benchmark --help` to get the help text.
 
 ```bash
 python -m cleanrl_utils.benchmark --help
-usage: benchmark.py [-h] [--env-ids ENV_IDS [ENV_IDS ...]]
-                    [--command COMMAND] [--num-seeds NUM_SEEDS]
-                    [--workers WORKERS]
+usage: benchmark.py [-h] [--env-ids ENV_IDS [ENV_IDS ...]] [--command COMMAND] [--num-seeds NUM_SEEDS] [--start-seed START_SEED] [--workers WORKERS]
+                    [--auto-tag [AUTO_TAG]]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -19,8 +18,11 @@ optional arguments:
   --command COMMAND     the command to run
   --num-seeds NUM_SEEDS
                         the number of random seeds
-  --workers WORKERS     the number of eval workers to run benchmark
-                        experimenets (skips evaluation when set to 0)
+  --start-seed START_SEED
+                        the number of the starting seed
+  --workers WORKERS     the number of workers to run benchmark experimenets
+  --auto-tag [AUTO_TAG]
+                        if toggled, the runs will be tagged with git tags, commit, and pull request number if possible
 ```
 
 ## Examples
@@ -60,6 +62,7 @@ More specifically:
 1. `--num-seeds 3` suggests running the the command with 3 random seeds for each `env-id`
 1. `--workers 5` suggests at maximum using 5 subprocesses to run the experiments
     * `OMP_NUM_THREADS=1` suggests `torch` to use only 1 thread for each subprocesses; this way we don't have processes fighting each other.
+1. `--autotag` tries to tag the the experiments with version control information, such as the git tag (e.g., `v1.0.0b2-8-g6081d30`) and the github PR number (e.g., `pr-299`). This is useful for us to compare the performance of the same algorithm across different versions.
 
 
 Note that when you run with high-throughput environments such as `envpool` or `procgen`, it's recommended to set `--workers 1` to maximuize SPS (steps per second), such as
@@ -72,4 +75,4 @@ xvfb-run -a python -m cleanrl_utils.benchmark \
     --workers 1
 ```
 
-For more example usage, see [https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh)
+For more example usage, see [https://github.com/vwxyzjn/cleanrl/blob/master/benchmark](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark)
