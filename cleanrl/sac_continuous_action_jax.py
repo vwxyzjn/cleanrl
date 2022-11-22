@@ -176,6 +176,21 @@ def sample_action(
     return action, key
 
 
+@jax.jit
+def sample_action_and_log_prob(
+    mean: jnp.ndarray,
+    log_std: jnp.ndarray,
+    subkey: jax.random.KeyArray,
+):
+    action_std = jnp.exp(log_std)
+    gaussian_action = mean + action_std * jax.random.normal(subkey, shape=mean.shape)
+    log_prob = -0.5 * ((gaussian_action - mean) / action_std) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - log_std
+    log_prob = log_prob.sum(axis=1)
+    action = jnp.tanh(gaussian_action)
+    log_prob -= jnp.sum(jnp.log((1 - action**2) + 1e-6), 1)
+    return action, log_prob
+
+
 @partial(jax.jit, static_argnames="actor")
 def select_action(actor: Actor, actor_state: TrainState, observations: jnp.ndarray) -> jnp.array:
     return actor.apply(actor_state.params, observations)[0]
@@ -330,13 +345,7 @@ if __name__ == "__main__":
     ):
         key, subkey = jax.random.split(key, 2)
         mean, log_std = actor.apply(actor_state.params, next_observations)
-        # sample action from the actor
-        action_std = jnp.exp(log_std)
-        next_gaussian_action = mean + action_std * jax.random.normal(subkey, shape=mean.shape)
-        next_log_prob = -0.5 * ((next_gaussian_action - mean) / action_std) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - log_std
-        next_log_prob = next_log_prob.sum(axis=1)
-        next_state_actions = jnp.tanh(next_gaussian_action)
-        next_log_prob -= jnp.sum(jnp.log((1 - next_state_actions**2) + 1e-6), 1)
+        next_state_actions, next_log_prob = sample_action_and_log_prob(mean, log_std, subkey)
 
         qf_next_values = qf.apply(qf_state.target_params, next_observations, next_state_actions)
         next_q_values = jnp.min(qf_next_values, axis=0)
@@ -371,12 +380,7 @@ if __name__ == "__main__":
 
         def actor_loss(params):
             mean, log_std = actor.apply(params, observations)
-            action_std = jnp.exp(log_std)
-            gaussian_actions = mean + action_std * jax.random.normal(subkey, shape=mean.shape)
-            log_prob = -0.5 * ((gaussian_actions - mean) / action_std) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - log_std
-            log_prob = log_prob.sum(axis=1)
-            actions = jnp.tanh(gaussian_actions)
-            log_prob -= jnp.sum(jnp.log((1 - actions**2) + 1e-6), 1)
+            actions, log_prob = sample_action_and_log_prob(mean, log_std, subkey)
             qf_pi = qf.apply(qf_state.params, observations, actions)
             # Take min among all critics
             min_qf_pi = jnp.min(qf_pi, axis=0)
