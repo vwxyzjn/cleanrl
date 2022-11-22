@@ -169,10 +169,10 @@ def sample_action(
     key: jax.random.KeyArray,
 ) -> jnp.array:
     key, subkey = jax.random.split(key, 2)
-    action_mean, action_logstd = actor.apply(actor_state.params, observations)
-    action_std = jnp.exp(action_logstd)
-    action = action_mean + action_std * jax.random.normal(subkey, shape=action_mean.shape)
-    action = jnp.tanh(action)
+    mean, log_std = actor.apply(actor_state.params, observations)
+    action_std = jnp.exp(log_std)
+    gaussian_action = mean + action_std * jax.random.normal(subkey, shape=mean.shape)
+    action = jnp.tanh(gaussian_action)
     return action, key
 
 
@@ -329,18 +329,16 @@ if __name__ == "__main__":
         key: jax.random.KeyArray,
     ):
         key, subkey = jax.random.split(key, 2)
-        action_mean, action_logstd = actor.apply(actor_state.params, next_observations)
+        mean, log_std = actor.apply(actor_state.params, next_observations)
         # sample action from the actor
-        action_std = jnp.exp(action_logstd)
-        next_state_actions = action_mean + action_std * jax.random.normal(subkey, shape=action_mean.shape)
-        next_log_prob = (
-            -0.5 * ((next_state_actions - action_mean) / action_std) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - action_logstd
-        )
-        next_state_actions = jnp.tanh(next_state_actions)
-        next_log_prob -= jnp.log((1 - jnp.power(next_state_actions, 2)) + 1e-6)
+        action_std = jnp.exp(log_std)
+        next_gaussian_action = mean + action_std * jax.random.normal(subkey, shape=mean.shape)
+        next_log_prob = -0.5 * ((next_gaussian_action - mean) / action_std) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - log_std
         next_log_prob = next_log_prob.sum(axis=1)
-        qf_next_values = qf.apply(qf_state.target_params, next_observations, next_state_actions)
+        next_state_actions = jnp.tanh(next_gaussian_action)
+        next_log_prob -= jnp.sum(jnp.log((1 - next_state_actions**2) + 1e-6), 1)
 
+        qf_next_values = qf.apply(qf_state.target_params, next_observations, next_state_actions)
         next_q_values = jnp.min(qf_next_values, axis=0)
         # td error + entropy term
         next_q_values = next_q_values - ent_coef_value * next_log_prob.reshape(-1, 1)
@@ -372,14 +370,14 @@ if __name__ == "__main__":
         key, subkey = jax.random.split(key, 2)
 
         def actor_loss(params):
-            action_mean, action_logstd = actor.apply(params, observations)
-            action_std = jnp.exp(action_logstd)
-            actor_actions = action_mean + action_std * jax.random.normal(subkey, shape=action_mean.shape)
-            log_prob = -0.5 * ((actor_actions - action_mean) / action_std) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - action_logstd
-            actor_actions = jnp.tanh(actor_actions)
-            log_prob -= jnp.log((1 - jnp.power(actor_actions, 2)) + 1e-6)
-            log_prob = log_prob.sum(axis=1, keepdims=True)
-            qf_pi = qf.apply(qf_state.params, observations, actor_actions)
+            mean, log_std = actor.apply(params, observations)
+            action_std = jnp.exp(log_std)
+            gaussian_actions = mean + action_std * jax.random.normal(subkey, shape=mean.shape)
+            log_prob = -0.5 * ((gaussian_actions - mean) / action_std) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - log_std
+            log_prob = log_prob.sum(axis=1)
+            actions = jnp.tanh(gaussian_actions)
+            log_prob -= jnp.sum(jnp.log((1 - actions**2) + 1e-6), 1)
+            qf_pi = qf.apply(qf_state.params, observations, actions)
             # Take min among all critics
             min_qf_pi = jnp.min(qf_pi, axis=0)
             actor_loss = (ent_coef_value * log_prob - min_qf_pi).mean()
