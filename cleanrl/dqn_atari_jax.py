@@ -253,9 +253,9 @@ if __name__ == "__main__":
                 print("SPS:", int(global_step / (time.time() - start_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
-            # update the target network
-            if global_step % args.target_network_frequency == 0:
-                q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, 1))
+        # update the target network
+        if global_step > args.learning_starts and global_step % args.target_network_frequency == 0:
+            q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, 1))
 
     envs.close()
     writer.close()

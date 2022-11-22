@@ -233,9 +233,9 @@ if __name__ == "__main__":
             loss.backward()
             optimizer.step()
 
-            # update the target network
-            if global_step % args.target_network_frequency == 0:
-                target_network.load_state_dict(q_network.state_dict())
+        # update the target network
+        if global_step > args.learning_starts and global_step % args.target_network_frequency == 0:
+            target_network.load_state_dict(q_network.state_dict())
 
     envs.close()
     writer.close()
