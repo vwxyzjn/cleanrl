@@ -27,6 +27,12 @@ You can read more about CleanRL in our [technical paper](https://arxiv.org/abs/2
 
 CleanRL only contains implementations of **online** deep reinforcement learning algorithms. If you are looking for **offline** algorithms, please check out [tinkoff-ai/CORL](https://github.com/tinkoff-ai/CORL), which shares a similar design philosophy as CleanRL.
 
+!!! info
+    
+    **Support for Gymnasium**: [Farama-Foundation/Gymnasium](https://github.com/Farama-Foundation/Gymnasium) is the next generation of [`openai/gym`](https://github.com/openai/gym) that will continue to be maintained and introduce new features. Please see their [announcement](https://farama.org/Announcing-The-Farama-Foundation) for further detail. We are migrating to `gymnasium` and the progress can be tracked in [vwxyzjn/cleanrl#277](https://github.com/vwxyzjn/cleanrl/pull/277).
+
+
+
 !!! warning
     
     CleanRL is *not* a modular library and therefore it is not meant to be imported. At the cost of duplicate code, we make all implementation details of a DRL algorithm variant easy to understand, so CleanRL comes with its own pros and cons. You should consider using CleanRL if you want to 1) understand all implementation details of an algorithm's varaint or 2) prototype advanced features that other modular DRL libraries do not support (CleanRL has minimal lines of code so it gives you great debugging experience and you don't have do a lot of subclassing like sometimes in modular DRL libraries).
@@ -36,8 +42,8 @@ CleanRL only contains implementations of **online** deep reinforcement learning 
 If you use CleanRL in your work, please cite our technical [paper](https://www.jmlr.org/papers/volume23/21-1342/21-1342.pdf):
 
 ```bibtex
-@article{JMLR:v23:21-1342,
-  author  = {Shengyi Huang and Rousslan Fernand Julien Dossa and Chang Ye and Jeff Braga and Dipam Chakraborty and Kinal Mehta and JoÃ£o G.M. AraÃºjo},
+@article{huang2022cleanrl,
+  author  = {Shengyi Huang and Rousslan Fernand Julien Dossa and Chang Ye and Jeff Braga and Dipam Chakraborty and Kinal Mehta and João G.M. Araújo},
   title   = {CleanRL: High-quality Single-file Implementations of Deep Reinforcement Learning Algorithms},
   journal = {Journal of Machine Learning Research},
   year    = {2022},

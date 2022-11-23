@@ -17,7 +17,7 @@ jobs:
       matrix:
         python-version: [3.8]
         poetry-version: [1.2]
-        os: [ubuntu-18.04, macos-latest, windows-latest]
+        os: [ubuntu-22.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -53,7 +53,7 @@ jobs:
       matrix:
         python-version: [3.8]
         poetry-version: [1.2]
-        os: [ubuntu-18.04, macos-latest, windows-latest]
+        os: [ubuntu-22.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -79,13 +79,41 @@ jobs:
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry run pytest tests/test_atari_jax.py
 
+  test-pybullet-envs:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+        poetry-version: [1.2]
+        os: [ubuntu-22.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+
+      # pybullet tests
+      - name: Install core dependencies
+        run: poetry install --with pytest
+      - name: Install pybullet dependencies
+        run: poetry install --with pybullet
+      - name: Downgrade setuptools
+        run: poetry run pip install setuptools==59.5.0
+      - name: Run pybullet tests
+        run: poetry run pytest tests/test_pybullet.py
+
   test-procgen-envs:
     strategy:
       fail-fast: false
       matrix:
         python-version: [3.8]
         poetry-version: [1.2]
-        os: [ubuntu-18.04, macos-latest, windows-latest]
+        os: [ubuntu-22.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -112,7 +140,7 @@ jobs:
       matrix:
         python-version: [3.8]
         poetry-version: [1.2]
-        os: [ubuntu-18.04]
+        os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -149,7 +177,7 @@ jobs:
       matrix:
         python-version: [3.8]
         poetry-version: [1.2]
-        os: [ubuntu-18.04]
+        os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -175,7 +203,7 @@ jobs:
       matrix:
         python-version: [3.8]
         poetry-version: [1.2]
-        os: [ubuntu-18.04]
+        os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -201,7 +229,7 @@ jobs:
       matrix:
         python-version: [3.8]
         poetry-version: [1.2]
-        os: [ubuntu-18.04, macos-latest]
+        os: [ubuntu-22.04, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2

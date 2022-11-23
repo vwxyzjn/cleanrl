@@ -3,7 +3,8 @@
 
 ## Checklist
 - [ ] I have installed dependencies via `poetry install` (see [CleanRL's installation guideline](https://docs.cleanrl.dev/get-started/installation/).
-- [ ] I have checked that there is no similar [issue](https://github.com/vwxyzjn/cleanrl/issues) in the repo (required)
+- [ ] I have checked that there is no similar [issue](https://github.com/vwxyzjn/cleanrl/issues) in the repo.
+- [ ] I have checked the [documentation site](https://docs.cleanrl.dev/) and found not relevant information in [GitHub issues](https://github.com/vwxyzjn/cleanrl/issues).
 
 ## Current Behavior
 <!--- Tell us what happens instead of the expected behavior -->
