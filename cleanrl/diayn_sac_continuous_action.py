@@ -334,7 +334,7 @@ class DIAYN:
                     qf2_next_target = self.qf2_target(data.next_observations, next_state_actions)
                     min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - self.alpha * next_state_log_pi
                     # use diayn rewards instead of environment rewards
-                    diayn_reward = predicted_z_log_probs.detach() - np.log(1 / self.args.num_skills)
+                    diayn_reward = - predicted_z_log_probs.detach() - np.log(1 / self.args.num_skills)
                     next_q_value = diayn_reward.flatten() + (1 - data.dones.flatten()) * self.args.gamma * (
                         min_qf_next_target
                     ).view(-1)
