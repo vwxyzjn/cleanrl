@@ -108,8 +108,8 @@ def layer_init(layer, bias_const=0.0):
 
 
 # ALGO LOGIC: initialize agent here:
-# NOTE: Sharing a CNN encoder between Actor and Critics is not recommended for SAC
-# See https://arxiv.org/abs/1910.01741 for more info
+# NOTE: Sharing a CNN encoder between Actor and Critics is not recommended for SAC without stopping actor gradients
+# See the SAC+AE paper https://arxiv.org/abs/1910.01741 for more info
 # TL;DR The actor's gradients mess up the representation when using a joint encoder
 class SoftQNetwork(nn.Module):
     def __init__(self, envs):
