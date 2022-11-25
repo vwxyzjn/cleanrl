@@ -1,8 +1,11 @@
 # TODO docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/dreamer/#dreamer_ataripy
-import argparse
 import os
-import random
+import io
 import time
+import uuid
+import random
+import argparse
+import datetime
 from distutils.util import strtobool
 
 import gym
@@ -11,6 +14,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+from torch.utils.data import IterableDataset, DataLoader
 from stable_baselines3.common.atari_wrappers import (
     ClipRewardEnv,
     EpisodicLifeEnv,
@@ -62,7 +66,7 @@ def parse_args():
     # fmt: on
     return args
 
-# Wrapper to convert pixel observaton from HWC to CHW by default
+# Wrapper to convert pixel observaton shape from HWC to CHW by default
 class ImagePermuteWrapper(gym.ObservationWrapper):
     def __init__(self, env):
         super().__init__(env)
@@ -79,11 +83,13 @@ class ImagePermuteWrapper(gym.ObservationWrapper):
 
 # Special wrapper to accumulate episode data and save them to drive for later use
 class DatasetCollectioNrapper(gym.Wrapper):
-    def __init__(self, env, callbacks=None):
+    def __init__(self, env, savedir, train_eps_cache, buffer_size):
         super().__init__(env)
-        self._callbacks = callbacks or ()
-        # NOTE: call reset at least the first time the environment is used
-        
+        self._episode_data = None
+        self._savedir = savedir
+        self._train_eps_cache = train_eps_cache
+        self._buffer_size = buffer_size
+
     def step(self, action):
         observation, reward, done, info = super().step(action)
         # Cache the trajectory data
@@ -92,8 +98,7 @@ class DatasetCollectioNrapper(gym.Wrapper):
         self._episode_data["rewards"].append(reward)
         self._episode_data["terminals"].append(done)
         if done:
-            # TODO: async saving to disk
-            print("Done caught")
+            self.save_episode() # Reset takes care of cleanup
 
         return observation, reward, done, info
     
@@ -107,8 +112,40 @@ class DatasetCollectioNrapper(gym.Wrapper):
             "terminals": [False], # done
         }
         return first_obs
+    
+    def save_episode(self):
+        # Prerpocess the episode data into np arrays
+        self._episode_data["observations"] = \
+            np.array(self._episode_data["observations"], dtype=np.uint8)
+        self._episode_data["actions"] = \
+            np.array(self._episode_data["actions"], dtype=np.int64).reshape(-1, 1)
+        self._episode_data["rewards"] = \
+            np.array(self._episode_data["rewards"], dtype=np.float32).reshape(-1, 1)
+        self._episode_data["terminals"] = \
+            np.array(self._episode_data["terminals"], dtype=np.bool8).reshape(-1, 1)
+        # TODO: add proper credit for inspiration of this code
+        timestamp = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
+        identifier = str(uuid.uuid4().hex)
+        length = len(self._episode_data["rewards"])
+        filename = f"{self._savedir}/{timestamp}-{identifier}-{length}.npz"
+        with io.BytesIO() as f1:
+            np.savez_compressed(f1, **self._episode_data)
+            f1.seek(0)
+            # TODO: is write to disk even necessary ?
+            with open(filename, "wb") as f2:
+                f2.write(f1.read())
+        # Discard old episodes
+        total = 0
+        for key, ep in reversed(sorted(self._train_eps_cache.items(), key=lambda x: x[0])):
+            if total <= self._buffer_size - length:
+                total += length - 1
+            else:
+                del self._train_eps_cache[key]
+        # Append the most recent episode path to the replay buffer
+        self._train_eps_cache[filename] = self._episode_data.copy()
+        return filename
 
-def make_env(env_id, seed, idx, capture_video, run_name):
+def make_env(env_id, seed, idx, capture_video, run_name, savedir, train_eps_cache, buffer_size):
     def thunk():
         env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
@@ -129,10 +166,75 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         env.action_space.seed(seed + idx)
         env.observation_space.seed(seed + idx)
 
-        env = DatasetCollectioNrapper(env)
+        env = DatasetCollectioNrapper(env, savedir, train_eps_cache, buffer_size)
         return env
 
     return thunk
+
+# Dataloaders
+class DreamerTBPTTIterableDataset(IterableDataset):
+    def __init__(self, train_eps_cache, batch_length):
+        self._batch_length = batch_length
+        self._train_eps_cache = train_eps_cache
+        self._episode_data = None
+        self._episode_length = 0
+        self._ep_current_idx = 0
+        self._ep_filename = None # DEBUG
+    
+    def __iter__(self):
+        T = self._batch_length
+        while True:
+            # Placeholder
+            obs_list = np.zeros([T, 1, 64, 64]) # TODO: recover obs shape
+            act_list = np.zeros([T, 1], dtype=np.int64)
+            rew_list = np.zeros([T, 1], dtype=np.float32)
+            ter_list = np.zeros([T, 1], dtype=np.bool8)
+            ssf = 0 # Steps collected so far current batch trajectory
+            while ssf < T:
+                if self._episode_data is None or self._episode_length == self._ep_current_idx:
+                    idx = torch.randint(len(self._train_eps_cache.keys()), ())
+                    self._episode_data = self._train_eps_cache[list(self._train_eps_cache.keys())[idx]]
+                    self._ep_filename = list(self._train_eps_cache.keys())[idx] # DEBUG
+                    self._episode_length = len(self._episode_data["terminals"])
+                    self._ep_current_idx = 0
+                needed_steps = T - ssf # How many steps needed to fill the traj
+                edd_start = self._ep_current_idx # Where to start slicing from episode data
+                avail_steps = self._episode_length - edd_start # How many steps from the ep. data not used yet
+                edd_end = min(edd_start + needed_steps, edd_start + avail_steps)
+                subseq_len = edd_end - edd_start
+                b_end = ssf + subseq_len
+                # Fill up the batch data placeholders with steps from episode data
+                obs_list[ssf:b_end] = self._episode_data["observations"][edd_start:edd_end]
+                act_list[ssf:b_end] = self._episode_data["actions"][edd_start:edd_end]
+                rew_list[ssf:b_end] = self._episode_data["rewards"][edd_start:edd_end]
+                ter_list[ssf:b_end] = self._episode_data["terminals"][edd_start:edd_end]
+
+                ssf = b_end
+                self._ep_current_idx = edd_end
+            
+            yield {"observations": obs_list,"actions": act_list,
+                   "rewards": rew_list, "terminals": ter_list}
+
+def make_dataloader(train_eps_cache, batch_size, batch_length, seed, num_workers=1):
+    # TODO: make sure that even if using num_workers > 1, the trajs. are sequential
+    # between batches
+    def worker_init_fn(worker_id):
+        worker_seed = 133754134 + worker_id
+
+        random.seed(worker_seed)
+        np.random.seed(worker_seed)
+
+    th_seed_gen = torch.Generator()
+    th_seed_gen.manual_seed(133754134 + seed)
+
+    return iter(
+        DataLoader(
+            DreamerTBPTTIterableDataset(train_eps_cache=train_eps_cache, batch_length=batch_length),
+            batch_size=batch_size, num_workers=num_workers,
+            worker_init_fn=worker_init_fn, generator=th_seed_gen
+        )
+    )
+    
 
 if __name__ == "__main__":
     args = parse_args()
@@ -164,20 +266,31 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # Replay buffer / dataset setup: create the folder to hold sampled episode trajectories
-    train_dir = os.path.join(f"runs/{run_name}/train_episodes")
-    if not os.path.exists(train_dir):
-        os.mkdir(train_dir)
+    train_eps_cache = {} # Shared buffer
+    train_savedir = os.path.join(f"runs/{run_name}/train_episodes")
+    if not os.path.exists(train_savedir):
+        os.mkdir(train_savedir)
     
     # env setup
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, i, args.capture_video, run_name) for i in range(args.num_envs)])
+    # NOTE: args.buffer_size // 4 to acount for Atari's action_repeat of 4
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, i, args.capture_video,
+        run_name, train_savedir, train_eps_cache, args.buffer_size // 4) for i in range(args.num_envs)])
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported" # TODO: this needs not be the case ?
 
     obs = envs.reset()
     done = False
     t = 0
 
-    while not done and t < 100:
+    while True:
         obs, reward, done, info = envs.step(envs.action_space.sample())
         t += 1
+
+        if t >= 1250:
+            break
     
+    dataloader = make_dataloader(train_eps_cache, batch_size=args.batch_size,
+        batch_length=args.batch_length, seed=args.seed)
+    
+    batch_data = next(dataloader)
+
     pass
