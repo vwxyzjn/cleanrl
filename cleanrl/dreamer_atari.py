@@ -51,8 +51,10 @@ def parse_args():
         help="Number of parallel environments for sampling")
     parser.add_argument("--total-timesteps", type=int, default=10_000_000,
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=1000000,
+    parser.add_argument("--buffer-size", type=int, default=1_000_000,
         help="the replay memory buffer size")
+    parser.add_argument("--buffer-prefill", type=int, default=50_000,
+        help="the number of steps to prefill the buffer with ( without action repeat)")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
     parser.add_argument("--batch-size", type=int, default=32,
@@ -66,86 +68,87 @@ def parse_args():
     # fmt: on
     return args
 
-# Wrapper to convert pixel observaton shape from HWC to CHW by default
-class ImagePermuteWrapper(gym.ObservationWrapper):
-    def __init__(self, env):
-        super().__init__(env)
-        old_obs_space = env.observation_space
-        self.observation_space = gym.spaces.Box(
-            low=old_obs_space.low.transpose(2, 0 ,1),
-            high=old_obs_space.high.transpose(2, 0, 1),
-            shape=old_obs_space.shape[::-1],
-            dtype=old_obs_space.dtype
-        )
-    
-    def observation(self, observation):
-        return observation.transpose(2, 0, 1)
-
-# Special wrapper to accumulate episode data and save them to drive for later use
-class DatasetCollectioNrapper(gym.Wrapper):
-    def __init__(self, env, savedir, train_eps_cache, buffer_size):
-        super().__init__(env)
-        self._episode_data = None
-        self._savedir = savedir
-        self._train_eps_cache = train_eps_cache
-        self._buffer_size = buffer_size
-
-    def step(self, action):
-        observation, reward, done, info = super().step(action)
-        # Cache the trajectory data
-        self._episode_data["observations"].append(observation)
-        self._episode_data["actions"].append(action)
-        self._episode_data["rewards"].append(reward)
-        self._episode_data["terminals"].append(done)
-        if done:
-            self.save_episode() # Reset takes care of cleanup
-
-        return observation, reward, done, info
-    
-    def reset(self):
-        # TODO: ASCII art of how the data is stored
-        first_obs = super().reset()
-        self._episode_data = {
-            "observations": [first_obs],
-            "actions": [-1], # TODO: distinguish the "first" action for continuous cases ?
-            "rewards": [0.0],
-            "terminals": [False], # done
-        }
-        return first_obs
-    
-    def save_episode(self):
-        # Prerpocess the episode data into np arrays
-        self._episode_data["observations"] = \
-            np.array(self._episode_data["observations"], dtype=np.uint8)
-        self._episode_data["actions"] = \
-            np.array(self._episode_data["actions"], dtype=np.int64).reshape(-1, 1)
-        self._episode_data["rewards"] = \
-            np.array(self._episode_data["rewards"], dtype=np.float32).reshape(-1, 1)
-        self._episode_data["terminals"] = \
-            np.array(self._episode_data["terminals"], dtype=np.bool8).reshape(-1, 1)
-        # TODO: add proper credit for inspiration of this code
-        timestamp = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
-        identifier = str(uuid.uuid4().hex)
-        length = len(self._episode_data["rewards"])
-        filename = f"{self._savedir}/{timestamp}-{identifier}-{length}.npz"
-        with io.BytesIO() as f1:
-            np.savez_compressed(f1, **self._episode_data)
-            f1.seek(0)
-            # TODO: is write to disk even necessary ?
-            with open(filename, "wb") as f2:
-                f2.write(f1.read())
-        # Discard old episodes
-        total = 0
-        for key, ep in reversed(sorted(self._train_eps_cache.items(), key=lambda x: x[0])):
-            if total <= self._buffer_size - length:
-                total += length - 1
-            else:
-                del self._train_eps_cache[key]
-        # Append the most recent episode path to the replay buffer
-        self._train_eps_cache[filename] = self._episode_data.copy()
-        return filename
-
+# Environment with custom Wrapper to collect datasets
 def make_env(env_id, seed, idx, capture_video, run_name, savedir, train_eps_cache, buffer_size):
+    # Wrapper to convert pixel observaton shape from HWC to CHW by default
+    class ImagePermuteWrapper(gym.ObservationWrapper):
+        def __init__(self, env):
+            super().__init__(env)
+            old_obs_space = env.observation_space
+            self.observation_space = gym.spaces.Box(
+                low=old_obs_space.low.transpose(2, 0 ,1),
+                high=old_obs_space.high.transpose(2, 0, 1),
+                shape=old_obs_space.shape[::-1],
+                dtype=old_obs_space.dtype
+            )
+        
+        def observation(self, observation):
+            return observation.transpose(2, 0, 1)
+
+    # Special wrapper to accumulate episode data and save them to drive for later use
+    class DatasetCollectioNrapper(gym.Wrapper):
+        def __init__(self, env, savedir, train_eps_cache, buffer_size):
+            super().__init__(env)
+            self._episode_data = None
+            self._savedir = savedir
+            self._train_eps_cache = train_eps_cache
+            self._buffer_size = buffer_size
+
+        def step(self, action):
+            observation, reward, done, info = super().step(action)
+            # Cache the trajectory data
+            self._episode_data["observations"].append(observation)
+            self._episode_data["actions"].append(action)
+            self._episode_data["rewards"].append(reward)
+            self._episode_data["terminals"].append(done)
+            if done:
+                self.save_episode() # Reset takes care of cleanup
+
+            return observation, reward, done, info
+        
+        def reset(self):
+            # TODO: ASCII art of how the data is stored
+            first_obs = super().reset()
+            self._episode_data = {
+                "observations": [first_obs],
+                "actions": [-1], # TODO: distinguish the "first" action for continuous cases ?
+                "rewards": [0.0],
+                "terminals": [False], # done
+            }
+            return first_obs
+        
+        def save_episode(self):
+            # Prerpocess the episode data into np arrays
+            self._episode_data["observations"] = \
+                np.array(self._episode_data["observations"], dtype=np.uint8)
+            self._episode_data["actions"] = \
+                np.array(self._episode_data["actions"], dtype=np.int64).reshape(-1, 1)
+            self._episode_data["rewards"] = \
+                np.array(self._episode_data["rewards"], dtype=np.float32).reshape(-1, 1)
+            self._episode_data["terminals"] = \
+                np.array(self._episode_data["terminals"], dtype=np.bool8).reshape(-1, 1)
+            # TODO: add proper credit for inspiration of this code
+            timestamp = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
+            identifier = str(uuid.uuid4().hex)
+            length = len(self._episode_data["rewards"])
+            filename = f"{self._savedir}/{timestamp}-{identifier}-{length}.npz"
+            with io.BytesIO() as f1:
+                np.savez_compressed(f1, **self._episode_data)
+                f1.seek(0)
+                # TODO: is write to disk even necessary ?
+                with open(filename, "wb") as f2:
+                    f2.write(f1.read())
+            # Discard old episodes
+            total = 0
+            for key in reversed(sorted(self._train_eps_cache.keys())):
+                if total <= self._buffer_size - length:
+                    total += length - 1
+                else:
+                    del self._train_eps_cache[key]
+            # Append the most recent episode path to the replay buffer
+            self._train_eps_cache[filename] = self._episode_data.copy()
+            return filename
+
     def thunk():
         env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
@@ -171,59 +174,59 @@ def make_env(env_id, seed, idx, capture_video, run_name, savedir, train_eps_cach
 
     return thunk
 
-# Dataloaders
-class DreamerTBPTTIterableDataset(IterableDataset):
-    def __init__(self, train_eps_cache, batch_length):
-        self._batch_length = batch_length
-        self._train_eps_cache = train_eps_cache
-        self._episode_data = None
-        self._episode_length = 0
-        self._ep_current_idx = 0
-        self._ep_filename = None # DEBUG
-    
-    def __iter__(self):
-        T = self._batch_length
-        while True:
-            # Placeholder
-            obs_list = np.zeros([T, 1, 64, 64]) # TODO: recover obs shape
-            act_list = np.zeros([T, 1], dtype=np.int64)
-            rew_list = np.zeros([T, 1], dtype=np.float32)
-            ter_list = np.zeros([T, 1], dtype=np.bool8)
-            ssf = 0 # Steps collected so far current batch trajectory
-            while ssf < T:
-                if self._episode_data is None or self._episode_length == self._ep_current_idx:
-                    idx = torch.randint(len(self._train_eps_cache.keys()), ())
-                    self._episode_data = self._train_eps_cache[list(self._train_eps_cache.keys())[idx]]
-                    self._ep_filename = list(self._train_eps_cache.keys())[idx] # DEBUG
-                    self._episode_length = len(self._episode_data["terminals"])
-                    self._ep_current_idx = 0
-                needed_steps = T - ssf # How many steps needed to fill the traj
-                edd_start = self._ep_current_idx # Where to start slicing from episode data
-                avail_steps = self._episode_length - edd_start # How many steps from the ep. data not used yet
-                edd_end = min(edd_start + needed_steps, edd_start + avail_steps)
-                subseq_len = edd_end - edd_start
-                b_end = ssf + subseq_len
-                # Fill up the batch data placeholders with steps from episode data
-                obs_list[ssf:b_end] = self._episode_data["observations"][edd_start:edd_end]
-                act_list[ssf:b_end] = self._episode_data["actions"][edd_start:edd_end]
-                rew_list[ssf:b_end] = self._episode_data["rewards"][edd_start:edd_end]
-                ter_list[ssf:b_end] = self._episode_data["terminals"][edd_start:edd_end]
-
-                ssf = b_end
-                self._ep_current_idx = edd_end
-            
-            yield {"observations": obs_list,"actions": act_list,
-                   "rewards": rew_list, "terminals": ter_list}
-
+# Buffer with support for Truncated Backpropagation Through Time (TBPTT)
 def make_dataloader(train_eps_cache, batch_size, batch_length, seed, num_workers=1):
+    class DreamerTBPTTIterableDataset(IterableDataset):
+        def __init__(self, train_eps_cache, batch_length):
+            self._batch_length = batch_length
+            self._train_eps_cache = train_eps_cache
+            # Persists the episode data to maintain continuity of trajectories
+            # across consecutive batches
+            self._episode_data = None
+            self._episode_length = 0
+            self._ep_current_idx = 0
+            self._ep_filename = None # DEBUG
+        
+        def __iter__(self):
+            T = self._batch_length
+            while True:
+                # Placeholder
+                obs_list = np.zeros([T, 1, 64, 64]) # TODO: recover obs shape
+                act_list = np.zeros([T, 1], dtype=np.int64)
+                rew_list = np.zeros([T, 1], dtype=np.float32)
+                ter_list = np.zeros([T, 1], dtype=np.bool8)
+                ssf = 0 # Steps collected so far current batch trajectory
+                while ssf < T:
+                    if self._episode_data is None or self._episode_length == self._ep_current_idx:
+                        idx = torch.randint(len(self._train_eps_cache.keys()), ())
+                        self._episode_data = self._train_eps_cache[list(self._train_eps_cache.keys())[idx]]
+                        self._ep_filename = list(self._train_eps_cache.keys())[idx] # DEBUG
+                        self._episode_length = len(self._episode_data["terminals"])
+                        self._ep_current_idx = 0
+                    needed_steps = T - ssf # How many steps needed to fill the traj
+                    edd_start = self._ep_current_idx # Where to start slicing from episode data
+                    avail_steps = self._episode_length - edd_start # How many steps from the ep. data not used yet
+                    edd_end = min(edd_start + needed_steps, edd_start + avail_steps)
+                    subseq_len = edd_end - edd_start
+                    b_end = ssf + subseq_len
+                    # Fill up the batch data placeholders with steps from episode data
+                    obs_list[ssf:b_end] = self._episode_data["observations"][edd_start:edd_end]
+                    act_list[ssf:b_end] = self._episode_data["actions"][edd_start:edd_end]
+                    rew_list[ssf:b_end] = self._episode_data["rewards"][edd_start:edd_end]
+                    ter_list[ssf:b_end] = self._episode_data["terminals"][edd_start:edd_end]
+
+                    ssf = b_end
+                    self._ep_current_idx = edd_end
+                
+                yield {"observations": obs_list,"actions": act_list,
+                    "rewards": rew_list, "terminals": ter_list}
+
     # TODO: make sure that even if using num_workers > 1, the trajs. are sequential
-    # between batches
+    # between batches.
     def worker_init_fn(worker_id):
         worker_seed = 133754134 + worker_id
-
         random.seed(worker_seed)
         np.random.seed(worker_seed)
-
     th_seed_gen = torch.Generator()
     th_seed_gen.manual_seed(133754134 + seed)
 
@@ -234,7 +237,19 @@ def make_dataloader(train_eps_cache, batch_size, batch_length, seed, num_workers
             worker_init_fn=worker_init_fn, generator=th_seed_gen
         )
     )
-    
+
+# Dreamer Agent
+class WorldModel():
+    def __init__(self):
+        pass
+
+class ActorCritic():
+    def __init__(self):
+        pass
+
+class Dreamer():
+    def __init__(self):
+        pass
 
 if __name__ == "__main__":
     args = parse_args()
@@ -277,20 +292,33 @@ if __name__ == "__main__":
         run_name, train_savedir, train_eps_cache, args.buffer_size // 4) for i in range(args.num_envs)])
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported" # TODO: this needs not be the case ?
 
-    obs = envs.reset()
-    done = False
-    t = 0
-
-    while True:
-        obs, reward, done, info = envs.step(envs.action_space.sample())
-        t += 1
-
-        if t >= 1250:
-            break
-    
+    # Instantiate buffer based dataset loader
     dataloader = make_dataloader(train_eps_cache, batch_size=args.batch_size,
         batch_length=args.batch_length, seed=args.seed)
     
-    batch_data = next(dataloader)
+    # TRY NOT TO MODIFY: start the game
+    obs = envs.reset()
+    for global_step in range(args.total_timesteps):
+        # ALGO LOGIC: put action logic here
+        # TODO: action spampling
+        action = None
 
-    pass
+        # TRY NOT TO MODIFY: execute the game and log data.
+        next_obs, rewards, dones, infos = envs.step(action)
+
+        # TRY NOT TO MODIFY: record rewards for plotting purposes
+        for info in infos:
+            if "episode" in info.keys():
+                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                break # TODO: average over finished envs more accurate ?
+        
+        # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
+        obs = next_obs
+
+        # ALGO LOGIC: training.
+        # TODO: add conditiona for when the agent can be trained, and some basic logging
+
+    envs.close()
+    writer.close()
