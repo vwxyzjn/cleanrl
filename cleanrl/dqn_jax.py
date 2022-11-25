@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="weather to capture videos of the agent performances (check out `videos` folder)")
+        help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="CartPole-v1",
@@ -207,23 +207,24 @@ if __name__ == "__main__":
         obs = next_obs
 
         # ALGO LOGIC: training.
-        if global_step > args.learning_starts and global_step % args.train_frequency == 0:
-            data = rb.sample(args.batch_size)
-            # perform a gradient-descent step
-            loss, old_val, q_state = update(
-                q_state,
-                data.observations.numpy(),
-                data.actions.numpy(),
-                data.next_observations.numpy(),
-                data.rewards.flatten().numpy(),
-                data.dones.flatten().numpy(),
-            )
+        if global_step > args.learning_starts:
+            if global_step % args.train_frequency == 0:
+                data = rb.sample(args.batch_size)
+                # perform a gradient-descent step
+                loss, old_val, q_state = update(
+                    q_state,
+                    data.observations.numpy(),
+                    data.actions.numpy(),
+                    data.next_observations.numpy(),
+                    data.rewards.flatten().numpy(),
+                    data.dones.flatten().numpy(),
+                )
 
-            if global_step % 100 == 0:
-                writer.add_scalar("losses/td_loss", jax.device_get(loss), global_step)
-                writer.add_scalar("losses/q_values", jax.device_get(old_val).mean(), global_step)
-                print("SPS:", int(global_step / (time.time() - start_time)))
-                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+                if global_step % 100 == 0:
+                    writer.add_scalar("losses/td_loss", jax.device_get(loss), global_step)
+                    writer.add_scalar("losses/q_values", jax.device_get(old_val).mean(), global_step)
+                    print("SPS:", int(global_step / (time.time() - start_time)))
+                    writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
             # update the target network
             if global_step % args.target_network_frequency == 0:

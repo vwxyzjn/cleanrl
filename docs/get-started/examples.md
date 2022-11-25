@@ -4,14 +4,14 @@
 ```
 poetry shell
 
-poetry install -E atari
+poetry install --with atari
 python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/c51_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/sac_atari.py --env-id BreakoutNoFrameskip-v4
 
 # NEW: 3-4x side-effects free speed up with envpool's atari (only available to linux)
-poetry install -E envpool
+poetry install --with envpool
 python cleanrl/ppo_atari_envpool.py --env-id BreakoutNoFrameskip-v4
 # Learn Pong-v5 in ~5-10 mins
 # Side effects such as lower sample efficiency might occur
@@ -36,7 +36,7 @@ python cleanrl/c51.py --env-id CartPole-v1
 ```
 poetry shell
 
-poetry install -E pybullet
+poetry install --with pybullet
 python cleanrl/td3_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
 python cleanrl/ddpg_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
 python cleanrl/sac_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
@@ -46,7 +46,7 @@ python cleanrl/sac_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
 ```
 poetry shell
 
-poetry install -E procgen
+poetry install --with procgen
 python cleanrl/ppo_procgen.py --env-id starpilot
 python cleanrl/ppg_procgen.py --env-id starpilot
 ```
@@ -56,7 +56,7 @@ python cleanrl/ppg_procgen.py --env-id starpilot
 ```
 poetry shell
 
-poetry install -E atari
+poetry install --with atari
 python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/ppo_memory_env_lstm.py
 ```
