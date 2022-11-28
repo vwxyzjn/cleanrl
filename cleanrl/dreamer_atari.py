@@ -47,7 +47,7 @@ def parse_args():
         help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4",
+    parser.add_argument("--env-id", type=str, default="PongNoFrameskip-v4",
         help="the id of the environment")
     parser.add_argument("--num-envs", type=int, default=1,
         help="Number of parallel environments for sampling")
@@ -62,7 +62,7 @@ def parse_args():
         help="the number of steps to prefill the buffer with ( without action repeat)")
     parser.add_argument("--gamma", type=float, default=0.995,
         help="the discount factor gamma")
-    parser.add_argument("--lambda", type=float, default=0.95,
+    parser.add_argument("--lmbda", type=float, default=0.95,
         help="the lambda coeff. for lambda-return computation for value loss")
     parser.add_argument("--batch-size", type=int, default=32,
         help="the batch size of sample from the reply memory")
@@ -132,7 +132,11 @@ def parse_args():
     parser.add_argument("--value-hid-size", type=int, default=400,
         help="the size of the hidden layers of the value network")
     parser.add_argument("--value-slow-target", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="use a lagging copy of the value network for actor loss computation") 
+        help="use a lagging copy of the value network for actor loss computation")
+    parser.add_argument("--value-slow-target-update", type=int, default=100,
+        help="the frequency of update of the slow value network")
+    parser.add_argument("--value-slow-target-fraction", type=float, default=1,
+        help="the coefficient used to update the lagging slow value network")
     ## Value optimizer's hyper parameters
     parser.add_argument("--value-lr", type=float, default=1e-4,
         help="the learning rate of the value's Adam optimizer")
@@ -357,6 +361,39 @@ class OneHotDist(thd.one_hot_categorical.OneHotCategorical):
             probs = probs[None]
         sample += probs - probs.detach()
         return sample
+
+# Straight-through reparameterized Bernoulli distribution
+class Bernoulli():
+    """
+        A binary variable distribution that supports straight-through
+        gradient backprop, allowing training of the episode termination.
+        # TODO: attribution
+    """
+    def __init__(self, dist=None):
+        super().__init__()
+        self._dist = dist
+        self.mean = dist.mean
+
+    def __getattr__(self, name):
+        return getattr(self._dist, name)
+
+    def entropy(self):
+        return self._dist.entropy()
+
+    def mode(self):
+        _mode = torch.round(self._dist.mean)
+        return _mode.detach() +self._dist.mean - self._dist.mean.detach()
+
+    def sample(self, sample_shape=()):
+        return self._dist.rsample(sample_shape)
+
+    def log_prob(self, x):
+        _logits = self._dist.base_dist.logits
+        log_probs0 = -F.softplus(_logits)
+        log_probs1 = -F.softplus(-_logits)
+
+        return log_probs0 * (1-x) + log_probs1 * x
+                
 
 # Scope that enables gradient computation
 class RequiresGrad():
@@ -732,33 +769,6 @@ class WorldModel(nn.Module):
 
         # Compute the discount prediction loss, if applicable
         if config.disc_pred_hid_size:
-            # Straight-through reparameterized Bernoulli distribution
-            class Bernoulli():
-                def __init__(self, dist=None):
-                    super().__init__()
-                    self._dist = dist
-                    self.mean = dist.mean
-
-                def __getattr__(self, name):
-                    return getattr(self._dist, name)
-
-                def entropy(self):
-                    return self._dist.entropy()
-
-                def mode(self):
-                    _mode = torch.round(self._dist.mean)
-                    return _mode.detach() +self._dist.mean - self._dist.mean.detach()
-
-                def sample(self, sample_shape=()):
-                    return self._dist.rsample(sample_shape)
-
-                def log_prob(self, x):
-                    _logits = self._dist.base_dist.logits
-                    log_probs0 = -F.softplus(_logits)
-                    log_probs1 = -F.softplus(-_logits)
-
-                    return log_probs0 * (1-x) + log_probs1 * x
-                
             discount_pred_logits_list = self.disc_pred(s_list) # [B, T, 1]
             ter_list = batch_data_dict["terminals"]
             discount_list = (1.0 - ter_list.float()) * config.gamma
@@ -931,7 +941,7 @@ class ActorCritic(nn.Module):
         super().__init__()
         self.config = config
         self.num_actions = num_actions
-        self.wm_fn = wm_fn
+        self.wm_fn = wm_fn # Callback method that returns the world model
         
         # Pre-compute the state_feat_size: |S| = |H| + |Y|
         self.state_feat_size = config.rssm_deter_size
@@ -987,16 +997,167 @@ class ActorCritic(nn.Module):
             weight_decay=config.value_wd)
         
         # Tracking training stats
+        self.register_buffer("n_updates", torch.LongTensor([0]))
         self.register_buffer("slow_value_n_updates", torch.LongTensor([0]))
     
+    def compute_targets_weights(self, imagine_data_dict, use_slow_value):
+        """
+            Computes the targets and weights to update the actor and value losses later.
+                - targets are a form of approximation for the expected returns, shape [H-1, B * T, 1]
+                - weights are coefficient that incorporate long-term discounting, shape [H, B * T, 1]
+            
+            Expects:
+                imag_s_list: list of imaginary state featurers
+                
+                use_slow_value: boolean, determines whether or not to use the lagging
+                    value network for target computation
+        """
+        config = self.config
+        wm = self.wm_fn() # Callback to the worldmodel
+
+        imag_s_list = imagine_data_dict["imag_s_list"]
+        imag_reward_list = imagine_data_dict["imag_reward_list"]
+
+        # Compute the discount factor either based on the world model's predictor, or a fixed heuristic
+        if config.disc_pred_hid_size:
+            # TODO: make the straiht through Bernoulli cleaner ?
+            imag_discount_dist = thd.Independent(thd.Bernoulli(logits=wm.disc_pred(imag_s_list)), 1)
+            imag_discount_list = Bernoulli(imag_discount_dist).mean # [H, B * T, 1]
+        else:
+            imag_discount_list = config.discount * torch.ones_like(imag_reward_list) # [H, B * T, 1]
+        
+        # Compute state value list for the actor target computation first
+        # using either lagging value, or up to date value network
+        # TODO: maybe just get rid of this choice altogether ? just use slow_value by default ?
+        if use_slow_value:
+            imag_actor_state_value_list = self.slow_value(imag_s_list) # [H, B * T, 1]
+        else:
+            imag_actor_state_value_list = self.value(imag_s_list) # [H, B * T, 1]
+        
+        # Helper to compute the lambda returns for the actor targets
+        # TODO: attribution, and clean uyp, make it easier to understand
+        def lambda_return(reward, value, pcont, bootstrap, lambda_):
+            # Setting lambda=1 gives a discounted Monte Carlo return.
+            # Setting lambda=0 gives a fixed 1-step return.
+            assert len(reward.shape) == len(value.shape), (reward.shape, value.shape)
+            if bootstrap is None:
+                bootstrap = torch.zeros_like(value[-1])
+            next_values = torch.cat([value[1:], bootstrap[None]], 0)
+            inputs = reward + pcont * next_values * (1 - lambda_)
+            
+            def static_scan_for_lambda_return(fn, inputs, start):
+                last = start
+                indices = range(inputs[0].shape[0])
+                indices = reversed(indices)
+                flag = True
+                for index in indices:
+                    inp = lambda x: (_input[x] for _input in inputs)
+                    last = fn(last, *inp(index))
+                    if flag:
+                        outputs = last
+                        flag = False
+                    else:
+                        outputs = torch.cat([outputs, last], dim=-1)
+                outputs = torch.reshape(outputs, [outputs.shape[0], outputs.shape[1], 1])
+                outputs = torch.unbind(outputs, dim=0)
+                return outputs
+
+            returns = static_scan_for_lambda_return(lambda agg, cur0, cur1: cur0 + cur1 * lambda_ * agg, (inputs, pcont), bootstrap)
+            
+            return torch.stack(returns, dim=1) # [H, B * T, 1]
+
+        targets = lambda_return(
+            imag_reward_list[:-1],
+            imag_actor_state_value_list[:-1],
+            imag_discount_list[:-1],
+            bootstrap=imag_actor_state_value_list[-1],
+            lambda_=config.lmbda) # [H-1, B * T, 1], the last state lost for boostrapping
+
+        weights = torch.cumprod(torch.cat([torch.ones_like(imag_discount_list[:1]), imag_discount_list[:-1]], 0), 0).detach() # [H+1, B * T, 1]
+
+        return targets, weights
+
     def compute_actor_loss(self, imagine_data_dict, ac_train_data):
         config = self.config
         actor, value = self.actor, self.value
 
-        # Placeholder dict for the actor losses
-        actor_losses_dict = {}
+        # Recover the necessary simulated trajectory data
+        imag_s_list = imagine_data_dict["imag_s_list"] # [Horizon, B * T, |H| + |Y|]
+        imag_action_list = imagine_data_dict["imag_action_list"] # [Horizon, B * T, |A|]
+        imag_reward_list = imagine_data_dict["imag_reward_list"] # [Horizon, B * T, 1]
+        
+        # Compute action logprobs over simulated steps
+        inp = imag_s_list.detach()
+        imag_action_dist = actor(inp) # Get action dist for all imaginary states
+        imag_action_logprob_list = imag_action_dist.log_prob(imag_action_list)
+        imag_actor_entropy_list = imag_action_dist.entropy() # [H, B * T]
+
+        # Precompute the targets and weights for the actor loss
+        # Targets are computed using the lambda-return method
+        targets, weights = self.compute_targets_weights(imagine_data_dict, config.actor_value_slow_target)
+
+        # Actor loss computation
+        if config.actor_imagine_grad_mode == "dynamics":
+            actor_targets = targets
+        elif config.actor_imagine_grad_mode in ["reinforce", "both"]:
+            baseline = value(imag_s_list[:-1]) # NOTE: how does it fare if using slow_value for baseline computation ?
+            advantages = (targets - baseline).detach()
+            actor_targets = imag_action_logprob_list[:-1][:, :, None] * advantages
+            if config.actor_imagine_grad_mode == "both":
+                # NOTE: Default setting prioritize 'reinforce' actor loss
+                mix = config.actor_imagine_grad_mix#() # TODO: add decay support
+                actor_targets = mix * targets + (1 - mix) * actor_targets
+        else:
+            raise NotImplementedError(f"Unsupported actor update mode during imagination: {config.actor_imagine_grad_mode}.")
+
+        ## Entropy regularization for the actor loss
+        actor_entropy_scale = config.actor_entropy#() # TODO: add suport for decay
+        actor_targets += actor_entropy_scale * imag_actor_entropy_list[:-1][:, :, None]
+
+        actor_loss = (weights[:-1] * actor_targets).neg().mean()
+
+        actor_losses_dict = {
+            "actor_loss": actor_loss, # Used for .backward()
+            # Actor training stats
+            "reward_mean": imag_reward_list.mean().item(),
+            "reward_std": imag_reward_list.std().item(),
+            "actor_ent": imag_actor_entropy_list.mean().item(),
+            # TODO: track the actopyr entropy coefficient in case it is decayed and what not
+        }
+        if config.actor_imagine_grad_mode == "both":
+            actor_losses_dict["imag_gradient_mix"] = mix.item() if isinstance(mix, torch.Tensor) else mix
+
+        value_train_data = {
+            "targets": targets, # Re-used for value loss
+            "weights": weights, # Re-used for value loss
+        }
+
+        return actor_losses_dict, value_train_data
+
+    def compute_value_loss(self, imagine_data_dict, value_train_data):
+        # TODO: move the slow_value update here instead ?
+        # Would make more sense I think. Could also add the estimation
+        # of the value and slow value abs error
+        config = self.config
+        
+        imag_s_list = imagine_data_dict["imag_s_list"]
+
+        # Re-use targets and weights if appropriate
+        targets, weights = value_train_data["targets"], value_train_data["weights"]
+
+        if config.value_slow_target != config.actor_value_slow_target:
+            ## Recomputes targets and weights for the value update, in case
+            ## the latter does not use the same network for the target as the actor comp.
+            targets, weights = self.compute_targets_weights(imagine_data_dict,
+                config.value_slow_target) # [H-1, B * T, 1], [H, B * T, 1] respectively
+
+        values_mean_list = self.value(imag_s_list[:-1].detach()) # [H, B * T, 1]
+        values_dist = thd.Independent(thd.Normal(values_mean_list, 1), 1)
+        value_loss = values_dist.log_prob(targets.detach()).neg() # [H, B * T]
+        value_loss = (value_loss * weights[:-1].squeeze(-1)).mean()
 
         # TODO: compute the error between value and slow value ?
+        value_abs_error = (values_mean_list - self.slow_value(imag_s_list[:-1].detach())).abs().mean().item()
 
         # Update the slow value target
         if config.value_slow_target or config.actor_slow_value_target:
@@ -1006,23 +1167,8 @@ class ActorCritic(nn.Module):
                     d.data = tau * s.data + (1 - tau) * d.data
                 self.slow_value_n_updates += 1
         
-        # Compute action logprobs over simulated steps
-        inp = imag_state_belief_list.detach() if config.actor_stop_grad \
-            else imag_state_belief_list
-        imag_action_dist = actor(inp) # Get action dist for imaginary states
-        imag_action_logprob_list = imag_action_dist.log_prob(imag_action_list)
-        imag_actor_entropy_list = imag_action_dist.entropy() # [H, B * T, 1] TODO: double check the dim
+        return {"value_loss": value_loss, "value_abs_error": value_abs_error}
 
-        # Actor loss computation
-        targets, weights = None, None # TODO
-
-        value_train_data = {
-            "targets": targets, # Re-used for value loss
-            "weights": weights, # Re-used for value loss
-        }
-
-        return actor_losses_dict, value_train_data
-        
     def _train(self, ac_train_data):
         config = self.config
         actor, value = self.actor, self.value
@@ -1044,6 +1190,30 @@ class ActorCritic(nn.Module):
             if config.actor_grad_clip:
                 torch.nn.utils.clip_grad_norm_(actor.parameters(), config.actor_grad_clip)
             self.actor_optimizer.step()
+        
+        # Value loss computation
+        with RequiresGrad(value):
+            value_losses_dict = self.compute_value_loss(imagine_data_dict, value_train_data)
+
+            # Optimize the value network
+            self.value_optimizer.zero_grad()
+            value_losses_dict["value_loss"].backward()
+            if config.value_grad_clip:
+                torch.nn.utils.clip_grad_norm_(value.parameters(), config.value_grad_clip)
+            self.value_optimizer.step()
+
+        # Track training stats of the AC component
+        self.n_updates += 1 # Track the number of grad step on the model
+
+        ac_train_losses = {
+            **actor_losses_dict,
+            **value_losses_dict,
+            **{
+                "slow_value_n_updates": self.slow_value_n_updates
+            }
+        }
+
+        return ac_train_losses, {"imag_s_list": imagine_data_dict["imag_s_list"]}
 
 
 class Dreamer(nn.Module):
@@ -1085,13 +1255,13 @@ class Dreamer(nn.Module):
 
         # Drop the terminal steps from the data used to 
         # bootstrap the imagination process for actor critic training
-        ac_train_data = {k: wm_fwd_dict[k] for k in ["s_deter_list", "s_stoch_list", "s_list"]}
+        # .detach() is used to block the gradietn flow from AC to WM component
+        ac_train_data = {k: wm_fwd_dict[k].detach() for k in ["s_deter_list", "s_stoch_list", "s_list"]}
         ac_train_data = {k: torch.masked_select(v, masks_list).view(B_T, -1) for k,v in ac_train_data.items()}
         
         # Update the ActorCritic component
         # TODO: Actor Critic related code
-        # ac_losses_dict, ac_fwd_dict = self.ac._train(ac_train_data)
-        ac_losses_dict, ac_fwd_dict = None, None
+        ac_losses_dict, ac_fwd_dict = self.ac._train(ac_train_data)
 
         # Store intermediate results for the next batch
         prev_batch_data = {
@@ -1102,14 +1272,15 @@ class Dreamer(nn.Module):
 
         # Track training stats
         self.n_updates += 1
-
+        wm_losses_dict["n_updates"] = self.n_updates
+        
         return wm_losses_dict, ac_losses_dict, wm_fwd_dict, ac_fwd_dict, prev_batch_data
 
     @torch.no_grad()
-    def gen_train_rec_videos(self, batch_data_dict, fwd_dict):
+    def gen_train_rec_videos(self, batch_data_dict, wm_fwd_dict):
         # Generates video of batch trajectories' ground truth, reconstruction and error
         config = self.config
-        obs_rec_mean_list = fwd_dict["obs_rec_mean_list"] # [N, T, C, H, W]
+        obs_rec_mean_list = wm_fwd_dict["obs_rec_mean_list"] # [N, T, C, H, W]
         N = obs_rec_mean_list.shape[0]
         orig_obs_list = batch_data_dict["observations"][:N] + 0.5 # [N, T, C ,H, W] in range [0.0,1.0]
         rec_obs_list = (obs_rec_mean_list + 0.5).clamp(0, 1) # [N, T, C, H, W] in range [0.0,1.0]
@@ -1119,6 +1290,21 @@ class Dreamer(nn.Module):
         train_video = torch.cat([tnsr for tnsr in train_video], dim=3)[None] # [1, T, C, H * 3 + 6, W * N] # Vertical stack
         return train_video.cpu().numpy()
 
+    @torch.no_grad()
+    def gen_imag_rec_videos(self, batch_data_dict, ac_fwd_dict):
+        # Generates video of reconstructed imaginary trajectories
+        N = self.config.viz_n_videos
+        H = self.config.imagine_horizon # Hor
+        C_H_W = batch_data_dict["observations"].shape[2:] # C,H,W
+        imag_s_list = ac_fwd_dict["imag_s_list"]
+        imag_s_list = torch.stack([imag_s_list[:, i * args.batch_length] for i in range(N)], dim=0) # [N, Hor, |S|]
+        imag_s_list = imag_s_list.view(N * H, -1) # [N * Hor, |S|]
+        imag_traj_video = (self.wm.decoder(imag_s_list).view(N, H, *C_H_W) + .5).clamp(0.0, 1.0) # [N, Hor, C, H, W]
+        black_strip = imag_traj_video.new_zeros([*imag_traj_video.shape[1:-1], 3])
+        imag_traj_video_processed = torch.cat([torch.cat([tnsr, black_strip], 3) for tnsr in imag_traj_video], dim=3)[None] # [1, N, Hor, C, H, (W + 3)* N]
+        imag_traj_video_processed = imag_traj_video_processed[:, :, :, :, :-3] # [1, Hor, C, H, (W + 3)* N - 3]
+        return imag_traj_video_processed.cpu().numpy()
+    
 if __name__ == "__main__":
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -1202,11 +1388,19 @@ if __name__ == "__main__":
             wm_losses_dict, ac_losses_dict, wm_fwd_dict, ac_fwd_dict, prev_batch_data = \
                 dreamer._train(batch_data_dict, prev_batch_data)
 
-            # Testing video saving
+            # Logging training stats every 10 effective model updates (.backward() calls)
             # TODO: ideally, the saving of training metrics, video etc.. should not be too frequent
-            train_rec_video = dreamer.gen_train_rec_videos(batch_data_dict, wm_fwd_dict)
-            writer.add_video("train_rec_video", train_rec_video, global_step, fps=16)
-            [writer.add_scalar(f"wm/{k}", v, global_step) for k,v in wm_losses_dict.items()]
+            # Explain the logic for when we log
+            if (global_step // 4 % 10) == 0: 
+                # Logging training stats of the WM and AC components in their respective scopes
+                [writer.add_scalar(f"wm/{k}", v, global_step) for k,v in wm_losses_dict.items()]
+                [writer.add_scalar(f"ac/{k}", v, global_step) for k,v in ac_losses_dict.items()]
+                # Logging video of trajectory reconstruction from the WM training
+                train_rec_video = dreamer.gen_train_rec_videos(batch_data_dict, wm_fwd_dict)
+                writer.add_video("train_rec_video", train_rec_video, global_step, fps=16)
+                # Logging video of the reconstructed imaginary trajectories from the AC training
+                imag_rec_video = dreamer.gen_imag_rec_videos(batch_data_dict, ac_fwd_dict)
+                writer.add_video("imag_rec_video", imag_rec_video, global_step, fps=16)
 
     envs.close()
     writer.close()
