@@ -578,10 +578,8 @@ class WorldModel(nn.Module):
                 - "actions": [B, T, 1]
                 - "rewards": [B, T, 1]
                 - "terminals": [B, T, 1]
-                - "discount": [B, T, 1] # TODO: precompute this for later
             
-            "prev_batch_data" holds the various intermediate variables to 
-                perform TBPTT. # TODO: make sure it is detached before being passed into this
+            "prev_batch_data" holds the various intermediate variables to perform TBPTT.
             
             When the "discount predictor" (terminal state prediction) is used, 
             the target data for it is generated as: discount = \gamma * (1 - terminals)
@@ -793,8 +791,6 @@ class WorldModel(nn.Module):
             "kl_scale": config.kl_scale,
             "kl_free": config.kl_free,
             "kl_balance": config.kl_balance,
-
-            # TODO: hyperparameter agnostic WM losses ?
         }
 
         if config.disc_pred_hid_size:
@@ -821,14 +817,10 @@ class WorldModel(nn.Module):
                 torch.nn.utils.clip_grad_norm_(self.parameters(), config.model_grad_clip)
             self.model_optimizer.step()
         
-        # TODO: might want to pass the data for next batch provessing 
-        # a bit more "obsviously", instead of just relying on fwd_dict
         return wm_losses_dict, wm_fwd_dict
 
     @torch.no_grad()
     def sample_action(self, obs, actor, prev_data, mode="train"):
-        # TODO: double check that we can really ignore the "exploration" amount
-        # in the original implementation
         config = self.config
         wm = self # TODO: directly use self.model_component ?
         B = obs.shape[0]
@@ -843,8 +835,7 @@ class WorldModel(nn.Module):
                 "done": obs.new_zeros([B, 1])
             }
         
-        # TODO: also need to add masking so that the s_deter and s_stoch
-        # are reset in case a new episode has been started
+        # Reset the internal state in case a new episode has started
         done = prev_data["done"]
         mask = 1. - done.float()
         s_deter = prev_data["s_deter"] * mask
@@ -1026,7 +1017,7 @@ class ActorCritic(nn.Module):
             imag_actor_state_value_list = self.value(imag_s_list) # [H, B * T, 1]
         
         # Helper to compute the lambda returns for the actor targets
-        # TODO: attribution, and clean uyp, make it easier to understand
+        # TODO: attribution, and clean up, make it easier to understand
         def lambda_return(reward, value, pcont, bootstrap, lambda_):
             # Setting lambda=1 gives a discounted Monte Carlo return.
             # Setting lambda=0 gives a fixed 1-step return.
@@ -1126,9 +1117,6 @@ class ActorCritic(nn.Module):
         return actor_losses_dict, value_train_data
 
     def compute_value_loss(self, imagine_data_dict, value_train_data):
-        # TODO: move the slow_value update here instead ?
-        # Would make more sense I think. Could also add the estimation
-        # of the value and slow value abs error
         config = self.config
         
         imag_s_list = imagine_data_dict["imag_s_list"]
@@ -1147,7 +1135,7 @@ class ActorCritic(nn.Module):
         value_loss = values_dist.log_prob(targets.detach()).neg() # [H, B * T]
         value_loss = (value_loss * weights[:-1].squeeze(-1)).mean()
 
-        # TODO: compute the error between value and slow value ?
+        # Compute the error between the "value" and "slow_value" component
         value_abs_error = (values_mean_list - self.slow_value(imag_s_list[:-1].detach())).abs().mean().item()
 
         # Update the slow value target
@@ -1229,8 +1217,7 @@ class Dreamer(nn.Module):
     def _train(self, batch_data_dict, prev_batch_data):
         config = self.config
 
-        # TODO: mention data precprocessing or move it here instead of in the buffer ?
-        # Update the world model component
+        # NOTE: Pixel-observations are pre-processed at the buffer level already
         wm_losses_dict, wm_fwd_dict = self.wm._train(batch_data_dict, prev_batch_data)
         
         # Batch size and length
@@ -1251,7 +1238,6 @@ class Dreamer(nn.Module):
         ac_train_data = {k: torch.masked_select(v, masks_list).view(B_T, -1) for k,v in ac_train_data.items()}
         
         # Update the ActorCritic component
-        # TODO: Actor Critic related code
         ac_losses_dict, ac_fwd_dict = self.ac._train(ac_train_data)
 
         # Store intermediate results for the next batch
@@ -1329,7 +1315,7 @@ if __name__ == "__main__":
     # Env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, i, args.capture_video,
         run_name, buffer, args) for i in range(args.num_envs)])
-    assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported" # TODO: this needs not be the case ?
+    assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
     
     # Instantiate the Dreamer agent
     dreamer = Dreamer(config=args, num_actions=envs.single_action_space.n).to(device)
@@ -1341,7 +1327,7 @@ if __name__ == "__main__":
     prev_data = None
     prev_batch_data = None
     n_episodes = 0
-    for global_step in range(0, args.total_timesteps+args.env_action_repeats, args.env_action_repeats): # TODO: explicity add support for action repeat instead of hardcoded '4'
+    for global_step in range(0, args.total_timesteps+args.env_action_repeats, args.num_envs):
         # ALGO LOGIC: put action logic here
         if global_step <= args.buffer_prefill:
             action = envs.action_space.sample()
@@ -1360,7 +1346,7 @@ if __name__ == "__main__":
                     print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                     writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                     writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step) # TODO: does this take into account the action_repeats ?
-                    break # TODO: consider adding RecordEpStas to all the parallel envs, and average
+                    break
             n_episodes += np.sum(dones)
             writer.add_scalar("charts/buffer_size", buffer.size * args.env_action_repeats, global_step)
             writer.add_scalar("charts/n_episodes", n_episodes, global_step)
@@ -1384,9 +1370,7 @@ if __name__ == "__main__":
                 dreamer._train(batch_data_dict, prev_batch_data)
 
             # Logging training stats every 10 effective model updates (.backward() calls)
-            # TODO: ideally, the saving of training metrics, video etc.. should not be too frequent
-            # Explain the logic for when we log
-            if (global_step // args.env_action_repeats % 10) == 0:
+            if ((global_step // (args.env_action_repeats * args.num_envs)) % 10) == 0:
                 # Logging training stats of the WM and AC components in their respective scopes
                 [writer.add_scalar(f"wm/{k}", v, global_step) for k,v in wm_losses_dict.items()]
                 [writer.add_scalar(f"ac/{k}", v, global_step) for k,v in ac_losses_dict.items()]
