@@ -50,7 +50,9 @@ def parse_args():
         help="the id of the environment")
     parser.add_argument("--num-envs", type=int, default=1,
         help="Number of parallel environments for sampling")
-    # TODO: add RGB / grayscale parameterizatio for the environment
+    parser.add_argument("--env-grayscale", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="use grayscale for the pixel-based environment wrappers")
+    # TODO: add parameterization for environment action repeat, especially for other tasks
     parser.add_argument("--total-timesteps", type=int, default=10_000_000,
         help="total timesteps of the experiments")
     parser.add_argument("--buffer-size", type=int, default=1_000_000,
@@ -103,12 +105,17 @@ def parse_args():
         help="the gradient norm clipping threshold for the world model")
     ## TODO Actor (policy) specific hyperparameters
     ## TODO Value specific hyperparameters
+    ## Dreamer specific hyperparameters
+    parser.add_argument("--train-every", type=int, default=16,
+        help="the env. step interval after which the model is trained")
+    parser.add_argument("--viz-n-videos", type=int, default=3,
+        help="the number of video samples to visualize for reconstruction and imagination")
     args = parser.parse_args()
     # fmt: on
     return args
 
 # Environment with custom Wrapper to collect datasets
-def make_env(env_id, seed, idx, capture_video, run_name, savedir, train_eps_cache, buffer_size):
+def make_env(env_id, seed, idx, capture_video, run_name, buffer, args):
     # Wrapper to convert pixel observaton shape from HWC to CHW by default
     class ImagePermuteWrapper(gym.ObservationWrapper):
         def __init__(self, env):
@@ -125,19 +132,25 @@ def make_env(env_id, seed, idx, capture_video, run_name, savedir, train_eps_cach
             return observation.transpose(2, 0, 1)
 
     # Special wrapper to accumulate episode data and save them to drive for later use
-    class DatasetCollectioNrapper(gym.Wrapper):
-        def __init__(self, env, savedir, train_eps_cache, buffer_size):
+    class DatasetCollectionWrapper(gym.Wrapper):
+        def __init__(self, env, buffer, buffer_size):
             super().__init__(env)
             self._episode_data = None
-            self._savedir = savedir
-            self._train_eps_cache = train_eps_cache
+            self._train_eps_cache = buffer.train_eps_cache
             self._buffer_size = buffer_size
+            # NOTE: inform the buffer about the action space of the task
+            buffer.action_space = env.action_space
 
         def step(self, action):
             observation, reward, done, info = super().step(action)
             # Cache the trajectory data
             self._episode_data["observations"].append(observation)
-            self._episode_data["actions"].append(action)
+            # NOTE: For Atari, store the action as one hot vector
+            # TODO: handle logic when the space is continuous.
+            # Probably just stoe the actions as float32 directly ?
+            onehot_action = np.zeros(self.action_space.n)
+            onehot_action[action] = 1
+            self._episode_data["actions"].append(onehot_action.astype(np.float32))
             self._episode_data["rewards"].append(reward)
             self._episode_data["terminals"].append(done)
             if done:
@@ -150,7 +163,7 @@ def make_env(env_id, seed, idx, capture_video, run_name, savedir, train_eps_cach
             first_obs = super().reset()
             self._episode_data = {
                 "observations": [first_obs],
-                "actions": [-1], # TODO: distinguish the "first" action for continuous cases ?
+                "actions": [np.zeros(self.action_space.n)],
                 "rewards": [0.0],
                 "terminals": [False], # done
             }
@@ -161,7 +174,7 @@ def make_env(env_id, seed, idx, capture_video, run_name, savedir, train_eps_cach
             self._episode_data["observations"] = \
                 np.array(self._episode_data["observations"], dtype=np.uint8)
             self._episode_data["actions"] = \
-                np.array(self._episode_data["actions"], dtype=np.int64).reshape(-1, 1)
+                np.array(self._episode_data["actions"], dtype=np.float32)
             self._episode_data["rewards"] = \
                 np.array(self._episode_data["rewards"], dtype=np.float32).reshape(-1, 1)
             self._episode_data["terminals"] = \
@@ -170,13 +183,13 @@ def make_env(env_id, seed, idx, capture_video, run_name, savedir, train_eps_cach
             timestamp = datetime.datetime.now().strftime('%Y%m%dT%H%M%S')
             identifier = str(uuid.uuid4().hex)
             length = len(self._episode_data["rewards"])
-            filename = f"{self._savedir}/{timestamp}-{identifier}-{length}.npz"
-            with io.BytesIO() as f1:
-                np.savez_compressed(f1, **self._episode_data)
-                f1.seek(0)
-                # TODO: is write to disk even necessary ?
-                with open(filename, "wb") as f2:
-                    f2.write(f1.read())
+            filename = f"{timestamp}-{identifier}-{length}.npz"
+            # TODO: is write to disk even necessary ?
+            # with io.BytesIO() as f1:
+            #     np.savez_compressed(f1, **self._episode_data)
+            #     f1.seek(0)
+            #     with open(filename, "wb") as f2:
+            #         f2.write(f1.read())
             # Discard old episodes
             total = 0
             for key in reversed(sorted(self._train_eps_cache.keys())):
@@ -195,127 +208,148 @@ def make_env(env_id, seed, idx, capture_video, run_name, savedir, train_eps_cach
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         env = NoopResetEnv(env, noop_max=30)
-        env = MaxAndSkipEnv(env, skip=4)
+        env = MaxAndSkipEnv(env, skip=4) # TODO: parameterize action repeat ?
         env = EpisodicLifeEnv(env)
         if "FIRE" in env.unwrapped.get_action_meanings():
             env = FireResetEnv(env)
         env = ClipRewardEnv(env)
         env = gym.wrappers.ResizeObservation(env, (64, 64))
-        env = gym.wrappers.GrayScaleObservation(env, keep_dim=True)
+        if args.env_grayscale:
+            env = gym.wrappers.GrayScaleObservation(env, keep_dim=True)
         env = ImagePermuteWrapper(env) # HWC -> CHW
         # TODO: fix seeding, does not seem to be working
         env.seed(seed + idx)
         env.action_space.seed(seed + idx)
         env.observation_space.seed(seed + idx)
 
-        env = DatasetCollectioNrapper(env, savedir, train_eps_cache, buffer_size)
+        # TODO: specificy relation with actio repeat, use it instead of // 4
+        env = DatasetCollectionWrapper(env, buffer, args.buffer_size // 4)
         return env
 
     return thunk
 
 # Buffer with support for Truncated Backpropagation Through Time (TBPTT)
-def make_dataloader(train_eps_cache, batch_size, batch_length, seed, num_workers=1):
-    class DreamerTBPTTIterableDataset(IterableDataset):
-        def __init__(self, train_eps_cache, batch_length):
-            self._batch_length = batch_length
-            self._train_eps_cache = train_eps_cache
-            # Persists the episode data to maintain continuity of trajectories
-            # across consecutive batches
-            self._episode_data = None
-            self._episode_length = 0
-            self._ep_current_idx = 0
-            self._ep_filename = None # DEBUG
+class DreamerTBPTTDataset():
+    def __init__(self, config, device):
+        self.random = np.random.RandomState(config.seed)
+        self.train_eps_cache = {}
+        self.B = B = config.batch_size
+        self.T = config.batch_length
+        self.device = device
+        self.action_space = None # NOTE: this is assigend later once the env is created
+        self.config = config
+        # Persits episode data across consecutive batches
+        self.episodes_data = [None for _ in range(B)]
+        self.episodes_lengths = [0 for _ in range(B)]
+        self.episodes_current_idx = [0 for _ in range(B)]
+
+    @property
+    def ready_to_sample(self):
+        return len(self.train_eps_cache.keys()) > self.B
+    
+    def sample(self):
+        # TODO: more efficient method to sample that can use multiple workers
+        # to hasten the sampling process a bit
+        assert self.ready_to_sample, \
+            "Attempting to sample from buffer without enough episodes data."
+        B, T = self.B, self.T
+        # Placeholder
+        C = 1 if self.config.env_grayscale else 3
+        obs_list = np.zeros([B, T, C, 64, 64]) # TODO: recover obs shape
+        act_list = np.zeros([B, T, self.action_space.n], dtype=np.float32)
+        rew_list = np.zeros([B, T, 1], dtype=np.float32)
+        ter_list = np.zeros([B, T, 1], dtype=np.bool8)
+
+        for b in range(B):
+            ssf = 0 # Steps collected so far current batch trajectory
+            while ssf < T:
+                edd = self.episodes_data[b]
+                ep_length = self.episodes_lengths[b]
+                ep_current_idx = self.episodes_current_idx[b]
+                if edd is None or ep_length == ep_current_idx:
+                    ep_filename = np.random.choice(list(self.train_eps_cache.keys()))
+                    self.episodes_data[b] = edd = self.train_eps_cache[ep_filename]
+                    self.episodes_lengths[b] = ep_length = len(edd["terminals"])
+                    self.episodes_current_idx[b] = ep_current_idx = 0
+                needed_steps = T - ssf # How many steps needed to fill the traj
+                edd_start = ep_current_idx # Where to start slicing from episode data
+                avail_steps = ep_length - edd_start # How many steps from the ep. data not used yet
+                edd_end = min(edd_start + needed_steps, edd_start + avail_steps)
+                subseq_len = edd_end - edd_start
+                b_end = ssf + subseq_len
+                # Fill up the batch data placeholders with steps from episode data
+                obs_list[b, ssf:b_end] = edd["observations"][edd_start:edd_end]
+                act_list[b, ssf:b_end] = edd["actions"][edd_start:edd_end]
+                rew_list[b, ssf:b_end] = edd["rewards"][edd_start:edd_end]
+                ter_list[b, ssf:b_end] = edd["terminals"][edd_start:edd_end]
+
+                ssf = b_end
+                self.episodes_current_idx[b] = edd_end
         
-        def __iter__(self):
-            T = self._batch_length
-            while True:
-                # Placeholder
-                obs_list = np.zeros([T, 1, 64, 64]) # TODO: recover obs shape
-                act_list = np.zeros([T, 1], dtype=np.int64)
-                rew_list = np.zeros([T, 1], dtype=np.float32)
-                ter_list = np.zeros([T, 1], dtype=np.bool8)
-                ssf = 0 # Steps collected so far current batch trajectory
-                while ssf < T:
-                    if self._episode_data is None or self._episode_length == self._ep_current_idx:
-                        idx = torch.randint(len(self._train_eps_cache.keys()), ())
-                        self._episode_data = self._train_eps_cache[list(self._train_eps_cache.keys())[idx]]
-                        self._ep_filename = list(self._train_eps_cache.keys())[idx] # DEBUG
-                        self._episode_length = len(self._episode_data["terminals"])
-                        self._ep_current_idx = 0
-                    needed_steps = T - ssf # How many steps needed to fill the traj
-                    edd_start = self._ep_current_idx # Where to start slicing from episode data
-                    avail_steps = self._episode_length - edd_start # How many steps from the ep. data not used yet
-                    edd_end = min(edd_start + needed_steps, edd_start + avail_steps)
-                    subseq_len = edd_end - edd_start
-                    b_end = ssf + subseq_len
-                    # Fill up the batch data placeholders with steps from episode data
-                    obs_list[ssf:b_end] = self._episode_data["observations"][edd_start:edd_end]
-                    act_list[ssf:b_end] = self._episode_data["actions"][edd_start:edd_end]
-                    rew_list[ssf:b_end] = self._episode_data["rewards"][edd_start:edd_end]
-                    ter_list[ssf:b_end] = self._episode_data["terminals"][edd_start:edd_end]
+        # Tensorize and copy to training batch to (GPU) device
+        return {
+            "observations": torch.Tensor(obs_list).float().to(self.device) / 255.0 - 0.5,
+            "actions": torch.Tensor(act_list).float().to(self.device),
+            "rewards": torch.Tensor(rew_list).float().to(self.device),
+            "terminals": torch.Tensor(ter_list).bool().to(self.device)
+        }
 
-                    ssf = b_end
-                    self._ep_current_idx = edd_end
-                
-                yield {"observations": obs_list,"actions": act_list,
-                    "rewards": rew_list, "terminals": ter_list}
+# Scope that enables gradient computation
+class RequiresGrad():
+    def __init__(self, model):
+        self.model = model
 
-    # TODO: make sure that even if using num_workers > 1, the trajs. are sequential
-    # between batches.
-    def worker_init_fn(worker_id):
-        worker_seed = 133754134 + worker_id
-        random.seed(worker_seed)
-        np.random.seed(worker_seed)
-    th_seed_gen = torch.Generator()
-    th_seed_gen.manual_seed(133754134 + seed)
+    def __enter__(self):
+        self.model.requires_grad_(True)
 
-    return iter(
-        DataLoader(
-            DreamerTBPTTIterableDataset(train_eps_cache=train_eps_cache, batch_length=batch_length),
-            batch_size=batch_size, num_workers=num_workers,
-            worker_init_fn=worker_init_fn, generator=th_seed_gen
-        )
-    )
+    def __exit__(self, *args):
+        self.model.requires_grad_(False)
 
 # Dreamer Agent
 ## World model component: handles representation and dynamics learning
 class WorldModel(nn.Module):
     def __init__(self, config, num_actions):
+        super().__init__()
         self.config = config
         self.num_actions = num_actions
         
         # Pre-compute the state_feat_size: |S| = |H| + |Y|
         self.state_feat_size = config.rssm_deter_size
-        self.state_stoch_feat_size = config.rssm_stoch_szie * config.rssm_discrete \
+        self.state_stoch_feat_size = config.rssm_stoch_size * config.rssm_discrete \
             if config.rssm_discrete else config.rssm_stoch_size
         self.state_feat_size += self.state_stoch_feat_size
         self.state_stoch_feat_size
         
         # Encoder
-        # TODO: add param. to select grayscale or RGB, and fix in_channel accordingly ?
-        # TODO: tune the kernel / stride to make the output of the encoeer 1024 instead, like in Director
+        C = 1 if config.env_grayscale else 3
         self.encoder = nn.Sequential(
-            nn.Conv2d(1, 48, kernel_size=(4,4), stride=(2,2)),
+            nn.Conv2d(C, 64, kernel_size=(4,4), stride=(2,2)),
             nn.ELU(),
-            nn.Conv2d(48, 96, kernel_size=(4,4), stride=(2,2)),
+            nn.Conv2d(64, 128, kernel_size=(4,4), stride=(2,2)),
             nn.ELU(),
-            nn.Conv2d(96, 192, kernel_size=(4,4), stride=(2,2)),
+            nn.Conv2d(128, 256, kernel_size=(4,4), stride=(2,2)),
             nn.ELU(),
-            nn.Conv2d(192, 384, kernel_size=(4,4), stride=(2,2)),
+            nn.Conv2d(256, 256, kernel_size=(4,4), stride=(2,2)),
             nn.ELU()
         )
 
         # Decoder
+        class DeConvReshape(nn.Module):
+            def __init__(self):
+                super().__init__()
+            def forward(self, x):
+                return x[:, :, None, None]   # [B * T, 2048, 1, 1]
+        
         self.decoder = nn.Sequential(
-            nn.Linear(self.state_feat_size, 1535),
-            nn.ELU(), # TODO: check that this is really what happens
-            nn.ConvTranspose2d(1536, 192, kernel_size=(5,5), stride=(2,2)),
+            nn.Linear(self.state_feat_size, 2048),
+            DeConvReshape(),
+            nn.ConvTranspose2d(2048, 256, kernel_size=(5,5), stride=(2,2)),
             nn.ELU(),
-            nn.ConvTranspose2d(192, 96, kernel_size=(5,5), stride=(2,2)),
+            nn.ConvTranspose2d(256, 128, kernel_size=(5,5), stride=(2,2)),
             nn.ELU(),
-            nn.ConvTranspose2d(96, 48, kernel_size=(6,6),stride=(2,2)),
+            nn.ConvTranspose2d(128, 64, kernel_size=(6,6),stride=(2,2)),
             nn.ELU(),
-            nn.ConvTranspose2d(48, 1, kernel_size=(6,6),stride=(2,2))
+            nn.ConvTranspose2d(64, C, kernel_size=(6,6),stride=(2,2))
         )
 
         # Reward predictor
@@ -380,7 +414,7 @@ class WorldModel(nn.Module):
         N = config.rssm_deter_size # 600 by default
         # Embeds y_{t-1} and a_{t-1} to update h_t
         self.state_action_embed = nn.Sequential(
-            nn.Linear(self.state_feat_size + num_actions, N),
+            nn.Linear(self.state_stoch_feat_size + num_actions, N),
             nn.ELU()
         )
         # RNN for deterministic state component updates
@@ -416,7 +450,7 @@ class WorldModel(nn.Module):
         # Posterior distribution over the stochastic state comp. w_t
         # TODO: find a better way to handle the 1536 obs_feat size ?
         self.post_state = DistributionParameters(
-            input_size=1536 + config.rssm_deter_size,
+            input_size=1024 + config.rssm_deter_size,
             hidden_size=config.rssm_hid_size,
             stoch_size=config.rssm_stoch_size,
             discrete=config.rssm_discrete)
@@ -434,6 +468,9 @@ class WorldModel(nn.Module):
             lr=config.model_lr,
             eps=config.model_eps,
             weight_decay=config.model_wd)
+    
+        # Tracking some training steps
+        self.register_buffer("n_updates", torch.LongTensor([0]))
     
     # Helper method that returns a distribution
     # that can be sampled from based for either
@@ -462,7 +499,7 @@ class WorldModel(nn.Module):
                 sample += probs - probs.detach()
                 return sample
 
-        if self.config.discrete:
+        if self.config.rssm_discrete:
             logits = dist_data["logits"]
             dist = thd.Independent(OneHotDist(logits=logits), 1)
         else:
@@ -502,22 +539,30 @@ class WorldModel(nn.Module):
         """
         config = self.config
         obs_list, act_list, ter_list = \
-            batch_data_dict["observatons"], \
+            batch_data_dict["observations"], \
             batch_data_dict["actions"], \
             batch_data_dict["terminals"]
         
-        B, T, C_H_W = obs_list.shape # batch_size, batch_length
+        B, T = obs_list.shape[:2]
+        C_H_W = obs_list.shape[2:]
 
+        if prev_batch_data is None:
+            prev_batch_data = {
+                "s_deter": obs_list.new_zeros([B, config.rssm_deter_size]),
+                "s_stoch": obs_list.new_zeros([B, self.state_stoch_feat_size]),
+                "reset_mask": obs_list.new_zeros([B, 1])
+            }
+        
         # Encode images into low-dimensional feature vectors: x_t <- Encoder(o_t)
-        obs_feat_list = self.encoder(obs_list.view(B * T, *C_H_W)).view(B, T, -1) # [B, T, 1536]
+        obs_feat_list = self.encoder(obs_list.view(B * T, *C_H_W)).view(B, T, -1) # [B, T, 1024]
 
         s_deter = prev_batch_data["s_deter"] # [B, |H|]
         s_stoch = prev_batch_data["s_stoch"] # [B, |Y|]
         reset_mask = prev_batch_data["reset_mask"] # [B, 1]
 
         # Placeholder lists
-        post_state_dist_data = {k: {} for k in ["logits", "mean", "std"]}
-        prior_state_dist_data =  {k: {} for k in ["logits", "mean", "std"]}
+        post_state_dist_data = {k: [] for k in ["logits", "mean", "std"]}
+        prior_state_dist_data =  {k: [] for k in ["logits", "mean", "std"]}
         s_deter_list, s_stoch_list = [], []
 
         for t in range(T):
@@ -536,7 +581,7 @@ class WorldModel(nn.Module):
             # Obtain logits to predict y_t from the post dist. as a function of o_t and h_t
             post_dist_stats = self.post_state(torch.cat([obs_feat_list[:, t], s_deter], dim=1))
             # Sample y_t ~ q(y_t | h_t, x_t)
-            s_stoch = self.get_dist(post_dist_stats, discrete=config.rssm_discrete).rsample()
+            s_stoch = self.get_dist(post_dist_stats).rsample()
             s_stoch = s_stoch.view(B, -1) # Mainly for discrete case, no effect otherwise
 
             # Store the stochstic component's distribution stats for KL loss computation
@@ -548,13 +593,15 @@ class WorldModel(nn.Module):
             s_stoch_list.append(s_stoch)
 
             # Prepare the mask to reset the s_deter and s_stoch in the next step, if needs be.
-            reset_mask = 1 - ter_list[:, t][:, None]
+            reset_mask = 1 - ter_list[:, t].float()
         
         # Stack and tensorize the placeholder lists
         s_deter_list = torch.stack(s_deter_list, dim=1)
         s_stoch_list = torch.stack(s_stoch_list, dim=1)
-        post_state_dist_data = {k: torch.stack(v, dim=1) for k,v in post_state_dist_data.items()}
-        prior_state_dist_data = {k: torch.stack(v, dim=1) for k,v in prior_state_dist_data.items()}
+        post_state_dist_data = {k: torch.stack(v, dim=1) if isinstance(v, list) and len(v) else v 
+            for k,v in post_state_dist_data.items()}
+        prior_state_dist_data = {k: torch.stack(v, dim=1) if isinstance(v, list) and len(v) else v 
+            for k,v in prior_state_dist_data.items()}
 
         return {
             "s_deter_list": s_deter_list,
@@ -579,7 +626,7 @@ class WorldModel(nn.Module):
         """
         kld = thd.kl.kl_divergence
         dist = lambda x: self.get_dist(x) # local shorthand
-        sg = lambda x: {k: v.detach() for k, v in x.items()} # stop_gradient
+        sg = lambda x: {k: v.detach() if isinstance(v, list) and len(v) else v for k, v in x.items()} # stop_gradient
         
         # Dreamer v2 KL Balancing
         lhs, rhs = (prior, post) if forward else (post, prior)
@@ -599,36 +646,34 @@ class WorldModel(nn.Module):
 
     def loss(self, batch_data_dict, prev_batch_data):
         config = self.config
-        B, T, C_H_W = batch_data_dict["observations"].shape
+        B, T = batch_data_dict["observations"].shape[:2]
+        C_H_W = batch_data_dict["observations"].shape[2:]
 
         # Run the forward pass of the model with inference and generation path
-        fwd_dict = self(batch_data_dict, prev_batch_data)
-        s_deter_list = fwd_dict["s_deter_list"] # [B, T, |H|]
-        s_stoch_list = fwd_dict["s_stoch_list"] # [B, T, |Y|]
-        post_state_dist_data = fwd_dict["post_state_dist_data"] # {k: [B, T, |Y|]}
-        prior_state_dist_data = fwd_dict["prior_state_dist_data"] # {k: [B, T, |Y|]}
+        wm_fwd_dict = self(batch_data_dict, prev_batch_data)
+        s_deter_list = wm_fwd_dict["s_deter_list"] # [B, T, |H|]
+        s_stoch_list = wm_fwd_dict["s_stoch_list"] # [B, T, |Y|]
+        post_state_dist_data = wm_fwd_dict["post_state_dist_data"] # {k: [B, T, |Y|]}
+        prior_state_dist_data = wm_fwd_dict["prior_state_dist_data"] # {k: [B, T, |Y|]}
 
         s_list = torch.cat([s_deter_list, s_stoch_list], dim=2) # [B, T, |H|+|Y|]
-        
-        # TODO: uniformize the loss name, don't use "cost" anymore
-        # rec_loss, kl_loss, rew_loss, discount_loss instead
 
         # Reconstruct observation and compute the corresponding loss
         obs_rec_mean_list = self.decoder(s_list.view(B * T, -1)).view(B, T, *C_H_W) # [B, T, C, H, W]
         obs_list = batch_data_dict["observations"]
         obs_rec_dist = thd.Independent(thd.Normal(obs_rec_mean_list, 1.0), len(C_H_W))
-        obs_nll_list = obs_rec_dist.log_prob(obs_list).neg() # [B, T]
-        obs_nll = obs_nll_list.mean() # Avg. neg. log likelihood over batch size and length
+        rec_loss_list = obs_rec_dist.log_prob(obs_list).neg() # [B, T]
+        rec_loss = rec_loss_list.mean() # Avg. neg. log likelihood over batch size and length
 
         # Predict the rewards and compute the corresonding loss
-        rew_pred_mean_list = self.reward_pred(s_list)
-        rew_list = batch_data_dict["rewards"]
+        rew_pred_mean_list = self.reward_pred(s_list) # [B, T, 1]
+        rew_list = batch_data_dict["rewards"] # [B, T, 1]
         rew_pred_dist = thd.Independent(thd.Normal(rew_pred_mean_list, 1.0), 1)
-        rew_pred_nll_list = rew_pred_dist.log_prob(rew_list).neg() # [B, T]
-        rew_pred_nll = rew_pred_nll_list.mean()
+        rew_pred_loss_list = rew_pred_dist.log_prob(rew_list).neg() # [B, T]
+        rew_pred_loss = rew_pred_loss_list.mean()
 
         # Compute the KL loss
-        raw_kl_cost, _ = self.kl_loss(
+        kl_loss, _ = self.kl_loss(
             post=post_state_dist_data,
             prior=prior_state_dist_data,
             forward=config.kl_forward,
@@ -637,18 +682,18 @@ class WorldModel(nn.Module):
         )
 
         # Scale the losses
-        kl_cost_scaled = raw_kl_cost * config.kl_scale
-        rew_pred_nll_scaled = rew_pred_nll * config.rew_scale
+        kl_loss_scaled = kl_loss * config.kl_scale
+        rew_pred_loss_scaled = rew_pred_loss * config.rew_scale
 
         # Model entropy
         post_ent = self.get_dist(post_state_dist_data).entropy().mean()
         prior_ent = self.get_dist(prior_state_dist_data).entropy().mean()
 
         # world model loss
-        wm_loss = obs_nll + rew_pred_nll
+        wm_loss = rec_loss + rew_pred_loss_scaled
 
         # Compute the discount prediction loss, if applicable
-        if config.rssm_discrete:
+        if config.disc_pred_hid_size:
             # Straight-through reparameterized Bernoulli distribution
             class Bernoulli():
                 def __init__(self, dist=None):
@@ -676,32 +721,32 @@ class WorldModel(nn.Module):
 
                     return log_probs0 * (1-x) + log_probs1 * x
                 
-            discount_pred_logits_list = self.discount_pred(s_list) # [B, T, 1]
+            discount_pred_logits_list = self.disc_pred(s_list) # [B, T, 1]
             ter_list = batch_data_dict["terminals"]
             discount_list = (1.0 - ter_list.float()) * config.gamma
             disc_pred_dist = thd.Independent(thd.Bernoulli(logits=discount_pred_logits_list), 1)
             disc_pred_dist = Bernoulli(disc_pred_dist)
-            discount_pred_nll_list = disc_pred_dist.log_prob(discount_list).neg() # [B, T]
-            raw_discount_pred_nll = discount_pred_nll_list.mean()
+            disc_pred_loss_list = disc_pred_dist.log_prob(discount_list).neg() # [B, T]
+            disc_pred_loss = disc_pred_loss_list.mean()
         
             # Scaling the loss
-            discount_pred_nll_scaled = raw_discount_pred_nll * config.disc_scale
+            disc_pred_loss_scaled = disc_pred_loss * config.disc_scale
 
             # Add to the world model loss
-            wm_loss += discount_pred_nll_scaled
+            wm_loss += disc_pred_loss_scaled
         
         wm_losses_dict = {
             "wm_loss": wm_loss, # NOTE: used for .backward() later
 
             # Logging
             ## Unscaled losses
-            "kl_loss": raw_kl_cost.item(),
-            "rec_loss": obs_nll.item(),
-            "reward_loss": rew_pred_nll.item(),
+            "kl_loss": kl_loss.item(),
+            "rec_loss": rec_loss.item(),
+            "rew_pred_loss": rew_pred_loss.item(),
             
             ## Scaled losses
-            "kl_loss_scaled": kl_cost_scaled.item(),
-            "rew_loss_scaled": rew_pred_nll_scaled.item(),
+            "kl_loss_scaled": kl_loss_scaled.item(),
+            "rew_pred_loss_scaled": rew_pred_loss_scaled.item(),
 
             ## Model entropies
             "prior_ent": prior_ent.item(),
@@ -713,53 +758,123 @@ class WorldModel(nn.Module):
             "kl_balance": config.kl_balance
         }
 
+        if config.disc_pred_hid_size:
+            wm_losses_dict["disc_pred_loss"] = disc_pred_loss.item()
+            wm_losses_dict["disc_pred_loss_scaled"] = disc_pred_loss_scaled.item()
+
         # fwd_dict is used later for the imagination path and actor-critic loss
-        fwd_dict = {
-            **fwd_dict,
-            "s_list": s_list
-        }
+        wm_fwd_dict["s_list"] = s_list
+         # For video generation;
+        N = min(B, config.viz_n_videos)
+        wm_fwd_dict["obs_rec_mean_list"] = obs_rec_mean_list[:N].detach()
 
-        # TODO: find a way to pass just enough obs_rec_mean_list to perform qualitative
-        # inspection of the reconstruciton operation
-
-        return wm_losses_dict, fwd_dict
+        return wm_losses_dict, wm_fwd_dict
 
     def _train(self, batch_data_dict, prev_batch_data):
-        # TODO: make sure to preprocess the observations, among other things
-        pass
+        config = self.config
+
+        with RequiresGrad(self):
+            wm_losses_dict, wm_fwd_dict = self.loss(batch_data_dict, prev_batch_data)
+            wm_loss = wm_losses_dict["wm_loss"]
+            self.model_optimizer.zero_grad()
+            wm_loss.backward()
+            if config.model_grad_clip:
+                torch.nn.utils.clip_grad_norm_(self.parameters(), config.model_grad_clip)
+            self.model_optimizer.step()
+        
+        self.n_updates += 1 # Tracks the number of grad. step on the model
+        
+        # TODO: might want to pass the data for next batch provessing 
+        # a bit more "obsviously", instead of just relying on fwd_dict
+        return wm_losses_dict, wm_fwd_dict
 
     @torch.no_grad()
-    def sample_action(self, obs, prev_data):
-        pass
-    
-    @torch.no_grad()
-    def gen_rec_videos(self):
-        raise NotImplementedError("Video generation is WIP")
+    def sample_action(self, obs, actor, prev_data, exploration_fn, mode="train"):
+        config = self.config
+        wm = self # TODO: directly use self.model_component
+        B = obs.shape[0]
+
+        obs_feat = wm.encoder(obs)
+
+        if prev_data == None: # Assumes first step of an episode
+            prev_data = {
+                "s_deter": obs.new_zeros([B, config.rssm_deter_size]),
+                "s_stoch": obs.new_zeros([B, self.state_stoch_feat_size]),
+                "action": obs.new_zeros([B, self.num_actions]),
+                "done": obs.new_zeros([B, 1])
+            }
+        
+        # TODO: also need to add masking so that the s_deter and s_stoch
+        # are reset in case a new episode has been started
+        done = prev_data["done"]
+        mask = 1. - done.float() # TODO: properly handle what comes from the environment
+        s_deter = prev_data["s_deter"] * mask
+        s_stoch = prev_data["s_stoch"] * mask
+        action = prev_data["action"] * mask # TODO: maybe differenciate the first action to -1 vector instead of just 0. Namely, 0 is a valid action
+
+        prev_state_action_embed = torch.cat([s_stoch, action], 1)
+        prev_state_action_embed = wm.state_action_embed(prev_state_action_embed)
+        s_deter = wm.state_belief(prev_state_action_embed, s_deter)
+
+        # Sample y_t ~ q(y_t | h_t, x_t)
+        s_stoch_dist_stats = wm.post_state(torch.cat([obs_feat, s_deter], 1))
+        s_stoch = wm.get_dist(s_stoch_dist_stats).rsample()
+        s_stoch = s_stoch.view(B, -1) # Mainly for discrete case, no effect otherwise
+
+        # Sample the action
+        if mode == "train":
+            action = None # TODO implement after actor network has been fleshed out
+        elif mode == "eval":
+            action = None # TODO implement after actor network has been fleshed out
+        else:
+            raise NotImplementedError(f"Unsupported sampling regime for action: {mode}")
+
+        return action.cpu().numpy(), {"s_deter": s_deter, "s_stoch": s_stoch, "action": action, "done": done}
 
 class ActorCritic():
     def __init__(self):
         pass
 
-class Dreamer():
+class Dreamer(nn.Module):
     def __init__(self, config, num_actions):
         super().__init__()
         self.config = config
         self.num_actons = num_actions
         
-        self.wm = None # TODO: Instantiate World model
+        self.wm = WorldModel(config=args, num_actions=num_actions)
         self.ac = None # TODO: Instantiate ActorCritic
 
         # Tracking training stats
-        self.register_buffer("_step", torch.LongTensor([0]))
-        self.register_buffer("n_updates", torch.LongTensor([0]))
+        self.register_buffer("step", torch.LongTensor([0])) # How many env. steps so far, for schedulers
+        self.register_buffer("n_updates", torch.LongTensor([0])) # How many updates of the model
 
         # TODO: add schedules for actor entropy and actor imaginate gradient mixing
 
-    def _train(self, batch_data_dict, prev_state_dict):
-        # TODO: add data preprocessing here
-        # - the observatons should be reworked to range [-0.5,0.5] or [-1,1]
-        # - pre-computer discount from the terminal
-        pass
+    def _train(self, batch_data_dict, prev_batch_data):
+        # TODO: mention data precprocessing or move it here instead of in the buffer ?
+        wm_losses_dict, wm_fwd_dict = self.wm._train(batch_data_dict, prev_batch_data)
+
+        # Store intermediate results for the next batch
+        prev_batch_data = {
+            "s_deter": wm_fwd_dict["s_deter_list"][:, -1].detach(), # [B, |H|]
+            "s_stoch": wm_fwd_dict["s_stoch_list"][:, -1].detach(), # [B, |Y|]
+            "reset_mask": wm_fwd_dict["reset_mask"] # [B, 1]
+        }
+        return wm_losses_dict, None, wm_fwd_dict, prev_batch_data
+
+    @torch.no_grad()
+    def gen_train_rec_videos(self, batch_data_dict, fwd_dict):
+        # Generates video of batch trajectories' ground truth, reconstruction and error
+        config = self.config
+        obs_rec_mean_list = fwd_dict["obs_rec_mean_list"] # [N, T, C, H, W]
+        N = obs_rec_mean_list.shape[0]
+        orig_obs_list = batch_data_dict["observations"][:N] + 0.5 # [N, T, C ,H, W] in range [0.0,1.0]
+        rec_obs_list = (obs_rec_mean_list + 0.5).clamp(0, 1) # [N, T, C, H, W] in range [0.0,1.0]
+        error = (rec_obs_list - orig_obs_list + 1) / 2.
+        black_strip = orig_obs_list.new_zeros([N, *orig_obs_list.shape[1:-2], 3, orig_obs_list.shape[-1]]) # [N, T, C, 3, W]
+        train_video = torch.cat([orig_obs_list, black_strip, rec_obs_list, black_strip, error], 3) # [N, T, C, H * 3 + 6, W]
+        train_video = torch.cat([tnsr for tnsr in train_video], dim=3)[None] # [1, T, C, H * 3 + 6, W * N] # Vertical stack
+        return train_video.cpu().numpy()
 
 if __name__ == "__main__":
     args = parse_args()
@@ -790,28 +905,28 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
-    # Replay buffer / dataset setup: create the folder to hold sampled episode trajectories
-    train_eps_cache = {} # Shared buffer
-    train_savedir = os.path.join(f"runs/{run_name}/train_episodes")
-    if not os.path.exists(train_savedir):
-        os.mkdir(train_savedir)
-    
-    # env setup
-    # NOTE: args.buffer_size // 4 to acount for Atari's action_repeat of 4
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, i, args.capture_video,
-        run_name, train_savedir, train_eps_cache, args.buffer_size // 4) for i in range(args.num_envs)])
-    assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported" # TODO: this needs not be the case ?
-
     # Instantiate buffer based dataset loader
-    dataloader = make_dataloader(train_eps_cache, batch_size=args.batch_size,
-        batch_length=args.batch_length, seed=args.seed)
+    buffer = DreamerTBPTTDataset(args, device)
+    # Env setup5
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, i, args.capture_video,
+        run_name, buffer, args) for i in range(args.num_envs)])
+    assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported" # TODO: this needs not be the case ?
     
+    # Instantiate the Dreamer agent
+    dreamer = Dreamer(config=args, num_actions=envs.single_action_space.n).to(device)
+
     # TRY NOT TO MODIFY: start the game
+    start_time = time.time()
     obs = envs.reset()
-    for global_step in range(args.total_timesteps):
+    prev_data = None
+    prev_batch_data = None
+    for global_step in range(0, args.total_timesteps+4, 4): # TODO: explicity add support for action repeat instead of hardcoded '4'
         # ALGO LOGIC: put action logic here
-        # TODO: action spampling
-        action = None
+        if global_step <= args.buffer_prefill:
+            action = envs.action_space.sample()
+        else:
+            # TODO: implement action sampling from the Dreamer agent itself
+            action = envs.action_space.sample()
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(action)
@@ -826,9 +941,24 @@ if __name__ == "__main__":
         
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
+        # TODO: have to add the real done data to the "prev_data" dictionary
+        # so that the sampling is correct
+        # TODO: add tracking of the number of env steps to the Dreamer agent
+        # dreamer.step += args.num_envs * args.env_action_repeat
 
         # ALGO LOGIC: training.
         # TODO: add conditiona for when the agent can be trained, and some basic logging
+        # TODO also need to add the scheduler for train_every.Does it really need to take the action repeat into account ?
+        if global_step >= args.buffer_prefill and buffer.ready_to_sample and global_step % (args.train_every // 4) == 0:
+            batch_data_dict = buffer.sample()
+            wm_losses_dict, ac_losses_dict, wm_fwd_dict, prev_batch_data = \
+                dreamer._train(batch_data_dict, prev_batch_data)
+
+            # Testing video saving
+            # TODO: ideally, the saving of training metrics, video etc.. should not be too frequent
+            train_rec_video = dreamer.gen_train_rec_videos(batch_data_dict, wm_fwd_dict)
+            writer.add_video("train_rec_video", train_rec_video, global_step, fps=16)
+            [writer.add_scalar(f"wm/{k}", v, global_step) for k,v in wm_losses_dict.items()]
 
     envs.close()
     writer.close()
