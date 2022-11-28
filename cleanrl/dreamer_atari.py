@@ -58,7 +58,7 @@ def parse_args():
     # TODO: add parameterization for environment action repeat, especially for other tasks
     parser.add_argument("--total-timesteps", type=int, default=40_000_000,
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=4_000_000,
+    parser.add_argument("--buffer-size", type=int, default=2_000_000,
         help="the replay memory buffer size, should account for action repeats")
     parser.add_argument("--buffer-prefill", type=int, default=200_000,
         help="the number of steps to prefill the buffer with (accounts for action repeats")
@@ -152,10 +152,8 @@ def parse_args():
     ## Dreamer specific hyperparameters
     parser.add_argument("--imagine-horizon", type=int, default=16,
         help="the number of steps to simulate using the world model ('dreaming' horizon)")
-    parser.add_argument("--train-every", type=int, default=64,
-        help="the env. step interval after which the model is trained, taking into account the action repeat"
-             "for each env.step() call: num_envs * action_repeats are sampled"
-             "model update will take place 'train_every // action_repeats'")
+    parser.add_argument("--train-every", type=int, default=16, 
+        help="the env. step interval after which the model is trained, taking into account the action repeat")
     parser.add_argument("--viz-n-videos", type=int, default=3,
         help="the number of video samples to visualize for reconstruction and imagination")
     args = parser.parse_args()
@@ -293,7 +291,7 @@ class DreamerTBPTTBuffer():
 
     @property
     def size(self):
-        return np.sum([len(v["terminals"]) for v in self.train_eps_cache.values()])
+        return np.sum([len(v["terminals"])-1  for v in self.train_eps_cache.values()])
 
     @property
     def ready_to_sample(self):
@@ -587,7 +585,7 @@ class WorldModel(nn.Module):
 
             Intuitively, each batch of trajectories is structured as follows:
             
-            actions:           -1   a_0   a_1  ...  a_T
+            actions:            0   a_0   a_1  ...  a_T
                                    ^ |   ^ |         |
                                   /  v  /  v         v
             latent states:     s_0  s_1   s_2  ...  s_T
@@ -1326,9 +1324,9 @@ if __name__ == "__main__":
     obs = envs.reset()
     prev_data, prev_batch_data = None, None
     n_episodes = 0
-    for global_step in range(0, args.total_timesteps+args.num_envs, args.num_envs):
+    for global_step in range(0, args.total_timesteps // args.env_action_repeats, args.num_envs):
         # ALGO LOGIC: put action logic here
-        if global_step <= args.buffer_prefill:
+        if global_step <= (args.buffer_prefill // args.env_action_repeats):
             action = envs.action_space.sample()
         else:
             # Tensorize observation, pre-process and put on training device
@@ -1344,10 +1342,12 @@ if __name__ == "__main__":
                 if "episode" in info.keys():
                     print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                     writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step) # TODO: does this take into account the action_repeats ?
+                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                    writer.add_scalar("charts/episodic_length_frames", info["episode"]["l"] * args.env_action_repeats, global_step)
                     break
             n_episodes += np.sum(dones)
-            writer.add_scalar("charts/buffer_size", buffer.size * args.env_action_repeats, global_step)
+            writer.add_scalar("charts/buffer_steps", buffer.size, global_step)
+            writer.add_scalar("charts/buffer_frames", buffer.size * args.env_action_repeats, global_step)
             writer.add_scalar("charts/n_episodes", n_episodes, global_step)
         
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
@@ -1362,22 +1362,27 @@ if __name__ == "__main__":
         dreamer.step += args.num_envs * args.env_action_repeats
 
         # ALGO LOGIC: training.
-        if global_step >= args.buffer_prefill and buffer.ready_to_sample and global_step % (args.train_every // args.env_action_repeats) == 0:
+        if global_step >= (args.buffer_prefill // args.env_action_repeats) and buffer.ready_to_sample and global_step % (args.train_every // args.env_action_repeats) == 0:
             batch_data_dict = buffer.sample()
             # TODO: consolidate losses into a signle dictionary ?
             wm_losses_dict, ac_losses_dict, wm_fwd_dict, ac_fwd_dict, prev_batch_data = \
                 dreamer._train(batch_data_dict, prev_batch_data)
 
             # Logging training stats every 10 effective model updates (.backward() calls)
-            if ((global_step // (args.env_action_repeats * args.num_envs)) % 10) == 0:
+            if dreamer.n_updates % 10 == 0:
                 # Logging training stats of the WM and AC components in their respective scopes
                 [writer.add_scalar(f"wm/{k}", v, global_step) for k,v in wm_losses_dict.items()]
                 [writer.add_scalar(f"ac/{k}", v, global_step) for k,v in ac_losses_dict.items()]
                 # NOTE: Does not take the buffer prefill samples into account for SPS
-                print("SPS:", int((global_step - args.buffer_prefill) / (time.time() - start_time)))
-                writer.add_scalar("charts/SPS", (global_step - args.buffer_prefill) / (time.time() - start_time), global_step)
+                print("SPS:", int((global_step - args.buffer_prefill // args.env_action_repeats) / (time.time() - start_time)))
+                writer.add_scalar("global_step", global_step, global_step)
+                writer.add_scalar("global_frame", global_step * args.env_action_repeats, global_step)
+                writer.add_scalar("charts/SPS", (global_step - args.buffer_prefill // args.env_action_repeats) / (time.time() - start_time), global_step)
+                writer.add_scalar("charts/FPS", (global_step * args.env_action_repeats - args.buffer_prefill) / (time.time() - start_time), global_step)
                 writer.add_scalar("charts/n_updates", dreamer.n_updates, global_step)
 
+            # NOTE: too frequent video logging will add overhead to training time
+            if dreamer.n_updates % 500 == 0:
                 # Logging video of trajectory reconstruction from the WM training
                 train_rec_video = dreamer.gen_train_rec_videos(batch_data_dict, wm_fwd_dict)
                 writer.add_video("train_rec_video", train_rec_video, global_step, fps=16)
