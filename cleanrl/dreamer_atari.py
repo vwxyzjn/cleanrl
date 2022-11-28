@@ -104,10 +104,20 @@ def parse_args():
         help="the weight decay for the world model Adam optimizer")
     parser.add_argument("--model-grad-clip", type=float, default=100,
         help="the gradient norm clipping threshold for the world model")
-
+    
     ## Actor (policy) specific hyperparameters
     parser.add_argument("--actor-hid-size", type=int, default=400,
         help="the size of the hidden layers of the actor network")
+    parser.add_argument("--actor-value-slow-target", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="use a lagging copy of the value network for actor loss computation")
+    parser.add_argument("--actor-entropy", type=float, default=1e-3,
+        help="the entropy regulirization coefficient for the actor policy") # TODO: add support for decay schedulers
+    parser.add_argument("--actor-imagine-grad-mode", type=str, default="both", choices=["dynamics", "reinforce", "both"],
+        help="the method used to compute the gradients when updating the actor"
+             "over imaginated trajectories")
+    parser.add_argument("--actor-imagine-grad-mix", type=float, default=0.1,
+        help="the ratio of using world model's reward prediction and 'reinforce' policy gradient"
+             "when updating the actor using 'both' method for 'actor-imagine-actor-mode'") # TODO: add scheduled version
     ## Actor optimizer's hyper parameters
     parser.add_argument("--actor-lr", type=float, default=4e-5,
         help="the learning rate of the actor's Adam optimizer")
@@ -134,6 +144,8 @@ def parse_args():
         help="the gradient norm clipping threshold for the value network")
 
     ## Dreamer specific hyperparameters
+    parser.add_argument("--imagine-horizon", type=int, default=16,
+        help="the number of steps to simulate using the world model ('dreaming' horizon)")
     parser.add_argument("--train-every", type=int, default=16,
         help="the env. step interval after which the model is trained")
     parser.add_argument("--viz-n-videos", type=int, default=3,
@@ -322,6 +334,30 @@ class DreamerTBPTTDataset():
             "terminals": torch.Tensor(ter_list).bool().to(self.device)
         }
 
+# One-Hot Categorical distribution with straight-through reperameterization
+class OneHotDist(thd.one_hot_categorical.OneHotCategorical):
+    """
+        A one-hot categorical distribution that supports straight-through
+        gradient backprop, allowing training of discrete latent variabless.
+        # TODO: attribution
+    """
+    def __init__(self, logits=None, probs=None):
+        super().__init__(logits=logits, probs=probs)
+
+    def mode(self):
+        _mode = F.one_hot(torch.argmax(super().logits, axis=-1), super().logits.shape[-1])
+        return _mode.detach() + super().logits - super().logits.detach()
+
+    def rsample(self, sample_shape=(), seed=None):
+        if seed is not None:
+            raise ValueError('need to check')
+        sample = super().sample(sample_shape)
+        probs = super().probs
+        while len(probs.shape) < len(sample.shape):
+            probs = probs[None]
+        sample += probs - probs.detach()
+        return sample
+
 # Scope that enables gradient computation
 class RequiresGrad():
     def __init__(self, model):
@@ -501,29 +537,6 @@ class WorldModel(nn.Module):
     # that can be sampled from based for either
     # categorical or continuous latent variable
     def get_dist(self, dist_data):
-        class OneHotDist(thd.one_hot_categorical.OneHotCategorical):
-            """
-                A one-hot categorical distribution that supports straight-through
-                gradient backprop, allowing training of discrete latent variabless.
-                # TODO: attribution
-            """
-            def __init__(self, logits=None, probs=None):
-                super().__init__(logits=logits, probs=probs)
-
-            def mode(self):
-                _mode = F.one_hot(torch.argmax(super().logits, axis=-1), super().logits.shape[-1])
-                return _mode.detach() + super().logits - super().logits.detach()
-
-            def rsample(self, sample_shape=(), seed=None):
-                if seed is not None:
-                    raise ValueError('need to check')
-                sample = super().sample(sample_shape)
-                probs = super().probs
-                while len(probs.shape) < len(sample.shape):
-                    probs = probs[None]
-                sample += probs - probs.detach()
-                return sample
-
         if self.config.rssm_discrete:
             logits = dist_data["logits"]
             dist = thd.Independent(OneHotDist(logits=logits), 1)
@@ -807,19 +820,19 @@ class WorldModel(nn.Module):
                 torch.nn.utils.clip_grad_norm_(self.parameters(), config.model_grad_clip)
             self.model_optimizer.step()
         
-        self.n_updates += 1 # Tracks the number of grad. step on the model
-        
         # TODO: might want to pass the data for next batch provessing 
         # a bit more "obsviously", instead of just relying on fwd_dict
         return wm_losses_dict, wm_fwd_dict
 
     @torch.no_grad()
-    def sample_action(self, obs, actor, prev_data, exploration_fn, mode="train"):
+    def sample_action(self, obs, actor, prev_data, mode="train"):
+        # TODO: double check that we can really ignore the "exploration" amount
+        # in the original implementation
         config = self.config
-        wm = self # TODO: directly use self.model_component
+        wm = self # TODO: directly use self.model_component ?
         B = obs.shape[0]
 
-        obs_feat = wm.encoder(obs)
+        obs_feat = wm.encoder(obs).view(B, -1) # [B, 1024]
 
         if prev_data == None: # Assumes first step of an episode
             prev_data = {
@@ -832,29 +845,86 @@ class WorldModel(nn.Module):
         # TODO: also need to add masking so that the s_deter and s_stoch
         # are reset in case a new episode has been started
         done = prev_data["done"]
-        mask = 1. - done.float() # TODO: properly handle what comes from the environment
+        mask = 1. - done.float()
         s_deter = prev_data["s_deter"] * mask
         s_stoch = prev_data["s_stoch"] * mask
-        action = prev_data["action"] * mask # TODO: maybe differenciate the first action to -1 vector instead of just 0. Namely, 0 is a valid action
+        action = prev_data["action"] * mask
 
         prev_state_action_embed = torch.cat([s_stoch, action], 1)
         prev_state_action_embed = wm.state_action_embed(prev_state_action_embed)
-        s_deter = wm.state_belief(prev_state_action_embed, s_deter)
+        s_deter = wm.update_s_deter(prev_state_action_embed, s_deter)
 
         # Sample y_t ~ q(y_t | h_t, x_t)
         s_stoch_dist_stats = wm.post_state(torch.cat([obs_feat, s_deter], 1))
         s_stoch = wm.get_dist(s_stoch_dist_stats).rsample()
         s_stoch = s_stoch.view(B, -1) # Mainly for discrete case, no effect otherwise
 
+        # Concatenate the deter and stoch. componens to form the state features
+        s_feat = torch.cat([s_deter, s_stoch], 1)
+
         # Sample the action
         if mode == "train":
-            action = None # TODO implement after actor network has been fleshed out
+            action = actor(s_feat).rsample()
         elif mode == "eval":
-            action = None # TODO implement after actor network has been fleshed out
+            action = actor(s_feat).mode()
         else:
             raise NotImplementedError(f"Unsupported sampling regime for action: {mode}")
 
-        return action.cpu().numpy(), {"s_deter": s_deter, "s_stoch": s_stoch, "action": action, "done": done}
+        return action.argmax(dim=1).cpu().numpy(), {"s_deter": s_deter, "s_stoch": s_stoch, "action": action}
+    
+    def imagine(self, actor, imag_traj_start_dict, horizon):
+        """
+            imag_traj_start_dict: contains the list of determistic (h_t), stochastic (y_t)
+            components of the state belief estimated by the World Model, as well
+            as the concatenated s_t = cat(h_t, y_t) which we refer to as state belief of 's_feat'.
+        """
+        config = self.config
+        wm = self
+
+        s_deter = imag_traj_start_dict["s_deter_list"] # [B * T, |H|]
+        s_stoch = imag_traj_start_dict["s_stoch_list"] # [B * T, |Y|]
+        s_feat = imag_traj_start_dict["s_list"] # [B * T, |H| + |Y|]
+        
+        B_T, _ = s_feat.shape
+
+        # Placeholders for state beliefs and actions sampled
+        imag_s_list, imag_action_list = [], []
+
+        for _ in range(horizon):
+            # Sample the action
+            inp = s_feat.detach() # No gradient throug the state belief S
+            action = actor(inp).rsample() # [B * T, |A|]
+
+            # Append the sampled action and the state features
+            imag_s_list.append(s_feat) # s_h
+            imag_action_list.append(action) # a_h
+
+            # Advance the internal state of the model
+            state_action_embed = torch.cat([s_stoch, action], 1) # [B * T, |Y| + |A|]
+            state_action_embed = wm.state_action_embed(state_action_embed)
+            s_deter = wm.update_s_deter(state_action_embed, s_deter) # [B * T, |H|]
+
+            s_dist_stats = wm.prior_state(s_deter)
+
+            # Sample the next state's stoch. comp. y_h ~ p(y_h | h_h)
+            s_stoch = wm.get_dist(s_dist_stats).rsample()
+            s_stoch = s_stoch.view(B_T, -1)
+
+            # Form the state feats s_h as concat(h_h, y_h)
+            s_feat = torch.cat([s_deter, s_stoch], 1)
+
+        imag_s_list =  torch.stack(imag_s_list, dim=0) # [H, B * T, |H| + |Y|]
+        imag_action_list = torch.stack(imag_action_list, dim=0) # [H, B * T, |A|]
+
+        # Imagine the rewards using the world model;s reward predictor.
+        imag_reward_list = wm.reward_pred(imag_s_list) # [H, B*T, 1]
+
+        return {
+            "imag_s_list": imag_s_list,
+            "imag_action_list": imag_action_list,
+            "imag_reward_list": imag_reward_list
+        }
+
 
 class ActorCritic(nn.Module):
     def __init__(self, config, num_actions, wm_fn):
@@ -872,15 +942,22 @@ class ActorCritic(nn.Module):
 
         # Actor component
         N = config.actor_hid_size
-        
-        # TODO: make the nn declaration more compact ?
-        self.actor = nn.Sequential(
-            nn.Linear(self.state_feat_size, N), nn.ELU(),
-            nn.Linear(N, N), nn.ELU(),
-            nn.Linear(N, N), nn.ELU(),
-            nn.Linear(N, N), nn.ELU(),
-            nn.Linear(N, num_actions) # logits layer
-        )
+        class ActorHead(nn.Module):
+            def __init__(self, input_size, N, num_actions):
+                super().__init__()
+                self.network = nn.Sequential(
+                    nn.Linear(input_size, N), nn.ELU(),
+                    nn.Linear(N, N), nn.ELU(),
+                    nn.Linear(N, N), nn.ELU(),
+                    nn.Linear(N, N), nn.ELU(),
+                    nn.Linear(N, num_actions) # logits layer
+                )
+
+            def __call__(self, x):
+                x = self.network(x) # Obtain logits
+                return OneHotDist(x) # Return the action distribution
+
+        self.actor = ActorHead(self.state_feat_size, N, num_actions)
 
         # Value component
         N = config.value_hid_size
@@ -891,7 +968,7 @@ class ActorCritic(nn.Module):
             nn.Linear(N, N), nn.ELU(),
             nn.Linear(N, 1)
         )
-        if config.value_slow_target:
+        if config.value_slow_target or config.actor_value_slow_target:
             self.slow_value = copy.deepcopy(self.value)
             self.slow_value.requires_grad_(False)
 
@@ -911,6 +988,63 @@ class ActorCritic(nn.Module):
         
         # Tracking training stats
         self.register_buffer("slow_value_n_updates", torch.LongTensor([0]))
+    
+    def compute_actor_loss(self, imagine_data_dict, ac_train_data):
+        config = self.config
+        actor, value = self.actor, self.value
+
+        # Placeholder dict for the actor losses
+        actor_losses_dict = {}
+
+        # TODO: compute the error between value and slow value ?
+
+        # Update the slow value target
+        if config.value_slow_target or config.actor_slow_value_target:
+            if self.n_updates % config.value_slow_target_update == 0:
+                tau = config.value_slow_target_fraction
+                for s, d in zip(self.value.parameters(), self.slow_value.parameters()):
+                    d.data = tau * s.data + (1 - tau) * d.data
+                self.slow_value_n_updates += 1
+        
+        # Compute action logprobs over simulated steps
+        inp = imag_state_belief_list.detach() if config.actor_stop_grad \
+            else imag_state_belief_list
+        imag_action_dist = actor(inp) # Get action dist for imaginary states
+        imag_action_logprob_list = imag_action_dist.log_prob(imag_action_list)
+        imag_actor_entropy_list = imag_action_dist.entropy() # [H, B * T, 1] TODO: double check the dim
+
+        # Actor loss computation
+        targets, weights = None, None # TODO
+
+        value_train_data = {
+            "targets": targets, # Re-used for value loss
+            "weights": weights, # Re-used for value loss
+        }
+
+        return actor_losses_dict, value_train_data
+        
+    def _train(self, ac_train_data):
+        config = self.config
+        actor, value = self.actor, self.value
+        wm = self.wm_fn()
+
+        # Actor loss computation
+        with RequiresGrad(actor):
+            # Use the world model to simulate trajectories
+            imagine_data_dict = wm.imagine(actor, ac_train_data, config.imagine_horizon)
+
+            # Compute the actor loss and other related training stats
+            actor_losses_dict, value_train_data = \
+                self.compute_actor_loss(imagine_data_dict, ac_train_data)
+            actor_loss = actor_losses_dict["actor_loss"]
+
+            # Optimize the actor network
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            if config.actor_grad_clip:
+                torch.nn.utils.clip_grad_norm_(actor.parameters(), config.actor_grad_clip)
+            self.actor_optimizer.step()
+
 
 class Dreamer(nn.Module):
     def __init__(self, config, num_actions):
@@ -927,9 +1061,37 @@ class Dreamer(nn.Module):
 
         # TODO: add schedules for actor entropy and actor imaginate gradient mixing
 
+    @torch.no_grad()
+    def sample_action(self, obs, prev_data, mode="train"):
+        return self.wm.sample_action(obs, self.ac.actor, prev_data, mode)
+
     def _train(self, batch_data_dict, prev_batch_data):
+        config = self.config
+
         # TODO: mention data precprocessing or move it here instead of in the buffer ?
+        # Update the world model component
         wm_losses_dict, wm_fwd_dict = self.wm._train(batch_data_dict, prev_batch_data)
+        
+        # Batch size and length
+        B, T = batch_data_dict["observations"].shape[:2]
+        B_T = B * T # How many starting steps for imagination: B * T in general
+
+        # Prepare the data for the ActorCritic updates
+        if config.disc_pred_hid_size:
+            # Masks to remove the terminal steps for imagination
+            ter_list = batch_data_dict["terminals"]
+            masks_list = torch.logical_not(ter_list)
+            B_T = masks_list.sum() 
+
+        # Drop the terminal steps from the data used to 
+        # bootstrap the imagination process for actor critic training
+        ac_train_data = {k: wm_fwd_dict[k] for k in ["s_deter_list", "s_stoch_list", "s_list"]}
+        ac_train_data = {k: torch.masked_select(v, masks_list).view(B_T, -1) for k,v in ac_train_data.items()}
+        
+        # Update the ActorCritic component
+        # TODO: Actor Critic related code
+        # ac_losses_dict, ac_fwd_dict = self.ac._train(ac_train_data)
+        ac_losses_dict, ac_fwd_dict = None, None
 
         # Store intermediate results for the next batch
         prev_batch_data = {
@@ -937,7 +1099,11 @@ class Dreamer(nn.Module):
             "s_stoch": wm_fwd_dict["s_stoch_list"][:, -1].detach(), # [B, |Y|]
             "reset_mask": wm_fwd_dict["reset_mask"] # [B, 1]
         }
-        return wm_losses_dict, None, wm_fwd_dict, prev_batch_data
+
+        # Track training stats
+        self.n_updates += 1
+
+        return wm_losses_dict, ac_losses_dict, wm_fwd_dict, ac_fwd_dict, prev_batch_data
 
     @torch.no_grad()
     def gen_train_rec_videos(self, batch_data_dict, fwd_dict):
@@ -1002,8 +1168,9 @@ if __name__ == "__main__":
         if global_step <= args.buffer_prefill:
             action = envs.action_space.sample()
         else:
-            # TODO: implement action sampling from the Dreamer agent itself
-            action = envs.action_space.sample()
+            # Tensorize observation, pre-process and put on training device
+            obs_th = torch.Tensor(obs).to(device) / 255.0 - 0.5
+            action, prev_data = dreamer.sample_action(obs_th, prev_data, mode="train")
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(action)
@@ -1018,8 +1185,12 @@ if __name__ == "__main__":
         
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
-        # TODO: have to add the real done data to the "prev_data" dictionary
-        # so that the sampling is correct
+        if isinstance(prev_data, dict):
+            # If we have started sampling action with the Dreamer agent,
+            # need to set "done" to properly mask the previous step's data
+            # when a new episode starts
+            prev_data["done"] = torch.Tensor(dones)[:, None].to(device)
+
         # TODO: add tracking of the number of env steps to the Dreamer agent
         # dreamer.step += args.num_envs * args.env_action_repeat
 
@@ -1028,7 +1199,7 @@ if __name__ == "__main__":
         # TODO also need to add the scheduler for train_every.Does it really need to take the action repeat into account ?
         if global_step >= args.buffer_prefill and buffer.ready_to_sample and global_step % (args.train_every // 4) == 0:
             batch_data_dict = buffer.sample()
-            wm_losses_dict, ac_losses_dict, wm_fwd_dict, prev_batch_data = \
+            wm_losses_dict, ac_losses_dict, wm_fwd_dict, ac_fwd_dict, prev_batch_data = \
                 dreamer._train(batch_data_dict, prev_batch_data)
 
             # Testing video saving
