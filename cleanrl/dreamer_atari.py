@@ -49,7 +49,7 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4",
         help="the id of the environment")
-    parser.add_argument("--num-envs", type=int, default=1,
+    parser.add_argument("--num-envs", type=int, default=1, # TODO: consider making this the default
         help="Number of parallel environments for sampling")
     parser.add_argument("--env-grayscale", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="use grayscale for the pixel-based environment wrappers")
@@ -1324,10 +1324,9 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: start the game
     start_time = time.time()
     obs = envs.reset()
-    prev_data = None
-    prev_batch_data = None
+    prev_data, prev_batch_data = None, None
     n_episodes = 0
-    for global_step in range(0, args.total_timesteps+args.env_action_repeats, args.num_envs):
+    for global_step in range(0, args.total_timesteps+args.num_envs, args.num_envs):
         # ALGO LOGIC: put action logic here
         if global_step <= args.buffer_prefill:
             action = envs.action_space.sample()

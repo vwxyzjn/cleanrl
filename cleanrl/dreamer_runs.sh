@@ -2,6 +2,7 @@
 NUM_CORES=$(nproc --all)
 export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 
+# TODO use 1 2 seeds
 ###############################################
 # region: Atari Pong                          #
 # Dreamer with discrete latents
