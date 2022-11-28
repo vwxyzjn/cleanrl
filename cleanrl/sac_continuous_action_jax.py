@@ -357,7 +357,9 @@ if __name__ == "__main__":
         def mse_loss(params):
             # shape is (n_critics, batch_size, 1)
             current_q_values = qf.apply(params, observations, actions)
-            return ((target_q_values - current_q_values) ** 2).mean(), current_q_values.mean()
+            # mean over the batch and then sum for each critic
+            critic_loss = 0.5 * ((target_q_values - current_q_values) ** 2).mean(axis=1).sum()
+            return critic_loss, current_q_values.mean()
 
         (qf_loss_value, qf_values), grads = jax.value_and_grad(mse_loss, has_aux=True)(qf_state.params)
         qf_state = qf_state.apply_gradients(grads=grads)
