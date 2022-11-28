@@ -39,7 +39,7 @@ def parse_args():
         help="if toggled, cuda will be enabled by default")
     parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
-    parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
+    parser.add_argument("--wandb-project-name", type=str, default="cleanrl-mbrl",
         help="the wandb's project name")
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
@@ -47,26 +47,28 @@ def parse_args():
         help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="PongNoFrameskip-v4",
+    parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4",
         help="the id of the environment")
     parser.add_argument("--num-envs", type=int, default=1,
         help="Number of parallel environments for sampling")
     parser.add_argument("--env-grayscale", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="use grayscale for the pixel-based environment wrappers")
+    parser.add_argument("--env-action-repeats", type=int, default=4,
+        help="the number of step for which the action of the agent is repeated onto the env.")
     # TODO: add parameterization for environment action repeat, especially for other tasks
-    parser.add_argument("--total-timesteps", type=int, default=10_000_000,
+    parser.add_argument("--total-timesteps", type=int, default=40_000_000,
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=1_000_000,
-        help="the replay memory buffer size")
-    parser.add_argument("--buffer-prefill", type=int, default=50_000,
-        help="the number of steps to prefill the buffer with ( without action repeat)")
+    parser.add_argument("--buffer-size", type=int, default=4_000_000,
+        help="the replay memory buffer size, should account for action repeats")
+    parser.add_argument("--buffer-prefill", type=int, default=200_000,
+        help="the number of steps to prefill the buffer with (accounts for action repeats")
     parser.add_argument("--gamma", type=float, default=0.995,
         help="the discount factor gamma")
     parser.add_argument("--lmbda", type=float, default=0.95,
         help="the lambda coeff. for lambda-return computation for value loss")
-    parser.add_argument("--batch-size", type=int, default=32,
+    parser.add_argument("--batch-size", type=int, default=50,
         help="the batch size of sample from the reply memory")
-    parser.add_argument("--batch-length", type=int, default=32,
+    parser.add_argument("--batch-length", type=int, default=50,
         help="the sequence length of trajectories in the batch sampled from memory")
     ## World Model specific hyperparameters
     parser.add_argument("--rssm-hid-size", type=int, default=600,
@@ -150,8 +152,10 @@ def parse_args():
     ## Dreamer specific hyperparameters
     parser.add_argument("--imagine-horizon", type=int, default=16,
         help="the number of steps to simulate using the world model ('dreaming' horizon)")
-    parser.add_argument("--train-every", type=int, default=16,
-        help="the env. step interval after which the model is trained")
+    parser.add_argument("--train-every", type=int, default=64,
+        help="the env. step interval after which the model is trained, taking into account the action repeat"
+             "for each env.step() call: num_envs * action_repeats are sampled"
+             "model update will take place 'train_every // action_repeats'")
     parser.add_argument("--viz-n-videos", type=int, default=3,
         help="the number of video samples to visualize for reconstruction and imagination")
     args = parser.parse_args()
@@ -252,7 +256,7 @@ def make_env(env_id, seed, idx, capture_video, run_name, buffer, args):
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         env = NoopResetEnv(env, noop_max=30)
-        env = MaxAndSkipEnv(env, skip=4) # TODO: parameterize action repeat ?
+        env = MaxAndSkipEnv(env, skip=args.env_action_repeats)
         env = EpisodicLifeEnv(env)
         if "FIRE" in env.unwrapped.get_action_meanings():
             env = FireResetEnv(env)
@@ -273,7 +277,8 @@ def make_env(env_id, seed, idx, capture_video, run_name, buffer, args):
     return thunk
 
 # Buffer with support for Truncated Backpropagation Through Time (TBPTT)
-class DreamerTBPTTDataset():
+# TODO: Rename to buffer instead of Dataset
+class DreamerTBPTTBuffer():
     def __init__(self, config, device):
         self.random = np.random.RandomState(config.seed)
         self.train_eps_cache = {}
@@ -286,6 +291,10 @@ class DreamerTBPTTDataset():
         self.episodes_data = [None for _ in range(B)]
         self.episodes_lengths = [0 for _ in range(B)]
         self.episodes_current_idx = [0 for _ in range(B)]
+
+    @property
+    def size(self):
+        return np.sum([len(v["terminals"]) for v in self.train_eps_cache.values()])
 
     @property
     def ready_to_sample(self):
@@ -424,14 +433,10 @@ class WorldModel(nn.Module):
         # Encoder
         C = 1 if config.env_grayscale else 3
         self.encoder = nn.Sequential(
-            nn.Conv2d(C, 64, kernel_size=(4,4), stride=(2,2)),
-            nn.ELU(),
-            nn.Conv2d(64, 128, kernel_size=(4,4), stride=(2,2)),
-            nn.ELU(),
-            nn.Conv2d(128, 256, kernel_size=(4,4), stride=(2,2)),
-            nn.ELU(),
-            nn.Conv2d(256, 256, kernel_size=(4,4), stride=(2,2)),
-            nn.ELU()
+            nn.Conv2d(C, 64, kernel_size=(4,4), stride=(2,2)), nn.ELU(),
+            nn.Conv2d(64, 128, kernel_size=(4,4), stride=(2,2)), nn.ELU(),
+            nn.Conv2d(128, 256, kernel_size=(4,4), stride=(2,2)), nn.ELU(),
+            nn.Conv2d(256, 256, kernel_size=(4,4), stride=(2,2)), nn.ELU()
         )
 
         # Decoder
@@ -444,26 +449,19 @@ class WorldModel(nn.Module):
         self.decoder = nn.Sequential(
             nn.Linear(self.state_feat_size, 2048),
             DeConvReshape(),
-            nn.ConvTranspose2d(2048, 256, kernel_size=(5,5), stride=(2,2)),
-            nn.ELU(),
-            nn.ConvTranspose2d(256, 128, kernel_size=(5,5), stride=(2,2)),
-            nn.ELU(),
-            nn.ConvTranspose2d(128, 64, kernel_size=(6,6),stride=(2,2)),
-            nn.ELU(),
+            nn.ConvTranspose2d(2048, 256, kernel_size=(5,5), stride=(2,2)), nn.ELU(),
+            nn.ConvTranspose2d(256, 128, kernel_size=(5,5), stride=(2,2)), nn.ELU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=(6,6),stride=(2,2)), nn.ELU(),
             nn.ConvTranspose2d(64, C, kernel_size=(6,6),stride=(2,2))
         )
 
         # Reward predictor
         N = config.rew_pred_hid_size # 400 by default
         self.reward_pred = nn.Sequential(
-            nn.Linear(self.state_feat_size, N),
-            nn.ELU(),
-            nn.Linear(N, N),
-            nn.ELU(),
-            nn.Linear(N, N),
-            nn.ELU(),
-            nn.Linear(N, N),
-            nn.ELU(),
+            nn.Linear(self.state_feat_size, N), nn.ELU(),
+            nn.Linear(N, N), nn.ELU(),
+            nn.Linear(N, N), nn.ELU(),
+            nn.Linear(N, N), nn.ELU(),
             nn.Linear(N, 1)
         )
 
@@ -471,14 +469,10 @@ class WorldModel(nn.Module):
         N = config.disc_pred_hid_size # 400 by default
         if N:
             self.disc_pred = nn.Sequential(
-                nn.Linear(self.state_feat_size, N),
-                nn.ELU(),
-                nn.Linear(N, N),
-                nn.ELU(),
-                nn.Linear(N, N),
-                nn.ELU(),
-                nn.Linear(N, N),
-                nn.ELU(),
+                nn.Linear(self.state_feat_size, N), nn.ELU(),
+                nn.Linear(N, N), nn.ELU(),
+                nn.Linear(N, N), nn.ELU(),
+                nn.Linear(N, N), nn.ELU(),
                 nn.Linear(N, 1)
             )
 
@@ -496,10 +490,6 @@ class WorldModel(nn.Module):
                 self._layer = nn.Linear(inp_size+size, 3*size, bias=norm is not None)
                 if norm:
                     self._norm = nn.LayerNorm(3*size)
-
-            @property
-            def state_size(self):
-                return self._size
 
             def forward(self, inputs, state):
                 parts = self._layer(torch.cat([inputs, state], -1))
@@ -545,7 +535,7 @@ class WorldModel(nn.Module):
                     return {"logits": x.view(-1, self.stoch_size, self.discrete)}
                 else:
                     mean, std = torch.chunk(x, 2 ,1)
-                    std = 2 * torch.sigmoid(x / 2) + 0.1 # TODO: consider simpler parameterization ?
+                    std = 2 * torch.sigmoid(std / 2) + 0.1 # TODO: consider simpler parameterization ?
                     return {"mean": mean, "std": std}
         
         # Posterior distribution over the stochastic state comp. w_t
@@ -803,7 +793,9 @@ class WorldModel(nn.Module):
             # Coefficient
             "kl_scale": config.kl_scale,
             "kl_free": config.kl_free,
-            "kl_balance": config.kl_balance
+            "kl_balance": config.kl_balance,
+
+            # TODO: hyperparameter agnostic WM losses ?
         }
 
         if config.disc_pred_hid_size:
@@ -1255,7 +1247,7 @@ class Dreamer(nn.Module):
 
         # Drop the terminal steps from the data used to 
         # bootstrap the imagination process for actor critic training
-        # .detach() is used to block the gradietn flow from AC to WM component
+        # .detach() is used to block the gradient flow from AC to WM component
         ac_train_data = {k: wm_fwd_dict[k].detach() for k in ["s_deter_list", "s_stoch_list", "s_list"]}
         ac_train_data = {k: torch.masked_select(v, masks_list).view(B_T, -1) for k,v in ac_train_data.items()}
         
@@ -1272,7 +1264,6 @@ class Dreamer(nn.Module):
 
         # Track training stats
         self.n_updates += 1
-        wm_losses_dict["n_updates"] = self.n_updates
         
         return wm_losses_dict, ac_losses_dict, wm_fwd_dict, ac_fwd_dict, prev_batch_data
 
@@ -1334,22 +1325,24 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
-    # Instantiate buffer based dataset loader
-    buffer = DreamerTBPTTDataset(args, device)
-    # Env setup5
+    # Instantiate buffer
+    buffer = DreamerTBPTTBuffer(args, device)
+    # Env setup
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, i, args.capture_video,
         run_name, buffer, args) for i in range(args.num_envs)])
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported" # TODO: this needs not be the case ?
     
     # Instantiate the Dreamer agent
     dreamer = Dreamer(config=args, num_actions=envs.single_action_space.n).to(device)
+    print(dreamer)
 
     # TRY NOT TO MODIFY: start the game
     start_time = time.time()
     obs = envs.reset()
     prev_data = None
     prev_batch_data = None
-    for global_step in range(0, args.total_timesteps+4, 4): # TODO: explicity add support for action repeat instead of hardcoded '4'
+    n_episodes = 0
+    for global_step in range(0, args.total_timesteps+args.env_action_repeats, args.env_action_repeats): # TODO: explicity add support for action repeat instead of hardcoded '4'
         # ALGO LOGIC: put action logic here
         if global_step <= args.buffer_prefill:
             action = envs.action_space.sample()
@@ -1362,12 +1355,16 @@ if __name__ == "__main__":
         next_obs, rewards, dones, infos = envs.step(action)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        for info in infos:
-            if "episode" in info.keys():
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                break # TODO: average over finished envs more accurate ?
+        if int(np.sum(dones)):
+            for info in infos:
+                if "episode" in info.keys():
+                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step) # TODO: does this take into account the action_repeats ?
+                    break # TODO: consider adding RecordEpStas to all the parallel envs, and average
+            n_episodes += np.sum(dones)
+            writer.add_scalar("charts/buffer_size", buffer.size * args.env_action_repeats, global_step)
+            writer.add_scalar("charts/n_episodes", n_episodes, global_step)
         
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -1377,27 +1374,32 @@ if __name__ == "__main__":
             # when a new episode starts
             prev_data["done"] = torch.Tensor(dones)[:, None].to(device)
 
-        # TODO: add tracking of the number of env steps to the Dreamer agent
-        # dreamer.step += args.num_envs * args.env_action_repeat
+        # Tracks number of env. steps so far, namely for decay schedulers
+        dreamer.step += args.num_envs * args.env_action_repeats
 
         # ALGO LOGIC: training.
-        # TODO: add conditiona for when the agent can be trained, and some basic logging
-        # TODO also need to add the scheduler for train_every.Does it really need to take the action repeat into account ?
-        if global_step >= args.buffer_prefill and buffer.ready_to_sample and global_step % (args.train_every // 4) == 0:
+        if global_step >= args.buffer_prefill and buffer.ready_to_sample and global_step % (args.train_every // args.env_action_repeats) == 0:
             batch_data_dict = buffer.sample()
+            # TODO: consolidate losses into a signle dictionary ?
             wm_losses_dict, ac_losses_dict, wm_fwd_dict, ac_fwd_dict, prev_batch_data = \
                 dreamer._train(batch_data_dict, prev_batch_data)
 
             # Logging training stats every 10 effective model updates (.backward() calls)
             # TODO: ideally, the saving of training metrics, video etc.. should not be too frequent
             # Explain the logic for when we log
-            if (global_step // 4 % 10) == 0: 
+            if (global_step // args.env_action_repeats % 10) == 0:
                 # Logging training stats of the WM and AC components in their respective scopes
                 [writer.add_scalar(f"wm/{k}", v, global_step) for k,v in wm_losses_dict.items()]
                 [writer.add_scalar(f"ac/{k}", v, global_step) for k,v in ac_losses_dict.items()]
+                # NOTE: Does not take the buffer prefill samples into account for SPS
+                print("SPS:", int((global_step - args.buffer_prefill) / (time.time() - start_time)))
+                writer.add_scalar("charts/SPS", (global_step - args.buffer_prefill) / (time.time() - start_time), global_step)
+                writer.add_scalar("charts/n_updates", dreamer.n_updates, global_step)
+
                 # Logging video of trajectory reconstruction from the WM training
                 train_rec_video = dreamer.gen_train_rec_videos(batch_data_dict, wm_fwd_dict)
                 writer.add_video("train_rec_video", train_rec_video, global_step, fps=16)
+
                 # Logging video of the reconstructed imaginary trajectories from the AC training
                 imag_rec_video = dreamer.gen_imag_rec_videos(batch_data_dict, ac_fwd_dict)
                 writer.add_video("imag_rec_video", imag_rec_video, global_step, fps=16)
