@@ -8,7 +8,7 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 
 # install python dependencies
 RUN mkdir cleanrl_utils && touch cleanrl_utils/__init__.py
-RUN pip install poetry
+RUN pip install poetry --upgrade
 COPY pyproject.toml pyproject.toml
 COPY poetry.lock poetry.lock
 RUN poetry install
