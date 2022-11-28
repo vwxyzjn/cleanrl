@@ -270,8 +270,7 @@ def make_env(env_id, seed, idx, capture_video, run_name, buffer, args):
         env.action_space.seed(seed + idx)
         env.observation_space.seed(seed + idx)
 
-        # TODO: specificy relation with actio repeat, use it instead of // 4
-        env = DatasetCollectionWrapper(env, buffer, args.buffer_size // 4)
+        env = DatasetCollectionWrapper(env, buffer, args.buffer_size // args.env_action_repeats)
         return env
 
     return thunk
