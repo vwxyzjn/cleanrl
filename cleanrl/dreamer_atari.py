@@ -56,9 +56,9 @@ def parse_args():
     parser.add_argument("--env-action-repeats", type=int, default=4,
         help="the number of step for which the action of the agent is repeated onto the env.")
     # TODO: add parameterization for environment action repeat, especially for other tasks
-    parser.add_argument("--total-timesteps", type=int, default=40_000_000,
+    parser.add_argument("--total-timesteps", type=int, default=20_000_000,
         help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=2_000_000,
+    parser.add_argument("--buffer-size", type=int, default=4_000_000,
         help="the replay memory buffer size, should account for action repeats")
     parser.add_argument("--buffer-prefill", type=int, default=200_000,
         help="the number of steps to prefill the buffer with (accounts for action repeats")
@@ -441,15 +441,15 @@ class WorldModel(nn.Module):
             def __init__(self):
                 super().__init__()
             def forward(self, x):
-                return x[:, :, None, None]   # [B * T, 2048, 1, 1]
+                return x[:, :, None, None]   # [B * T, 1536, 1, 1]
         
         self.decoder = nn.Sequential(
-            nn.Linear(self.state_feat_size, 2048),
+            nn.Linear(self.state_feat_size, 1536),
             DeConvReshape(),
-            nn.ConvTranspose2d(2048, 256, kernel_size=(5,5), stride=(2,2)), nn.ELU(),
-            nn.ConvTranspose2d(256, 128, kernel_size=(5,5), stride=(2,2)), nn.ELU(),
-            nn.ConvTranspose2d(128, 64, kernel_size=(6,6),stride=(2,2)), nn.ELU(),
-            nn.ConvTranspose2d(64, C, kernel_size=(6,6),stride=(2,2))
+            nn.ConvTranspose2d(1536, 192, kernel_size=(5,5), stride=(2,2)), nn.ELU(),
+            nn.ConvTranspose2d(192, 96, kernel_size=(5,5), stride=(2,2)), nn.ELU(),
+            nn.ConvTranspose2d(96, 48, kernel_size=(6,6),stride=(2,2)), nn.ELU(),
+            nn.ConvTranspose2d(48, C, kernel_size=(6,6),stride=(2,2))
         )
 
         # Reward predictor
@@ -1318,6 +1318,8 @@ if __name__ == "__main__":
     # Instantiate the Dreamer agent
     dreamer = Dreamer(config=args, num_actions=envs.single_action_space.n).to(device)
     print(dreamer)
+    from torchinfo import summary
+    summary(dreamer)
 
     # TRY NOT TO MODIFY: start the game
     start_time = time.time()
@@ -1362,7 +1364,9 @@ if __name__ == "__main__":
         dreamer.step += args.num_envs * args.env_action_repeats
 
         # ALGO LOGIC: training.
-        if global_step >= (args.buffer_prefill // args.env_action_repeats) and buffer.ready_to_sample and global_step % (args.train_every // args.env_action_repeats) == 0:
+        if global_step >= (args.buffer_prefill // args.env_action_repeats) and \
+            buffer.ready_to_sample and global_step % args.train_every == 0:
+            # TODO: determine the proper relation between train_every and actiopn_repeats
             batch_data_dict = buffer.sample()
             # TODO: consolidate losses into a signle dictionary ?
             wm_losses_dict, ac_losses_dict, wm_fwd_dict, ac_fwd_dict, prev_batch_data = \
