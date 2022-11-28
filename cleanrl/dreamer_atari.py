@@ -3,6 +3,7 @@ import os
 import io
 import time
 import uuid
+import copy
 import random
 import argparse
 import datetime
@@ -101,10 +102,37 @@ def parse_args():
         help="the 'epsilon' for the world model Adam optimizer")
     parser.add_argument("--model-wd", type=float, default=1e-6,
         help="the weight decay for the world model Adam optimizer")
-    parser.add_argument("--model-grad-clip", type=float, default=100.,
+    parser.add_argument("--model-grad-clip", type=float, default=100,
         help="the gradient norm clipping threshold for the world model")
-    ## TODO Actor (policy) specific hyperparameters
-    ## TODO Value specific hyperparameters
+
+    ## Actor (policy) specific hyperparameters
+    parser.add_argument("--actor-hid-size", type=int, default=400,
+        help="the size of the hidden layers of the actor network")
+    ## Actor optimizer's hyper parameters
+    parser.add_argument("--actor-lr", type=float, default=4e-5,
+        help="the learning rate of the actor's Adam optimizer")
+    parser.add_argument("--actor-eps", type=float, default=1e-5,
+        help="the 'epsilon' for the actor's Adam optimizer")
+    parser.add_argument("--actor-wd", type=float, default=1e-6,
+        help="the weight decay for the actor's Adam optimizer")
+    parser.add_argument("--actor-grad-clip", type=float, default=100,
+        help="the gradient norm clipping threshold for the actor network")
+    
+    ## Value (critic) specific hyperparameters
+    parser.add_argument("--value-hid-size", type=int, default=400,
+        help="the size of the hidden layers of the value network")
+    parser.add_argument("--value-slow-target", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="use a lagging copy of the value network for actor loss computation") 
+    ## Value optimizer's hyper parameters
+    parser.add_argument("--value-lr", type=float, default=1e-4,
+        help="the learning rate of the value's Adam optimizer")
+    parser.add_argument("--value-eps", type=float, default=1e-5,
+        help="the 'epsilon' for the value's Adam optimizer")
+    parser.add_argument("--value-wd", type=float, default=1e-6,
+        help="the weight decay for the value's Adam optimizer")
+    parser.add_argument("--value-grad-clip", type=float, default=100,
+        help="the gradient norm clipping threshold for the value network")
+
     ## Dreamer specific hyperparameters
     parser.add_argument("--train-every", type=int, default=16,
         help="the env. step interval after which the model is trained")
@@ -446,7 +474,7 @@ class WorldModel(nn.Module):
                     mean, std = torch.chunk(x, 2 ,1)
                     std = 2 * torch.sigmoid(x / 2) + 0.1 # TODO: consider simpler parameterization ?
                     return {"mean": mean, "std": std}
-            
+        
         # Posterior distribution over the stochastic state comp. w_t
         # TODO: find a better way to handle the 1536 obs_feat size ?
         self.post_state = DistributionParameters(
@@ -468,9 +496,6 @@ class WorldModel(nn.Module):
             lr=config.model_lr,
             eps=config.model_eps,
             weight_decay=config.model_wd)
-    
-        # Tracking some training steps
-        self.register_buffer("n_updates", torch.LongTensor([0]))
     
     # Helper method that returns a distribution
     # that can be sampled from based for either
@@ -831,9 +856,61 @@ class WorldModel(nn.Module):
 
         return action.cpu().numpy(), {"s_deter": s_deter, "s_stoch": s_stoch, "action": action, "done": done}
 
-class ActorCritic():
-    def __init__(self):
-        pass
+class ActorCritic(nn.Module):
+    def __init__(self, config, num_actions, wm_fn):
+        super().__init__()
+        self.config = config
+        self.num_actions = num_actions
+        self.wm_fn = wm_fn
+        
+        # Pre-compute the state_feat_size: |S| = |H| + |Y|
+        self.state_feat_size = config.rssm_deter_size
+        self.state_stoch_feat_size = config.rssm_stoch_size * config.rssm_discrete \
+            if config.rssm_discrete else config.rssm_stoch_size
+        self.state_feat_size += self.state_stoch_feat_size
+        self.state_stoch_feat_size
+
+        # Actor component
+        N = config.actor_hid_size
+        
+        # TODO: make the nn declaration more compact ?
+        self.actor = nn.Sequential(
+            nn.Linear(self.state_feat_size, N), nn.ELU(),
+            nn.Linear(N, N), nn.ELU(),
+            nn.Linear(N, N), nn.ELU(),
+            nn.Linear(N, N), nn.ELU(),
+            nn.Linear(N, num_actions) # logits layer
+        )
+
+        # Value component
+        N = config.value_hid_size
+        self.value = nn.Sequential(
+            nn.Linear(self.state_feat_size, N), nn.ELU(),
+            nn.Linear(N, N), nn.ELU(),
+            nn.Linear(N, N), nn.ELU(),
+            nn.Linear(N, N), nn.ELU(),
+            nn.Linear(N, 1)
+        )
+        if config.value_slow_target:
+            self.slow_value = copy.deepcopy(self.value)
+            self.slow_value.requires_grad_(False)
+
+        # Actor optimizer
+        self.actor_optimizer = optim.Adam(
+            params=self.actor.parameters(),
+            lr=config.actor_lr,
+            eps=config.actor_eps,
+            weight_decay=config.actor_wd)
+        
+        # Value optimizer
+        self.value_optimizer = optim.Adam(
+            params=self.value.parameters(),
+            lr=config.value_lr,
+            eps=config.value_eps,
+            weight_decay=config.value_wd)
+        
+        # Tracking training stats
+        self.register_buffer("slow_value_n_updates", torch.LongTensor([0]))
 
 class Dreamer(nn.Module):
     def __init__(self, config, num_actions):
@@ -842,7 +919,7 @@ class Dreamer(nn.Module):
         self.num_actons = num_actions
         
         self.wm = WorldModel(config=args, num_actions=num_actions)
-        self.ac = None # TODO: Instantiate ActorCritic
+        self.ac = ActorCritic(config=args, num_actions=num_actions, wm_fn=lambda: self.wm)
 
         # Tracking training stats
         self.register_buffer("step", torch.LongTensor([0])) # How many env. steps so far, for schedulers
