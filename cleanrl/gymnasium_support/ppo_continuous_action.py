@@ -82,7 +82,7 @@ def make_env(env_id, seed, idx, capture_video, run_name, gamma):
             env = gym.make(env_id, render_mode="rgb_array")
         else:
             env = gym.make(env_id)
-        env = gym.wrappers.FlattenObservation(env) # deal with dm_control's Dict observation space
+        env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
@@ -214,9 +214,9 @@ if __name__ == "__main__":
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
 
-            # Only print when at least 1 env is done  
+            # Only print when at least 1 env is done
             if "final_info" not in infos:
-                continue 
+                continue
 
             for info in infos["final_info"]:
                 # Skip the envs that are not done
