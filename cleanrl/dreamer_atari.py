@@ -205,7 +205,6 @@ def make_env(env_id, seed, idx, capture_video, run_name, buffer, args):
             return observation, reward, done, info
         
         def reset(self):
-            # TODO: ASCII art of how the data is stored
             first_obs = super().reset()
             self._episode_data = {
                 "observations": [first_obs],
@@ -572,7 +571,7 @@ class WorldModel(nn.Module):
     def forward(self, batch_data_dict, prev_batch_data):
         """
             "batch_data_dict" is a dictionary with the following elements:
-                - "observations": [B, T, 1, 64, 64]
+                - "observations": [B, T, C, H, W]
                 - "actions": [B, T, 1]
                 - "rewards": [B, T, 1]
                 - "terminals": [B, T, 1]
@@ -721,14 +720,14 @@ class WorldModel(nn.Module):
         # Reconstruct observation and compute the corresponding loss
         obs_rec_mean_list = self.decoder(s_list.view(B * T, -1)).view(B, T, *C_H_W) # [B, T, C, H, W]
         obs_list = batch_data_dict["observations"]
-        obs_rec_dist = thd.Independent(thd.Normal(obs_rec_mean_list, 1.0), len(C_H_W))
+        obs_rec_dist = thd.Independent(thd.Normal(obs_rec_mean_list, 1), len(C_H_W))
         rec_loss_list = obs_rec_dist.log_prob(obs_list).neg() # [B, T]
         rec_loss = rec_loss_list.mean() # Avg. neg. log likelihood over batch size and length
 
         # Predict the rewards and compute the corresonding loss
         rew_pred_mean_list = self.reward_pred(s_list) # [B, T, 1]
         rew_list = batch_data_dict["rewards"] # [B, T, 1]
-        rew_pred_dist = thd.Independent(thd.Normal(rew_pred_mean_list, 1.0), 1)
+        rew_pred_dist = thd.Independent(thd.Normal(rew_pred_mean_list, 1), 1)
         rew_pred_loss_list = rew_pred_dist.log_prob(rew_list).neg() # [B, T]
         rew_pred_loss = rew_pred_loss_list.mean()
 
@@ -750,7 +749,7 @@ class WorldModel(nn.Module):
         prior_ent = self.get_dist(prior_state_dist_data).entropy().mean()
 
         # world model loss
-        wm_loss = rec_loss + rew_pred_loss_scaled
+        wm_loss = rec_loss + kl_loss_scaled + rew_pred_loss_scaled
 
         # Compute the discount prediction loss, if applicable
         if config.disc_pred_hid_size:
@@ -808,9 +807,8 @@ class WorldModel(nn.Module):
 
         with RequiresGrad(self):
             wm_losses_dict, wm_fwd_dict = self.loss(batch_data_dict, prev_batch_data)
-            wm_loss = wm_losses_dict["wm_loss"]
             self.model_optimizer.zero_grad()
-            wm_loss.backward()
+            wm_losses_dict["wm_loss"].backward()
             if config.model_grad_clip:
                 torch.nn.utils.clip_grad_norm_(self.parameters(), config.model_grad_clip)
             self.model_optimizer.step()
@@ -903,7 +901,7 @@ class WorldModel(nn.Module):
             # Form the state feats s_h as concat(h_h, y_h)
             s_feat = torch.cat([s_deter, s_stoch], 1)
 
-        imag_s_list =  torch.stack(imag_s_list, dim=0) # [H, B * T, |H| + |Y|]
+        imag_s_list = torch.stack(imag_s_list, dim=0) # [H, B * T, |H| + |Y|]
         imag_action_list = torch.stack(imag_action_list, dim=0) # [H, B * T, |A|]
 
         # Imagine the rewards using the world model;s reward predictor.
@@ -928,7 +926,6 @@ class ActorCritic(nn.Module):
         self.state_stoch_feat_size = config.rssm_stoch_size * config.rssm_discrete \
             if config.rssm_discrete else config.rssm_stoch_size
         self.state_feat_size += self.state_stoch_feat_size
-        self.state_stoch_feat_size
 
         # Actor component
         N = config.actor_hid_size
@@ -1154,16 +1151,17 @@ class ActorCritic(nn.Module):
         # Actor loss computation
         with RequiresGrad(actor):
             # Use the world model to simulate trajectories
+            # This needs to be done under the actor's gradient computation scope
+            # to compute the gradient of the action through the world model dynamics
             imagine_data_dict = wm.imagine(actor, ac_train_data, config.imagine_horizon)
 
             # Compute the actor loss and other related training stats
             actor_losses_dict, value_train_data = \
                 self.compute_actor_loss(imagine_data_dict, ac_train_data)
-            actor_loss = actor_losses_dict["actor_loss"]
 
             # Optimize the actor network
             self.actor_optimizer.zero_grad()
-            actor_loss.backward()
+            actor_losses_dict["actor_loss"].backward()
             if config.actor_grad_clip:
                 torch.nn.utils.clip_grad_norm_(actor.parameters(), config.actor_grad_clip)
             self.actor_optimizer.step()
@@ -1227,7 +1225,7 @@ class Dreamer(nn.Module):
             # Masks to remove the terminal steps for imagination
             ter_list = batch_data_dict["terminals"]
             masks_list = torch.logical_not(ter_list)
-            B_T = masks_list.sum() 
+            B_T = masks_list.sum()
 
         # Drop the terminal steps from the data used to 
         # bootstrap the imagination process for actor critic training
@@ -1348,8 +1346,8 @@ if __name__ == "__main__":
                     writer.add_scalar("charts/episodic_length_frames", info["episode"]["l"] * args.env_action_repeats, global_step)
                     break
             n_episodes += np.sum(dones)
-            writer.add_scalar("charts/buffer_steps", buffer.size, global_step)
-            writer.add_scalar("charts/buffer_frames", buffer.size * args.env_action_repeats, global_step)
+            # writer.add_scalar("charts/buffer_steps", buffer.size, global_step)
+            # writer.add_scalar("charts/buffer_frames", buffer.size * args.env_action_repeats, global_step)
             writer.add_scalar("charts/n_episodes", n_episodes, global_step)
         
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
@@ -1364,8 +1362,7 @@ if __name__ == "__main__":
         dreamer.step += args.num_envs * args.env_action_repeats
 
         # ALGO LOGIC: training.
-        if global_step >= (args.buffer_prefill // args.env_action_repeats) and \
-            buffer.ready_to_sample and global_step % args.train_every == 0:
+        if global_step >= (args.buffer_prefill // args.env_action_repeats) and global_step % args.train_every == 0:
             # TODO: determine the proper relation between train_every and actiopn_repeats
             batch_data_dict = buffer.sample()
             # TODO: consolidate losses into a signle dictionary ?
