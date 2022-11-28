@@ -21,6 +21,7 @@ pygame = "2.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.20.0"
+poethepoet = "^0.16.5"
 
 [tool.poetry.group.atari]
 optional = true
@@ -105,6 +106,11 @@ optional = true
 shimmy = "^0.1.0"
 dm-control = "^1.0.8"
 mujoco = "^2.2"
+
+[tool.poe.tasks]
+install-ltt = "python3 -m pip install light-the-torch"
+run-ltt = "python3 -m light_the_torch install --upgrade torch"
+autoinstall-torch-cuda = ["install-ltt", "run-ltt"]
 
 [build-system]
 requires = ["poetry-core"]
