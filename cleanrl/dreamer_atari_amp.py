@@ -813,6 +813,7 @@ class WorldModel(nn.Module):
             self.model_optimizer.zero_grad()
             self.optim_scaler.scale(wm_losses_dict["wm_loss"]).backward()
             if config.model_grad_clip:
+                self.optim_scaler.unscale_(self.model_optimizer)
                 torch.nn.utils.clip_grad_norm_(self.parameters(), config.model_grad_clip)
             # self.model_optimizer.step()
             self.optim_scaler.step(self.model_optimizer)
@@ -1171,6 +1172,7 @@ class ActorCritic(nn.Module):
             self.actor_optimizer.zero_grad()
             self.actor_optim_scaler.scale(actor_losses_dict["actor_loss"]).backward()
             if config.actor_grad_clip:
+                self.actor_optim_scaler.unscale_(self.actor_optimizer)
                 torch.nn.utils.clip_grad_norm_(actor.parameters(), config.actor_grad_clip)
             # self.actor_optimizer.step()
             self.actor_optim_scaler.step(self.actor_optimizer)
@@ -1185,6 +1187,7 @@ class ActorCritic(nn.Module):
             self.value_optimizer.zero_grad()
             self.value_optim_scaler.scale(value_losses_dict["value_loss"]).backward()
             if config.value_grad_clip:
+                self.value_optim_scaler.unscale_(self.value_optimizer)
                 torch.nn.utils.clip_grad_norm_(value.parameters(), config.value_grad_clip)
             # self.value_optimizer.step()
             self.value_optim_scaler.step(self.value_optimizer)
