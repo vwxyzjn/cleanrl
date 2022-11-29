@@ -21,6 +21,23 @@ export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 #     --seed 2 \
 # ) >& /dev/null &
 
+# Dreamer with discrete latents and AMP
+# export CUDA_VISIBLE_DEVICES=7
+# (sleep 1s && python dreamer_atari_amp.py \
+#     --track --capture-video \
+#     --env-id "BreakoutNoFrameskip-v4" \
+#     --exp-name "dreamer_amp" \
+#     --seed 1 \
+# ) >& /dev/null &
+
+# export CUDA_VISIBLE_DEVICES=6
+# (sleep 1s && python dreamer_atari_amp.py \
+#     --track --capture-video \
+#     --env-id "BreakoutNoFrameskip-v4" \
+#     --exp-name "dreamer_amp" \
+#     --seed 2 \
+# ) >& /dev/null &
+
 
 # Dreamer with discrete latents, bugger batch and shorter sequences
 # export CUDA_VISIBLE_DEVICES=1
