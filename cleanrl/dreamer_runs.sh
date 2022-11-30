@@ -26,16 +26,16 @@ export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 # (sleep 1s && python dreamer_atari.py \
 #     --track --capture-video \
 #     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer__trainevery_4" \
-#     --train-every 4 \
+#     --exp-name "dreamer__trainevery_8" \
+#     --train-every 8 \
 #     --seed 1 \
 # ) >& /dev/null &
 # export CUDA_VISIBLE_DEVICES=2
 # (sleep 1s && python dreamer_atari.py \
 #     --track --capture-video \
 #     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer__trainevery_4" \
-#     --train-every 4 \
+#     --exp-name "dreamer__trainevery_8" \
+#     --train-every 8 \
 #     --seed 2 \
 # ) >& /dev/null &
 
