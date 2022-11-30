@@ -424,7 +424,6 @@ class WorldModel(nn.Module):
         self.state_stoch_feat_size = config.rssm_stoch_size * config.rssm_discrete \
             if config.rssm_discrete else config.rssm_stoch_size
         self.state_feat_size += self.state_stoch_feat_size
-        self.state_stoch_feat_size
         
         # Encoder
         C = 1 if config.env_grayscale else 3
