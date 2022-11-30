@@ -796,7 +796,7 @@ class WorldModel(nn.Module):
 
         # fwd_dict is used later for the imagination path and actor-critic loss
         wm_fwd_dict["s_list"] = s_list
-         # For video generation;
+        # For video generation;
         N = min(B, config.viz_n_videos)
         wm_fwd_dict["obs_rec_mean_list"] = obs_rec_mean_list[:N].detach()
 
@@ -1236,7 +1236,7 @@ class Dreamer(nn.Module):
         # Update the ActorCritic component
         ac_losses_dict, ac_fwd_dict = self.ac._train(ac_train_data)
 
-        # Store intermediate results for the next batch
+        # Store intermediate results for the next batch, required for TBPTT.
         prev_batch_data = {
             "s_deter": wm_fwd_dict["s_deter_list"][:, -1].detach(), # [B, |H|]
             "s_stoch": wm_fwd_dict["s_stoch_list"][:, -1].detach(), # [B, |Y|]
@@ -1251,7 +1251,6 @@ class Dreamer(nn.Module):
     @torch.no_grad()
     def gen_train_rec_videos(self, batch_data_dict, wm_fwd_dict):
         # Generates video of batch trajectories' ground truth, reconstruction and error
-        config = self.config
         obs_rec_mean_list = wm_fwd_dict["obs_rec_mean_list"] # [N, T, C, H, W]
         N = obs_rec_mean_list.shape[0]
         orig_obs_list = batch_data_dict["observations"][:N] + 0.5 # [N, T, C ,H, W] in range [0.0,1.0]
@@ -1266,12 +1265,12 @@ class Dreamer(nn.Module):
     def gen_imag_rec_videos(self, batch_data_dict, ac_fwd_dict):
         # Generates video of reconstructed imaginary trajectories
         N = self.config.viz_n_videos
-        H = self.config.imagine_horizon # Hor
+        Hor = self.config.imagine_horizon # Hor
         C_H_W = batch_data_dict["observations"].shape[2:] # C,H,W
         imag_s_list = ac_fwd_dict["imag_s_list"]
         imag_s_list = torch.stack([imag_s_list[:, i * args.batch_length] for i in range(N)], dim=0) # [N, Hor, |S|]
-        imag_s_list = imag_s_list.view(N * H, -1) # [N * Hor, |S|]
-        imag_traj_video = (self.wm.decoder(imag_s_list).view(N, H, *C_H_W) + .5).clamp(0.0, 1.0) # [N, Hor, C, H, W]
+        imag_s_list = imag_s_list.view(N * Hor, -1) # [N * Hor, |S|]
+        imag_traj_video = (self.wm.decoder(imag_s_list).view(N, Hor, *C_H_W) + .5).clamp(0.0, 1.0) # [N, Hor, C, H, W]
         black_strip = imag_traj_video.new_zeros([*imag_traj_video.shape[1:-1], 3])
         imag_traj_video_processed = torch.cat([torch.cat([tnsr, black_strip], 3) for tnsr in imag_traj_video], dim=3)[None] # [1, N, Hor, C, H, (W + 3)* N]
         imag_traj_video_processed = imag_traj_video_processed[:, :, :, :, :-3] # [1, Hor, C, H, (W + 3)* N - 3]
