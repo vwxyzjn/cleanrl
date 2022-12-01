@@ -3,7 +3,7 @@ NUM_CORES=$(nproc --all)
 export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 
 ###############################################
-# region: Atari Breakout                          #
+# region: Atari Breakout                      #
 
 # # Dreamer Disc Baseline, B=50, T=50, train-every=16
 # export CUDA_VISIBLE_DEVICES=7
@@ -84,4 +84,36 @@ export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 # done
 
 # endregion: Atari Breakout                   #
+###############################################
+
+###############################################
+# region: Atari Pong                           #
+# export CUDA_VISIBLE_DEVICES=1
+# for seed in 1 2; do
+#     (sleep 1s && python dreamer_atari.py \
+#         --track --capture-video \
+#         --env-id "PongNoFrameskip-v4" \
+#         --batch-size 50 --batch-length 50 \
+#         --train-every 16 \
+#         --exp-name "dreamer_B_50_T_50_trnev_16" \
+#         --seed $seed \
+#     ) >& /dev/null &
+# done
+# endregion: Atari Pong                       #
+###############################################
+
+###############################################
+# region: Atari Freeway                       #
+# export CUDA_VISIBLE_DEVICES=0
+# for seed in 1 2; do
+#     (sleep 1s && python dreamer_atari.py \
+#         --track --capture-video \
+#         --env-id "FreewayNoFrameskip-v4" \
+#         --batch-size 50 --batch-length 50 \
+#         --train-every 16 \
+#         --exp-name "dreamer_B_50_T_50_trnev_16" \
+#         --seed $seed \
+#     ) >& /dev/null &
+# done
+# endregion: Atari Freeway                    #
 ###############################################
