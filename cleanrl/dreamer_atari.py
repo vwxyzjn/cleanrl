@@ -1,6 +1,6 @@
 # TODO docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/dreamer/#dreamer_ataripy
 import os
-import io
+import re
 import time
 import uuid
 import copy
@@ -13,10 +13,9 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
+import torch.nn.functional as F
 import torch.distributions as thd
-from torch.utils.data import IterableDataset, DataLoader
 from stable_baselines3.common.atari_wrappers import (
     ClipRewardEnv,
     EpisodicLifeEnv,
@@ -49,19 +48,19 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4",
         help="the id of the environment")
-    parser.add_argument("--num-envs", type=int, default=1, # TODO: consider making this the default
+    parser.add_argument("--num-envs", type=int, default=1,
         help="Number of parallel environments for sampling")
     parser.add_argument("--env-grayscale", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="use grayscale for the pixel-based environment wrappers")
     parser.add_argument("--env-action-repeats", type=int, default=4,
         help="the number of step for which the action of the agent is repeated onto the env.")
     # TODO: add parameterization for environment action repeat, especially for other tasks
-    parser.add_argument("--total-timesteps", type=int, default=20_000_000,
-        help="total timesteps of the experiments")
-    parser.add_argument("--buffer-size", type=int, default=4_000_000,
-        help="the replay memory buffer size, should account for action repeats")
-    parser.add_argument("--buffer-prefill", type=int, default=200_000,
-        help="the number of steps to prefill the buffer with (accounts for action repeats")
+    parser.add_argument("--total-timesteps", type=int, default=5_000_000,
+        help="total timesteps of the experiments. The amount of frames is total-timesteps * action_repeats.")
+    parser.add_argument("--buffer-size", type=int, default=1_000_000,
+        help="the replay memory buffer size. The amount of frames is buffer-size * action_repeats")
+    parser.add_argument("--buffer-prefill", type=int, default=50_000,
+        help="the number of steps to prefill the buffer with. The amount of frames is thus buffer-prefill * action_repeats.")
     parser.add_argument("--gamma", type=float, default=0.995,
         help="the discount factor gamma")
     parser.add_argument("--lmbda", type=float, default=0.95,
@@ -152,13 +151,43 @@ def parse_args():
     ## Dreamer specific hyperparameters
     parser.add_argument("--imagine-horizon", type=int, default=16,
         help="the number of steps to simulate using the world model ('dreaming' horizon)")
-    parser.add_argument("--train-every", type=int, default=16, 
-        help="the env. step interval after which the model is trained, taking into account the action repeat")
+    # TODO: train-every in the paper says 4, but in the code says 16
+    # Does the code consider train-every frame or train-every step environmetn ?
+    parser.add_argument("--train-every", type=int, default=16,
+        help="the env. steps interval after which the model is trained.")
     parser.add_argument("--viz-n-videos", type=int, default=3,
         help="the number of video samples to visualize for reconstruction and imagination")
     args = parser.parse_args()
     # fmt: on
     return args
+
+# Helper to show expected training time in human readable form:
+# Credits: https://github.com/hevalhazalkurt/codewars_python_solutions/blob/master/4kyuKatas/Human_readable_duration_format.md
+# NOTE: While it breaks default logging of cleanrl, because Dreamer (mbrl) takes more time, it is informative for experimetnation
+def hrd(seconds): # Human readable duration
+    words = ["year", "day", "hr", "min", "sec"]
+
+    m, s = divmod(int(seconds), 60)
+    h, m = divmod(m, 60)
+    d, h = divmod(h, 24)
+    y, d = divmod(d, 365)
+
+    time = [y, d, h, m, s]
+
+    duration = []
+
+    for x, i in enumerate(time):
+        if i == 1:
+            duration.append(f"{i} {words[x]}")
+        elif i > 1:
+            duration.append(f"{i} {words[x]}s")
+
+    if len(duration) == 1:
+        return duration[0]
+    elif len(duration) == 2:
+        return f"{duration[0]}, {duration[1]}"
+    else:
+        return ", ".join(duration[:-1]) + ", " + duration[-1]
 
 # Environment with custom Wrapper to collect datasets
 def make_env(env_id, seed, idx, capture_video, run_name, buffer, args):
@@ -178,7 +207,7 @@ def make_env(env_id, seed, idx, capture_video, run_name, buffer, args):
             return observation.transpose(2, 0, 1)
 
     # Special wrapper to accumulate episode data and save them to drive for later use
-    class DatasetCollectionWrapper(gym.Wrapper):
+    class SampleCollectionWrapper(gym.Wrapper):
         def __init__(self, env, buffer, buffer_size):
             super().__init__(env)
             self._episode_data = None
@@ -266,17 +295,17 @@ def make_env(env_id, seed, idx, capture_video, run_name, buffer, args):
         env.seed(seed + idx)
         env.action_space.seed(seed + idx)
         env.observation_space.seed(seed + idx)
+        env.reset(seed=seed + idx)
 
-        env = DatasetCollectionWrapper(env, buffer, args.buffer_size // args.env_action_repeats)
+        env = SampleCollectionWrapper(env, buffer, args.buffer_size)
         return env
 
     return thunk
 
 # Buffer with support for Truncated Backpropagation Through Time (TBPTT)
-# TODO: Rename to buffer instead of Dataset
 class DreamerTBPTTBuffer():
     def __init__(self, config, device):
-        self.random = np.random.RandomState(config.seed)
+        self.np_random = np.random.RandomState(config.seed)
         self.train_eps_cache = {}
         self.B = B = config.batch_size
         self.T = config.batch_length
@@ -291,16 +320,10 @@ class DreamerTBPTTBuffer():
     @property
     def size(self):
         return np.sum([len(v["terminals"])-1  for v in self.train_eps_cache.values()])
-
-    @property
-    def ready_to_sample(self):
-        return len(self.train_eps_cache.keys()) > self.B
     
     def sample(self):
         # TODO: more efficient method to sample that can use multiple workers
-        # to hasten the sampling process a bit
-        assert self.ready_to_sample, \
-            "Attempting to sample from buffer without enough episodes data."
+        # to hasten the sampling process a bit ?
         B, T = self.B, self.T
         # Placeholder
         C = 1 if self.config.env_grayscale else 3
@@ -316,7 +339,7 @@ class DreamerTBPTTBuffer():
                 ep_length = self.episodes_lengths[b]
                 ep_current_idx = self.episodes_current_idx[b]
                 if edd is None or ep_length == ep_current_idx:
-                    ep_filename = np.random.choice(list(self.train_eps_cache.keys()))
+                    ep_filename = self.np_random.choice(list(self.train_eps_cache.keys()))
                     self.episodes_data[b] = edd = self.train_eps_cache[ep_filename]
                     self.episodes_lengths[b] = ep_length = len(edd["terminals"])
                     self.episodes_current_idx[b] = ep_current_idx = 0
@@ -343,36 +366,19 @@ class DreamerTBPTTBuffer():
             "terminals": torch.Tensor(ter_list).bool().to(self.device)
         }
 
-# One-Hot Categorical distribution with straight-through reperameterization
-class OneHotDist(thd.one_hot_categorical.OneHotCategorical):
-    """
-        A one-hot categorical distribution that supports straight-through
-        gradient backprop, allowing training of discrete latent variabless.
-        # TODO: attribution
-    """
-    def __init__(self, logits=None, probs=None):
-        super().__init__(logits=logits, probs=probs)
-
-    def mode(self):
-        _mode = F.one_hot(torch.argmax(super().logits, axis=-1), super().logits.shape[-1])
-        return _mode.detach() + super().logits - super().logits.detach()
-
-    def rsample(self, sample_shape=(), seed=None):
-        if seed is not None:
-            raise ValueError('need to check')
-        sample = super().sample(sample_shape)
-        probs = super().probs
-        while len(probs.shape) < len(sample.shape):
-            probs = probs[None]
-        sample += probs - probs.detach()
-        return sample
-
-# Straight-through reparameterized Bernoulli distribution
+# Custom 
 class Bernoulli():
     """
         A binary variable distribution that supports straight-through
         gradient backprop, allowing training of the episode termination.
-        # TODO: attribution
+        
+        Credits:
+         - Danijar Hafner's original TF2.0 implementation: https://github.com/jsikyoon/dreamer-torch/blob/7c2331acd4fa6196d140943e977f23fb177398b3/tools.py#L312
+         - Jaesik Yoon's Pytorch adaption: https://github.com/jsikyoon/dreamer-torch/blob/7c2331acd4fa6196d140943e977f23fb177398b3/tools.py#L312
+
+        # TODO:
+         - Investigate the benefit of using this custom Bernoulli dist over the default in Pytorch ?
+         - Tidy up the code to be more cleanrl-ish
     """
     def __init__(self, dist=None):
         super().__init__()
@@ -398,7 +404,6 @@ class Bernoulli():
         log_probs1 = -F.softplus(-_logits)
 
         return log_probs0 * (1-x) + log_probs1 * x
-                
 
 # Scope that enables gradient computation
 class RequiresGrad():
@@ -562,13 +567,46 @@ class WorldModel(nn.Module):
     def get_dist(self, dist_data):
         if self.config.rssm_discrete:
             logits = dist_data["logits"]
-            dist = thd.Independent(OneHotDist(logits=logits), 1)
+            dist = thd.Independent(thd.OneHotCategoricalStraightThrough(logits=logits), 1)
         else:
             mean, std = dist_data["mean"], dist_data["std"]
             dist = thd.Independent(thd.Normal(mean, std), 1)
         return dist
 
-    def forward(self, batch_data_dict, prev_batch_data):
+    # Helper method that computes the KL loss
+    # for two distribution. Handles both categorical
+    # and continuous variants, as well as KL balancing
+    # mechanism introduced in Dreamer v2
+    def kl_loss(self, post, prior, forward, balance, free):
+        """
+            # TODO: add attribution to the code used
+            If self.config.rssm_discrete, expects
+                - post || prior as a dict containing 'logits': logits list [B * T, stoch_size * disrete_size]
+            else:
+                - post: {post_mean_list, post_std_list}, where post_mean_list of shape [B * T, stoch-size]
+                - prior: {prior_mean_list, prior_std_list}
+        """
+        kld = thd.kl.kl_divergence
+        dist = lambda x: self.get_dist(x) # local shorthand
+        sg = lambda x: {k: v.detach() if isinstance(v, list) and len(v) else v for k, v in x.items()} # stop_gradient
+        
+        # Dreamer v2 KL Balancing
+        lhs, rhs = (prior, post) if forward else (post, prior)
+        mix = balance if forward else (1. - balance)
+        if balance == 0.5:
+            value = kld(dist(lhs), dist(rhs))
+            # TODO: how does this differ from standard KL div ?
+            loss = (torch.maximum(value, torch.Tensor([free])[0])).mean()
+        else:
+            value_lhs = value = kld(dist(lhs), dist(sg(rhs)))
+            value_rhs = kld(dist(sg(lhs)), dist(rhs))
+            loss_lhs = torch.maximum(value_lhs.mean(), torch.Tensor([free])[0])
+            loss_rhs = torch.maximum(value_rhs.mean(), torch.Tensor([free])[0])
+            loss = mix * loss_lhs + (1 - mix) * loss_rhs
+
+        return loss, value
+
+    def loss(self, batch_data_dict, prev_batch_data):
         """
             "batch_data_dict" is a dictionary with the following elements:
                 - "observations": [B, T, C, H, W]
@@ -597,9 +635,10 @@ class WorldModel(nn.Module):
             discounts           0   d_0   d_1  ...  d_T
         """
         config = self.config
-        obs_list, act_list, ter_list = \
+        obs_list, act_list, rew_list, ter_list = \
             batch_data_dict["observations"], \
             batch_data_dict["actions"], \
+            batch_data_dict["rewards"], \
             batch_data_dict["terminals"]
         
         B, T = obs_list.shape[:2]
@@ -612,6 +651,7 @@ class WorldModel(nn.Module):
                 "reset_mask": obs_list.new_zeros([B, 1])
             }
         
+        # Forward pass of the world model over the batch trajectory
         # Encode images into low-dimensional feature vectors: x_t <- Encoder(o_t)
         obs_feat_list = self.encoder(obs_list.view(B * T, *C_H_W)).view(B, T, -1) # [B, T, 1024]
 
@@ -652,81 +692,30 @@ class WorldModel(nn.Module):
             s_stoch_list.append(s_stoch)
 
             # Prepare the mask to reset the s_deter and s_stoch in the next step, if needs be.
+            # NOTE: This will be passed together with the latest s_{deter, stoch} for the next batch's
             reset_mask = 1 - ter_list[:, t].float()
         
         # Stack and tensorize the placeholder lists
-        s_deter_list = torch.stack(s_deter_list, dim=1)
-        s_stoch_list = torch.stack(s_stoch_list, dim=1)
-        post_state_dist_data = {k: torch.stack(v, dim=1) if isinstance(v, list) and len(v) else v 
-            for k,v in post_state_dist_data.items()}
-        prior_state_dist_data = {k: torch.stack(v, dim=1) if isinstance(v, list) and len(v) else v 
-            for k,v in prior_state_dist_data.items()}
-
-        return {
-            "s_deter_list": s_deter_list,
-            "s_stoch_list": s_stoch_list,
-            "post_state_dist_data": post_state_dist_data,
-            "prior_state_dist_data": prior_state_dist_data,
-            "reset_mask": reset_mask
-        }
-    
-    # Helper method that computes the KL loss
-    # for two distribution. Handles both categorical
-    # and continuous variants, as well as KL balancing
-    # mechanism introduced in Dreamer v2
-    def kl_loss(self, post, prior, forward, balance, free):
-        """
-            # TODO: add attribution to the code used
-            If self.config.rssm_discrete, expects
-                - post || prior as a dict containing 'logits': logits list [B * T, stoch_size * disrete_size]
-            else:
-                - post: {post_mean_list, post_std_list}, where post_mean_list of shape [B * T, stoch-size]
-                - prior: {prior_mean_list, prior_std_list}
-        """
-        kld = thd.kl.kl_divergence
-        dist = lambda x: self.get_dist(x) # local shorthand
-        sg = lambda x: {k: v.detach() if isinstance(v, list) and len(v) else v for k, v in x.items()} # stop_gradient
-        
-        # Dreamer v2 KL Balancing
-        lhs, rhs = (prior, post) if forward else (post, prior)
-        mix = balance if forward else (1. - balance)
-        if balance == 0.5:
-            value = kld(dist(lhs), dist(rhs))
-            # TODO: how does this differ from standard KL div ?
-            loss = (torch.maximum(value, torch.Tensor([free])[0])).mean()
-        else:
-            value_lhs = value = kld(dist(lhs), dist(sg(rhs)))
-            value_rhs = kld(dist(sg(lhs)), dist(rhs))
-            loss_lhs = torch.maximum(value_lhs.mean(), torch.Tensor([free])[0])
-            loss_rhs = torch.maximum(value_rhs.mean(), torch.Tensor([free])[0])
-            loss = mix * loss_lhs + (1 - mix) * loss_rhs
-
-        return loss, value
-
-    def loss(self, batch_data_dict, prev_batch_data):
-        config = self.config
-        B, T = batch_data_dict["observations"].shape[:2]
-        C_H_W = batch_data_dict["observations"].shape[2:]
-
-        # Run the forward pass of the model with inference and generation path
-        wm_fwd_dict = self(batch_data_dict, prev_batch_data)
-        s_deter_list = wm_fwd_dict["s_deter_list"] # [B, T, |H|]
-        s_stoch_list = wm_fwd_dict["s_stoch_list"] # [B, T, |Y|]
-        post_state_dist_data = wm_fwd_dict["post_state_dist_data"] # {k: [B, T, |Y|]}
-        prior_state_dist_data = wm_fwd_dict["prior_state_dist_data"] # {k: [B, T, |Y|]}
-
+        s_deter_list = torch.stack(s_deter_list, dim=1) # [B, T, |H|]
+        s_stoch_list = torch.stack(s_stoch_list, dim=1) # [B, T, |Y|]
         s_list = torch.cat([s_deter_list, s_stoch_list], dim=2) # [B, T, |H|+|Y|]
 
+        post_state_dist_data = {k: torch.stack(v, dim=1) if isinstance(v, list) and len(v) else v 
+            for k,v in post_state_dist_data.items()} # {k: [B, T, |Y|]}
+        prior_state_dist_data = {k: torch.stack(v, dim=1) if isinstance(v, list) and len(v) else v 
+            for k,v in prior_state_dist_data.items()} # {k: [B, T, |Y|]}
+        # End of the forward pass of the world model
+
+        # Losses computation
+
         # Reconstruct observation and compute the corresponding loss
-        obs_rec_mean_list = self.decoder(s_list.view(B * T, -1)).view(B, T, *C_H_W) # [B, T, C, H, W]
-        obs_list = batch_data_dict["observations"]
+        obs_rec_mean_list = self.decoder(s_list.view(B * T, -1)).view(B, T, *C_H_W) # [B, T, C, H, W], same as the "obs_list" target
         obs_rec_dist = thd.Independent(thd.Normal(obs_rec_mean_list, 1), len(C_H_W))
         rec_loss_list = obs_rec_dist.log_prob(obs_list).neg() # [B, T]
         rec_loss = rec_loss_list.mean() # Avg. neg. log likelihood over batch size and length
 
         # Predict the rewards and compute the corresonding loss
-        rew_pred_mean_list = self.reward_pred(s_list) # [B, T, 1]
-        rew_list = batch_data_dict["rewards"] # [B, T, 1]
+        rew_pred_mean_list = self.reward_pred(s_list) # [B, T, 1], sames as the "rew_list" target
         rew_pred_dist = thd.Independent(thd.Normal(rew_pred_mean_list, 1), 1)
         rew_pred_loss_list = rew_pred_dist.log_prob(rew_list).neg() # [B, T]
         rew_pred_loss = rew_pred_loss_list.mean()
@@ -753,8 +742,7 @@ class WorldModel(nn.Module):
 
         # Compute the discount prediction loss, if applicable
         if config.disc_pred_hid_size:
-            discount_pred_logits_list = self.disc_pred(s_list) # [B, T, 1]
-            ter_list = batch_data_dict["terminals"]
+            discount_pred_logits_list = self.disc_pred(s_list) # [B, T, 1], same as "ter_list" target
             discount_list = (1.0 - ter_list.float()) * config.gamma
             disc_pred_dist = thd.Independent(thd.Bernoulli(logits=discount_pred_logits_list), 1)
             disc_pred_dist = Bernoulli(disc_pred_dist)
@@ -794,9 +782,15 @@ class WorldModel(nn.Module):
             wm_losses_dict["disc_pred_loss"] = disc_pred_loss.item()
             wm_losses_dict["disc_pred_loss_scaled"] = disc_pred_loss_scaled.item()
 
-        # fwd_dict is used later for the imagination path and actor-critic loss
-        wm_fwd_dict["s_list"] = s_list
-        # For video generation;
+        # wd_fwd_dict is used later for the imagination path and actor-critic loss
+        # as well as TBPTT for the next batch of trajectories
+        wm_fwd_dict = {
+            "s_deter_list": s_deter_list,
+            "s_stoch_list": s_stoch_list,
+            "s_list": s_list,
+            "reset_mask": reset_mask
+        }
+        # Subset of batch observations sequence for video generation
         N = min(B, config.viz_n_videos)
         wm_fwd_dict["obs_rec_mean_list"] = obs_rec_mean_list[:N].detach()
 
@@ -814,59 +808,16 @@ class WorldModel(nn.Module):
             self.model_optimizer.step()
         
         return wm_losses_dict, wm_fwd_dict
-
-    @torch.no_grad()
-    def sample_action(self, obs, actor, prev_data, mode="train"):
-        config = self.config
-        wm = self # TODO: directly use self.model_component ?
-        B = obs.shape[0]
-
-        obs_feat = wm.encoder(obs).view(B, -1) # [B, 1024]
-
-        if prev_data == None: # Assumes first step of an episode
-            prev_data = {
-                "s_deter": obs.new_zeros([B, config.rssm_deter_size]),
-                "s_stoch": obs.new_zeros([B, self.state_stoch_feat_size]),
-                "action": obs.new_zeros([B, self.num_actions]),
-                "done": obs.new_zeros([B, 1])
-            }
-        
-        # Reset the internal state in case a new episode has started
-        done = prev_data["done"]
-        mask = 1. - done.float()
-        s_deter = prev_data["s_deter"] * mask
-        s_stoch = prev_data["s_stoch"] * mask
-        action = prev_data["action"] * mask
-
-        prev_state_action_embed = torch.cat([s_stoch, action], 1)
-        prev_state_action_embed = wm.state_action_embed(prev_state_action_embed)
-        s_deter = wm.update_s_deter(prev_state_action_embed, s_deter)
-
-        # Sample y_t ~ q(y_t | h_t, x_t)
-        s_stoch_dist_stats = wm.post_state(torch.cat([obs_feat, s_deter], 1))
-        s_stoch = wm.get_dist(s_stoch_dist_stats).rsample()
-        s_stoch = s_stoch.view(B, -1) # Mainly for discrete case, no effect otherwise
-
-        # Concatenate the deter and stoch. componens to form the state features
-        s_feat = torch.cat([s_deter, s_stoch], 1)
-
-        # Sample the action
-        if mode == "train":
-            action = actor(s_feat).rsample()
-        elif mode == "eval":
-            action = actor(s_feat).mode()
-        else:
-            raise NotImplementedError(f"Unsupported sampling regime for action: {mode}")
-
-        return action.argmax(dim=1).cpu().numpy(), {"s_deter": s_deter, "s_stoch": s_stoch, "action": action}
     
     def imagine(self, actor, imag_traj_start_dict, horizon):
         """
             imag_traj_start_dict: contains the list of determistic (h_t), stochastic (y_t)
             components of the state belief estimated by the World Model, as well
             as the concatenated s_t = cat(h_t, y_t) which we refer to as state belief of 's_feat'.
+
+            # TODO: consider moving imagination into the Dremaer class ? The rationale would be that
+            # the method requires both ac.actor and wm, like "sample_action" does.
         """
-        config = self.config
         wm = self
 
         s_deter = imag_traj_start_dict["s_deter_list"] # [B * T, |H|]
@@ -942,7 +893,7 @@ class ActorCritic(nn.Module):
 
             def __call__(self, x):
                 x = self.network(x) # Obtain logits
-                return OneHotDist(x) # Return the action distribution
+                return thd.OneHotCategoricalStraightThrough(logits=x) # Return the action distribution
 
         self.actor = ActorHead(self.state_feat_size, N, num_actions)
 
@@ -997,11 +948,11 @@ class ActorCritic(nn.Module):
 
         # Compute the discount factor either based on the world model's predictor, or a fixed heuristic
         if config.disc_pred_hid_size:
-            # TODO: make the straiht through Bernoulli cleaner ?
+            # TODO: Does using .Bernoulli_dist.mean result in discount value similar to gamma ?
             imag_discount_dist = thd.Independent(thd.Bernoulli(logits=wm.disc_pred(imag_s_list)), 1)
             imag_discount_list = Bernoulli(imag_discount_dist).mean # [H, B * T, 1]
         else:
-            imag_discount_list = config.discount * torch.ones_like(imag_reward_list) # [H, B * T, 1]
+            imag_discount_list = config.gamma * torch.ones_like(imag_reward_list) # [H, B * T, 1]
         
         # Compute state value list for the actor target computation first
         # using either lagging value, or up to date value network
@@ -1054,7 +1005,7 @@ class ActorCritic(nn.Module):
 
         return targets, weights
 
-    def compute_actor_loss(self, imagine_data_dict, ac_train_data):
+    def compute_actor_loss(self, imagine_data_dict):
         config = self.config
         actor, value = self.actor, self.value
 
@@ -1077,7 +1028,9 @@ class ActorCritic(nn.Module):
         if config.actor_imagine_grad_mode == "dynamics":
             actor_targets = targets
         elif config.actor_imagine_grad_mode in ["reinforce", "both"]:
-            baseline = value(imag_s_list[:-1]) # NOTE: how does it fare if using slow_value for baseline computation ?
+            # NOTE: how does it fare if using slow_value for baseline computation ?
+            # Original TF2.0 implemetnatin uses the slow_value for baseline computation indeed.
+            baseline = value(imag_s_list[:-1])
             advantages = (targets - baseline).detach()
             actor_targets = imag_action_logprob_list[:-1][:, :, None] * advantages
             if config.actor_imagine_grad_mode == "both":
@@ -1157,7 +1110,7 @@ class ActorCritic(nn.Module):
 
             # Compute the actor loss and other related training stats
             actor_losses_dict, value_train_data = \
-                self.compute_actor_loss(imagine_data_dict, ac_train_data)
+                self.compute_actor_loss(imagine_data_dict)
 
             # Optimize the actor network
             self.actor_optimizer.zero_grad()
@@ -1195,7 +1148,7 @@ class Dreamer(nn.Module):
     def __init__(self, config, num_actions):
         super().__init__()
         self.config = config
-        self.num_actons = num_actions
+        self.num_actions = num_actions # TODO: adopt a more general notation like "action_dim" ?
         
         self.wm = WorldModel(config=args, num_actions=num_actions)
         self.ac = ActorCritic(config=args, num_actions=num_actions, wm_fn=lambda: self.wm)
@@ -1208,7 +1161,49 @@ class Dreamer(nn.Module):
 
     @torch.no_grad()
     def sample_action(self, obs, prev_data, mode="train"):
-        return self.wm.sample_action(obs, self.ac.actor, prev_data, mode)
+        config = self.config
+        wm = self.wm # World model shorthand
+        actor = self.ac.actor # Actor shorthand
+        B = obs.shape[0]
+
+        obs_feat = wm.encoder(obs).view(B, -1) # [B, 1024]
+
+        if prev_data == None: # Dummy previous internal state for the first step
+            prev_data = {
+                "s_deter": obs.new_zeros([B, config.rssm_deter_size]),
+                "s_stoch": obs.new_zeros([B, wm.state_stoch_feat_size]),
+                "action": obs.new_zeros([B, self.num_actions]),
+                "done": obs.new_zeros([B, 1])
+            }
+        
+        # Reset the internal state in case a new episode has started
+        done = prev_data["done"]
+        mask = 1. - done.float()
+        s_deter = prev_data["s_deter"] * mask
+        s_stoch = prev_data["s_stoch"] * mask
+        action = prev_data["action"] * mask
+
+        prev_state_action_embed = torch.cat([s_stoch, action], 1)
+        prev_state_action_embed = wm.state_action_embed(prev_state_action_embed)
+        s_deter = wm.update_s_deter(prev_state_action_embed, s_deter)
+
+        # Sample y_t ~ q(y_t | h_t, x_t)
+        s_stoch_dist_stats = wm.post_state(torch.cat([obs_feat, s_deter], 1))
+        s_stoch = wm.get_dist(s_stoch_dist_stats).rsample()
+        s_stoch = s_stoch.view(B, -1) # Mainly for discrete case, no effect otherwise
+
+        # Concatenate the deter and stoch. componens to form the state features
+        s_feat = torch.cat([s_deter, s_stoch], 1)
+
+        # Sample the action
+        if mode == "train":
+            action = actor(s_feat).rsample()
+        elif mode == "eval":
+            action = actor(s_feat).mode()
+        else:
+            raise NotImplementedError(f"Unsupported sampling regime for action: {mode}")
+
+        return action.argmax(dim=1).cpu().numpy(), {"s_deter": s_deter, "s_stoch": s_stoch, "action": action}
 
     def _train(self, batch_data_dict, prev_batch_data):
         config = self.config
@@ -1236,7 +1231,7 @@ class Dreamer(nn.Module):
         # Update the ActorCritic component
         ac_losses_dict, ac_fwd_dict = self.ac._train(ac_train_data)
 
-        # Store intermediate results for the next batch, required for TBPTT.
+        # Preserve intermediate results for the next batch, required for TBPTT.
         prev_batch_data = {
             "s_deter": wm_fwd_dict["s_deter_list"][:, -1].detach(), # [B, |H|]
             "s_stoch": wm_fwd_dict["s_stoch_list"][:, -1].detach(), # [B, |Y|]
@@ -1323,9 +1318,10 @@ if __name__ == "__main__":
     obs = envs.reset()
     prev_data, prev_batch_data = None, None
     n_episodes = 0
-    for global_step in range(0, args.total_timesteps // args.env_action_repeats, args.num_envs):
+    total_updates = args.total_timesteps // args.train_every
+    for global_step in range(0, args.total_timesteps, args.num_envs):
         # ALGO LOGIC: put action logic here
-        if global_step <= (args.buffer_prefill // args.env_action_repeats):
+        if global_step <= args.buffer_prefill:
             action = envs.action_space.sample()
         else:
             # Tensorize observation, pre-process and put on training device
@@ -1361,7 +1357,7 @@ if __name__ == "__main__":
         dreamer.step += args.num_envs * args.env_action_repeats
 
         # ALGO LOGIC: training.
-        if global_step >= (args.buffer_prefill // args.env_action_repeats) and global_step % args.train_every == 0:
+        if global_step >= args.buffer_prefill and global_step % args.train_every == 0:
             # TODO: determine the proper relation between train_every and actiopn_repeats
             batch_data_dict = buffer.sample()
             # TODO: consolidate losses into a signle dictionary ?
@@ -1373,13 +1369,21 @@ if __name__ == "__main__":
                 # Logging training stats of the WM and AC components in their respective scopes
                 [writer.add_scalar(f"wm/{k}", v, global_step) for k,v in wm_losses_dict.items()]
                 [writer.add_scalar(f"ac/{k}", v, global_step) for k,v in ac_losses_dict.items()]
-                # NOTE: Does not take the buffer prefill samples into account for SPS
-                print("SPS:", int((global_step - args.buffer_prefill // args.env_action_repeats) / (time.time() - start_time)))
+                UPS = dreamer.n_updates.item() / (time.time() - start_time) # Update steps per second
+                PRGS = dreamer.n_updates / total_updates # Progress rate, monitor progressino rate in Wandb
+                print("SPS:", int((global_step - args.buffer_prefill) / (time.time() - start_time)), end=" | ")
+                print(f"UPS: {UPS: 0.3f}", end=" | ")
+                print("ETA:", hrd(total_updates / UPS))
                 writer.add_scalar("global_step", global_step, global_step)
                 writer.add_scalar("global_frame", global_step * args.env_action_repeats, global_step)
-                writer.add_scalar("charts/SPS", (global_step - args.buffer_prefill // args.env_action_repeats) / (time.time() - start_time), global_step)
-                writer.add_scalar("charts/FPS", (global_step * args.env_action_repeats - args.buffer_prefill) / (time.time() - start_time), global_step)
+                writer.add_scalar("charts/SPS", (global_step - args.buffer_prefill) / (time.time() - start_time), global_step)
+                writer.add_scalar("charts/FPS", (global_step - args.buffer_prefill) * args.env_action_repeats / (time.time() - start_time), global_step)
                 writer.add_scalar("charts/n_updates", dreamer.n_updates, global_step)
+                writer.add_scalar("charts/UPS", UPS, global_step)
+                writer.add_scalar("charts/PRGS", PRGS, global_step)
+                buffer_size = buffer.size
+                writer.add_scalar("charts/buffer_steps", buffer_size, global_step)
+                writer.add_scalar("charts/buffer_frames", buffer_size * args.env_action_repeats, global_step)
 
             # NOTE: too frequent video logging will add overhead to training time
             if dreamer.n_updates % 500 == 0:
