@@ -109,8 +109,6 @@ def parse_args():
     ## Actor (policy) specific hyperparameters
     parser.add_argument("--actor-hid-size", type=int, default=400,
         help="the size of the hidden layers of the actor network")
-    parser.add_argument("--actor-value-slow-target", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="use a lagging copy of the value network for actor loss computation")
     parser.add_argument("--actor-entropy", type=float, default=1e-3,
         help="the entropy regulirization coefficient for the actor policy") # TODO: add support for decay schedulers
     parser.add_argument("--actor-imagine-grad-mode", type=str, default="both", choices=["dynamics", "reinforce", "both"],
@@ -132,8 +130,6 @@ def parse_args():
     ## Value (critic) specific hyperparameters
     parser.add_argument("--value-hid-size", type=int, default=400,
         help="the size of the hidden layers of the value network")
-    parser.add_argument("--value-slow-target", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="use a lagging copy of the value network for actor loss computation")
     parser.add_argument("--value-slow-target-update", type=int, default=100,
         help="the frequency of update of the slow value network")
     parser.add_argument("--value-slow-target-fraction", type=float, default=1,
@@ -166,14 +162,12 @@ def parse_args():
 # NOTE: While it breaks default logging of cleanrl, because Dreamer (mbrl) takes more time, it is informative for experimetnation
 def hrd(seconds): # Human readable duration
     words = ["year", "day", "hr", "min", "sec"]
-
     m, s = divmod(int(seconds), 60)
     h, m = divmod(m, 60)
     d, h = divmod(h, 24)
     y, d = divmod(d, 365)
 
     time = [y, d, h, m, s]
-
     duration = []
 
     for x, i in enumerate(time):
@@ -906,9 +900,9 @@ class ActorCritic(nn.Module):
             nn.Linear(N, N), nn.ELU(),
             nn.Linear(N, 1)
         )
-        if config.value_slow_target or config.actor_value_slow_target:
-            self.slow_value = copy.deepcopy(self.value)
-            self.slow_value.requires_grad_(False)
+        # Lagging value network
+        self.slow_value = copy.deepcopy(self.value)
+        self.slow_value.requires_grad_(False)
 
         # Actor optimizer
         self.actor_optimizer = optim.Adam(
@@ -928,17 +922,14 @@ class ActorCritic(nn.Module):
         self.register_buffer("n_updates", torch.LongTensor([0]))
         self.register_buffer("slow_value_n_updates", torch.LongTensor([0]))
     
-    def compute_targets_weights(self, imagine_data_dict, use_slow_value):
+    def compute_targets_weights(self, imagine_data_dict):
         """
             Computes the targets and weights to update the actor and value losses later.
                 - targets are a form of approximation for the expected returns, shape [H-1, B * T, 1]
                 - weights are coefficient that incorporate long-term discounting, shape [H, B * T, 1]
             
             Expects:
-                imag_s_list: list of imaginary state featurers
-                
-                use_slow_value: boolean, determines whether or not to use the lagging
-                    value network for target computation
+                imag_s_list: list of imaginary state featurers: [Hor, B * T, |H| + |Y|]
         """
         config = self.config
         wm = self.wm_fn() # Callback to the worldmodel
@@ -955,12 +946,7 @@ class ActorCritic(nn.Module):
             imag_discount_list = config.gamma * torch.ones_like(imag_reward_list) # [H, B * T, 1]
         
         # Compute state value list for the actor target computation first
-        # using either lagging value, or up to date value network
-        # TODO: maybe just get rid of this choice altogether ? just use slow_value by default ?
-        if use_slow_value:
-            imag_actor_state_value_list = self.slow_value(imag_s_list) # [H, B * T, 1]
-        else:
-            imag_actor_state_value_list = self.value(imag_s_list) # [H, B * T, 1]
+        imag_actor_state_value_list = self.slow_value(imag_s_list) # [H, B * T, 1]
         
         # Helper to compute the lambda returns for the actor targets
         # TODO: attribution, and clean up, make it easier to understand
@@ -1022,14 +1008,13 @@ class ActorCritic(nn.Module):
 
         # Precompute the targets and weights for the actor loss
         # Targets are computed using the lambda-return method
-        targets, weights = self.compute_targets_weights(imagine_data_dict, config.actor_value_slow_target)
+        targets, weights = self.compute_targets_weights(imagine_data_dict)
 
         # Actor loss computation
         if config.actor_imagine_grad_mode == "dynamics":
             actor_targets = targets
         elif config.actor_imagine_grad_mode in ["reinforce", "both"]:
-            # NOTE: how does it fare if using slow_value for baseline computation ?
-            # Original TF2.0 implemetnatin uses the slow_value for baseline computation indeed.
+            # TODO: Original TF2 uses "slow_baseline", but jsikyoon implementation does not
             baseline = value(imag_s_list[:-1])
             advantages = (targets - baseline).detach()
             actor_targets = imag_action_logprob_list[:-1][:, :, None] * advantages
@@ -1049,10 +1034,8 @@ class ActorCritic(nn.Module):
         actor_losses_dict = {
             "actor_loss": actor_loss, # Used for .backward()
             # Actor training stats
-            "reward_mean": imag_reward_list.mean().item(),
-            "reward_std": imag_reward_list.std().item(),
-            "actor_ent": imag_actor_entropy_list.mean().item(),
             # TODO: track the actopyr entropy coefficient in case it is decayed and what not
+            "actor_ent": imag_actor_entropy_list.mean().item()
         }
         if config.actor_imagine_grad_mode == "both":
             actor_losses_dict["imag_gradient_mix"] = mix.item() if isinstance(mix, torch.Tensor) else mix
@@ -1072,27 +1055,21 @@ class ActorCritic(nn.Module):
         # Re-use targets and weights if appropriate
         targets, weights = value_train_data["targets"], value_train_data["weights"]
 
-        if config.value_slow_target != config.actor_value_slow_target:
-            ## Recomputes targets and weights for the value update, in case
-            ## the latter does not use the same network for the target as the actor comp.
-            targets, weights = self.compute_targets_weights(imagine_data_dict,
-                config.value_slow_target) # [H-1, B * T, 1], [H, B * T, 1] respectively
-
         values_mean_list = self.value(imag_s_list[:-1].detach()) # [H, B * T, 1]
         values_dist = thd.Independent(thd.Normal(values_mean_list, 1), 1)
         value_loss = values_dist.log_prob(targets.detach()).neg() # [H, B * T]
         value_loss = (value_loss * weights[:-1].squeeze(-1)).mean()
 
         # Compute the error between the "value" and "slow_value" component
+        # This is mostly for debugs
         value_abs_error = (values_mean_list - self.slow_value(imag_s_list[:-1].detach())).abs().mean().item()
 
         # Update the slow value target
-        if config.value_slow_target or config.actor_slow_value_target:
-            if self.n_updates % config.value_slow_target_update == 0:
-                tau = config.value_slow_target_fraction
-                for s, d in zip(self.value.parameters(), self.slow_value.parameters()):
-                    d.data = tau * s.data + (1 - tau) * d.data
-                self.slow_value_n_updates += 1
+        if self.n_updates % config.value_slow_target_update == 0:
+            tau = config.value_slow_target_fraction
+            for s, d in zip(self.value.parameters(), self.slow_value.parameters()):
+                d.data = tau * s.data + (1 - tau) * d.data
+            self.slow_value_n_updates += 1
         
         return {"value_loss": value_loss, "value_abs_error": value_abs_error}
 
@@ -1157,7 +1134,8 @@ class Dreamer(nn.Module):
         self.register_buffer("step", torch.LongTensor([0])) # How many env. steps so far, for schedulers
         self.register_buffer("n_updates", torch.LongTensor([0])) # How many updates of the model
 
-        # TODO: add schedules for actor entropy and actor imaginate gradient mixing
+        # TODO: add schedules for actor entropy and actor imaginate gradient mixing ?
+        # Althoug the paper reports results with fixed hyper parameters for simplicity.
 
     @torch.no_grad()
     def sample_action(self, obs, prev_data, mode="train"):
@@ -1351,7 +1329,7 @@ if __name__ == "__main__":
             # If we have started sampling action with the Dreamer agent,
             # need to set "done" to properly mask the previous step's data
             # when a new episode starts
-            prev_data["done"] = torch.Tensor(dones)[:, None].to(device)
+            prev_data["done"] = torch.Tensor(dones)[:, None].to(device) # [NUM_ENVS, 1]
 
         # Tracks number of env. steps so far, namely for decay schedulers
         dreamer.step += args.num_envs * args.env_action_repeats
