@@ -1287,7 +1287,7 @@ if __name__ == "__main__":
     
     # Instantiate the Dreamer agent
     dreamer = Dreamer(config=args, num_actions=envs.single_action_space.n).to(device)
-    print(dreamer)
+    print(dreamer) # Useful to check the agent's structure for debug
     from torchinfo import summary
     summary(dreamer)
 
