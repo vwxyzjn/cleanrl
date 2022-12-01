@@ -3,138 +3,85 @@ NUM_CORES=$(nproc --all)
 export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 
 ###############################################
-# region: Atari Pong                          #
-# Dreamer with discrete latents
+# region: Atari Breakout                          #
+
+# # Dreamer Disc Baseline, B=50, T=50, train-every=16
 # export CUDA_VISIBLE_DEVICES=7
-# (sleep 1s && python dreamer_atari.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer" \
-#     --seed 1 \
-# ) >& /dev/null &
+# for seed in 1 2; do
+#     (sleep 1s && python dreamer_atari.py \
+#         --track --capture-video \
+#         --env-id "BreakoutNoFrameskip-v4" \
+#         --batch-size 50 --batch-length 50 \
+#         --train-every 16 \
+#         --exp-name "dreamer_B_50_T_50_trnev_16" \
+#         --seed $seed \
+#     ) >& /dev/null &
+# done
 
+# # Dreamer Disc Baseline, B=32, T=50, train-every=16
 # export CUDA_VISIBLE_DEVICES=6
-# (sleep 1s && python dreamer_atari.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer" \
-#     --seed 2 \
-# ) >& /dev/null &
+# for seed in 1 2; do
+#     (sleep 1s && python dreamer_atari.py \
+#         --track --capture-video \
+#         --env-id "BreakoutNoFrameskip-v4" \
+#         --batch-size 32 --batch-length 50 \
+#         --train-every 16 \
+#         --exp-name "dreamer_B_32_T_50_trnev_16" \
+#         --seed $seed \
+#     ) >& /dev/null &
+# done
 
-# Dreamer with discret latents, train more frequently
-# export CUDA_VISIBLE_DEVICES=3
-# (sleep 1s && python dreamer_atari.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer__trainevery_8" \
-#     --train-every 8 \
-#     --seed 1 \
-# ) >& /dev/null &
-# export CUDA_VISIBLE_DEVICES=2
-# (sleep 1s && python dreamer_atari.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer__trainevery_8" \
-#     --train-every 8 \
-#     --seed 2 \
-# ) >& /dev/null &
-
-# Dreamer with discrete latents and AMP
+# # Dreamer Disc Baseline, B=16, T=50, train-every=16
 # export CUDA_VISIBLE_DEVICES=5
-# (sleep 1s && python dreamer_atari_amp.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer_ampfix" \
-#     --seed 1 \
-# ) >& /dev/null &
+# for seed in 1 2; do
+#     (sleep 1s && python dreamer_atari.py \
+#         --track --capture-video \
+#         --env-id "BreakoutNoFrameskip-v4" \
+#         --batch-size 16 --batch-length 50 \
+#         --train-every 16 \
+#         --exp-name "dreamer_B_16_T_50_trnev_16" \
+#         --seed $seed \
+#     ) >& /dev/null &
+# done
 
+# # Dreamer Disc Baseline, B=50, T=50, train-every=8
 # export CUDA_VISIBLE_DEVICES=4
-# (sleep 1s && python dreamer_atari_amp.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer_ampfix" \
-#     --seed 2 \
-# ) >& /dev/null &
+# for seed in 1 2; do
+#     (sleep 1s && python dreamer_atari.py \
+#         --track --capture-video \
+#         --env-id "BreakoutNoFrameskip-v4" \
+#         --batch-size 50 --batch-length 50 \
+#         --train-every 8 \
+#         --exp-name "dreamer_B_50_T_50_trnev_8" \
+#         --seed $seed \
+#     ) >& /dev/null &
+# done
 
-
-# Dreamer with discrete latents and AMP, num-envs = 4
-# export CUDA_VISIBLE_DEVICES=7
-# (sleep 1s && python dreamer_atari_amp.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer_ampfix_numenvs_4" \
-#     --num-envs 4 \
-#     --seed 1 \
-# ) >& /dev/null &
-
-# export CUDA_VISIBLE_DEVICES=6
-# (sleep 1s && python dreamer_atari_amp.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer_ampfix_numenvs_4" \
-#     --num-envs 4 \
-#     --seed 2 \
-# ) >& /dev/null &
-
-
-# Dreamer with discrete latents, bugger batch and shorter sequences
-# export CUDA_VISIBLE_DEVICES=1
-# (sleep 1s && python dreamer_atari.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer__B_250_T_10" \
-#     --batch-size 250 --batch-length 10 \
-#     --seed 1 \
-# ) >& /dev/null &
-
-# export CUDA_VISIBLE_DEVICES=0
-# (sleep 1s && python dreamer_atari.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer__B_250_T_10" \
-#     --batch-size 250 --batch-length 10 \
-#     --seed 2 \
-# ) >& /dev/null &
-
-
-# Dreamer with discrete latents
-# export CUDA_VISIBLE_DEVICES=5
-# (sleep 1s && python dreamer_atari.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer__numenvs_4" \
-#     --num-envs 4 \
-#     --seed 1 \
-# ) >& /dev/null &
-
-# export CUDA_VISIBLE_DEVICES=4
-# (sleep 1s && python dreamer_atari.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer__numenvs_4" \
-#     --num-envs 4 \
-#     --seed 2 \
-# ) >& /dev/null &
-
-
-# Dreamer with continuous latents
+# # Dreamer Disc Baseline, B=50, T=50, train-every=4
 # export CUDA_VISIBLE_DEVICES=3
-# (sleep 1s && python dreamer_atari.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer_cont_latents" \
-#     --rssm-discrete 0 \
-#     --seed 1 \
-# ) >& /dev/null &
+# for seed in 1 2; do
+#     (sleep 1s && python dreamer_atari.py \
+#         --track --capture-video \
+#         --env-id "BreakoutNoFrameskip-v4" \
+#         --batch-size 50 --batch-length 50 \
+#         --train-every 4 \
+#         --exp-name "dreamer_B_50_T_50_trnev_4" \
+#         --seed $seed \
+#     ) >& /dev/null &
+# done
 
+# # Dreamer Disc, B=50, T=50, train-every=16, using Torch Distributions's Bernoulli dist
 # export CUDA_VISIBLE_DEVICES=2
-# (sleep 1s && python dreamer_atari.py \
-#     --track --capture-video \
-#     --env-id "BreakoutNoFrameskip-v4" \
-#     --exp-name "dreamer_cont_latents" \
-#     --rssm-discrete 0 \
-#     --seed 2 \
-# ) >& /dev/null &
+# for seed in 1 2; do
+#     (sleep 1s && python dreamer_atari_thdbern.py \
+#         --track --capture-video \
+#         --env-id "BreakoutNoFrameskip-v4" \
+#         --batch-size 50 --batch-length 50 \
+#         --train-every 16 \
+#         --exp-name "dreamer_thdbern_B_50_T_50_trnev_16" \
+#         --seed $seed \
+#     ) >& /dev/null &
+# done
 
-# endregion: Atari Pong                       #
+# endregion: Atari Breakout                   #
 ###############################################

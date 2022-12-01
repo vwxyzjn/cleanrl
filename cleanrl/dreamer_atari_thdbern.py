@@ -360,45 +360,6 @@ class DreamerTBPTTBuffer():
             "terminals": torch.Tensor(ter_list).bool().to(self.device)
         }
 
-# Bernouilli distribution with custom reparameterization 
-class Bernoulli():
-    """
-        A binary variable distribution that supports straight-through
-        gradient backprop, allowing training of the episode termination.
-        
-        Credits:
-         - Danijar Hafner's original TF2.0 implementation: https://github.com/jsikyoon/dreamer-torch/blob/7c2331acd4fa6196d140943e977f23fb177398b3/tools.py#L312
-         - Jaesik Yoon's Pytorch adaption: https://github.com/jsikyoon/dreamer-torch/blob/7c2331acd4fa6196d140943e977f23fb177398b3/tools.py#L312
-
-        # TODO:
-         - Investigate the benefit of using this custom Bernoulli dist over the default in Pytorch ?
-         - Tidy up the code to be more cleanrl-ish
-    """
-    def __init__(self, dist=None):
-        super().__init__()
-        self._dist = dist
-        self.mean = dist.mean
-
-    def __getattr__(self, name):
-        return getattr(self._dist, name)
-
-    def entropy(self):
-        return self._dist.entropy()
-
-    def mode(self):
-        _mode = torch.round(self._dist.mean)
-        return _mode.detach() +self._dist.mean - self._dist.mean.detach()
-
-    def sample(self, sample_shape=()):
-        return self._dist.rsample(sample_shape)
-
-    def log_prob(self, x):
-        _logits = self._dist.base_dist.logits
-        log_probs0 = -F.softplus(_logits)
-        log_probs1 = -F.softplus(-_logits)
-
-        return log_probs0 * (1-x) + log_probs1 * x
-
 # Scope that enables gradient computation
 class RequiresGrad():
     def __init__(self, model):
@@ -737,9 +698,8 @@ class WorldModel(nn.Module):
         # Compute the discount prediction loss, if applicable
         if config.disc_pred_hid_size:
             discount_pred_logits_list = self.disc_pred(s_list) # [B, T, 1], same as "ter_list" target
-            discount_list = (1.0 - ter_list.float()) * config.gamma
+            discount_list = torch.logical_not(ter_list).float()
             disc_pred_dist = thd.Independent(thd.Bernoulli(logits=discount_pred_logits_list), 1)
-            disc_pred_dist = Bernoulli(disc_pred_dist)
             disc_pred_loss_list = disc_pred_dist.log_prob(discount_list).neg() # [B, T]
             disc_pred_loss = disc_pred_loss_list.mean()
         
@@ -941,7 +901,7 @@ class ActorCritic(nn.Module):
         if config.disc_pred_hid_size:
             # TODO: Does using .Bernoulli_dist.mean result in discount value similar to gamma ?
             imag_discount_dist = thd.Independent(thd.Bernoulli(logits=wm.disc_pred(imag_s_list)), 1)
-            imag_discount_list = Bernoulli(imag_discount_dist).mean # [H, B * T, 1]
+            imag_discount_list = imag_discount_dist.sample() * config.gamma # [H, B * T, 1]
         else:
             imag_discount_list = config.gamma * torch.ones_like(imag_reward_list) # [H, B * T, 1]
         
