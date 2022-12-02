@@ -54,7 +54,6 @@ def parse_args():
         help="use grayscale for the pixel-based environment wrappers")
     parser.add_argument("--env-action-repeats", type=int, default=4,
         help="the number of step for which the action of the agent is repeated onto the env.")
-    # TODO: add parameterization for environment action repeat, especially for other tasks
     parser.add_argument("--total-timesteps", type=int, default=5_000_000,
         help="total timesteps of the experiments. The amount of frames is total-timesteps * action_repeats.")
     parser.add_argument("--buffer-size", type=int, default=1_000_000,
@@ -423,7 +422,6 @@ class WorldModel(nn.Module):
         self.state_stoch_feat_size = config.rssm_stoch_size * config.rssm_discrete \
             if config.rssm_discrete else config.rssm_stoch_size
         self.state_feat_size += self.state_stoch_feat_size
-        self.state_stoch_feat_size
         
         # Encoder
         C = 1 if config.env_grayscale else 3
@@ -530,11 +528,10 @@ class WorldModel(nn.Module):
                     return {"logits": x.view(-1, self.stoch_size, self.discrete)}
                 else:
                     mean, std = torch.chunk(x, 2 ,1)
-                    std = 2 * torch.sigmoid(std / 2) + 0.1 # TODO: consider simpler parameterization ?
+                    std = 2 * torch.sigmoid(std / 2) + 0.1
                     return {"mean": mean, "std": std}
         
         # Posterior distribution over the stochastic state comp. w_t
-        # TODO: find a better way to handle the 1536 obs_feat size ?
         self.post_state = DistributionParameters(
             input_size=1024 + config.rssm_deter_size,
             hidden_size=config.rssm_hid_size,
@@ -998,7 +995,6 @@ class ActorCritic(nn.Module):
         # Recover the necessary simulated trajectory data
         imag_s_list = imagine_data_dict["imag_s_list"] # [Horizon, B * T, |H| + |Y|]
         imag_action_list = imagine_data_dict["imag_action_list"] # [Horizon, B * T, |A|]
-        imag_reward_list = imagine_data_dict["imag_reward_list"] # [Horizon, B * T, 1]
         
         # Compute action logprobs over simulated steps
         inp = imag_s_list.detach()
@@ -1035,7 +1031,8 @@ class ActorCritic(nn.Module):
             "actor_loss": actor_loss, # Used for .backward()
             # Actor training stats
             # TODO: track the actopyr entropy coefficient in case it is decayed and what not
-            "actor_ent": imag_actor_entropy_list.mean().item()
+            "actor_ent": imag_actor_entropy_list.mean().item(),
+            "actor_entropy_scale": actor_entropy_scale
         }
         if config.actor_imagine_grad_mode == "both":
             actor_losses_dict["imag_gradient_mix"] = mix.item() if isinstance(mix, torch.Tensor) else mix
@@ -1200,11 +1197,13 @@ class Dreamer(nn.Module):
             masks_list = torch.logical_not(ter_list)
             B_T = masks_list.sum()
 
-        # Drop the terminal steps from the data used to 
-        # bootstrap the imagination process for actor critic training
-        # .detach() is used to block the gradient flow from AC to WM component
-        ac_train_data = {k: wm_fwd_dict[k].detach() for k in ["s_deter_list", "s_stoch_list", "s_list"]}
-        ac_train_data = {k: torch.masked_select(v, masks_list).view(B_T, -1) for k,v in ac_train_data.items()}
+            # Drop the terminal steps from the data used to 
+            # bootstrap the imagination process for actor critic training
+            # .detach() is used to block the gradient flow from AC to WM component
+            ac_train_data = {k: wm_fwd_dict[k].detach() for k in ["s_deter_list", "s_stoch_list"]}
+            ac_train_data = {k: torch.masked_select(v, masks_list).view(B_T, -1) for k,v in ac_train_data.items()}
+        else:
+            ac_train_data = {k: wm_fwd_dict[k].detach().view(B_T,-1) for k in ["s_deter_list", "s_stoch_list"]}
         
         # Update the ActorCritic component
         ac_losses_dict, ac_fwd_dict = self.ac._train(ac_train_data)
