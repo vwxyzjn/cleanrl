@@ -4,8 +4,8 @@ import os
 import random
 import time
 from distutils.util import strtobool
-from typing import Sequence
 from functools import partial
+from typing import Sequence
 
 os.environ[
     "XLA_PYTHON_CLIENT_MEM_FRACTION"
@@ -321,13 +321,13 @@ if __name__ == "__main__":
         advantages = carry
         nextdone, nextvalues, curvalues, reward = inp
         nextnonterminal = 1.0 - nextdone
-        
+
         delta = reward + gamma * nextvalues * nextnonterminal - curvalues
         advantages = delta + gamma * gae_lambda * nextnonterminal * advantages
         return advantages, advantages
-    
+
     compute_gae_once = partial(compute_gae_once, gamma=args.gamma, gae_lambda=args.gae_lambda)
-    
+
     @jax.jit
     def compute_gae(
         agent_state: TrainState,
@@ -335,24 +335,24 @@ if __name__ == "__main__":
         next_done: np.ndarray,
         storage: Storage,
     ):
-        
+
         # storage = storage.replace(advantages=storage.advantages.at[:].set(0.0))
         next_value = critic.apply(
             agent_state.params.critic_params, network.apply(agent_state.params.network_params, next_obs)
         ).squeeze()
-        
-        advantages = jnp.zeros((args.num_envs, ))
-        rewards = jnp.zeros((args.num_envs, ))
+
+        advantages = jnp.zeros((args.num_envs,))
+        jnp.zeros((args.num_envs,))
         dones = jnp.concatenate([storage.dones, next_done[None, :]], axis=0)
         values = jnp.concatenate([storage.values, next_value[None, :]], axis=0)
         # rewards = jnp.concatenate([rewards[None,:], storage.rewards], axis=0)
-        _, advantages = jax.lax.scan(compute_gae_once, advantages,
-                                     (dones[1:], values[1:], values[:-1], storage.rewards),
-                                     reverse=True)
+        _, advantages = jax.lax.scan(
+            compute_gae_once, advantages, (dones[1:], values[1:], values[:-1], storage.rewards), reverse=True
+        )
         storage = storage.replace(advantages=advantages)
         storage = storage.replace(returns=storage.advantages + storage.values)
         return storage
-    
+
     def ppo_loss(params, x, a, logp, mb_advantages, mb_returns):
         newlogprob, entropy, newvalue = get_action_and_value2(params, x, a)
         logratio = newlogprob - logp
@@ -385,10 +385,10 @@ if __name__ == "__main__":
         def update_epoch(carry, unused_inp):
             agent_state, key = carry
             key, subkey = jax.random.split(key)
-            
+
             def flatten(x):
                 return x.reshape((-1,) + x.shape[2:])
-            
+
             # taken from: https://github.com/google/brax/blob/main/brax/training/agents/ppo/train.py
             def convert_data(x: jnp.ndarray):
                 x = jax.random.permutation(subkey, x)
@@ -397,7 +397,7 @@ if __name__ == "__main__":
 
             flatten_storage = jax.tree_map(flatten, storage)
             shuffled_storage = jax.tree_map(convert_data, flatten_storage)
-            
+
             def update_minibatch(agent_state, minibatch):
                 (loss, (pg_loss, v_loss, entropy_loss, approx_kl)), grads = ppo_loss_grad_fn(
                     agent_state.params,
@@ -409,15 +409,17 @@ if __name__ == "__main__":
                 )
                 agent_state = agent_state.apply_gradients(grads=grads)
                 return agent_state, (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads)
-            
-            agent_state, (loss, pg_loss, v_loss, \
-            entropy_loss, approx_kl, grads) = jax.lax.scan(update_minibatch, agent_state, shuffled_storage)
-            
+
+            agent_state, (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads) = jax.lax.scan(
+                update_minibatch, agent_state, shuffled_storage
+            )
+
             return (agent_state, key), (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads)
-        
-        (agent_state, key), (loss, pg_loss, v_loss,\
-            entropy_loss, approx_kl, grads) = jax.lax.scan(update_epoch, (agent_state, key), (), length=args.update_epochs)
-                
+
+        (agent_state, key), (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads) = jax.lax.scan(
+            update_epoch, (agent_state, key), (), length=args.update_epochs
+        )
+
         return agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, grads, key
 
     # TRY NOT TO MODIFY: start the game
@@ -432,9 +434,9 @@ if __name__ == "__main__":
         # accumulated_reward, valid_mask) = carry
         (agent_state, episode_stats, obs, done, key, handle) = carry
         action, logprob, value, key = get_action_and_value(agent_state, obs, key)
-        
+
         episode_stats, handle, (next_obs, reward, next_done, _) = env_step_fn(episode_stats, handle, action)
-        
+
         storage = Storage(
             obs=obs,
             actions=action,
@@ -445,29 +447,26 @@ if __name__ == "__main__":
             returns=jnp.zeros_like(reward),
             advantages=jnp.zeros_like(reward),
         )
-        
+
         return ((agent_state, episode_stats, next_obs, next_done, key, handle), storage)
-    
-    def rollout(agent_state, episode_stats, next_obs, next_done, key, handle,
-                step_once_fn, max_steps):
-        
+
+    def rollout(agent_state, episode_stats, next_obs, next_done, key, handle, step_once_fn, max_steps):
+
         (agent_state, episode_stats, next_obs, next_done, key, handle), storage = jax.lax.scan(
-            step_once_fn,
-            (agent_state, episode_stats, next_obs, next_done, key, handle), (), max_steps)
-        
+            step_once_fn, (agent_state, episode_stats, next_obs, next_done, key, handle), (), max_steps
+        )
+
         return agent_state, episode_stats, next_obs, next_done, key, handle, storage
-    
-    rollout_fn = partial(rollout,
-                         step_once_fn=partial(step_once, env_step_fn=step_env_wrappeed),
-                         max_steps=args.num_steps)
-    
+
+    rollout_fn = partial(rollout, step_once_fn=partial(step_once, env_step_fn=step_env_wrappeed), max_steps=args.num_steps)
+
     for update in range(1, args.num_updates + 1):
         update_time_start = time.time()
         agent_state, episode_stats, next_obs, next_done, key, handle, storage = rollout_fn(
             agent_state, episode_stats, next_obs, next_done, key, handle
         )
         global_step += args.num_steps * args.num_envs
-        
+
         storage = compute_gae(agent_state, next_obs, next_done, storage)
         agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, grads, key = update_ppo(
             agent_state,
