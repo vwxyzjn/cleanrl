@@ -44,7 +44,7 @@ def parse_args():
         help="weather to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="SeaquestNoFrameskip-v4",
+    parser.add_argument("--env-id", type=str, default="BeamRiderNoFrameskip-v4",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -213,15 +213,15 @@ if __name__ == "__main__":
     qf2_target = SoftQNetwork(envs).to(device)
     qf1_target.load_state_dict(qf1.state_dict())
     qf2_target.load_state_dict(qf2.state_dict())
-    q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
-    actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
+    q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr, eps=1e-4)
+    actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr, eps=1e-4)
 
     # Automatic entropy tuning
     if args.autotune:
         target_entropy = -args.target_entropy_scale * torch.log(1 / torch.tensor(envs.single_action_space.n))
         log_alpha = torch.zeros(1, requires_grad=True, device=device)
         alpha = log_alpha.exp().item()
-        a_optimizer = optim.Adam([log_alpha], lr=args.q_lr)
+        a_optimizer = optim.Adam([log_alpha], lr=args.q_lr, eps=1e-4)
     else:
         alpha = args.alpha
 
@@ -279,14 +279,14 @@ if __name__ == "__main__":
                         torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
                     )
                     # adapt Q-target for discrete Q-function
-                    min_qf_next_target = min_qf_next_target.sum(dim=1, keepdim=True)
-                    next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (
-                        min_qf_next_target
-                    ).view(-1)
+                    min_qf_next_target = min_qf_next_target.sum(dim=1)
+                    next_q_value = data.rewards.flatten() + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target)
 
                 # use Q-values only for the taken actions
-                qf1_a_values = qf1(data.observations).gather(1, data.actions.long()).view(-1)
-                qf2_a_values = qf2(data.observations).gather(1, data.actions.long()).view(-1)
+                qf1_values = qf1(data.observations)
+                qf2_values = qf2(data.observations)
+                qf1_a_values = qf1_values.gather(1, data.actions.long()).view(-1)
+                qf2_a_values = qf2_values.gather(1, data.actions.long()).view(-1)
                 qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
                 qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
                 qf_loss = qf1_loss + qf2_loss
@@ -297,20 +297,22 @@ if __name__ == "__main__":
 
                 # ACTOR training
                 _, log_pi, action_probs = actor.get_action(data.observations)
-                qf1_pi = qf1(data.observations)
-                qf2_pi = qf2(data.observations)
-                min_qf_pi = torch.min(qf1_pi, qf2_pi)
+                with torch.no_grad():
+                    qf1_values = qf1(data.observations)
+                    qf2_values = qf2(data.observations)
+                    min_qf_values = torch.min(qf1_values, qf2_values)
                 # no need for reparameterization, the expectation can be calculated for discrete actions
-                actor_loss = (action_probs * ((alpha * log_pi) - min_qf_pi)).mean()
+                # re-using the q-values is more efficient but requires detaching them
+                actor_loss = (action_probs * ((alpha * log_pi) - min_qf_values)).mean()
 
                 actor_optimizer.zero_grad()
                 actor_loss.backward()
                 actor_optimizer.step()
 
                 if args.autotune:
+                    # use action probabilities for temperature loss
                     with torch.no_grad():
                         _, log_pi, action_probs = actor.get_action(data.observations)
-                    # use action probabilities for temperature loss
                     alpha_loss = (action_probs * (-log_alpha * (log_pi + target_entropy))).mean()
 
                     a_optimizer.zero_grad()
