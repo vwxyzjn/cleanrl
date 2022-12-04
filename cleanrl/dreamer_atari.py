@@ -1200,7 +1200,7 @@ class Dreamer(nn.Module):
             # Drop the terminal steps from the data used to 
             # bootstrap the imagination process for actor critic training
             # .detach() is used to block the gradient flow from AC to WM component
-            ac_train_data = {k: wm_fwd_dict[k].detach() for k in ["s_deter_list", "s_stoch_list"]}
+            ac_train_data = {k: wm_fwd_dict[k].detach() for k in ["s_deter_list", "s_stoch_list", "s_list"]}
             ac_train_data = {k: torch.masked_select(v, masks_list).view(B_T, -1) for k,v in ac_train_data.items()}
         else:
             ac_train_data = {k: wm_fwd_dict[k].detach().view(B_T,-1) for k in ["s_deter_list", "s_stoch_list"]}
