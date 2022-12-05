@@ -46,7 +46,7 @@ def parse_args():
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="BeamRiderNoFrameskip-v4",
         help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=1000000,
+    parser.add_argument("--total-timesteps", type=int, default=5000000,
         help="total timesteps of the experiments")
     parser.add_argument("--buffer-size", type=int, default=int(1e6),
         help="the replay memory buffer size") # smaller than in original paper but evaluation is done only for 100k steps anyway
@@ -213,6 +213,7 @@ if __name__ == "__main__":
     qf2_target = SoftQNetwork(envs).to(device)
     qf1_target.load_state_dict(qf1.state_dict())
     qf2_target.load_state_dict(qf2.state_dict())
+    # TRY NOT TO MODIFY: eps=1e-4 increases numerical stability
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr, eps=1e-4)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr, eps=1e-4)
 
@@ -297,12 +298,10 @@ if __name__ == "__main__":
 
                 # ACTOR training
                 _, log_pi, action_probs = actor.get_action(data.observations)
-                with torch.no_grad():
-                    qf1_values = qf1(data.observations)
-                    qf2_values = qf2(data.observations)
-                    min_qf_values = torch.min(qf1_values, qf2_values)
+                qf1_values = qf1(data.observations)
+                qf2_values = qf2(data.observations)
+                min_qf_values = torch.min(qf1_values, qf2_values)
                 # no need for reparameterization, the expectation can be calculated for discrete actions
-                # re-using the q-values is more efficient but requires detaching them
                 actor_loss = (action_probs * ((alpha * log_pi) - min_qf_values)).mean()
 
                 actor_optimizer.zero_grad()

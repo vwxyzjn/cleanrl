@@ -306,7 +306,15 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
 
     where $\text{fan}$ is the number of input neurons to the layer and $\text{gain}$ is a constant set to $\sqrt{2}$ for `ReLU` layers.
 
-2. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses the action selection probabilities of the policy in multiple places to *reduce the variance of gradient estimates*. The target for the Soft Q-value estimate is weighted accordingly:
+2. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses the Adam[^2] optimizer with an increased $\epsilon$-parameter to improve its stability. This results in an increase in the denominator of the update rule:
+
+    $$
+        \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon}
+    $$
+
+    Here $\hat{m}_t$ is the bias-corrected first moment and $\hat{v}_t$ the bias-corrected second raw moment.
+
+3. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses the action selection probabilities of the policy in multiple places to *reduce the variance of gradient estimates*. The target for the Soft Q-value estimate is weighted accordingly:
 
     ```python hl_lines="7"
     # CRITIC training
@@ -325,10 +333,9 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
     ```python hl_lines="8"
     # ACTOR training
     _, log_pi, action_probs = actor.get_action(data.observations)
-    with torch.no_grad():
-        qf1_pi = qf1(data.observations)
-        qf2_pi = qf2(data.observations)
-        min_qf_pi = torch.min(qf1_pi, qf2_pi)
+    qf1_pi = qf1(data.observations)
+    qf2_pi = qf2(data.observations)
+    min_qf_pi = torch.min(qf1_pi, qf2_pi)
     # no need for reparameterization, the expectation can be calculated for discrete actions
     actor_loss = (action_probs * ((alpha * log_pi) - min_qf_pi)).mean()
     ```
@@ -347,12 +354,12 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
         alpha = log_alpha.exp().item()
     ```
 
-3. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses `--target-entropy-scale=0.88` while the [SAC-discrete paper](https://arxiv.org/abs/1910.07207) uses `--target-entropy-scale=0.98` due to improved stability when training for more than 100k steps. Tuning this parameter to the environment at hand is advised and can lead to significant performance gains.
+4. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses `--target-entropy-scale=0.88` while the [SAC-discrete paper](https://arxiv.org/abs/1910.07207) uses `--target-entropy-scale=0.98` due to improved stability when training for more than 100k steps. Tuning this parameter to the environment at hand is advised and can lead to significant performance gains.
 
-4. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) performs learning updates only on every $n^{\text{th}}$ step. This leads to improved stability and prevents the agent's performance from degenerating during longer training runs.  
+5. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) performs learning updates only on every $n^{\text{th}}$ step. This leads to improved stability and prevents the agent's performance from degenerating during longer training runs.  
 Note the difference to [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py): [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) updates every $n^{\text{th}}$ environment step and does a single update of actor and critic on every update step. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) updates the critic every step and the actor every $n^{\text{th}}$ step. It then compensates for the delayed actor updates by performing $n$ actor update steps.
 
-5. `sac_atari.py` handles truncation and termination properly like (Mnih et al., 2015)[^2] by using SB3's replay buffer's `handle_timeout_termination=True`.
+6. `sac_atari.py` handles truncation and termination properly like (Mnih et al., 2015)[^3] by using SB3's replay buffer's `handle_timeout_termination=True`.
 
 ### Atari experiment results for SAC-discrete
 
@@ -382,4 +389,6 @@ Tracked experiments:
 
 [^1]:Diederik P Kingma, Max Welling (2016). Auto-Encoding Variational Bayes. ArXiv, abs/1312.6114. https://arxiv.org/abs/1312.6114
 
-[^2]:Mnih, V., Kavukcuoglu, K., Silver, D. et al. Human-level control through deep reinforcement learning. Nature 518, 529–533 (2015). https://doi.org/10.1038/nature14236
+[^2]:Diederik P Kingma, Jimmy Lei Ba (2015). Adam: A Method for Stochastic Optimization. ArXiv, abs/1412.6980. https://arxiv.org/abs/1412.6980
+
+[^3]:Mnih, V., Kavukcuoglu, K., Silver, D. et al. Human-level control through deep reinforcement learning. Nature 518, 529–533 (2015). https://doi.org/10.1038/nature14236
