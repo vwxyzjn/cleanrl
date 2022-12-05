@@ -259,9 +259,10 @@ def make_env(env_id, seed, idx, capture_video, run_name, buffer, args):
             #         f2.write(f1.read())
             # Discard old episodes
             total = 0
-            for key in reversed(sorted(self._train_eps_cache.keys())):
-                if total <= self._buffer_size - length:
-                    total += length - 1
+            for key, ep_data in reversed(sorted(self._train_eps_cache.items(), key=lambda x: x[0])):
+                ep_len = len(ep_data["terminals"])
+                if total <= self._buffer_size - ep_len:
+                    total += ep_len - 1
                 else:
                     del self._train_eps_cache[key]
             # Append the most recent episode path to the replay buffer
