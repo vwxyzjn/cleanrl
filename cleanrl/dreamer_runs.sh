@@ -96,13 +96,13 @@ export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 
 # # Dreamer Disc Baseline, B=32, T=50, train-every=16, Buffer fixed
 # export CUDA_VISIBLE_DEVICES=5
-# # for seed in 1 2; do
+# # # for seed in 1 2; do
 # # for seed in 1; do
 # for seed in 2; do
 #     (sleep 1s && python dreamer_atari.py \
 #         --track --capture-video \
 #         --env-id "BreakoutNoFrameskip-v4" \
-#         --batch-size 32 --batch-length 50 \BUF
+#         --batch-size 32 --batch-length 50 \
 #         --train-every 16 \
 #         --buffer-size 2000000 \
 #         --exp-name "dreamer_B_32_T_50_trnev_16_BUF_2e6" \
