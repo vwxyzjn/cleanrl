@@ -70,7 +70,7 @@ def parse_args():
         help="Entropy regularization coefficient.")
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=True, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
-    parser.add_argument("--target-entropy-scale", type=float, default=0.88,
+    parser.add_argument("--target-entropy-scale", type=float, default=0.9,
         help="coefficient for scaling the autotune entropy target")
     args = parser.parse_args()
     # fmt: on
@@ -298,9 +298,10 @@ if __name__ == "__main__":
 
                 # ACTOR training
                 _, log_pi, action_probs = actor.get_action(data.observations)
-                qf1_values = qf1(data.observations)
-                qf2_values = qf2(data.observations)
-                min_qf_values = torch.min(qf1_values, qf2_values)
+                with torch.no_grad():
+                    qf1_values = qf1(data.observations)
+                    qf2_values = qf2(data.observations)
+                    min_qf_values = torch.min(qf1_values, qf2_values)
                 # no need for reparameterization, the expectation can be calculated for discrete actions
                 actor_loss = (action_probs * ((alpha * log_pi) - min_qf_values)).mean()
 
@@ -309,10 +310,8 @@ if __name__ == "__main__":
                 actor_optimizer.step()
 
                 if args.autotune:
-                    # use action probabilities for temperature loss
-                    with torch.no_grad():
-                        _, log_pi, action_probs = actor.get_action(data.observations)
-                    alpha_loss = (action_probs * (-log_alpha * (log_pi + target_entropy))).mean()
+                    # re-use action probabilities for temperature loss
+                    alpha_loss = (action_probs.detach() * (-log_alpha * (log_pi + target_entropy).detach())).mean()
 
                     a_optimizer.zero_grad()
                     alpha_loss.backward()
