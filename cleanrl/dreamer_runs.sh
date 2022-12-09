@@ -21,6 +21,23 @@ export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 #     ) >& /dev/null &
 # done
 
+# # Dreamer Disc Baseline, B=50, T=50, train-every=16
+# # Larger buffer size of 2 millions
+# #  With discount preditor loss balancing
+# export CUDA_VISIBLE_DEVICES=7
+# for seed in 1 2; do
+#     (sleep 1s && python dreamer_atari.py \
+#         --track --capture-video \
+#         --env-id "BreakoutNoFrameskip-v4" \
+#         --batch-size 50 --batch-length 50 \
+#         --train-every 16 \
+#         --buffer-size 2000000 \
+#         --disc-pred-baloss \
+#         --exp-name "dreamer_B_50_T_50_trnev_16_BUF_2e6_baloss" \
+#         --seed $seed \
+#     ) >& /dev/null &
+# done
+
 # # Dreamer Disc Baseline, B=50, T=50, train-every=8
 # # Larger buffer size of 2 millions
 # export CUDA_VISIBLE_DEVICES=7
