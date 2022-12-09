@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="weather to capture videos of the agent performances (check out `videos` folder)")
+        help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="HopperBulletEnv-v0",
@@ -104,8 +104,12 @@ class Actor(nn.Module):
         self.fc2 = nn.Linear(256, 256)
         self.fc_mu = nn.Linear(256, np.prod(env.single_action_space.shape))
         # action rescaling
-        self.register_buffer("action_scale", torch.FloatTensor((env.action_space.high - env.action_space.low) / 2.0))
-        self.register_buffer("action_bias", torch.FloatTensor((env.action_space.high + env.action_space.low) / 2.0))
+        self.register_buffer(
+            "action_scale", torch.tensor((env.action_space.high - env.action_space.low) / 2.0, dtype=torch.float32)
+        )
+        self.register_buffer(
+            "action_bias", torch.tensor((env.action_space.high + env.action_space.low) / 2.0, dtype=torch.float32)
+        )
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
@@ -206,11 +210,11 @@ if __name__ == "__main__":
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
             with torch.no_grad():
-                clipped_noise = (torch.randn_like(torch.Tensor(actions[0])) * args.policy_noise).clamp(
+                clipped_noise = (torch.randn_like(data.actions, device=device) * args.policy_noise).clamp(
                     -args.noise_clip, args.noise_clip
-                )
+                ) * target_actor.action_scale
 
-                next_state_actions = (target_actor(data.next_observations) + clipped_noise.to(device)).clamp(
+                next_state_actions = (target_actor(data.next_observations) + clipped_noise).clamp(
                     envs.single_action_space.low[0], envs.single_action_space.high[0]
                 )
                 qf1_next_target = qf1_target(data.next_observations, next_state_actions)

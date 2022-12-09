@@ -44,7 +44,7 @@ tuner.tune(
 You can run the tuner with the following command:
 
 ```bash
-poetry install -E optuna
+poetry install --with optuna
 python tuner_example.py
 ```
 

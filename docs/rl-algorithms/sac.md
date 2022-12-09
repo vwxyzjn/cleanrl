@@ -47,7 +47,7 @@ The [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 poetry install
 
 # Pybullet
-poetry install -E pybullet
+poetry install --with pybullet
 
 ## Default
 python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0
@@ -188,7 +188,7 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
 
 To run benchmark experiments, see :material-github: [benchmark/sac.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/sac.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2F2e2dc9c6ede5e5e5df3eaea73c458bb9a83507d2%2Fbenchmark%2Fsac.sh%23L1-L7&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fsac.sh%23L1-L7&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 The table below compares the results of CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) with the [latest published results](https://arxiv.org/abs/1812.05905) by the original authors of the SAC algorithm.
 
