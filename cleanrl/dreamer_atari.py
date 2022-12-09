@@ -1351,7 +1351,7 @@ if __name__ == "__main__":
                 PRGS = dreamer.n_updates / total_updates # Progress rate, monitor progressino rate in Wandb
                 print("SPS:", int((global_step - args.buffer_prefill) / (time.time() - start_time)), end=" | ")
                 print(f"UPS: {UPS: 0.3f}", end=" | ")
-                print("ETA:", hrd(total_updates / UPS))
+                print("ETA:", hrd(int(total_updates - dreamer.n_updates.item())/ UPS))
                 writer.add_scalar("global_step", global_step, global_step)
                 writer.add_scalar("global_frame", global_step * args.env_action_repeats, global_step)
                 writer.add_scalar("charts/SPS", (global_step - args.buffer_prefill) / (time.time() - start_time), global_step)
