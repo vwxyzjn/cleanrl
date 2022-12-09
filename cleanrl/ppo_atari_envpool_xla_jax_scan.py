@@ -259,25 +259,11 @@ if __name__ == "__main__":
     actor.apply = jax.jit(actor.apply)
     critic.apply = jax.jit(critic.apply)
 
-    # ALGO Logic: Storage setup
-    # storage = Storage(
-    #     obs=jnp.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape),
-    #     actions=jnp.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape, dtype=jnp.int32),
-    #     logprobs=jnp.zeros((args.num_steps, args.num_envs)),
-    #     dones=jnp.zeros((args.num_steps, args.num_envs)),
-    #     values=jnp.zeros((args.num_steps, args.num_envs)),
-    #     advantages=jnp.zeros((args.num_steps, args.num_envs)),
-    #     returns=jnp.zeros((args.num_steps, args.num_envs)),
-    #     rewards=jnp.zeros((args.num_steps, args.num_envs)),
-    # )
 
     @jax.jit
     def get_action_and_value(
         agent_state: TrainState,
         next_obs: np.ndarray,
-        # next_done: np.ndarray,
-        # storage: Storage,
-        # step: int,
         key: jax.random.PRNGKey,
     ):
         """sample action, calculate value, logprob, entropy, and update storage"""
@@ -290,13 +276,6 @@ if __name__ == "__main__":
         action = jnp.argmax(logits - jnp.log(-jnp.log(u)), axis=1)
         logprob = jax.nn.log_softmax(logits)[jnp.arange(action.shape[0]), action]
         value = critic.apply(agent_state.params.critic_params, hidden)
-        # storage = storage.replace(
-        #     obs=storage.obs.at[step].set(next_obs),
-        #     dones=storage.dones.at[step].set(next_done),
-        #     actions=storage.actions.at[step].set(action),
-        #     logprobs=storage.logprobs.at[step].set(logprob),
-        #     values=storage.values.at[step].set(value.squeeze()),
-        # )
         return action, logprob, value.squeeze(1), key
 
     @jax.jit
@@ -335,8 +314,6 @@ if __name__ == "__main__":
         next_done: np.ndarray,
         storage: Storage,
     ):
-
-        # storage = storage.replace(advantages=storage.advantages.at[:].set(0.0))
         next_value = critic.apply(
             agent_state.params.critic_params, network.apply(agent_state.params.network_params, next_obs)
         ).squeeze()
@@ -345,7 +322,6 @@ if __name__ == "__main__":
         jnp.zeros((args.num_envs,))
         dones = jnp.concatenate([storage.dones, next_done[None, :]], axis=0)
         values = jnp.concatenate([storage.values, next_value[None, :]], axis=0)
-        # rewards = jnp.concatenate([rewards[None,:], storage.rewards], axis=0)
         _, advantages = jax.lax.scan(
             compute_gae_once, advantages, (dones[1:], values[1:], values[:-1], storage.rewards), reverse=True
         )
@@ -413,14 +389,12 @@ if __name__ == "__main__":
             agent_state, (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads) = jax.lax.scan(
                 update_minibatch, agent_state, shuffled_storage
             )
-
             return (agent_state, key), (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads)
 
         (agent_state, key), (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads) = jax.lax.scan(
             update_epoch, (agent_state, key), (), length=args.update_epochs
         )
-
-        return agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, grads, key
+        return agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, key
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -430,13 +404,10 @@ if __name__ == "__main__":
 
     # based on https://github.dev/google/evojax/blob/0625d875262011d8e1b6aa32566b236f44b4da66/evojax/sim_mgr.py
     def step_once(carry, step, env_step_fn):
-        # (task_state, policy_state, params, obs_params,
-        # accumulated_reward, valid_mask) = carry
-        (agent_state, episode_stats, obs, done, key, handle) = carry
+        agent_state, episode_stats, obs, done, key, handle = carry
         action, logprob, value, key = get_action_and_value(agent_state, obs, key)
 
         episode_stats, handle, (next_obs, reward, next_done, _) = env_step_fn(episode_stats, handle, action)
-
         storage = Storage(
             obs=obs,
             actions=action,
@@ -447,35 +418,28 @@ if __name__ == "__main__":
             returns=jnp.zeros_like(reward),
             advantages=jnp.zeros_like(reward),
         )
-
         return ((agent_state, episode_stats, next_obs, next_done, key, handle), storage)
 
     def rollout(agent_state, episode_stats, next_obs, next_done, key, handle, step_once_fn, max_steps):
-
         (agent_state, episode_stats, next_obs, next_done, key, handle), storage = jax.lax.scan(
             step_once_fn, (agent_state, episode_stats, next_obs, next_done, key, handle), (), max_steps
         )
+        return agent_state, episode_stats, next_obs, next_done, storage, key, handle
 
-        return agent_state, episode_stats, next_obs, next_done, key, handle, storage
-
-    rollout_fn = partial(rollout, step_once_fn=partial(step_once, env_step_fn=step_env_wrappeed), max_steps=args.num_steps)
+    rollout = partial(rollout, step_once_fn=partial(step_once, env_step_fn=step_env_wrappeed), max_steps=args.num_steps)
 
     for update in range(1, args.num_updates + 1):
         update_time_start = time.time()
-        agent_state, episode_stats, next_obs, next_done, key, handle, storage = rollout_fn(
+        agent_state, episode_stats, next_obs, next_done, storage, key, handle = rollout(
             agent_state, episode_stats, next_obs, next_done, key, handle
         )
         global_step += args.num_steps * args.num_envs
-
         storage = compute_gae(agent_state, next_obs, next_done, storage)
-        agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, grads, key = update_ppo(
+        agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, key = update_ppo(
             agent_state,
             storage,
             key,
         )
-
-        if update == 1:
-            start_time_wo_compilation = time.time()
         avg_episodic_return = np.mean(jax.device_get(episode_stats.returned_episode_returns))
         print(f"global_step={global_step}, avg_episodic_return={avg_episodic_return}")
 
@@ -492,12 +456,9 @@ if __name__ == "__main__":
         writer.add_scalar("losses/loss", loss[-1, -1].item(), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
-        print("SPS_update:", int(args.num_envs * args.num_steps / (time.time() - update_time_start)))
         writer.add_scalar(
             "charts/SPS_update", int(args.num_envs * args.num_steps / (time.time() - update_time_start)), global_step
         )
-    print("Total training time (including compilation):", time.time() - start_time, "seconds")
-    print("Total training time (without compilation):", time.time() - start_time_wo_compilation, "seconds")
-    print("Approx. compilation time:", start_time_wo_compilation - start_time, "seconds")
+
     envs.close()
     writer.close()
