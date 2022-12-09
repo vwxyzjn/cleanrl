@@ -55,7 +55,7 @@ export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 #     ) >& /dev/null &
 # done
 
-# # Dreamer Disc Baseline, B=50, T=50, train-every=8
+# # Dreamer Disc Baseline, B=50, T=50, train-every=4
 # # Larger buffer size of 2 millions
 # export CUDA_VISIBLE_DEVICES=6
 # # for seed in 1 2; do
@@ -68,6 +68,21 @@ export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 #         --train-every 4 \
 #         --buffer-size 2000000 \
 #         --exp-name "dreamer_B_50_T_50_trnev_4_BUF_2e6" \
+#         --seed $seed \
+#     ) >& /dev/null &
+# done
+
+# # Dreamer Disc Baseline, B=16, T=50, train-every=4
+# # Larger buffer size of 2 millions
+# export CUDA_VISIBLE_DEVICES=0
+# for seed in 1 2; do
+#     (sleep 1s && python dreamer_atari.py \
+#         --track --capture-video \
+#         --env-id "BreakoutNoFrameskip-v4" \
+#         --batch-size 16 --batch-length 50 \
+#         --train-every 4 \
+#         --buffer-size 2000000 \
+#         --exp-name "dreamer_B_16_T_50_trnev_4_BUF_2e6" \
 #         --seed $seed \
 #     ) >& /dev/null &
 # done
