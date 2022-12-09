@@ -81,6 +81,8 @@ def parse_args():
         help="the size of hidden layers of the reward predictor")
     parser.add_argument("--disc-pred-hid-size", type=int, default=400,
         help="the size of hidden layers of the discount preditor; set to 0 to disable")
+    parser.add_argument("--disc-pred-baloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="Dynamically adjust the disc. predictor loss based on how many terminal states are in the batch.")
     ## World Model KL Loss computaton speicfic
     parser.add_argument("--kl-forward", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="inverts the posterior and prior distribution in the balanced KL loss computation") # TODO: consider just nuking this
@@ -321,7 +323,7 @@ class DreamerTBPTTBuffer():
         B, T = self.B, self.T
         # Placeholder
         C = 1 if self.config.env_grayscale else 3
-        obs_list = np.zeros([B, T, C, 64, 64]) # TODO: recover obs shape
+        obs_list = np.zeros([B, T, C, 64, 64]) # TODO: recover obs shape, make this env agnostic ?
         act_list = np.zeros([B, T, self.action_space.n], dtype=np.float32)
         rew_list = np.zeros([B, T, 1], dtype=np.float32)
         ter_list = np.zeros([B, T, 1], dtype=np.bool8)
@@ -353,6 +355,7 @@ class DreamerTBPTTBuffer():
                 self.episodes_current_idx[b] = edd_end
         
         # Tensorize and copy to training batch to (GPU) device
+        # TODO: probably better to leave / 255.0 - 0.5 out of the buffer, to make it env agnostic
         return {
             "observations": torch.Tensor(obs_list).float().to(self.device) / 255.0 - 0.5,
             "actions": torch.Tensor(act_list).float().to(self.device),
@@ -739,7 +742,16 @@ class WorldModel(nn.Module):
             disc_pred_dist = thd.Independent(thd.Bernoulli(logits=discount_pred_logits_list), 1)
             disc_pred_dist = Bernoulli(disc_pred_dist)
             disc_pred_loss_list = disc_pred_dist.log_prob(discount_list).neg() # [B, T]
-            disc_pred_loss = disc_pred_loss_list.mean()
+            if config.disc_pred_baloss:
+                n_ter_states = ter_list.sum()
+                nonter_weight = n_ter_states / float(B * T) # Inversely proportional weight for the non terminal states
+                ter_weight = 1. - nonter_weight # Inversely proportional weights for the steps with terminal state
+                disc_pred_nll_ter_list = torch.masked_select(disc_pred_loss_list, ter_list)
+                disc_pred_nll_nonter_list = torch.masked_select(disc_pred_loss_list, ~ter_list)
+                disc_pred_loss = disc_pred_nll_ter_list.mean() * ter_weight + \
+                                 disc_pred_nll_nonter_list.mean() * nonter_weight
+            else:
+                disc_pred_loss = disc_pred_loss_list.mean()
         
             # Scaling the loss
             disc_pred_loss_scaled = disc_pred_loss * config.disc_scale
