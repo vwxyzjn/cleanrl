@@ -41,7 +41,7 @@ poetry install
 poetry install --with pybullet
 python cleanrl/ddpg_continuous_action.py --help
 python cleanrl/ddpg_continuous_action.py --env-id HopperBulletEnv-v0
-poetry install --with mujoco # only works in Linux
+poetry install --with mujoco_py # only works in Linux
 python cleanrl/ddpg_continuous_action.py --env-id Hopper-v3
 ```
 
@@ -262,11 +262,11 @@ The [ddpg_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/mast
 ### Usage
 
 ```bash
-poetry install --with mujoco,jax
+poetry install --with mujoco_py,jax
 poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 poetry run python -c "import mujoco_py"
 python cleanrl/ddpg_continuous_action_jax.py --help
-poetry install --with mujoco # only works in Linux
+poetry install --with mujoco_py # only works in Linux
 python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v3
 ```
 
