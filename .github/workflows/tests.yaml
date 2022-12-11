@@ -156,6 +156,13 @@ jobs:
         run: poetry install --with pytest,mujoco,dm_control
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
+      - name: install mujoco dependencies
+        run: |
+          sudo apt-get update && sudo apt-get -y install wget unzip software-properties-common \
+            libgl1-mesa-dev \
+            libgl1-mesa-glx \
+            libglew-dev \
+            libosmesa6-dev patchelf
       - name: Run mujoco tests
         run: poetry run pytest tests/test_mujoco.py
 
