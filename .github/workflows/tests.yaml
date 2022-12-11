@@ -158,7 +158,7 @@ jobs:
       - name: Install pybullet dependencies
         run: poetry install --with pybullet
       - name: Install mujoco_py dependencies
-        run: poetry install --with mujoco_py
+        run: poetry install --with mujoco_py,mujoco
       - name: Install jax dependencies
         run: poetry install --with jax
       - name: Downgrade setuptools
