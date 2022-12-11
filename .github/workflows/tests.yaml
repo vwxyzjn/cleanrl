@@ -186,14 +186,8 @@ jobs:
           poetry-version: ${{ matrix.poetry-version }}
 
       # mujoco_py tests
-      - name: Install core dependencies
-        run: poetry install --with pytest
-      - name: Install pybullet dependencies
-        run: poetry install --with pybullet
-      - name: Install mujoco_py dependencies
-        run: poetry install --with mujoco_py
-      - name: Install jax dependencies
-        run: poetry install --with jax
+      - name: Install dependencies
+        run: poetry install --with pytest,pybullet,mujoco_py,mujoco,jax
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: install mujoco_py dependencies
