@@ -357,6 +357,7 @@ To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://g
         | dm_control/walker-walk-v0             | 392.51 ± 56.25                                            |
         | dm_control/walker-run-v0              | 125.92 ± 10.01                                            |
 
+        Note that the dm_control/lqr-lqr_2_1-v0 dm_control/lqr-lqr_6_2-v0 environments are never terminated or truncated. See https://wandb.ai/openrlbenchmark/cleanrl/runs/3tm00923 and https://wandb.ai/openrlbenchmark/cleanrl/runs/1z9us07j as an example.
 
         Learning curves:
 
