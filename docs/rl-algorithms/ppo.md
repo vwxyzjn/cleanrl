@@ -208,12 +208,20 @@ The [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 * For continuous action space. Also implemented Mujoco-specific code-level optimizations
 * Works with the `Box` observation space of low-level features
 * Works with the `Box` (continuous) action space
+* adding experimental support for [Gymnasium](https://gymnasium.farama.org/)
+* 🧪 support `dm_control` environments via [Shimmy](https://github.com/Farama-Foundation/Shimmy)
 
 ### Usage
 
 ```bash
-poetry install --with mujoco_py
+# mujoco v4 and dm_control environments
+poetry install --with mujoco
 python cleanrl/ppo_continuous_action.py --help
+python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
+python cleanrl/ppo_continuous_action.py --env-id dm_control/cartpole-balance-v0
+
+# backwards compatibility with mujoco v2 environments
+poetry install --with mujoco_py,mujoco
 python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
 ```
 
@@ -248,56 +256,25 @@ To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://g
 
 Below are the average episodic returns for `ppo_continuous_action.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
 
-| Environment      | `ppo_continuous_action.py` | `openai/baselies`' PPO (Huang et al., 2022)[^1]
-| ----------- | ----------- | ----------- |
-| Hopper-v2      | 2231.12 ± 656.72     | 2518.95 ± 850.46  |
-| Walker2d-v2   | 3050.09 ± 1136.21    |  3208.08 ± 1264.37 |
-| HalfCheetah-v2   | 1822.82 ± 928.11         | 2152.26 ± 1159.84 |
+|                     | ppo_continuous_action ({'tag': ['v1.0.0-27-gde3f410']})   | `openai/baselies`' PPO (results taken from [here](https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-openai-baselines--VmlldzoyMTgyNjM0))   |
+|:--------------------|:----------------------------------------------------------|:---------------------------------------------------------------------------------------------|
+| HalfCheetah-v2      | 2262.50 ± 1196.81                                         | 1428.55 ± 62.40                                                                              |
+| Walker2d-v2         | 3312.32 ± 429.87                                          | 3356.49 ± 322.61                                                                             |
+| Hopper-v2           | 2311.49 ± 440.99                                          | 2158.65 ± 302.33                                                                             |
+| InvertedPendulum-v2 | 852.04 ± 17.04                                            | 901.25 ± 35.73                                                                               |
+| Humanoid-v2         | 676.34 ± 78.68                                            | 673.11 ± 53.02                                                                               |
+| Pusher-v2           | -60.49 ± 4.37                                             | -56.83 ± 13.33                                                                               |
 
 
 Learning curves:
 
-<div class="grid-container">
-<img src="../ppo/Hopper-v2.png">
+![](../ppo/ppo_continuous_action_gymnasium_mujoco_v2.png)
 
-<img src="../ppo/Walker2d-v2.png">
-
-<img src="../ppo/HalfCheetah-v2.png">
-</div>
-
-
-Tracked experiments and game play videos:
-
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-PPO--VmlldzoxODAwNjkw" style="width:100%; height:500px" title="MuJoCo-CleanRL-s-PPO"></iframe>
-
-### Video tutorial
-
-If you'd like to learn `ppo_continuous_action.py` in-depth, consider checking out the following video tutorial:
-
-
-<div style="text-align: center;"><iframe width="560" height="315" src="https://www.youtube.com/embed/BvZvx7ENZBw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
-
-### 🧪 Gymnasium Support
-
-The [gymnasium_support/ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/gymnasium_support/ppo_continuous_action.py) has the following features:
-
-* adding experimental support for [Gymnasium](https://gymnasium.farama.org/)
-* support `dm_control` environments via [Shimmy](https://github.com/Farama-Foundation/Shimmy)
-
-```bash
-poetry install --with mujoco,dm_control
-python cleanrl/gymnasium_support/ppo_continuous_action.py --help
-python cleanrl/gymnasium_support/ppo_continuous_action.py --env-id Hopper-v2
-python cleanrl/gymnasium_support/ppo_continuous_action.py --env-id dm_control/cartpole-balance-v0
-```
-
-
-To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
 
 <script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fppo.sh%23L93-L106&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
 
 
-Below are the average episodic returns for `ppo_continuous_action.py`.
+Below are the average episodic returns for `ppo_continuous_action.py` in MuJoCo v4 environments and `dm_control` environments.
 
 |                     | ppo_continuous_action ({'tag': ['v1.0.0-12-g99f7789']})   |
 |:--------------------|:----------------------------------------------------------|
@@ -362,7 +339,7 @@ Below are the average episodic returns for `ppo_continuous_action.py`.
 
 Learning curves:
 
-![](../ppo/ppo_continuous_action_gymnasium_mujoco.png)
+![](../ppo/ppo_continuous_action_gymnasium_mujoco_v4.png)
 ![](../ppo/ppo_continuous_action_gymnasium_dm_control.png)
 
 ???+ info
@@ -370,6 +347,17 @@ Learning curves:
     In the gymnasium environments, we use the v4 mujoco environments, which roughly results in the same performance as the v2 mujoco environments.
 
     ![](../ppo/ppo_continuous_action_v2_vs_v4.png)
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-PPO--VmlldzoxODAwNjkw" style="width:100%; height:500px" title="MuJoCo-CleanRL-s-PPO"></iframe>
+
+### Video tutorial
+
+If you'd like to learn `ppo_continuous_action.py` in-depth, consider checking out the following video tutorial:
+
+
+<div style="text-align: center;"><iframe width="560" height="315" src="https://www.youtube.com/embed/BvZvx7ENZBw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
 
 
 ## `ppo_atari_lstm.py`
