@@ -113,7 +113,6 @@ You may also use a prebuilt development environment hosted in Gitpod:
 
 ## Algorithms Implemented
 
-# Overview
 
 | Algorithm      | Variants Implemented |
 | ----------- | ----------- |
@@ -140,6 +139,15 @@ You may also use a prebuilt development environment hosted in Gitpod:
 |  | [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py),  [docs](https://docs.cleanrl.dev/rl-algorithms/td3/#td3_continuous_action_jaxpy) |
 | ✅ [Phasic Policy Gradient (PPG)](https://arxiv.org/abs/2009.04416) |  [`ppg_procgen.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppg_procgen.py),  [docs](https://docs.cleanrl.dev/rl-algorithms/ppg/#ppg_procgenpy) |
 | ✅ [Random Network Distillation (RND)](https://arxiv.org/abs/1810.12894) |  [`ppo_rnd_envpool.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py),  [docs](/rl-algorithms/ppo-rnd/#ppo_rnd_envpoolpy) |
+
+
+### 🧪 Experimental Gymnasium support
+
+We are migrating to gymnasium in phases, gradually converting our implementations one by one while providing migration report as we go to ensure reproducibility.
+
+| Algorithm      | Variants Implemented |
+| ----------- | ----------- |
+| ✅ [Proximal Policy Gradient (PPO)](https://arxiv.org/pdf/1707.06347.pdf) | :material-github: [`gymnasium_support/ppo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/gymnasium_support/ppo_continuous_action.py),  :material-file-document: [docs](/rl-algorithms/ppo/#gymnasium-support)
 
 
 ## Open RL Benchmark

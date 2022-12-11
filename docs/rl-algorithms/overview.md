@@ -1,5 +1,15 @@
 # Overview
 
+???+ info 
+
+    🧪 Experimental Gymnasium support
+
+    | Algorithm      | Variants Implemented |
+    | ----------- | ----------- |
+    | ✅ [Proximal Policy Gradient (PPO)](https://arxiv.org/pdf/1707.06347.pdf) | :material-github: [`gymnasium_support/ppo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/gymnasium_support/ppo_continuous_action.py),  :material-file-document: [docs](/rl-algorithms/ppo/#gymnasium-support)
+
+
+
 | Algorithm      | Variants Implemented |
 | ----------- | ----------- |
 | ✅ [Proximal Policy Gradient (PPO)](https://arxiv.org/pdf/1707.06347.pdf)  | :material-github: [`ppo.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppopy) |
