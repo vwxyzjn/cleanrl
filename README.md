@@ -141,15 +141,6 @@ You may also use a prebuilt development environment hosted in Gitpod:
 | ✅ [Random Network Distillation (RND)](https://arxiv.org/abs/1810.12894) |  [`ppo_rnd_envpool.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py),  [docs](/rl-algorithms/ppo-rnd/#ppo_rnd_envpoolpy) |
 
 
-### 🧪 Experimental Gymnasium support
-
-We are migrating to gymnasium in phases, gradually converting our implementations one by one while providing migration report as we go to ensure reproducibility.
-
-| Algorithm      | Variants Implemented |
-| ----------- | ----------- |
-| ✅ [Proximal Policy Gradient (PPO)](https://arxiv.org/pdf/1707.06347.pdf) | :material-github: [`gymnasium_support/ppo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/gymnasium_support/ppo_continuous_action.py),  :material-file-document: [docs](/rl-algorithms/ppo/#gymnasium-support)
-
-
 ## Open RL Benchmark
 
 To make our experimental data transparent, CleanRL participates in a related project called [Open RL Benchmark](https://github.com/openrlbenchmark/openrlbenchmark), which contains tracked experiments from popular DRL libraries such as ours, [Stable-baselines3](https://github.com/DLR-RM/stable-baselines3), [openai/baselines](https://github.com/openai/baselines), [jaxrl](https://github.com/ikostrikov/jaxrl), and others. 
