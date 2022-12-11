@@ -214,12 +214,13 @@ The [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 ### Usage
 
 ```bash
-# mujoco v4 and dm_control environments
+# mujoco v4 environments
 poetry install --with mujoco
 python cleanrl/ppo_continuous_action.py --help
 python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
+# dm_control v4 environments
+poetry install --with mujoco,dm_control
 python cleanrl/ppo_continuous_action.py --env-id dm_control/cartpole-balance-v0
-
 # backwards compatibility with mujoco v2 environments
 poetry install --with mujoco_py,mujoco
 python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
