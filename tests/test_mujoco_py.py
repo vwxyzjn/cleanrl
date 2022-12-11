@@ -1,9 +1,9 @@
 import subprocess
 
 
-def test_pybullet():
+def test_mujoco_py():
     """
-    Test classic control
+    Test mujoco_py
     """
     subprocess.run(
         "python cleanrl/ppo_continuous_action.py --env-id Hopper-v2 --num-envs 1 --num-steps 64 --total-timesteps 256",
