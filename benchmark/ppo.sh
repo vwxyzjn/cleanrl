@@ -31,7 +31,7 @@ xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
 poetry install --with mujoco_py,pybullet
 poetry run python -c "import mujoco_py"
 OMP_NUM_THREADS=1 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
-    --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 \
+    --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 InvertedPendulum-v2 Humanoid-v2 Pusher-v2 \
     --command "poetry run python cleanrl/ppo_continuous_action.py --cuda False --track --capture-video" \
     --num-seeds 3 \
     --workers 9
