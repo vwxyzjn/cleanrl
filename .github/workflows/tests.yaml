@@ -139,7 +139,36 @@ jobs:
       matrix:
         python-version: [3.8]
         poetry-version: [1.2]
-        os: [ubuntu-22.04, macos-latest, windows-latest]
+        os: [ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+
+      # mujoco tests
+      - name: Install dependencies
+        run: poetry install --with pytest,mujoco,dm_control
+      - name: Downgrade setuptools
+        run: poetry run pip install setuptools==59.5.0
+      - name: install mujoco dependencies
+        run: |
+          sudo apt-get update && sudo apt-get -y install libgl1-mesa-glx libosmesa6
+      - name: Run mujoco tests
+        run: poetry run pytest tests/test_mujoco.py
+
+  test-mujoco-envs-windows-mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+        poetry-version: [1.2]
+        os: [macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
