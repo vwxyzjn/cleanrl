@@ -259,7 +259,6 @@ if __name__ == "__main__":
     actor.apply = jax.jit(actor.apply)
     critic.apply = jax.jit(critic.apply)
 
-
     @jax.jit
     def get_action_and_value(
         agent_state: TrainState,
@@ -319,7 +318,6 @@ if __name__ == "__main__":
         ).squeeze()
 
         advantages = jnp.zeros((args.num_envs,))
-        jnp.zeros((args.num_envs,))
         dones = jnp.concatenate([storage.dones, next_done[None, :]], axis=0)
         values = jnp.concatenate([storage.values, next_value[None, :]], axis=0)
         _, advantages = jax.lax.scan(
