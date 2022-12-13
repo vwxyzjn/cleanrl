@@ -79,6 +79,7 @@ python {algorith_variant_filename} {" ".join(sys.argv[1:])}
         "reinforcement-learning",
         "custom-implementation",
     ]
+    metadata["library_name"] = "cleanrl"
     eval = metadata_eval_result(
         model_pretty_name=algo_name,
         task_pretty_name="reinforcement-learning",
