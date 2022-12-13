@@ -16,6 +16,7 @@ nav:
     - get-started/experiment-tracking.md
     - get-started/examples.md
     - get-started/benchmark-utility.md
+    - get-started/zoo.md
   - RL Algorithms:
     - rl-algorithms/overview.md
     - rl-algorithms/ppo.md

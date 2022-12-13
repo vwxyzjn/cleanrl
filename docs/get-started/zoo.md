@@ -1,8 +1,6 @@
 # Model Zoo
 
-:octicons-beaker-24: Experimental
-
-CleanRL now has experimental support for saving and loading models from HuggingFace's [Model Hub](https://huggingface.co/models). We are rolling out this feature in phases, and currently only support saving and loading models from the following algorithms:
+CleanRL now has 🧪 experimental support for saving and loading models from 🤗 HuggingFace's [Model Hub](https://huggingface.co/models). We are rolling out this feature in phases, and currently only support saving and loading models from the following algorithm varaints:
 
 
 | Algorithm      | Variants Implemented |
@@ -18,6 +16,18 @@ CleanRL now has experimental support for saving and loading models from HuggingF
 We have a simple utility `enjoy.py` to load models from the hub and run them in an environment. We currently support the following commands:
 
 ```bash
-python enjoy.py --exp-name dqn --env CartPole-v1
-python enjoy.py --exp-name dqn_jax --env CartPole-v1
+poetry run python enjoy.py --exp-name dqn --env CartPole-v1
+poetry run python enjoy.py --exp-name dqn_atari --env BreakoutNoFrameskip-v4
+poetry run python enjoy.py --exp-name dqn_jax --env CartPole-v1
+```
+
+To see a list of supported models, please visit 🤗 https://huggingface.co/cleanrl.
+
+
+## Save model to Model Hub
+
+In the supported algorithm variant, you can run the script with the `--save-model` flag, which saves a model to the `runs` folder, and the `--upload-model` flag, which upload the model to huggingface under your default entity (username). Optionally, you may override the default entity with `--hf-entity` flag.
+
+```bash
+poetry run cleanrl/dqn_atari_jax.py --env-id SeaquestNoFrameskip-v4  --save-model --upload-model # --hf-entity cleanrl
 ```
