@@ -46,7 +46,7 @@ def parse_args():
         help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4",
+    parser.add_argument("--env-id", type=str, default="PongNoFrameskip-v4",
         help="the id of the environment")
     parser.add_argument("--num-envs", type=int, default=1,
         help="Number of parallel environments for sampling")
@@ -81,8 +81,6 @@ def parse_args():
         help="the size of hidden layers of the reward predictor")
     parser.add_argument("--disc-pred-hid-size", type=int, default=400,
         help="the size of hidden layers of the discount preditor; set to 0 to disable")
-    parser.add_argument("--disc-pred-baloss", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="Dynamically adjust the disc. predictor loss based on how many terminal states are in the batch.")
     ## World Model KL Loss computaton speicfic
     parser.add_argument("--kl-forward", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="inverts the posterior and prior distribution in the balanced KL loss computation") # TODO: consider just nuking this
@@ -97,7 +95,7 @@ def parse_args():
         help="the scaling coeff. for the reward prediction loss")
     parser.add_argument("--disc-scale", type=float, default=5.0,
         help="the scaling coeff. for the discount prediction loss")
-    ## World model optimizer's hyper parameters
+    ### World model optimizer's hyper parameters
     parser.add_argument("--model-lr", type=float, default=2e-4,
         help="the learning rate of the world model Adam optimizer")
     parser.add_argument("--model-eps", type=float, default=1e-5,
@@ -110,15 +108,15 @@ def parse_args():
     ## Actor (policy) specific hyperparameters
     parser.add_argument("--actor-hid-size", type=int, default=400,
         help="the size of the hidden layers of the actor network")
-    parser.add_argument("--actor-entropy", type=float, default=1e-3,
-        help="the entropy regulirization coefficient for the actor policy") # TODO: add support for decay schedulers
+    parser.add_argument("--actor-entropy-scale", type=float, default=1e-3,
+        help="the entropy regulirization coefficient for the actor policy") # TODO: add support for decay ?
     parser.add_argument("--actor-imagine-grad-mode", type=str, default="both", choices=["dynamics", "reinforce", "both"],
         help="the method used to compute the gradients when updating the actor"
              "over imaginated trajectories")
-    parser.add_argument("--actor-imagine-grad-mix", type=float, default=0.1,
+    parser.add_argument("--actor-imagine-grad-mix", type=float, default=0.0,
         help="the ratio of using world model's reward prediction and 'reinforce' policy gradient"
-             "when updating the actor using 'both' method for 'actor-imagine-actor-mode'") # TODO: add scheduled version
-    ## Actor optimizer's hyper parameters
+             "when updating the actor using 'both' method for 'actor-imagine-actor-mode'") # TODO: add support for decay ?
+    ### Actor optimizer's hyper parameters
     parser.add_argument("--actor-lr", type=float, default=4e-5,
         help="the learning rate of the actor's Adam optimizer")
     parser.add_argument("--actor-eps", type=float, default=1e-5,
@@ -135,7 +133,7 @@ def parse_args():
         help="the frequency of update of the slow value network")
     parser.add_argument("--value-slow-target-fraction", type=float, default=1,
         help="the coefficient used to update the lagging slow value network")
-    ## Value optimizer's hyper parameters
+    ### Value optimizer's hyper parameters
     parser.add_argument("--value-lr", type=float, default=1e-4,
         help="the learning rate of the value's Adam optimizer")
     parser.add_argument("--value-eps", type=float, default=1e-5,
@@ -146,14 +144,22 @@ def parse_args():
         help="the gradient norm clipping threshold for the value network")
 
     ## Dreamer specific hyperparameters
-    parser.add_argument("--imagine-horizon", type=int, default=15,
-        help="the number of steps to simulate using the world model ('dreaming' horizon)")
-    # TODO: train-every in the paper says 4, but in the code says 16
-    # Does the code consider train-every frame or train-every step environmetn ?
+    ## NOTE: The original implementation mentions using train-every = 4
+    ## but it is not clear whether it is every 4 env.step() or every 4 * 4 frames
+    ## Due to slower training time of train_every = 4, this impl. uses 16 instead
     parser.add_argument("--train-every", type=int, default=16,
         help="the env. steps interval after which the model is trained.")
+    parser.add_argument("--imagine-horizon", type=int, default=15,
+        help="the number of steps to simulate using the world model ('dreaming' horizon)")
+    
+    ## Vizualizton specific hyperparameters
     parser.add_argument("--viz-n-videos", type=int, default=3,
         help="the number of video samples to visualize for reconstruction and imagination")
+    parser.add_argument("--viz-videos-every", type=int, default=500,
+        help="the interval of 'Dreamer agnet updates' after which reconstructed"
+             "and imaginary trajectories should be logged")
+    parser.add_argument("--viz-videos-fps", type=int, default=16,
+        help="the number of FPS to be used for video logging: 16 for Atari by default.")
     args = parser.parse_args()
     # fmt: on
     return args
@@ -412,10 +418,10 @@ class RequiresGrad():
 # Dreamer Agent
 ## World model component: handles representation and dynamics learning
 class WorldModel(nn.Module):
-    def __init__(self, config, num_actions):
+    def __init__(self, config, action_dim):
         super().__init__()
         self.config = config
-        self.num_actions = num_actions
+        self.action_dim = action_dim
         
         # Pre-compute the state_feat_size: |S| = |H| + |Y|
         self.state_feat_size = config.rssm_deter_size
@@ -513,7 +519,7 @@ class WorldModel(nn.Module):
         N = config.rssm_deter_size # 600 by default
         # Embeds y_{t-1} and a_{t-1} before updating h_t
         self.state_action_embed = nn.Sequential(
-            nn.Linear(self.state_stoch_feat_size + num_actions, N),
+            nn.Linear(self.state_stoch_feat_size + action_dim, N),
             nn.ELU()
         )
         # RNN for deterministic state component updates
@@ -581,7 +587,7 @@ class WorldModel(nn.Module):
         return dist
 
     # Helper method that computes the KL loss
-    # for two distribution. Handles both categorical
+    # for two given distribution. handles both categorical
     # and continuous variants, as well as KL balancing
     # mechanism introduced in Dreamer v2
     def kl_loss(self, post, prior, forward, balance, free):
@@ -602,7 +608,6 @@ class WorldModel(nn.Module):
         mix = balance if forward else (1. - balance)
         if balance == 0.5:
             value = kld(dist(lhs), dist(rhs))
-            # TODO: how does this differ from standard KL div ?
             loss = (torch.maximum(value, torch.Tensor([free])[0])).mean()
         else:
             value_lhs = value = kld(dist(lhs), dist(sg(rhs)))
@@ -622,12 +627,12 @@ class WorldModel(nn.Module):
                 - "terminals": [B, T, 1]
             
             "prev_batch_data" holds the various intermediate variables to perform TBPTT.
-            
-            When the "discount predictor" (terminal state prediction) is used, 
-            the target data for it is generated as: discount = \gamma * (1 - terminals)
-            and is used directly to compute the actor losses
 
-            Intuitively, each batch of trajectories is structured as follows:
+            For pixel-based tasks, the "observations" field has been pre-processed from
+            [0, 255] range to [-0.5, 0.5].
+            
+            Notice that the "actions" list is shifted one step to the right for convenience,
+            as per the diagram below
             
             actions:            0   a_0   a_1  ...  a_T
                                    ^ |   ^ |         |
@@ -639,7 +644,11 @@ class WorldModel(nn.Module):
 
             rewards             0   r_0   r_1  ...  r_T
 
-            discounts           0   d_0   d_1  ...  d_T
+            terminals           0   d_0   d_1  ...  d_T
+
+            When the "discount predictor" (terminal state prediction) is used, 
+            the target data for it is generated as: discount = \gamma * (1 - terminals)
+            and is used directly to compute the actor losses.
         """
         config = self.config
         obs_list, act_list, rew_list, ter_list = \
@@ -651,7 +660,7 @@ class WorldModel(nn.Module):
         B, T = obs_list.shape[:2]
         C_H_W = obs_list.shape[2:]
 
-        if prev_batch_data is None:
+        if prev_batch_data is None: # Dummy previous internal state for the first step
             prev_batch_data = {
                 "s_deter": obs_list.new_zeros([B, config.rssm_deter_size]),
                 "s_stoch": obs_list.new_zeros([B, self.state_stoch_feat_size]),
@@ -662,6 +671,7 @@ class WorldModel(nn.Module):
         # Encode images into low-dimensional feature vectors: x_t <- Encoder(o_t)
         obs_feat_list = self.encoder(obs_list.view(B * T, *C_H_W)).view(B, T, -1) # [B, T, 1024]
 
+        # TBPTT: recover intermediate state of the model from the previous batch's traiing step
         s_deter = prev_batch_data["s_deter"] # [B, |H|]
         s_stoch = prev_batch_data["s_stoch"] # [B, |Y|]
         reset_mask = prev_batch_data["reset_mask"] # [B, 1]
@@ -672,13 +682,13 @@ class WorldModel(nn.Module):
         s_deter_list, s_stoch_list = [], []
 
         for t in range(T):
-            # Reset to zero in case of new trajectory
+            # Reset to zero in case of new episode
             s_deter = s_deter * reset_mask # h_{t-1}
             s_stoch = s_stoch * reset_mask # y_{t-1}
             
             prev_action = act_list[:, t] # Note that this is a_{t-1}, although it indexes with 't'
 
-            prev_state_action_embed = torch.cat([s_stoch, prev_action], 1) # [B, 32 * 32 + |A|]
+            prev_state_action_embed = torch.cat([s_stoch, prev_action], 1) # [B, |Y| + |A|]
             prev_state_action_embed = self.state_action_embed(prev_state_action_embed) # represents {y,a}_{t-1}
             # h_t <- f_{h-RNN}(y_{t-1}, a_{t-1}, h_{t-1})
             s_deter = self.update_s_deter(prev_state_action_embed, s_deter)
@@ -690,7 +700,7 @@ class WorldModel(nn.Module):
             s_stoch = self.get_dist(post_dist_stats).rsample()
             s_stoch = s_stoch.view(B, -1) # Mainly for discrete case, no effect otherwise
 
-            # Store the stochstic component's distribution stats for KL loss computation
+            # Store the stochastic component Y's distribution stats for KL loss computation
             [post_state_dist_data[k].append(v) for k,v in post_dist_stats.items()]
             [prior_state_dist_data[k].append(v) for k,v in prior_dist_stats.items()]
 
@@ -699,7 +709,8 @@ class WorldModel(nn.Module):
             s_stoch_list.append(s_stoch)
 
             # Prepare the mask to reset the s_deter and s_stoch in the next step, if needs be.
-            # NOTE: This will be passed together with the latest s_{deter, stoch} for the next batch's
+            # NOTE: The last "reset_mask"  will be passed together with the latest 'h' and 'y' 
+            # to allow TBPTT across training batches
             reset_mask = 1 - ter_list[:, t].float()
         
         # Stack and tensorize the placeholder lists
@@ -713,7 +724,7 @@ class WorldModel(nn.Module):
             for k,v in prior_state_dist_data.items()} # {k: [B, T, |Y|]}
         # End of the forward pass of the world model
 
-        # Losses computation
+        # LOSSES COMPUTATION
 
         # Reconstruct observation and compute the corresponding loss
         obs_rec_mean_list = self.decoder(s_list.view(B * T, -1)).view(B, T, *C_H_W) # [B, T, C, H, W], same as the "obs_list" target
@@ -754,16 +765,7 @@ class WorldModel(nn.Module):
             disc_pred_dist = thd.Independent(thd.Bernoulli(logits=discount_pred_logits_list), 1)
             disc_pred_dist = Bernoulli(disc_pred_dist)
             disc_pred_loss_list = disc_pred_dist.log_prob(discount_list).neg() # [B, T]
-            if config.disc_pred_baloss:
-                n_ter_states = ter_list.sum()
-                nonter_weight = n_ter_states / float(B * T) # Inversely proportional weight for the non terminal states
-                ter_weight = 1. - nonter_weight # Inversely proportional weights for the steps with terminal state
-                disc_pred_nll_ter_list = torch.masked_select(disc_pred_loss_list, ter_list)
-                disc_pred_nll_nonter_list = torch.masked_select(disc_pred_loss_list, ~ter_list)
-                disc_pred_loss = disc_pred_nll_ter_list.mean() * ter_weight + \
-                                 disc_pred_nll_nonter_list.mean() * nonter_weight
-            else:
-                disc_pred_loss = disc_pred_loss_list.mean()
+            disc_pred_loss = disc_pred_loss_list.mean()
         
             # Scaling the loss
             disc_pred_loss_scaled = disc_pred_loss * config.disc_scale
@@ -787,6 +789,7 @@ class WorldModel(nn.Module):
             ## Model entropies
             "prior_ent": prior_ent.item(),
             "post_ent": post_ent.item(),
+            "model_ent": (prior_ent + post_ent).item(),
 
             # Coefficient
             "kl_scale": config.kl_scale,
@@ -824,17 +827,20 @@ class WorldModel(nn.Module):
             self.model_optimizer.step()
         
         return wm_losses_dict, wm_fwd_dict
-    
+
     def imagine(self, actor, imag_traj_start_dict, horizon):
         """
-            imag_traj_start_dict: contains the list of determistic (h_t), stochastic (y_t)
-            components of the state belief estimated by the World Model, as well
-            as the concatenated s_t = cat(h_t, y_t) which we refer to as state belief of 's_feat'.
+            This method will take in the flattened latent states produced during the 
+            model traiing phase, and use each of them as the start of an "imaginary" 
+            trajectory that is simulated purely in latent state using the learned dynamics (prior dist.)
 
-            # TODO: consider moving imagination into the Dremaer class ? The rationale would be that
-            # the method requires both ac.actor and wm, like "sample_action" does.
+            - actor: policy head, used to sample actions to rollout imaginary trajectories.
+            - imag_traj_start_dict: contains the list of determistic (h_t), stochastic (y_t)
+                components of the state belief estimated by the World Model, as well
+                as the concatenated s_t = cat(h_t, y_t) which we refer to as state belief of 's_feat'.
+            - horizon: how many steps to predict in the future.
         """
-        wm = self
+        wm = self # shorthand
 
         s_deter = imag_traj_start_dict["s_deter_list"] # [B * T, |H|]
         s_stoch = imag_traj_start_dict["s_stoch_list"] # [B * T, |Y|]
@@ -842,37 +848,38 @@ class WorldModel(nn.Module):
         
         B_T, _ = s_feat.shape
 
-        # Placeholders for state beliefs and actions sampled
+        # Placeholders for imaginary state beliefs and actions sampled
         imag_s_list, imag_action_list = [], []
 
-        for _ in range(horizon):
+        for _ in range(horizon+1): # +1 to simulate one more step used for bootstrap of the future
             # Sample the action
             inp = s_feat.detach() # No gradient throug the state belief S
             action = actor(inp).rsample() # [B * T, |A|]
 
             # Append the sampled action and the state features
-            imag_s_list.append(s_feat) # s_h
-            imag_action_list.append(action) # a_h
+            imag_s_list.append(s_feat) # s_t
+            imag_action_list.append(action) # a_t
 
             # Advance the internal state of the model
-            state_action_embed = torch.cat([s_stoch, action], 1) # [B * T, |Y| + |A|]
+            state_action_embed = torch.cat([s_stoch, action], 1) # {y,a}_{t-1}, of shape: [B * T, |Y|+|A|]
             state_action_embed = wm.state_action_embed(state_action_embed)
+            # h_t <- f({y,a}_{t-1}, h_{t-1})
             s_deter = wm.update_s_deter(state_action_embed, s_deter) # [B * T, |H|]
 
             s_dist_stats = wm.prior_state(s_deter)
 
-            # Sample the next state's stoch. comp. y_h ~ p(y_h | h_h)
+            # Sample the next state's stoch. comp. y_t ~ p(y_t | h_t)
             s_stoch = wm.get_dist(s_dist_stats).rsample()
             s_stoch = s_stoch.view(B_T, -1)
 
-            # Form the state feats s_h as concat(h_h, y_h)
-            s_feat = torch.cat([s_deter, s_stoch], 1)
+            # Form the state feats s_t as concat(h_t, y_t)
+            s_feat = torch.cat([s_deter, s_stoch], 1) # [Hor+1, B * T, |H|+|Y|]
 
-        imag_s_list = torch.stack(imag_s_list, dim=0) # [H, B * T, |H| + |Y|]
-        imag_action_list = torch.stack(imag_action_list, dim=0) # [H, B * T, |A|]
+        imag_s_list = torch.stack(imag_s_list, dim=0) # [Hor+1, B * T, |H|+|Y|]
+        imag_action_list = torch.stack(imag_action_list, dim=0) # [Hor+1, B * T, |A|]
 
         # Imagine the rewards using the world model;s reward predictor.
-        imag_reward_list = wm.reward_pred(imag_s_list) # [H, B*T, 1]
+        imag_reward_list = wm.reward_pred(imag_s_list) # [Hor+1, B*T, 1]
 
         return {
             "imag_s_list": imag_s_list,
@@ -880,12 +887,11 @@ class WorldModel(nn.Module):
             "imag_reward_list": imag_reward_list
         }
 
-
 class ActorCritic(nn.Module):
-    def __init__(self, config, num_actions, wm_fn):
+    def __init__(self, config, action_dim, wm_fn):
         super().__init__()
         self.config = config
-        self.num_actions = num_actions
+        self.action_dim = action_dim
         self.wm_fn = wm_fn # Callback method that returns the world model
         
         # Pre-compute the state_feat_size: |S| = |H| + |Y|
@@ -897,29 +903,37 @@ class ActorCritic(nn.Module):
         # Actor component
         N = config.actor_hid_size
         class ActorHead(nn.Module):
-            def __init__(self, input_size, N, num_actions):
+            def __init__(self, input_size, N, action_dim):
                 super().__init__()
                 self.network = nn.Sequential(
-                    nn.Linear(input_size, N), nn.ELU(),
-                    nn.Linear(N, N), nn.ELU(),
-                    nn.Linear(N, N), nn.ELU(),
-                    nn.Linear(N, N), nn.ELU(),
-                    nn.Linear(N, num_actions) # logits layer
+                    nn.Linear(input_size, N),
+                    nn.ELU(),
+                    nn.Linear(N, N),
+                    nn.ELU(),
+                    nn.Linear(N, N),
+                    nn.ELU(),
+                    nn.Linear(N, N),
+                    nn.ELU(),
+                    nn.Linear(N, action_dim) # logits layer
                 )
 
             def __call__(self, x):
                 x = self.network(x) # Obtain logits
                 return thd.OneHotCategoricalStraightThrough(logits=x) # Return the action distribution
 
-        self.actor = ActorHead(self.state_feat_size, N, num_actions)
+        self.actor = ActorHead(self.state_feat_size, N, action_dim)
 
         # Value component
         N = config.value_hid_size
         self.value = nn.Sequential(
-            nn.Linear(self.state_feat_size, N), nn.ELU(),
-            nn.Linear(N, N), nn.ELU(),
-            nn.Linear(N, N), nn.ELU(),
-            nn.Linear(N, N), nn.ELU(),
+            nn.Linear(self.state_feat_size, N),
+            nn.ELU(),
+            nn.Linear(N, N),
+            nn.ELU(),
+            nn.Linear(N, N),
+            nn.ELU(),
+            nn.Linear(N, N),
+            nn.ELU(),
             nn.Linear(N, 1)
         )
         # Lagging value network
@@ -947,41 +961,37 @@ class ActorCritic(nn.Module):
     def compute_targets_weights(self, imagine_data_dict):
         """
             Computes the targets and weights to update the actor and value losses later.
-                - targets are a form of approximation for the expected returns, shape [H-1, B * T, 1]
-                - weights are coefficient that incorporate long-term discounting, shape [H, B * T, 1]
+                - targets are a form of approximation for the expected returns, shape [Hor-1, B * T, 1]
+                - weights are coefficient that incorporate long-term discounting, shape [Hor, B * T, 1]
             
             Expects:
-                imag_s_list: list of imaginary state featurers: [Hor, B * T, |H| + |Y|]
+                imag_s_list: list of imaginary state featurers: [Hor+1, B * T, |H| + |Y|]
         """
         config = self.config
         wm = self.wm_fn() # Callback to the worldmodel
 
-        imag_s_list = imagine_data_dict["imag_s_list"]
-        imag_reward_list = imagine_data_dict["imag_reward_list"]
+        imag_s_list = imagine_data_dict["imag_s_list"] # [Hor+1, B * T, |H|+|Y|]
+        imag_reward_list = imagine_data_dict["imag_reward_list"] # [Hor+1, B * T, 1]
 
         # Compute the discount factor either based on the world model's predictor, or a fixed heuristic
         if config.disc_pred_hid_size:
-            # TODO: Does using .Bernoulli_dist.mean result in discount value similar to gamma ?
             imag_discount_dist = thd.Independent(thd.Bernoulli(logits=wm.disc_pred(imag_s_list)), 1)
-            imag_discount_list = Bernoulli(imag_discount_dist).mean # [H, B * T, 1]
+            imag_discount_list = Bernoulli(imag_discount_dist).mean # [Hor+1, B * T, 1]
         else:
-            imag_discount_list = config.gamma * torch.ones_like(imag_reward_list) # [H, B * T, 1]
+            imag_discount_list = config.gamma * torch.ones_like(imag_reward_list) # [Hor+1, B * T, 1]
         
         # Compute state value list for the actor target computation first
-        imag_actor_state_value_list = self.slow_value(imag_s_list) # [H, B * T, 1]
+        imag_actor_state_value_list = self.slow_value(imag_s_list) # [Hor+1, B * T, 1]
         
         # Helper to compute the lambda returns for the actor targets
-        # TODO: attribution, and clean up, make it easier to understand
+        # Adapted from: https://github.com/jsikyoon/dreamer-torch/blob/7c2331acd4fa6196d140943e977f23fb177398b3/tools.py#L394
         def lambda_return(reward, value, pcont, bootstrap, lambda_):
             # Setting lambda=1 gives a discounted Monte Carlo return.
             # Setting lambda=0 gives a fixed 1-step return.
-            assert len(reward.shape) == len(value.shape), (reward.shape, value.shape)
-            if bootstrap is None:
-                bootstrap = torch.zeros_like(value[-1])
-            next_values = torch.cat([value[1:], bootstrap[None]], 0)
-            inputs = reward + pcont * next_values * (1 - lambda_)
+            next_values = torch.cat([value[1:], bootstrap[None]], 0) # [Hor, B * T, 1]
+            inputs = reward + pcont * next_values * (1 - lambda_) # [Hor, B * T, 1]
             
-            def static_scan_for_lambda_return(fn, inputs, start):
+            def static_scan(fn, inputs, start):
                 last = start
                 indices = range(inputs[0].shape[0])
                 indices = reversed(indices)
@@ -996,20 +1006,23 @@ class ActorCritic(nn.Module):
                         outputs = torch.cat([outputs, last], dim=-1)
                 outputs = torch.reshape(outputs, [outputs.shape[0], outputs.shape[1], 1])
                 outputs = torch.unbind(outputs, dim=0)
+                outputs = torch.stack(outputs, dim=1) # [Hor, B * T, 1]
                 return outputs
-
-            returns = static_scan_for_lambda_return(lambda agg, cur0, cur1: cur0 + cur1 * lambda_ * agg, (inputs, pcont), bootstrap)
             
-            return torch.stack(returns, dim=1) # [H, B * T, 1]
+            return static_scan(lambda agg, cur0, cur1: cur0 + cur1 * lambda_ * agg, (inputs, pcont), bootstrap)
 
         targets = lambda_return(
-            imag_reward_list[:-1],
-            imag_actor_state_value_list[:-1],
-            imag_discount_list[:-1],
-            bootstrap=imag_actor_state_value_list[-1],
-            lambda_=config.lmbda) # [H-1, B * T, 1], the last state lost for boostrapping
+            imag_reward_list[:-1], # [Hor, B * T, 1]
+            imag_actor_state_value_list[:-1], # [Hor, B * T, 1]
+            imag_discount_list[:-1], # [Hor, B * T, 1]
+            bootstrap=imag_actor_state_value_list[-1], # [B * T, 1]
+            lambda_=config.lmbda
+        ) # returns of shape: [Hor, B * T, 1]
 
-        weights = torch.cumprod(torch.cat([torch.ones_like(imag_discount_list[:1]), imag_discount_list[:-1]], 0), 0).detach() # [H+1, B * T, 1]
+        weights = torch.cumprod(torch.cat([
+            torch.ones_like(imag_discount_list[:1]),
+            imag_discount_list[:-1]
+            ], 0), 0).detach() # [Hor+1, B * T, 1]
 
         return targets, weights
 
@@ -1018,50 +1031,50 @@ class ActorCritic(nn.Module):
         actor, value = self.actor, self.value
 
         # Recover the necessary simulated trajectory data
-        imag_s_list = imagine_data_dict["imag_s_list"] # [Horizon, B * T, |H| + |Y|]
+        imag_s_list = imagine_data_dict["imag_s_list"] # [Hor, B * T, |H| + |Y|]
         imag_action_list = imagine_data_dict["imag_action_list"] # [Horizon, B * T, |A|]
         
         # Compute action logprobs over simulated steps
         inp = imag_s_list.detach()
         imag_action_dist = actor(inp) # Get action dist for all imaginary states
         imag_action_logprob_list = imag_action_dist.log_prob(imag_action_list)
-        imag_actor_entropy_list = imag_action_dist.entropy() # [H, B * T]
+        imag_actor_entropy_list = imag_action_dist.entropy() # [Hor, B * T]
 
         # Precompute the targets and weights for the actor loss
         # Targets are computed using the lambda-return method
-        targets, weights = self.compute_targets_weights(imagine_data_dict)
+        targets, weights = self.compute_targets_weights(imagine_data_dict) # [Hor, B * T, 1], [Hor+1, B * T, 1]
 
         # Actor loss computation
         if config.actor_imagine_grad_mode == "dynamics":
             actor_targets = targets
         elif config.actor_imagine_grad_mode in ["reinforce", "both"]:
-            # TODO: Original TF2 uses "slow_baseline", but jsikyoon implementation does not
-            baseline = value(imag_s_list[:-1])
-            advantages = (targets - baseline).detach()
-            actor_targets = imag_action_logprob_list[:-1][:, :, None] * advantages
+            # NOTE: Original TF2 uses "slow_baseline", but jsikyoon's Pytorch implementation does not.
+            baseline = value(imag_s_list[:-1]) # [Hor, B * T, 1]
+            advantages = (targets - baseline).detach() # [Hor, B * T, 1]
+            actor_targets = imag_action_logprob_list[:-1][:, :, None] * advantages # [Hor, B * T, 1]
             if config.actor_imagine_grad_mode == "both":
-                # NOTE: Default setting prioritize 'reinforce' actor loss
-                mix = config.actor_imagine_grad_mix#() # TODO: add decay support
-                actor_targets = mix * targets + (1 - mix) * actor_targets
+                # NOTE: Default setting prioritize 'reinforce' actor loss for Atari tasks.
+                mix = config.actor_imagine_grad_mix
+                actor_targets = mix * targets + (1 - mix) * actor_targets # [Hor, B * T, 1]
         else:
             raise NotImplementedError(f"Unsupported actor update mode during imagination: {config.actor_imagine_grad_mode}.")
 
-        ## Entropy regularization for the actor loss
-        actor_entropy_scale = config.actor_entropy#() # TODO: add suport for decay
-        actor_targets += actor_entropy_scale * imag_actor_entropy_list[:-1][:, :, None]
+        ## Entropy regularization (bonus) for the actor loss
+        actor_entropy_scale = config.actor_entropy_scale
+        actor_targets += actor_entropy_scale * imag_actor_entropy_list[:-1][:, :, None] # [Hor, B * T, 1]
 
         actor_loss = (weights[:-1] * actor_targets).neg().mean()
 
         actor_losses_dict = {
-            "actor_loss": actor_loss, # Used for .backward()
+            "actor_loss": actor_loss, # NOTE: Used for .backward()
             # Actor training stats
-            # TODO: track the actopyr entropy coefficient in case it is decayed and what not
             "actor_ent": imag_actor_entropy_list.mean().item(),
             "actor_entropy_scale": actor_entropy_scale
         }
         if config.actor_imagine_grad_mode == "both":
             actor_losses_dict["imag_gradient_mix"] = mix.item() if isinstance(mix, torch.Tensor) else mix
 
+        # Prepare variables that might be re-used to train the value function next
         value_train_data = {
             "targets": targets, # Re-used for value loss
             "weights": weights, # Re-used for value loss
@@ -1104,7 +1117,7 @@ class ActorCritic(nn.Module):
         with RequiresGrad(actor):
             # Use the world model to simulate trajectories
             # This needs to be done under the actor's gradient computation scope
-            # to compute the gradient of the action through the world model dynamics
+            # to compute the gradient of the actions through the world model dynamics
             imagine_data_dict = wm.imagine(actor, ac_train_data, config.imagine_horizon)
 
             # Compute the actor loss and other related training stats
@@ -1144,13 +1157,13 @@ class ActorCritic(nn.Module):
 
 
 class Dreamer(nn.Module):
-    def __init__(self, config, num_actions):
+    def __init__(self, config, action_dim):
         super().__init__()
         self.config = config
-        self.num_actions = num_actions # TODO: adopt a more general notation like "action_dim" ?
+        self.action_dim = action_dim # TODO: adopt a more general notation like "action_dim" ?
         
-        self.wm = WorldModel(config=args, num_actions=num_actions)
-        self.ac = ActorCritic(config=args, num_actions=num_actions, wm_fn=lambda: self.wm)
+        self.wm = WorldModel(config=args, action_dim=action_dim)
+        self.ac = ActorCritic(config=args, action_dim=action_dim, wm_fn=lambda: self.wm)
 
         # Tracking training stats
         self.register_buffer("step", torch.LongTensor([0])) # How many env. steps so far, for schedulers
@@ -1172,20 +1185,20 @@ class Dreamer(nn.Module):
             prev_data = {
                 "s_deter": obs.new_zeros([B, config.rssm_deter_size]),
                 "s_stoch": obs.new_zeros([B, wm.state_stoch_feat_size]),
-                "action": obs.new_zeros([B, self.num_actions]),
+                "action": obs.new_zeros([B, self.action_dim]),
                 "done": obs.new_zeros([B, 1])
             }
         
-        # Reset the internal state in case a new episode has started
+        # TBPTT: Reset the internal state in case a new episode has started
         done = prev_data["done"]
         mask = 1. - done.float()
         s_deter = prev_data["s_deter"] * mask
         s_stoch = prev_data["s_stoch"] * mask
         action = prev_data["action"] * mask
 
-        prev_state_action_embed = torch.cat([s_stoch, action], 1)
+        prev_state_action_embed = torch.cat([s_stoch, action], 1) # form {y,a}_{t-1}
         prev_state_action_embed = wm.state_action_embed(prev_state_action_embed)
-        s_deter = wm.update_s_deter(prev_state_action_embed, s_deter)
+        s_deter = wm.update_s_deter(prev_state_action_embed, s_deter) # h_t <- f({y,a}_{t-1}, h_{t-1})
 
         # Sample y_t ~ q(y_t | h_t, x_t)
         s_stoch_dist_stats = wm.post_state(torch.cat([obs_feat, s_deter], 1))
@@ -1193,22 +1206,24 @@ class Dreamer(nn.Module):
         s_stoch = s_stoch.view(B, -1) # Mainly for discrete case, no effect otherwise
 
         # Concatenate the deter and stoch. componens to form the state features
-        s_feat = torch.cat([s_deter, s_stoch], 1)
+        s_feat = torch.cat([s_deter, s_stoch], 1) # s_t = concat(h_t, y_t)
 
-        # Sample the action
+        # Sample the action a_t ~ PI(s_t)
         if mode == "train":
-            action = actor(s_feat).rsample()
+            action = actor(s_feat).sample()
         elif mode == "eval":
             action = actor(s_feat).mode()
         else:
             raise NotImplementedError(f"Unsupported sampling regime for action: {mode}")
 
+        # Return the acton as an integer, as well as the intermediate varaibles of the Dreamer's internal state
         return action.argmax(dim=1).cpu().numpy(), {"s_deter": s_deter, "s_stoch": s_stoch, "action": action}
 
     def _train(self, batch_data_dict, prev_batch_data):
         config = self.config
 
-        # NOTE: Pixel-observations are pre-processed at the buffer level already
+        # Update the World Model component
+        # NOTE: Pixel-observations in "batch_data_dict" are pre-processed at the buffer level already
         wm_losses_dict, wm_fwd_dict = self.wm._train(batch_data_dict, prev_batch_data)
         
         # Batch size and length
@@ -1228,7 +1243,8 @@ class Dreamer(nn.Module):
             ac_train_data = {k: wm_fwd_dict[k].detach() for k in ["s_deter_list", "s_stoch_list", "s_list"]}
             ac_train_data = {k: torch.masked_select(v, masks_list).view(B_T, -1) for k,v in ac_train_data.items()}
         else:
-            ac_train_data = {k: wm_fwd_dict[k].detach().view(B_T,-1) for k in ["s_deter_list", "s_stoch_list"]}
+            # .detach() is used to block the gradient flow from AC to WM component
+            ac_train_data = {k: wm_fwd_dict[k].detach().view(B_T,-1) for k in ["s_deter_list", "s_stoch_list", "s_list"]}
         
         # Update the ActorCritic component
         ac_losses_dict, ac_fwd_dict = self.ac._train(ac_train_data)
@@ -1240,7 +1256,7 @@ class Dreamer(nn.Module):
             "reset_mask": wm_fwd_dict["reset_mask"] # [B, 1]
         }
 
-        # Track training stats
+        # Track training stats of the overall agent
         self.n_updates += 1
         
         return wm_losses_dict, ac_losses_dict, wm_fwd_dict, ac_fwd_dict, prev_batch_data
@@ -1262,9 +1278,9 @@ class Dreamer(nn.Module):
     def gen_imag_rec_videos(self, batch_data_dict, ac_fwd_dict):
         # Generates video of reconstructed imaginary trajectories
         N = self.config.viz_n_videos
-        Hor = self.config.imagine_horizon # Hor
         C_H_W = batch_data_dict["observations"].shape[2:] # C,H,W
-        imag_s_list = ac_fwd_dict["imag_s_list"]
+        imag_s_list = ac_fwd_dict["imag_s_list"] # [Hor, B_T, |S|]
+        Hor = imag_s_list.shape[0]
         imag_s_list = torch.stack([imag_s_list[:, i * args.batch_length] for i in range(N)], dim=0) # [N, Hor, |S|]
         imag_s_list = imag_s_list.view(N * Hor, -1) # [N * Hor, |S|]
         imag_traj_video = (self.wm.decoder(imag_s_list).view(N, Hor, *C_H_W) + .5).clamp(0.0, 1.0) # [N, Hor, C, H, W]
@@ -1310,8 +1326,8 @@ if __name__ == "__main__":
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
     
     # Instantiate the Dreamer agent
-    dreamer = Dreamer(config=args, num_actions=envs.single_action_space.n).to(device)
-    print(dreamer) # Useful to check the agent's structure for debug
+    dreamer = Dreamer(config=args, action_dim=envs.single_action_space.n).to(device)
+    print(dreamer) # Checking the agent structure, and parameter count
     from torchinfo import summary
     summary(dreamer)
 
@@ -1364,8 +1380,7 @@ if __name__ == "__main__":
             batch_data_dict = buffer.sample()
             # Pixel-based observations are pre-processed itno the [-0.5, 0.5] range
             batch_data_dict["observations"] = batch_data_dict["observations"] / 255.0 - 0.5
-             
-            # TODO: consolidate losses into a signle dictionary ?
+            
             wm_losses_dict, ac_losses_dict, wm_fwd_dict, ac_fwd_dict, prev_batch_data = \
                 dreamer._train(batch_data_dict, prev_batch_data)
 
@@ -1378,7 +1393,7 @@ if __name__ == "__main__":
                 PRGS = dreamer.n_updates / total_updates # Progress rate, monitor progression rate in Wandb
                 print("SPS:", int((global_step - args.buffer_prefill) / (time.time() - start_time)), end=" | ")
                 print(f"UPS: {UPS: 0.3f}", end=" | ")
-                print("ETA:", hrd(int(total_updates - dreamer.n_updates.item())/ UPS))
+                print("ETA:", hrd(int(total_updates - dreamer.n_updates.item()) / UPS))
                 writer.add_scalar("global_step", global_step, global_step)
                 writer.add_scalar("global_frame", global_step * args.env_action_repeats, global_step)
                 writer.add_scalar("charts/SPS", (global_step - args.buffer_prefill) / (time.time() - start_time), global_step)
@@ -1391,14 +1406,13 @@ if __name__ == "__main__":
                 writer.add_scalar("charts/buffer_frames", buffer_size * args.env_action_repeats, global_step)
 
             # NOTE: too frequent video logging can add overhead to training time
-            if dreamer.n_updates % 500 == 0:
+            if args.viz_videos_every and dreamer.n_updates % args.viz_videos_every == 0:
                 # Logging video of trajectory reconstruction from the WM training
                 train_rec_video = dreamer.gen_train_rec_videos(batch_data_dict, wm_fwd_dict)
-                writer.add_video("train_rec_video", train_rec_video, global_step, fps=16)
-
+                writer.add_video("train_rec_video", train_rec_video, global_step, fps=args.viz_videos_fps)
                 # Logging video of the reconstructed imaginary trajectories from the AC training
                 imag_rec_video = dreamer.gen_imag_rec_videos(batch_data_dict, ac_fwd_dict)
-                writer.add_video("imag_rec_video", imag_rec_video, global_step, fps=16)
+                writer.add_video("imag_rec_video", imag_rec_video, global_step, fps=args.viz_videos_fps)
 
     envs.close()
     writer.close()
