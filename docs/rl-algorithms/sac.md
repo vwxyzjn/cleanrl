@@ -330,23 +330,22 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
 
     A similar action-probability weighting can be used for the actor gradient:
 
-    ```python hl_lines="8"
-    # ACTOR training
+    ```python hl_lines="7"
     _, log_pi, action_probs = actor.get_action(data.observations)
-    qf1_pi = qf1(data.observations)
-    qf2_pi = qf2(data.observations)
-    min_qf_pi = torch.min(qf1_pi, qf2_pi)
+    with torch.no_grad():
+        qf1_values = qf1(data.observations)
+        qf2_values = qf2(data.observations)
+        min_qf_values = torch.min(qf1_values, qf2_values)
     # no need for reparameterization, the expectation can be calculated for discrete actions
-    actor_loss = (action_probs * ((alpha * log_pi) - min_qf_pi)).mean()
+    actor_loss = (action_probs * ((alpha * log_pi) - min_qf_values)).mean()
     ```
 
     Lastly, this variance reduction scheme is also used when automatic entropy tuning is enabled:
 
-    ```python hl_lines="4"
-    with torch.no_grad():
-            _, log_pi, action_probs = actor.get_action(data.observations)
-        # use action probabilities for temperate loss
-        alpha_loss = (action_probs * (-log_alpha * (log_pi + target_entropy))).mean()
+    ```python hl_lines="3"
+    if args.autotune:
+        # re-use action probabilities for temperature loss
+        alpha_loss = (action_probs.detach() * (-log_alpha * (log_pi + target_entropy).detach())).mean()
 
         a_optimizer.zero_grad()
         alpha_loss.backward()
@@ -354,7 +353,7 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
         alpha = log_alpha.exp().item()
     ```
 
-4. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses `--target-entropy-scale=0.9` while the [SAC-discrete paper](https://arxiv.org/abs/1910.07207) uses `--target-entropy-scale=0.98` due to improved stability when training for more than 100k steps. Tuning this parameter to the environment at hand is advised and can lead to significant performance gains.
+4. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses `--target-entropy-scale=0.89` while the [SAC-discrete paper](https://arxiv.org/abs/1910.07207) uses `--target-entropy-scale=0.98` due to improved stability when training for more than 100k steps. Tuning this parameter to the environment at hand is advised and can lead to significant performance gains.
 
 5. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) performs learning updates only on every $n^{\text{th}}$ step. This leads to improved stability and prevents the agent's performance from degenerating during longer training runs.  
 Note the difference to [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py): [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) updates every $n^{\text{th}}$ environment step and does a single update of actor and critic on every update step. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) updates the critic every step and the actor every $n^{\text{th}}$ step. It then compensates for the delayed actor updates by performing $n$ actor update steps.
