@@ -1328,8 +1328,8 @@ if __name__ == "__main__":
     # Instantiate the Dreamer agent
     dreamer = Dreamer(config=args, action_dim=envs.single_action_space.n).to(device)
     print(dreamer) # Checking the agent structure, and parameter count
-    from torchinfo import summary
-    summary(dreamer)
+    # from torchinfo import summary
+    # summary(dreamer)
 
     # TRY NOT TO MODIFY: start the game
     start_time = time.time()
