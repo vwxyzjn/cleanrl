@@ -31,3 +31,17 @@ def test_c51():
         shell=True,
         check=True,
     )
+
+def test_dreamer_disc_latents():
+    subprocess.run(
+        "python cleanrl/dreamer_atari.py --buffer-prefill 500 --total-timesteps 512 --buffer-size 2000 --batch-size 4 --batch-length 50 --train-every 4",
+        shell=True,
+        check=True,
+    )
+
+def test_dreamer_cont_latents():
+    subprocess.run(
+        "python cleanrl/dreamer_atari.py --buffer-prefill 400 --total-timesteps 450 --buffer-size 2000 --batch-size 4 --batch-length 50 --train-every 4 --rssm-discrete 0",
+        shell=True,
+        check=True,
+    )
