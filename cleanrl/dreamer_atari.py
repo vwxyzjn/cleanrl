@@ -56,7 +56,7 @@ def parse_args():
         help="the number of step for which the action of the agent is repeated onto the env.")
     parser.add_argument("--total-timesteps", type=int, default=5_000_000,
         help="total timesteps of the experiments. The amount of frames is total-timesteps * action_repeats.")
-    parser.add_argument("--buffer-size", type=int, default=1_000_000,
+    parser.add_argument("--buffer-size", type=int, default=2_000_000,
         help="the replay memory buffer size. The amount of frames is buffer-size * action_repeats")
     parser.add_argument("--buffer-prefill", type=int, default=50_000,
         help="the number of steps to prefill the buffer with. The amount of frames is thus buffer-prefill * action_repeats.")
