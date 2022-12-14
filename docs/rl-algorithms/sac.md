@@ -30,7 +30,7 @@ Reference resources:
 | Variants Implemented      | Description |
 | ----------- | ----------- |
 | :material-github: [`sac_continuous_actions.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_continuous_actionpy) | For continuous action spaces |
-| :material-github: [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_ataripy) | For discrete action spaces |
+| :material-github: [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py), :material-file-document: [docs](/rl-algorithms/sac/#sac_ataripy) | For discrete action spaces |
 
 Below are our single-file implementations of SAC:
 
@@ -192,7 +192,7 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
 
 ### Pybullet experiment results for SAC
 
-To run benchmark experiments, see :material-github: [benchmark/sac.sh](https://github.com/timoklein/cleanrl/blob/sac-discrete/benchmark/sac.sh). Specifically, execute the following command:
+To run benchmark experiments, see :material-github: [benchmark/sac.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/sac.sh). Specifically, execute the following command:
 
 <script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fsac.sh%23L1-L7&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
@@ -223,7 +223,7 @@ Tracked experiments and game play videos:
 
 ## `sac_atari.py`
 
-The [sac_atari.py](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) has the following features:
+The [sac_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) has the following features:
 
 * For discrete action spaces.
 * Works with the `Box` observation space of low-level features.
@@ -283,7 +283,7 @@ Since SAC-discrete uses a Categorical policy in a discrete action space, a diffe
 
 ### Implementation details
 
-[`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses the wrappers highlighted in the "9 Atari implementation details" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/), which are as follows:
+[`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) uses the wrappers highlighted in the "9 Atari implementation details" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/), which are as follows:
 
 1. The Use of `NoopResetEnv` (:material-github: [common/atari_wrappers.py#L12](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/atari_wrappers.py#L12))
 2. The Use of `MaxAndSkipEnv` (:material-github: [common/atari_wrappers.py#L97](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/atari_wrappers.py#L97))
@@ -297,7 +297,7 @@ Since SAC-discrete uses a Categorical policy in a discrete action space, a diffe
 
 Other noteworthy implementation details apart from the Atari wrapping are as follows:
 
-1. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) initializes the weights of its networks using He initialization (named after its author Kaiming He) from the paper ["Delving Deep into Rectifiers:
+1. [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) initializes the weights of its networks using He initialization (named after its author Kaiming He) from the paper ["Delving Deep into Rectifiers:
 Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.org/pdf/1502.01852.pdf). The corresponding function in PyTorch is `kaiming_normal_`, its documentation can be found [here](https://pytorch.org/docs/stable/nn.init.html). In essence, it means the weights of each layer are initialized according to a Normal distribution with mean $\mu=0$ and
 
     $$
@@ -306,7 +306,7 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
 
     where $\text{fan}$ is the number of input neurons to the layer and $\text{gain}$ is a constant set to $\sqrt{2}$ for `ReLU` layers.
 
-2. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses the Adam[^2] optimizer with an increased $\epsilon$-parameter to improve its stability. This results in an increase in the denominator of the update rule:
+2. [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) uses the Adam[^2] optimizer with an increased $\epsilon$-parameter to improve its stability. This results in an increase in the denominator of the update rule:
 
     $$
         \frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon}
@@ -314,7 +314,7 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
 
     Here $\hat{m}_t$ is the bias-corrected first moment and $\hat{v}_t$ the bias-corrected second raw moment.
 
-3. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses the action selection probabilities of the policy in multiple places to *reduce the variance of gradient estimates*. The target for the Soft Q-value estimate is weighted accordingly:
+3. [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) uses the action selection probabilities of the policy in multiple places to *reduce the variance of gradient estimates*. The target for the Soft Q-value estimate is weighted accordingly:
 
     ```python hl_lines="7"
     # CRITIC training
@@ -353,25 +353,25 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
         alpha = log_alpha.exp().item()
     ```
 
-4. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) uses `--target-entropy-scale=0.89` while the [SAC-discrete paper](https://arxiv.org/abs/1910.07207) uses `--target-entropy-scale=0.98` due to improved stability when training for more than 100k steps. Tuning this parameter to the environment at hand is advised and can lead to significant performance gains.
+4. [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) uses `--target-entropy-scale=0.89` while the [SAC-discrete paper](https://arxiv.org/abs/1910.07207) uses `--target-entropy-scale=0.98` due to improved stability when training for more than 100k steps. Tuning this parameter to the environment at hand is advised and can lead to significant performance gains.
 
-5. [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) performs learning updates only on every $n^{\text{th}}$ step. This leads to improved stability and prevents the agent's performance from degenerating during longer training runs.  
-Note the difference to [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py): [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) updates every $n^{\text{th}}$ environment step and does a single update of actor and critic on every update step. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) updates the critic every step and the actor every $n^{\text{th}}$ step. It then compensates for the delayed actor updates by performing $n$ actor update steps.
+5. [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) performs learning updates only on every $n^{\text{th}}$ step. This leads to improved stability and prevents the agent's performance from degenerating during longer training runs.  
+Note the difference to [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py): [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) updates every $n^{\text{th}}$ environment step and does a single update of actor and critic on every update step. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) updates the critic every step and the actor every $n^{\text{th}}$ step. It then compensates for the delayed actor updates by performing $n$ actor update steps.
 
 6. `sac_atari.py` handles truncation and termination properly like (Mnih et al., 2015)[^3] by using SB3's replay buffer's `handle_timeout_termination=True`.
 
 ### Atari experiment results for SAC-discrete
 
-Run benchmarks for :material-github: [benchmark/sac_atari.sh](https://github.com/timoklein/cleanrl/blob/sac-discrete/benchmark/sac_atari.sh) by executing:
+Run benchmarks for :material-github: [benchmark/sac_atari.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/sac_atari.sh) by executing:
 
 <script src="https://emgithub.com/embed-v2.js?target=https%3A%2F%2Fgithub.com%2Ftimoklein%2Fcleanrl%2Fblob%2Fsac-discrete%2Fbenchmark%2Fsac_atari.sh&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
 
-The table below compares the results of CleanRL's [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) with the [original paper results](https://arxiv.org/abs/1910.07207).
+The table below compares the results of CleanRL's [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) with the [original paper results](https://arxiv.org/abs/1910.07207).
 
 ???+ info
-    Note that the results table above references the *training episodic return* for [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) without evaluation mode.
+    Note that the results table above references the *training episodic return* for [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) without evaluation mode.
 
-| Environment      | [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) 100k steps |[SAC for Discrete Action Settings](https://arxiv.org/abs/1910.07207) 100k steps| [`sac_atari.py`](https://github.com/timoklein/cleanrl/blob/sac-discrete/cleanrl/sac_atari.py) 5M steps | [`dqn_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py) 10M steps
+| Environment      | [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) 100k steps |[SAC for Discrete Action Settings](https://arxiv.org/abs/1910.07207) 100k steps| [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) 5M steps | [`dqn_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py) 10M steps
 | --------------- | ------------------ | ---------------- | ---------------- | ---------------- |
 | PongNoFrameskip-v4  | ~ -20.46 ± 0.75       | -20.98 ± 0.0        |   ~19.15 ± 1.96  |     20.25 ± 0.41   |
 | BreakoutNoFrameskip-v4     | ~2.52 ± 1.56         | -           | ~376.87 ± 17.256  |  366.928 ± 39.89  |
