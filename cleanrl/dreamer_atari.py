@@ -146,7 +146,7 @@ def parse_args():
         help="the gradient norm clipping threshold for the value network")
 
     ## Dreamer specific hyperparameters
-    parser.add_argument("--imagine-horizon", type=int, default=16,
+    parser.add_argument("--imagine-horizon", type=int, default=15,
         help="the number of steps to simulate using the world model ('dreaming' horizon)")
     # TODO: train-every in the paper says 4, but in the code says 16
     # Does the code consider train-every frame or train-every step environmetn ?
@@ -318,8 +318,6 @@ class DreamerTBPTTBuffer():
         return np.sum([len(v["terminals"])-1  for v in self.train_eps_cache.values()])
     
     def sample(self):
-        # TODO: more efficient method to sample that can use multiple workers
-        # to hasten the sampling process a bit ?
         B, T = self.B, self.T
         # Placeholder
         C = 1 if self.config.env_grayscale else 3
@@ -355,9 +353,8 @@ class DreamerTBPTTBuffer():
                 self.episodes_current_idx[b] = edd_end
         
         # Tensorize and copy to training batch to (GPU) device
-        # TODO: probably better to leave / 255.0 - 0.5 out of the buffer, to make it env agnostic
         return {
-            "observations": torch.Tensor(obs_list).float().to(self.device) / 255.0 - 0.5,
+            "observations": torch.Tensor(obs_list).float().to(self.device),
             "actions": torch.Tensor(act_list).float().to(self.device),
             "rewards": torch.Tensor(rew_list).float().to(self.device),
             "terminals": torch.Tensor(ter_list).bool().to(self.device)
@@ -374,7 +371,6 @@ class Bernoulli():
          - Jaesik Yoon's Pytorch adaption: https://github.com/jsikyoon/dreamer-torch/blob/7c2331acd4fa6196d140943e977f23fb177398b3/tools.py#L312
 
         # TODO:
-         - Investigate the benefit of using this custom Bernoulli dist over the default in Pytorch ?
          - Tidy up the code to be more cleanrl-ish
     """
     def __init__(self, dist=None):
@@ -402,7 +398,7 @@ class Bernoulli():
 
         return log_probs0 * (1-x) + log_probs1 * x
 
-# Scope that enables gradient computation
+# Scope that enables gradient computation for specified nn.Module
 class RequiresGrad():
     def __init__(self, model):
         self.model = model
@@ -430,10 +426,14 @@ class WorldModel(nn.Module):
         # Encoder
         C = 1 if config.env_grayscale else 3
         self.encoder = nn.Sequential(
-            nn.Conv2d(C, 64, kernel_size=(4,4), stride=(2,2)), nn.ELU(),
-            nn.Conv2d(64, 128, kernel_size=(4,4), stride=(2,2)), nn.ELU(),
-            nn.Conv2d(128, 256, kernel_size=(4,4), stride=(2,2)), nn.ELU(),
-            nn.Conv2d(256, 256, kernel_size=(4,4), stride=(2,2)), nn.ELU()
+            nn.Conv2d(C, 64, kernel_size=(4,4), stride=(2,2)),
+            nn.ELU(),
+            nn.Conv2d(64, 128, kernel_size=(4,4), stride=(2,2)),
+            nn.ELU(),
+            nn.Conv2d(128, 256, kernel_size=(4,4), stride=(2,2)),
+            nn.ELU(),
+            nn.Conv2d(256, 256, kernel_size=(4,4), stride=(2,2)),
+            nn.ELU()
         )
 
         # Decoder
@@ -446,19 +446,26 @@ class WorldModel(nn.Module):
         self.decoder = nn.Sequential(
             nn.Linear(self.state_feat_size, 1536),
             DeConvReshape(),
-            nn.ConvTranspose2d(1536, 192, kernel_size=(5,5), stride=(2,2)), nn.ELU(),
-            nn.ConvTranspose2d(192, 96, kernel_size=(5,5), stride=(2,2)), nn.ELU(),
-            nn.ConvTranspose2d(96, 48, kernel_size=(6,6),stride=(2,2)), nn.ELU(),
+            nn.ConvTranspose2d(1536, 192, kernel_size=(5,5), stride=(2,2)),
+            nn.ELU(),
+            nn.ConvTranspose2d(192, 96, kernel_size=(5,5), stride=(2,2)),
+            nn.ELU(),
+            nn.ConvTranspose2d(96, 48, kernel_size=(6,6),stride=(2,2)),
+            nn.ELU(),
             nn.ConvTranspose2d(48, C, kernel_size=(6,6),stride=(2,2))
         )
 
         # Reward predictor
         N = config.rew_pred_hid_size # 400 by default
         self.reward_pred = nn.Sequential(
-            nn.Linear(self.state_feat_size, N), nn.ELU(),
-            nn.Linear(N, N), nn.ELU(),
-            nn.Linear(N, N), nn.ELU(),
-            nn.Linear(N, N), nn.ELU(),
+            nn.Linear(self.state_feat_size, N),
+            nn.ELU(),
+            nn.Linear(N, N),
+            nn.ELU(),
+            nn.Linear(N, N),
+            nn.ELU(),
+            nn.Linear(N, N),
+            nn.ELU(),
             nn.Linear(N, 1)
         )
 
@@ -466,10 +473,14 @@ class WorldModel(nn.Module):
         N = config.disc_pred_hid_size # 400 by default
         if N:
             self.disc_pred = nn.Sequential(
-                nn.Linear(self.state_feat_size, N), nn.ELU(),
-                nn.Linear(N, N), nn.ELU(),
-                nn.Linear(N, N), nn.ELU(),
-                nn.Linear(N, N), nn.ELU(),
+                nn.Linear(self.state_feat_size, N),
+                nn.ELU(),
+                nn.Linear(N, N),
+                nn.ELU(),
+                nn.Linear(N, N),
+                nn.ELU(),
+                nn.Linear(N, N),
+                nn.ELU(),
                 nn.Linear(N, 1)
             )
 
@@ -500,7 +511,7 @@ class WorldModel(nn.Module):
                 return output
 
         N = config.rssm_deter_size # 600 by default
-        # Embeds y_{t-1} and a_{t-1} to update h_t
+        # Embeds y_{t-1} and a_{t-1} before updating h_t
         self.state_action_embed = nn.Sequential(
             nn.Linear(self.state_stoch_feat_size + num_actions, N),
             nn.ELU()
@@ -510,15 +521,16 @@ class WorldModel(nn.Module):
         self.update_s_deter = GRUCell(N, N, norm=True)
 
         # Helper class that returns either logits or mean,std
-        # to parameter Categorical or Normal distribution for
+        # to parameterize Categorical or Normal distribution for
         # the stochastic component Y of the latent state S
         class DistributionParameters(nn.Module):
             def __init__(self, input_size, hidden_size, stoch_size, discrete):
                 super().__init__()
                 self.discrete = discrete
                 self.stoch_size = stoch_size
-                self.output_size = stoch_size * discrete \
-                    if  discrete else int(stoch_size * 2)
+                self.output_size = stoch_size * discrete if  discrete else int(stoch_size * 2)
+                # TODO: maybe make this depth parametizable 
+                # so that the user can tune it for harder tasks easier ?
                 self.network = nn.Sequential(
                     nn.Linear(input_size, hidden_size),
                     nn.ELU(),
@@ -1308,13 +1320,14 @@ if __name__ == "__main__":
     obs = envs.reset()
     prev_data, prev_batch_data = None, None
     n_episodes = 0
-    total_updates = args.total_timesteps // args.train_every
+    total_updates = args.total_timesteps // args.train_every # Expected total number of updates
     for global_step in range(0, args.total_timesteps, args.num_envs):
         # ALGO LOGIC: put action logic here
         if global_step <= args.buffer_prefill:
             action = envs.action_space.sample()
         else:
             # Tensorize observation, pre-process and put on training device
+            # Pixel-based observations are pre-processed itno the [-0.5, 0.5] range
             obs_th = torch.Tensor(obs).to(device) / 255.0 - 0.5
             action, prev_data = dreamer.sample_action(obs_th, prev_data, mode="train")
 
@@ -1348,8 +1361,10 @@ if __name__ == "__main__":
 
         # ALGO LOGIC: training.
         if global_step >= args.buffer_prefill and global_step % args.train_every == 0:
-            # TODO: determine the proper relation between train_every and actiopn_repeats
             batch_data_dict = buffer.sample()
+            # Pixel-based observations are pre-processed itno the [-0.5, 0.5] range
+            batch_data_dict["observations"] = batch_data_dict["observations"] / 255.0 - 0.5
+             
             # TODO: consolidate losses into a signle dictionary ?
             wm_losses_dict, ac_losses_dict, wm_fwd_dict, ac_fwd_dict, prev_batch_data = \
                 dreamer._train(batch_data_dict, prev_batch_data)
@@ -1360,7 +1375,7 @@ if __name__ == "__main__":
                 [writer.add_scalar(f"wm/{k}", v, global_step) for k,v in wm_losses_dict.items()]
                 [writer.add_scalar(f"ac/{k}", v, global_step) for k,v in ac_losses_dict.items()]
                 UPS = dreamer.n_updates.item() / (time.time() - start_time) # Update steps per second
-                PRGS = dreamer.n_updates / total_updates # Progress rate, monitor progressino rate in Wandb
+                PRGS = dreamer.n_updates / total_updates # Progress rate, monitor progression rate in Wandb
                 print("SPS:", int((global_step - args.buffer_prefill) / (time.time() - start_time)), end=" | ")
                 print(f"UPS: {UPS: 0.3f}", end=" | ")
                 print("ETA:", hrd(int(total_updates - dreamer.n_updates.item())/ UPS))
@@ -1375,7 +1390,7 @@ if __name__ == "__main__":
                 writer.add_scalar("charts/buffer_steps", buffer_size, global_step)
                 writer.add_scalar("charts/buffer_frames", buffer_size * args.env_action_repeats, global_step)
 
-            # NOTE: too frequent video logging will add overhead to training time
+            # NOTE: too frequent video logging can add overhead to training time
             if dreamer.n_updates % 500 == 0:
                 # Logging video of trajectory reconstruction from the WM training
                 train_rec_video = dreamer.gen_train_rec_videos(batch_data_dict, wm_fwd_dict)
