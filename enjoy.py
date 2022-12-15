@@ -22,6 +22,8 @@ def parse_args():
         help="the huggingface repo (e.g., cleanrl/BreakoutNoFrameskip-v4-dqn_atari-seed1)")
     parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4",
         help="the id of the environment")
+    parser.add_argument("--eval-episodes", type=int, default=10,
+        help="the number of evaluation episodes")
     args = parser.parse_args()
     # fmt: on
     return args
@@ -45,7 +47,7 @@ if __name__ == "__main__":
         model_path,
         make_env,
         args.env_id,
-        eval_episodes=10,
+        eval_episodes=args.eval_episodes,
         run_name=f"eval",
         Model=Model,
         capture_video=False,
