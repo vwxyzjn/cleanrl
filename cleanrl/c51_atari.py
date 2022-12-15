@@ -219,41 +219,42 @@ if __name__ == "__main__":
         obs = next_obs
 
         # ALGO LOGIC: training.
-        if global_step > args.learning_starts and global_step % args.train_frequency == 0:
-            data = rb.sample(args.batch_size)
-            with torch.no_grad():
-                _, next_pmfs = target_network.get_action(data.next_observations)
-                next_atoms = data.rewards + args.gamma * target_network.atoms * (1 - data.dones)
-                # projection
-                delta_z = target_network.atoms[1] - target_network.atoms[0]
-                tz = next_atoms.clamp(args.v_min, args.v_max)
+        if global_step > args.learning_starts:
+            if global_step % args.train_frequency == 0:
+                data = rb.sample(args.batch_size)
+                with torch.no_grad():
+                    _, next_pmfs = target_network.get_action(data.next_observations)
+                    next_atoms = data.rewards + args.gamma * target_network.atoms * (1 - data.dones)
+                    # projection
+                    delta_z = target_network.atoms[1] - target_network.atoms[0]
+                    tz = next_atoms.clamp(args.v_min, args.v_max)
 
-                b = (tz - args.v_min) / delta_z
-                l = b.floor().clamp(0, args.n_atoms - 1)
-                u = b.ceil().clamp(0, args.n_atoms - 1)
-                # (l == u).float() handles the case where bj is exactly an integer
-                # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
-                d_m_l = (u + (l == u).float() - b) * next_pmfs
-                d_m_u = (b - l) * next_pmfs
-                target_pmfs = torch.zeros_like(next_pmfs)
-                for i in range(target_pmfs.size(0)):
-                    target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
-                    target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
+                    b = (tz - args.v_min) / delta_z
+                    l = b.floor().clamp(0, args.n_atoms - 1)
+                    u = b.ceil().clamp(0, args.n_atoms - 1)
+                    # (l == u).float() handles the case where bj is exactly an integer
+                    # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
+                    d_m_l = (u + (l == u).float() - b) * next_pmfs
+                    d_m_u = (b - l) * next_pmfs
+                    target_pmfs = torch.zeros_like(next_pmfs)
+                    for i in range(target_pmfs.size(0)):
+                        target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
+                        target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
 
-            _, old_pmfs = q_network.get_action(data.observations, data.actions.flatten())
-            loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5, max=1 - 1e-5).log()).sum(-1)).mean()
+                _, old_pmfs = q_network.get_action(data.observations, data.actions.flatten())
+                loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5, max=1 - 1e-5).log()).sum(-1)).mean()
 
-            if global_step % 100 == 0:
-                writer.add_scalar("losses/loss", loss.item(), global_step)
-                old_val = (old_pmfs * q_network.atoms).sum(1)
-                writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
-                print("SPS:", int(global_step / (time.time() - start_time)))
-                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+                if global_step % 100 == 0:
+                    writer.add_scalar("losses/loss", loss.item(), global_step)
+                    old_val = (old_pmfs * q_network.atoms).sum(1)
+                    writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
+                    print("SPS:", int(global_step / (time.time() - start_time)))
+                    writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
-            # optimize the model
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                # optimize the model
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
             # update the target network
             if global_step % args.target_network_frequency == 0:
