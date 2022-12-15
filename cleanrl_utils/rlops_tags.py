@@ -57,14 +57,14 @@ if __name__ == "__main__":
         modified_runs = []
         for run in runs:
             tags = run.tags
-            if args.add and args.add not in tags:
+            if args.add and args.add not in tags and args.source_tag in tags:
                 confirmation_str += (
                     f"Adding the tag '{args.add}' to [link={run.url}]{run.name}[/link], which has tags {str(tags)}\n"
                 )
                 tags.append(args.add)
                 run.tags = tags
                 modified_runs.append(run)
-            if args.remove and args.remove in tags:
+            if args.remove and args.remove in tags and args.source_tag in tags:
                 confirmation_str += (
                     f"Removing the tag '{args.remove}' from [link={run.url}]{run.name}[/link], which has tags {str(tags)}\n"
                 )
