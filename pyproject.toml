@@ -3,7 +3,10 @@ name = "cleanrl"
 version = "1.0.0"
 description = "High-quality single file implementation of Deep Reinforcement Learning algorithms with research-friendly features"
 authors = ["Costa Huang <costa.huang@outlook.com>"]
-include = ["cleanrl_utils"]
+packages = [
+    { include = "cleanrl" },
+    { include = "cleanrl_utils" },
+]
 keywords = ["reinforcement", "machine", "learning", "research"]
 license="MIT"
 readme = "README.md"
@@ -18,6 +21,7 @@ stable-baselines3 = "1.2.0"
 gymnasium = "^0.26.3"
 moviepy = "^1.0.3"
 pygame = "2.1.0"
+huggingface-hub = "^0.11.1"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.20.0"
@@ -109,3 +113,20 @@ mujoco = "^2.2"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.extras]
+atari = ["ale-py", "AutoROM", "opencv-python"]
+pybullet = ["pybullet"]
+procgen = ["procgen"]
+plot = ["pandas", "seaborn"]
+spyder = ["spyder"]
+pytest = ["pytest"]
+mujoco = ["mujoco", "imageio"]
+mujoco_py = ["free-mujoco-py"]
+jax = ["jax", "jaxlib", "flax"]
+docs = ["mkdocs-material", "markdown-include"]
+envpool = ["envpool"]
+optuna = ["optuna", "optuna-dashboard", "rich"]
+pettingzoo = ["PettingZoo", "SuperSuit", "multi-agent-ale-py"]
+cloud = ["boto3", "awscli"]
+dm_control = ["shimmy", "dm-control", "mujoco"]
