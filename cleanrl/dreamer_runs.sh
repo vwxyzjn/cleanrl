@@ -5,6 +5,31 @@ export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 ###############################################
 # region: Atari Breakout                      #
 
+    # region: Baseline experiments
+    # ## Seed 1
+    # export CUDA_VISIBLE_DEVICES=3
+    # (sleep 1s && python dreamer_atari.py \
+    #     --track --capture-video \
+    #     --env-id "BreakoutNoFrameskip-v4" \
+    #     --total-timesteps 3000000 \
+    #     --batch-size 50 --batch-length 50 \
+    #     --train-every 16 \
+    #     --exp-name "dreamer_B_50_T_50_trnev_16" \
+    #     --seed 1 \
+    # ) >& /dev/null &
+    # ## Seed 2
+    # export CUDA_VISIBLE_DEVICES=2
+    # (sleep 1s && python dreamer_atari.py \
+    #     --track --capture-video \
+    #     --env-id "BreakoutNoFrameskip-v4" \
+    #     --total-timesteps 3000000 \
+    #     --batch-size 50 --batch-length 50 \
+    #     --train-every 16 \
+    #     --exp-name "dreamer_B_50_T_50_trnev_16" \
+    #     --seed 2 \
+    # ) >& /dev/null &
+    # endregion: Baseline experiments
+
 # endregion: Atari Breakout                   #
 ###############################################
 
