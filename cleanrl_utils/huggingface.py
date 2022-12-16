@@ -98,12 +98,14 @@ python {algorith_variant_filename} {" ".join(sys.argv[1:])}
 
     # fetch mp4 files
     if video_folder_path:
-        video_files = [str(item) for item in Path(video_folder_path).glob("*.mp4")]
-        # sort by the number in the file name
-        video_files = sorted(video_files, key=lambda x: int("".join(filter(str.isdigit, os.path.splitext(x)[0]))))
-        for file in video_files:
-            operations += [CommitOperationAdd(path_or_fileobj=file, path_in_repo=file)]
-        operations += [CommitOperationAdd(path_or_fileobj=file, path_in_repo=HUGGINGFACE_VIDEO_PREVIEW_FILE_NAME)]
+        # Push all video files
+        video_files = list(Path(video_folder_path).glob("*.mp4"))
+        operations += [CommitOperationAdd(path_or_fileobj=str(file), path_in_repo=file) for file in video_files]
+        # Push latest one in root directory
+        latest_file = max(video_files, key=lambda x: int("".join(filter(str.isdigit, file.stem))))
+        operations.append(
+            CommitOperationAdd(path_or_fileobj=str(latest_file), path_in_repo=HUGGINGFACE_VIDEO_PREVIEW_FILE_NAME)
+        )
 
     # fetch folder files
     for item in [str(item) for item in Path(folder_path).glob("*")]:
