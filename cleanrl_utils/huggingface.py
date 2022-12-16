@@ -40,7 +40,7 @@ def push_to_hub(
     operations = [
         CommitOperationDelete(path_in_repo=file)
         for file in api.list_repo_files(repo_id=repo_id)
-        if file.endswith(".tfevents") or file.endswith(".mp4")
+        if ".tfevents" in file or file.endswith(".mp4")
     ]
 
     # Step 3: Generate the model card
@@ -99,16 +99,16 @@ python {algorith_variant_filename} {" ".join(sys.argv[1:])}
     if video_folder_path:
         # Push all video files
         video_files = list(Path(video_folder_path).glob("*.mp4"))
-        operations += [CommitOperationAdd(path_or_fileobj=str(file), path_in_repo=file) for file in video_files]
+        operations += [CommitOperationAdd(path_or_fileobj=str(file), path_in_repo=str(file)) for file in video_files]
         # Push latest one in root directory
-        latest_file = max(video_files, key=lambda x: int("".join(filter(str.isdigit, file.stem))))
+        latest_file = max(video_files, key=lambda file: int("".join(filter(str.isdigit, file.stem))))
         operations.append(
             CommitOperationAdd(path_or_fileobj=str(latest_file), path_in_repo=HUGGINGFACE_VIDEO_PREVIEW_FILE_NAME)
         )
 
     # fetch folder files
     operations += [
-        CommitOperationAdd(path_or_fileobj=str(item), path_in_repo=item.relative_to(folder_path))
+        CommitOperationAdd(path_or_fileobj=str(item), path_in_repo=str(item.relative_to(folder_path)))
         for item in Path(folder_path).glob("*")
     ]
 
@@ -117,8 +117,8 @@ python {algorith_variant_filename} {" ".join(sys.argv[1:])}
 
     # upload poetry files at the root of the repository
     git_root = Path(__file__).parent.parent
-    operations.append(CommitOperationAdd(path_or_fileobj=str(git_root / "pyproject.toml"), path_in_repo=f"pyproject.toml"))
-    operations.append(CommitOperationAdd(path_or_fileobj=str(git_root / "poetry.lock"), path_in_repo=f"poetry.lock"))
+    operations.append(CommitOperationAdd(path_or_fileobj=str(git_root / "pyproject.toml"), path_in_repo="pyproject.toml"))
+    operations.append(CommitOperationAdd(path_or_fileobj=str(git_root / "poetry.lock"), path_in_repo="poetry.lock"))
 
     api.create_commit(
         repo_id=repo_id,
