@@ -114,7 +114,7 @@ python {algorith_variant_filename} {" ".join(sys.argv[1:])}
     ]
 
     # fetch source code
-    operations += [CommitOperationAdd(path_or_fileobj=sys.argv[0], path_in_repo=sys.argv[0].split("/")[-1])]
+    operations.append(CommitOperationAdd(path_or_fileobj=sys.argv[0], path_in_repo=sys.argv[0].split("/")[-1]))
 
     # upload poetry files at the root of the repository
     git_root = Path(__file__).parent.parent
