@@ -61,18 +61,3 @@ if __name__ == "__main__":
         Model=QNetwork,
         capture_video=False,
     )
-
-    # from cleanrl.dqn_atari import QNetwork, make_env
-
-    # model_path = hf_hub_download(repo_id="vwxyzjn/BreakoutNoFrameskip-v4-dqn_atari-seed1", filename="q_network.pth")
-    # evaluate(
-    #     model_path,
-    #     make_env,
-    #     "BreakoutNoFrameskip-v4",
-    #     eval_episodes=10,
-    #     run_name=f"eval",
-    #     Model=QNetwork,
-    #     device="cpu",
-    #     epsilon=0.05,
-    #     capture_video=False,
-    # )

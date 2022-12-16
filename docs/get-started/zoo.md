@@ -29,5 +29,6 @@ To see a list of supported models, please visit 🤗 https://huggingface.co/clea
 In the supported algorithm variant, you can run the script with the `--save-model` flag, which saves a model to the `runs` folder, and the `--upload-model` flag, which upload the model to huggingface under your default entity (username). Optionally, you may override the default entity with `--hf-entity` flag.
 
 ```bash
-poetry run cleanrl/dqn_atari_jax.py --env-id SeaquestNoFrameskip-v4  --save-model --upload-model # --hf-entity cleanrl
+poetry run python cleanrl/dqn_jax.py --env-id CartPole-v1 --save-model --upload-model # --hf-entity cleanrl
+poetry run python cleanrl/dqn_atari_jax.py --env-id SeaquestNoFrameskip-v4  --save-model --upload-model # --hf-entity cleanrl
 ```
