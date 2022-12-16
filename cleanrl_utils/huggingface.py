@@ -25,7 +25,7 @@ def push_to_hub(
     from huggingface_hub import CommitOperationAdd, CommitOperationDelete, HfApi
     from huggingface_hub.repocard import metadata_eval_result, metadata_save
 
-    api = HfApi(library_name="cleanrl", library_version="1.0.0")
+    api = HfApi()
     repo_url = api.create_repo(
         repo_id=repo_id,
         exist_ok=True,
