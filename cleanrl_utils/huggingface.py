@@ -68,7 +68,7 @@ python {algorith_variant_filename} {" ".join(sys.argv[1:])}
 {pformat(vars(args))}
 ```
     """
-    readme_path = f"{folder_path}/README.md"
+    readme_path = Path(folder_path) / HUGGINGFACE_README_FILE_NAME
     readme = model_card
 
     # metadata
