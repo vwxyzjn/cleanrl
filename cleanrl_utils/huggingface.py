@@ -118,8 +118,8 @@ python {algorith_variant_filename} {" ".join(sys.argv[1:])}
 
     # upload poetry files at the root of the repository
     git_root = Path(__file__).parent.parent
-    operations += [CommitOperationAdd(path_or_fileobj=f"{git_root}/pyproject.toml", path_in_repo=f"pyproject.toml")]
-    operations += [CommitOperationAdd(path_or_fileobj=f"{git_root}/poetry.lock", path_in_repo=f"poetry.lock")]
+    operations.append(CommitOperationAdd(path_or_fileobj=str(git_root / "pyproject.toml"), path_in_repo=f"pyproject.toml"))
+    operations.append(CommitOperationAdd(path_or_fileobj=str(git_root / "poetry.lock"), path_in_repo=f"poetry.lock"))
 
     api.create_commit(
         repo_id=repo_id,
