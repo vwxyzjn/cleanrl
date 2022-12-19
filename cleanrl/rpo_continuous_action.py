@@ -152,6 +152,7 @@ if __name__ == "__main__":
             project=args.wandb_project_name,
             entity=args.wandb_entity,
             dir=result_dir,
+            tags=["pr-331"],
             sync_tensorboard=True,
             config=vars(args),
             name=run_name,
