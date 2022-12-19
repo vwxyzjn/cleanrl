@@ -358,7 +358,7 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
 5. [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) performs learning updates only on every $n^{\text{th}}$ step. This leads to improved stability and prevents the agent's performance from degenerating during longer training runs.  
 Note the difference to [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py): [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) updates every $n^{\text{th}}$ environment step and does a single update of actor and critic on every update step. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) updates the critic every step and the actor every $n^{\text{th}}$ step. It then compensates for the delayed actor updates by performing $n$ actor update steps.
 
-6. `sac_atari.py` handles truncation and termination properly like (Mnih et al., 2015)[^3] by using SB3's replay buffer's `handle_timeout_termination=True`.
+6. [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) handles truncation and termination properly like (Mnih et al., 2015)[^3] by using SB3's replay buffer's `handle_timeout_termination=True`.
 
 ### Atari experiment results for SAC-discrete
 
@@ -373,9 +373,9 @@ The table below compares the results of CleanRL's [`sac_atari.py`](https://githu
 
 | Environment      | [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) 100k steps |[SAC for Discrete Action Settings](https://arxiv.org/abs/1910.07207) 100k steps| [`sac_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_atari.py) 5M steps | [`dqn_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_atari.py) 10M steps
 | --------------- | ------------------ | ---------------- | ---------------- | ---------------- |
-| PongNoFrameskip-v4  | ~ -20.46 ± 0.75       | -20.98 ± 0.0        |   ~19.15 ± 1.96  |     20.25 ± 0.41   |
-| BreakoutNoFrameskip-v4     | ~2.52 ± 1.56         | -           | ~376.87 ± 17.256  |  366.928 ± 39.89  |
-| BeamRiderNoFrameskip-v4       | ~370.28 ± 116.61         | 432.1 ± 44.0           |   ~8612.40 ± 1532.57 |    6673.24 ± 1434.37   |
+| PongNoFrameskip-v4  | ~ -20.21 ± 0.62       | -20.98 ± 0.0        |   ~19.24 ± 1.81  |     20.25 ± 0.41   |
+| BreakoutNoFrameskip-v4     | ~2.33 ± 1.28         | -           | ~343.66 ± 93.34  |  366.928 ± 39.89  |
+| BeamRiderNoFrameskip-v4       | ~396.15 ± 155.81         | 432.1 ± 44.0           |   ~8658.97 ± 1554.66 |    6673.24 ± 1434.37   |
 
 Learning curves:
 
@@ -390,7 +390,7 @@ Learning curves:
 
 Tracked experiments:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-sac_atari-py--VmlldzoyOTYzNjg3" style="width:100%; height:1200px" title="Atari: CleanRL's SAC-discrete"></iframe>
+<iframe src="https://wandb.ai/openrlbenchmark/cleanrl/reports/Atari-CleanRL-s-SAC-discrete--VmlldzoyNzgxMTI2" style="border:none;height:1024px;width:100%"></iframe>
 
 [^1]:Diederik P Kingma, Max Welling (2016). Auto-Encoding Variational Bayes. ArXiv, abs/1312.6114. https://arxiv.org/abs/1312.6114
 
