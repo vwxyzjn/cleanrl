@@ -226,6 +226,17 @@ poetry install --with mujoco_py,mujoco
 python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
 ```
 
+???+ warning "dm_control installation issue"
+
+    If you run into error like `AttributeError: 'GLFWContext' object has no attribute '_context'` in Linux, it's because the rendering dependencies are not installed properly. To fix it, try running
+
+    ```
+    sudo apt-get update && sudo apt-get -y install libgl1-mesa-glx libosmesa6 libglfw3 
+    ```
+
+    See [https://github.com/deepmind/dm_control#rendering](https://github.com/deepmind/dm_control#rendering) for more detail.
+
+
 ### Explanation of the logged metrics
 
 See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`.
