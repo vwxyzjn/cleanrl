@@ -379,7 +379,13 @@ The table below compares the results of CleanRL's [`sac_atari.py`](https://githu
 
 Learning curves:
 
-<img src="../sac/sac_discrete.png">
+<div class="grid-container">
+    <img src="../sac/PongNoFrameskip-v4.png">
+    <img src="../sac/BreakoutNoFrameskip-v4.png">
+    <img src="../sac/BeamRiderNoFrameskip-v4.png">
+</div>
+
+<div></div>
 
 
 Tracked experiments:
