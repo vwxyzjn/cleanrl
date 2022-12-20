@@ -731,7 +731,7 @@ python cleanrl/ppo_atari_envpool_xla_jax_scan.py --env-id Breakout-v5
 
 ### Explanation of the logged metrics
 
-See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`. Just like in [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py), we omit logging `losses/old_approx_kl` and `losses/clipfrac` for brevity. The metrics are the same as those in [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py).
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`. The metrics are the same as those in [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py).
 
 ### Implementation details
 
