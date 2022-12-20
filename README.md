@@ -113,7 +113,6 @@ You may also use a prebuilt development environment hosted in Gitpod:
 
 ## Algorithms Implemented
 
-# Overview
 
 | Algorithm      | Variants Implemented |
 | ----------- | ----------- |

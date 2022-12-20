@@ -32,6 +32,9 @@ repo_url: https://github.com/vwxyzjn/cleanrl
 repo_name: vwxyzjn/cleanrl
 #markdown_extensions 
 markdown_extensions:
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true 
   - abbr
   - pymdownx.highlight
   - pymdownx.inlinehilite
@@ -39,7 +42,6 @@ markdown_extensions:
   - pymdownx.snippets
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
   - attr_list
   - md_in_html
   - footnotes

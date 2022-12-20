@@ -11,10 +11,13 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.7.1,<3.10"
 tensorboard = "^2.10.0"
-wandb = "^0.13.3"
-gym = {version = "0.23.1", extras = ["classic_control"]}
-torch = "^1.12.1"
+wandb = "^0.13.6"
+gym = "0.23.1"
+torch = ">=1.12.1"
 stable-baselines3 = "1.2.0"
+gymnasium = "^0.26.3"
+moviepy = "^1.0.3"
+pygame = "2.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.20.0"
@@ -44,6 +47,12 @@ pytest = "^7.1.3"
 [tool.poetry.group.mujoco]
 optional = true
 [tool.poetry.group.mujoco.dependencies]
+mujoco = "^2.2"
+imageio = "^2.14.1"
+
+[tool.poetry.group.mujoco_py]
+optional = true
+[tool.poetry.group.mujoco_py.dependencies]
 free-mujoco-py = "^2.1.6"
 
 [tool.poetry.group.docs]
@@ -78,7 +87,6 @@ PettingZoo = "1.18.1"
 SuperSuit = "3.4.0"
 multi-agent-ale-py = "0.1.11"
 
-
 [tool.poetry.group.cloud]
 optional = true
 [tool.poetry.group.cloud.dependencies]
@@ -90,6 +98,13 @@ optional = true
 [tool.poetry.group.isaacgym.dependencies]
 isaacgymenvs = {git = "https://github.com/vwxyzjn/IsaacGymEnvs.git", rev = "poetry"}
 isaacgym = {path = "cleanrl/ppo_continuous_action_isaacgym/isaacgym", develop = true}
+
+[tool.poetry.group.dm_control]
+optional = true
+[tool.poetry.group.dm_control.dependencies]
+shimmy = "^0.1.0"
+dm-control = "^1.0.8"
+mujoco = "^2.2"
 
 [build-system]
 requires = ["poetry-core"]
