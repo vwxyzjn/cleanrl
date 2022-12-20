@@ -1,4 +1,4 @@
-# Model Zoo
+# 🤗 Model Zoo
 
 [<img src="https://img.shields.io/badge/%F0%9F%A4%97%20Models-Huggingface-F8D521">](https://huggingface.co/cleanrl)
 
