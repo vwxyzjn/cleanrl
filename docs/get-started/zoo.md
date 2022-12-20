@@ -19,8 +19,11 @@ We have a simple utility `enjoy.py` to load models from the hub and run them in 
 
 ```bash
 poetry run python -m cleanrl_utils.enjoy --exp-name dqn --env CartPole-v1
-poetry run python -m cleanrl_utils.enjoy --exp-name dqn_atari --env BreakoutNoFrameskip-v4
 poetry run python -m cleanrl_utils.enjoy --exp-name dqn_jax --env CartPole-v1
+
+poetry install --with atari,jax
+poetry run python -m cleanrl_utils.enjoy --exp-name dqn_atari --env BreakoutNoFrameskip-v4
+poetry run python -m cleanrl_utils.enjoy --exp-name dqn_atari_jax --env BreakoutNoFrameskip-v4
 ```
 
 To see a list of supported models, please visit 🤗 [https://huggingface.co/cleanrl](https://huggingface.co/cleanrl).
