@@ -1,13 +1,7 @@
 import argparse
 
 from huggingface_hub import hf_hub_download
-
-import cleanrl.dqn
-import cleanrl.dqn_atari
-import cleanrl.dqn_jax
-import cleanrl_utils.evals.dqn_eval
-import cleanrl_utils.evals.dqn_jax_eval
-
+from cleanrl_utils.evals import MODELS
 
 def parse_args():
     # fmt: off
@@ -29,19 +23,12 @@ def parse_args():
     return args
 
 
-MODELS = {
-    "dqn": (cleanrl.dqn.QNetwork, cleanrl.dqn.make_env, cleanrl_utils.evals.dqn_eval.evaluate),
-    "dqn_atari": (cleanrl.dqn_atari.QNetwork, cleanrl.dqn_atari.make_env, cleanrl_utils.evals.dqn_eval.evaluate),
-    "dqn_jax": (cleanrl.dqn_jax.QNetwork, cleanrl.dqn_jax.make_env, cleanrl_utils.evals.dqn_jax_eval.evaluate),
-}
-
-
 if __name__ == "__main__":
     args = parse_args()
-    Model, make_env, evaluate = MODELS[args.exp_name]
+    Model, make_env, evaluate = MODELS[args.exp_name]()
     if not args.hf_repository:
         args.hf_repository = f"{args.hf_entity}/{args.env_id}-{args.exp_name}-seed{args.seed}"
-    print(args.hf_repository)
+    print(f"loading saved models from {args.hf_repository}...")
     model_path = hf_hub_download(repo_id=args.hf_repository, filename=f"{args.exp_name}.cleanrl_model")
     evaluate(
         model_path,
