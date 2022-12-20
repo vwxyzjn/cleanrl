@@ -29,6 +29,7 @@ All our PPO implementations below are augmented with the same code-level optimiz
 | :material-github: [`ppo_atari_lstm.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_lstmpy) | For Atari games using LSTM without stacked frames. |
 | :material-github: [`ppo_atari_envpool.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_envpoolpy) | Uses the blazing fast Envpool Atari vectorized environment. |
 | :material-github: [`ppo_atari_envpool_xla_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_envpool_xla_jaxpy) | Uses the blazing fast Envpool Atari vectorized environment with EnvPool's XLA interface and JAX. |
+| :material-github: [`ppo_atari_envpool_xla_jax_scan.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax_scan.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_envpool_xla_jax_scanpy) | Uses native `jax.scan` as opposed to python loops for faster compilation time. |
 | :material-github: [`ppo_procgen.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_procgen.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_procgenpy) | For the procgen environments. |
 | :material-github: [`ppo_atari_multigpu.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_multigpu.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_multigpupy)| For Atari environments leveraging multi-GPUs. |
 | :material-github: [`ppo_pettingzoo_ma_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_pettingzoo_ma_atari.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_pettingzoo_ma_ataripy)| For Pettingzoo's multi-agent Atari environments. |
@@ -710,6 +711,57 @@ Tracked experiments and game play videos:
 
 <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-PPO-JAX-EnvPool-s-XLA-vs-openai-baselins-PPO-part-2---VmlldzoyNjE2ODM1" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-vs-openai-baselines-Part-2"></iframe>
 
+
+
+## `ppo_atari_envpool_xla_jax_scan.py`
+
+The [ppo_atari_envpool_xla_jax_scan.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax_scan.py) has the following features:
+
+* Replaces python loops in `compute_gae`, `update_ppo`, and `rollout` functions of [ppo_atari_envpool_xla_jax.py](/rl-algorithms/ppo/#ppo_atari_envpool_xla_jaxpy) with native `jax.scan`
+* Warnings and caveats from [ppo_atari_envpool_xla_jax.py](/rl-algorithms/ppo/#ppo_atari_envpool_xla_jaxpy) also apply here
+
+### Usage
+
+```bash
+poetry install -E "envpool jax"
+poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+python cleanrl/ppo_atari_envpool_xla_jax_scan.py --help
+python cleanrl/ppo_atari_envpool_xla_jax_scan.py --env-id Breakout-v5
+```
+
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`. Just like in [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py), we omit logging `losses/old_approx_kl` and `losses/clipfrac` for brevity. The metrics are the same as those in [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py).
+
+### Implementation details
+
+[ppo_atari_envpool_xla_jax_scan.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax_scan.py) is a clone of [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) that replaces the python loops with native `jax.scan`.
+
+### Experiment results
+
+To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fppo.sh%23L108-L113&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
+
+Below are the average episodic returns for `ppo_atari_envpool_xla_jax_scan.py` in 3 atari games. It has the same sample efficiency as `ppo_atari_envpool_xla_jax.py`.
+
+|              | ppo_atari_envpool_xla_jax_scan ({'tag': ['pr-328']})   | baselines-ppo2-cnn ({})   | ppo_atari_envpool_xla_jax_truncation ({})   |
+|:-------------|:-------------------------------------------------------|:--------------------------|:--------------------------------------------|
+| BeamRider-v5 | 2899.62 ± 482.12                                       | 2835.71 ± 387.92          | 3133.78 ± 293.02                            |
+| Breakout-v5  | 451.27 ± 45.52                                         | 405.73 ± 11.47            | 465.90 ± 14.30                              |
+| Pong-v5      | 20.37 ± 0.20                                           | 20.45 ± 0.81              | 20.62 ± 0.18                                |
+
+???+ info
+
+    The speed of this variant and [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) are very similar but the compilation time is reduced significantly (see [vwxyzjn/cleanrl#328](https://github.com/vwxyzjn/cleanrl/pull/328#issuecomment-1340474894)). In the following learning curve, the speed increase comes from the fact that better hardware were used.
+
+Learning curves:
+
+![](../ppo/ppo_atari_envpool_xla_jax_scan/compare.png)
+
+Tracked experiments:
+
+<iframe src="https://wandb.ai/51616/cleanrl/reports/Regression-Report-ppo_atari_envpool_xla_jax_truncation--VmlldzozMTg4NzI3" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-Jax-scan"></iframe>
 
 
 
