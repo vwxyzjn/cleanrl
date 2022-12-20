@@ -33,11 +33,11 @@ To see a list of supported models, please visit 🤗 [https://huggingface.co/cle
     
     The `cleanrl_utils.enjoy` is a simple wrapper to load the models from the hub and run them in an environment. A minimal version of the script can be found at [cleanrl_utils/evals/dqn_eval.py](https://github.com/vwxyzjn/cleanrl/blob/hf-integration/cleanrl_utils/evals/dqn_eval.py), which may give you a more fine-grained control and access to the model.
     
-    <script src="https://emgithub.com/embed-v2.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fhf-integration%2Fcleanrl_utils%2Fevals%2Fdqn_eval.py&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
+    <script src="https://emgithub.com/embed-v2.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fcleanrl_utils%2Fevals%2Fdqn_eval.py&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
 
 ## Save model to Model Hub
 
-In the supported algorithm variant, you can run the script with the `--save-model` flag, which saves a model to the `runs` folder, and the `--upload-model` flag, which upload the model to huggingface under your default entity (username). Optionally, you may override the default entity with `--hf-entity` flag.
+In the supported algorithm variants, you can run the script with the `--save-model` flag, which saves a model to the `runs` folder, and the `--upload-model` flag, which upload the model to huggingface under your default entity (username). Optionally, you may override the default entity with `--hf-entity` flag.
 
 ```bash
 poetry run python cleanrl/dqn_jax.py --env-id CartPole-v1 --save-model --upload-model # --hf-entity cleanrl
