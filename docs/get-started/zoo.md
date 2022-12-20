@@ -1,5 +1,7 @@
 # Model Zoo
 
+[<img src="https://img.shields.io/badge/%F0%9F%A4%97%20Models-Huggingface-F8D521">](https://huggingface.co/cleanrl)
+
 CleanRL now has 🧪 experimental support for saving and loading models from 🤗 HuggingFace's [Model Hub](https://huggingface.co/models). We are rolling out this feature in phases, and currently only support saving and loading models from the following algorithm varaints:
 
 
@@ -16,12 +18,12 @@ CleanRL now has 🧪 experimental support for saving and loading models from �
 We have a simple utility `enjoy.py` to load models from the hub and run them in an environment. We currently support the following commands:
 
 ```bash
-poetry run python enjoy.py --exp-name dqn --env CartPole-v1
-poetry run python enjoy.py --exp-name dqn_atari --env BreakoutNoFrameskip-v4
-poetry run python enjoy.py --exp-name dqn_jax --env CartPole-v1
+poetry run python -m cleanrl_utils.enjoy --exp-name dqn --env CartPole-v1
+poetry run python -m cleanrl_utils.enjoy --exp-name dqn_atari --env BreakoutNoFrameskip-v4
+poetry run python -m cleanrl_utils.enjoy --exp-name dqn_jax --env CartPole-v1
 ```
 
-To see a list of supported models, please visit 🤗 https://huggingface.co/cleanrl.
+To see a list of supported models, please visit 🤗 [https://huggingface.co/cleanrl](https://huggingface.co/cleanrl).
 
 
 ## Save model to Model Hub
