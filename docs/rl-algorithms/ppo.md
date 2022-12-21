@@ -761,7 +761,7 @@ Learning curves:
     The trainig time of this variant and that of [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) are very similar but the compilation time is reduced significantly (see [vwxyzjn/cleanrl#328](https://github.com/vwxyzjn/cleanrl/pull/328#issuecomment-1340474894)). Note that the hardware also affects the speed in the learning curve below. Runs from [`costa-huang`](https://github.com/vwxyzjn/) (red) are slower from those of [`51616`](https://github.com/51616/) (blue and orange) because of hardware differences.
 
 ![](../ppo/ppo_atari_envpool_xla_jax_scan/compare.png)
-![](../ppo/ppo_atari_envpool_xla_jax_scan/compare_time.png)
+![](../ppo/ppo_atari_envpool_xla_jax_scan/compare-time.png)
 
 Tracked experiments:
 
