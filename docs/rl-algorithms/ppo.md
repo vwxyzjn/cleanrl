@@ -748,15 +748,11 @@ To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://g
 
 Below are the average episodic returns for `ppo_atari_envpool_xla_jax_scan.py` in 3 atari games. It has the same sample efficiency as `ppo_atari_envpool_xla_jax.py`.
 
-|              | ppo_atari_envpool_xla_jax_scan ({'tag': ['pr-328']})   | baselines-ppo2-cnn ({})   | ppo_atari_envpool_xla_jax_truncation ({})   |
-|:-------------|:-------------------------------------------------------|:--------------------------|:--------------------------------------------|
-| BeamRider-v5 | 2899.62 ± 482.12                                       | 2835.71 ± 387.92          | 3133.78 ± 293.02                            |
-| Breakout-v5  | 451.27 ± 45.52                                         | 405.73 ± 11.47            | 465.90 ± 14.30                              |
-| Pong-v5      | 20.37 ± 0.20                                           | 20.45 ± 0.81              | 20.62 ± 0.18                                |
-
-???+ info
-
-    The speed of this variant and [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) are very similar but the compilation time is reduced significantly (see [vwxyzjn/cleanrl#328](https://github.com/vwxyzjn/cleanrl/pull/328#issuecomment-1340474894)). In the following learning curve, the speed increase comes from the fact that better hardware were used.
+|              | ppo_atari_envpool_xla_jax_scan ({'tag': ['pr-328'], 'user': ['51616']})   | ppo_atari_envpool_xla_jax ({'tag': ['pr-328'], 'user': ['51616']})   | baselines-ppo2-cnn ({})   | ppo_atari_envpool_xla_jax_truncation ({'user': ['costa-huang']})   |
+|:-------------|:--------------------------------------------------------------------------|:---------------------------------------------------------------------|:--------------------------|:-------------------------------------------------------------------|
+| BeamRider-v5 | 2899.62 ± 482.12                                                          | 2222.09 ± 1047.86                                                    | 2835.71 ± 387.92          | 3133.78 ± 293.02                                                   |
+| Breakout-v5  | 451.27 ± 45.52                                                            | 424.97 ± 18.37                                                       | 405.73 ± 11.47            | 465.90 ± 14.30                                                     |
+| Pong-v5      | 20.37 ± 0.20                                                              | 20.59 ± 0.40                                                         | 20.45 ± 0.81              | 20.62 ± 0.18                                                       |
 
 Learning curves:
 
@@ -764,7 +760,11 @@ Learning curves:
 
 Tracked experiments:
 
-<iframe src="https://wandb.ai/51616/cleanrl/reports/Regression-Report-ppo_atari_envpool_xla_jax_truncation--VmlldzozMTg4NzI3" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-Jax-scan"></iframe>
+???+ info
+
+    The trainig time of this variant and that of [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) are very similar but the compilation time is reduced significantly (see [vwxyzjn/cleanrl#328](https://github.com/vwxyzjn/cleanrl/pull/328#issuecomment-1340474894)). Note that the hardware also affects the speed in the learning curve below. Runs from [`costa-huang`](https://github.com/vwxyzjn/) (red) are slower from those of [`51616`](https://github.com/51616/) (blue and orange) because of hardware differences.
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Regression-Report-ppo_atari_envpool_xla_jax_scan--VmlldzozMTk2MzM2" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-Jax-scan"></iframe>
 
 
 
