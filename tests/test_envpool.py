@@ -1,14 +1,6 @@
 import subprocess
 
 
-def test_jax_scan_compute_Gae():
-    subprocess.run(
-        "python tests/test_jax_compute_gae.py",
-        shell=True,
-        check=True,
-    )
-
-
 def test_ppo_atari_envpool():
     subprocess.run(
         "python cleanrl/ppo_atari_envpool.py --num-envs 8 --num-steps 32 --total-timesteps 256",
