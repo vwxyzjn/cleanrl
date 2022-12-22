@@ -7,22 +7,22 @@ export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 
     # region: Baseline experiments
     # ## Seed 1
-    # export CUDA_VISIBLE_DEVICES=3
+    # export CUDA_VISIBLE_DEVICES=7
     # (sleep 1s && python dreamer_atari.py \
     #     --track --capture-video \
     #     --env-id "BreakoutNoFrameskip-v4" \
-    #     --total-timesteps 3000000 \
+    #     --total-timesteps 10000000 \
     #     --batch-size 50 --batch-length 50 \
     #     --train-every 16 \
     #     --exp-name "dreamer_B_50_T_50_trnev_16" \
     #     --seed 1 \
     # ) >& /dev/null &
     # ## Seed 2
-    # export CUDA_VISIBLE_DEVICES=2
+    # export CUDA_VISIBLE_DEVICES=6
     # (sleep 1s && python dreamer_atari.py \
     #     --track --capture-video \
     #     --env-id "BreakoutNoFrameskip-v4" \
-    #     --total-timesteps 3000000 \
+    #     --total-timesteps 10000000 \
     #     --batch-size 50 --batch-length 50 \
     #     --train-every 16 \
     #     --exp-name "dreamer_B_50_T_50_trnev_16" \
@@ -57,6 +57,60 @@ export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
     #     --batch-size 50 --batch-length 50 \
     #     --train-every 16 \
     #     --exp-name "dreamer_B_50_T_50_trnev_16" \
+    #     --seed 2 \
+    # ) >& /dev/null &
+    # endregion: Baseline experiments
+
+    # region: Investigating trade off of the number of parallel envs
+    # ## num-envs = 4
+    # ## Seed 1
+    # export CUDA_VISIBLE_DEVICES=5
+    # (sleep 1s && python dreamer_atari.py \
+    #     --track --capture-video \
+    #     --env-id "PongNoFrameskip-v4" \
+    #     --total-timesteps 3000000 \
+    #     --batch-size 50 --batch-length 50 \
+    #     --train-every 16 \
+    #     --num-envs 4 \
+    #     --exp-name "dreamer_B_50_T_50_trnev_16_nenvs_4" \
+    #     --seed 1 \
+    # ) >& /dev/null &
+    # ## Seed 2
+    # export CUDA_VISIBLE_DEVICES=4
+    # (sleep 1s && python dreamer_atari.py \
+    #     --track --capture-video \
+    #     --env-id "PongNoFrameskip-v4" \
+    #     --total-timesteps 3000000 \
+    #     --batch-size 50 --batch-length 50 \
+    #     --train-every 16 \
+    #     --num-envs 4 \
+    #     --exp-name "dreamer_B_50_T_50_trnev_16_nenvs_4" \
+    #     --seed 2 \
+    # ) >& /dev/null &
+
+    # ## num-envs = 8
+    # ## Seed 1
+    # export CUDA_VISIBLE_DEVICES=3
+    # (sleep 1s && python dreamer_atari.py \
+    #     --track --capture-video \
+    #     --env-id "PongNoFrameskip-v4" \
+    #     --total-timesteps 3000000 \
+    #     --batch-size 50 --batch-length 50 \
+    #     --train-every 16 \
+    #     --num-envs 8 \
+    #     --exp-name "dreamer_B_50_T_50_trnev_16_nenvs_8" \
+    #     --seed 1 \
+    # ) >& /dev/null &
+    # ## Seed 2
+    # export CUDA_VISIBLE_DEVICES=2
+    # (sleep 1s && python dreamer_atari.py \
+    #     --track --capture-video \
+    #     --env-id "PongNoFrameskip-v4" \
+    #     --total-timesteps 3000000 \
+    #     --batch-size 50 --batch-length 50 \
+    #     --train-every 16 \
+    #     --num-envs 8 \
+    #     --exp-name "dreamer_B_50_T_50_trnev_16_nenvs_8" \
     #     --seed 2 \
     # ) >& /dev/null &
     # endregion: Baseline experiments
