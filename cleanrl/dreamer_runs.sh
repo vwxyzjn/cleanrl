@@ -30,6 +30,33 @@ export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
     # ) >& /dev/null &
     # endregion: Baseline experiments
 
+    # region: Investigating batch length trade off on walltime and perf
+
+    # Batch length of 20
+    # Seed 1
+    # export CUDA_VISIBLE_DEVICES=1
+    # (sleep 1s && python dreamer_atari.py \
+    #     --track --capture-video \
+    #     --env-id "PongNoFrameskip-v4" \
+    #     --total-timesteps 10000000 \
+    #     --batch-size 50 --batch-length 20 \
+    #     --train-every 16 \
+    #     --exp-name "dreamer_B_50_T_20_trnev_16" \
+    #     --seed 1 \
+    # ) >& /dev/null &
+    # ## Seed 2
+    # export CUDA_VISIBLE_DEVICES=0
+    # (sleep 1s && python dreamer_atari.py \
+    #     --track --capture-video \
+    #     --env-id "PongNoFrameskip-v4" \
+    #     --total-timesteps 10000000 \
+    #     --batch-size 50 --batch-length 20 \
+    #     --train-every 16 \
+    #     --exp-name "dreamer_B_50_T_20_trnev_16" \
+    #     --seed 2 \
+    # ) >& /dev/null &
+    # endregion: Investigating batch length trade off on walltime and perf
+
 # endregion: Atari Breakout                   #
 ###############################################
 
