@@ -19,6 +19,7 @@ nav:
     - rl-algorithms/td3.md
     - rl-algorithms/ppg.md
     - rl-algorithms/ppo-rnd.md
+    - rl-algorithms/dreamer.md
   - Advanced:
     - advanced/hyperparameter-tuning.md
     - advanced/resume-training.md
