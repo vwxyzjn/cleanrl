@@ -13,6 +13,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+import pybullet_envs  # noqa
 from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
@@ -25,10 +26,6 @@ def parse_args():
         help="the name of this experiment")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
-    parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, `torch.backends.cudnn.deterministic=False`")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, cuda will be enabled by default")
     parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
     parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
@@ -36,7 +33,7 @@ def parse_args():
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="weather to capture videos of the agent performances (check out `videos` folder)")
+        help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="HalfCheetah-v2",
@@ -202,10 +199,13 @@ if __name__ == "__main__":
         # TODO Maybe pre-generate a lot of random keys
         # also check https://jax.readthedocs.io/en/latest/jax.random.html
         key, noise_key = jax.random.split(key, 2)
-        clipped_noise = jnp.clip(
-            (jax.random.normal(noise_key, actions[0].shape) * args.policy_noise),
-            -args.noise_clip,
-            args.noise_clip,
+        clipped_noise = (
+            jnp.clip(
+                (jax.random.normal(noise_key, actions.shape) * args.policy_noise),
+                -args.noise_clip,
+                args.noise_clip,
+            )
+            * actor.action_scale
         )
         next_state_actions = jnp.clip(
             actor.apply(actor_state.target_params, next_observations) + clipped_noise,

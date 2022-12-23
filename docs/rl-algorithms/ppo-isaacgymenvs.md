@@ -68,7 +68,7 @@ rm -rf temp_isaacgym
 
 # if your global python version is not either 3.7 nor 3.8, you need to tell poetry specifically to use a 3.7 or 3.8 python
 # e.g., `poetry env use /home/costa/.pyenv/versions/3.7.8/bin/python`
-poetry install -E isaacgym
+poetry install --with isaacgym
 # if you are using NVIDIA's 30xx GPU, you need to specifically install cuda 11.3 wheels
 # `poetry run pip install torch --upgrade --extra-index-url https://download.pytorch.org/whl/cu113`
 poetry run python cleanrl/ppo_continuous_action_isaacgym/ppo_continuous_action_isaacgym.py --help
@@ -183,7 +183,7 @@ Additionally, `charts/consecutive_successes` means the number of consecutive epi
 
 To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fc3d3588c89c86d85a6d195125700cdbfe9d79c86%2Fbenchmark%2Fppo.sh%23L61-L73&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fppo.sh%23L61-L73&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 Below are the average episodic returns for `ppo_continuous_action_isaacgym.py`. To ensure the quality of the implementation, we compared the results against [Denys88/rl_games](https://github.com/Denys88/rl_games)' PPO and present the training time (units being `s (seconds), m (minutes)`). The hardware used is a NVIDIA RTX A6000 in a 24 core machine.
 

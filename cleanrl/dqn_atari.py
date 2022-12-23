@@ -40,7 +40,7 @@ def parse_args():
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="weather to capture videos of the agent performances (check out `videos` folder)")
+        help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4",
@@ -178,8 +178,8 @@ if __name__ == "__main__":
         if random.random() < epsilon:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
-            logits = q_network(torch.Tensor(obs).to(device))
-            actions = torch.argmax(logits, dim=1).cpu().numpy()
+            q_values = q_network(torch.Tensor(obs).to(device))
+            actions = torch.argmax(q_values, dim=1).cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, dones, infos = envs.step(actions)
@@ -204,24 +204,25 @@ if __name__ == "__main__":
         obs = next_obs
 
         # ALGO LOGIC: training.
-        if global_step > args.learning_starts and global_step % args.train_frequency == 0:
-            data = rb.sample(args.batch_size)
-            with torch.no_grad():
-                target_max, _ = target_network(data.next_observations).max(dim=1)
-                td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
-            old_val = q_network(data.observations).gather(1, data.actions).squeeze()
-            loss = F.mse_loss(td_target, old_val)
+        if global_step > args.learning_starts:
+            if global_step % args.train_frequency == 0:
+                data = rb.sample(args.batch_size)
+                with torch.no_grad():
+                    target_max, _ = target_network(data.next_observations).max(dim=1)
+                    td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
+                old_val = q_network(data.observations).gather(1, data.actions).squeeze()
+                loss = F.mse_loss(td_target, old_val)
 
-            if global_step % 100 == 0:
-                writer.add_scalar("losses/td_loss", loss, global_step)
-                writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
-                print("SPS:", int(global_step / (time.time() - start_time)))
-                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+                if global_step % 100 == 0:
+                    writer.add_scalar("losses/td_loss", loss, global_step)
+                    writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
+                    print("SPS:", int(global_step / (time.time() - start_time)))
+                    writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
-            # optimize the model
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                # optimize the model
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
             # update the target network
             if global_step % args.target_network_frequency == 0:

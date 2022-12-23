@@ -10,8 +10,8 @@ Good luck and have fun!
 
 ```bash
 poetry install
-poetry install -E atari
-poetry install -E pybullet
+poetry install --with atari
+poetry install --with pybullet
 ```
 
 Then you can run the scripts under the poetry environment in two ways: `poetry run` or `poetry shell`. 

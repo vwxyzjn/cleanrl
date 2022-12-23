@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="weather to capture videos of the agent performances (check out `videos` folder)")
+        help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="Pong-v5",
@@ -49,8 +49,6 @@ def parse_args():
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument("--gae", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Use GAE for advantage computation")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
@@ -86,13 +84,6 @@ class RecordEpisodeStatistics(gym.Wrapper):
         self.num_envs = getattr(env, "num_envs", 1)
         self.episode_returns = None
         self.episode_lengths = None
-        # get if the env has lives
-        self.has_lives = False
-        env.reset()
-        info = env.step(np.zeros(self.num_envs, dtype=int))[-1]
-        if info["lives"].sum() > 0:
-            self.has_lives = True
-            print("env has lives")
 
     def reset(self, **kwargs):
         observations = super().reset(**kwargs)
@@ -109,13 +100,8 @@ class RecordEpisodeStatistics(gym.Wrapper):
         self.episode_lengths += 1
         self.returned_episode_returns[:] = self.episode_returns
         self.returned_episode_lengths[:] = self.episode_lengths
-        all_lives_exhausted = infos["lives"] == 0
-        if self.has_lives:
-            self.episode_returns *= 1 - all_lives_exhausted
-            self.episode_lengths *= 1 - all_lives_exhausted
-        else:
-            self.episode_returns *= 1 - dones
-            self.episode_lengths *= 1 - dones
+        self.episode_returns *= 1 - infos["terminated"]
+        self.episode_lengths *= 1 - infos["terminated"]
         infos["r"] = self.returned_episode_returns
         infos["l"] = self.returned_episode_lengths
         return (
@@ -259,30 +245,18 @@ if __name__ == "__main__":
         # bootstrap value if not done
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)
-            if args.gae:
-                advantages = torch.zeros_like(rewards).to(device)
-                lastgaelam = 0
-                for t in reversed(range(args.num_steps)):
-                    if t == args.num_steps - 1:
-                        nextnonterminal = 1.0 - next_done
-                        nextvalues = next_value
-                    else:
-                        nextnonterminal = 1.0 - dones[t + 1]
-                        nextvalues = values[t + 1]
-                    delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
-                    advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
-                returns = advantages + values
-            else:
-                returns = torch.zeros_like(rewards).to(device)
-                for t in reversed(range(args.num_steps)):
-                    if t == args.num_steps - 1:
-                        nextnonterminal = 1.0 - next_done
-                        next_return = next_value
-                    else:
-                        nextnonterminal = 1.0 - dones[t + 1]
-                        next_return = returns[t + 1]
-                    returns[t] = rewards[t] + args.gamma * nextnonterminal * next_return
-                advantages = returns - values
+            advantages = torch.zeros_like(rewards).to(device)
+            lastgaelam = 0
+            for t in reversed(range(args.num_steps)):
+                if t == args.num_steps - 1:
+                    nextnonterminal = 1.0 - next_done
+                    nextvalues = next_value
+                else:
+                    nextnonterminal = 1.0 - dones[t + 1]
+                    nextvalues = values[t + 1]
+                delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
+                advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
+            returns = advantages + values
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
