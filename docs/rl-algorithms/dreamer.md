@@ -47,7 +47,7 @@ This single file implementaton proposes a simpler approaches that trades off mod
 
 ## `dreamer_atari.py`
 
-### Design choices
+## Design choices
 
 CleanRL focues on providing single file implementatons of RL algorithms. It's salient characteristics would be as follows:
 
@@ -65,8 +65,69 @@ Due to the relatively higher complexity of Dreamer compared to *model-free* RL a
 
 - As mentioned earlier, the Dreamer agent can essentially be decomposed into the WM and the AC components. Those components are essentially orthogonal, at least during the training phase. This implementatoin encapsulates the WM and AC components into the `Dreamer` agent class. This class provides abstraction for sample action: `sample_action()` and for training `_train` to simplify the overview of the rollout training / process in `__main__()`. Each of `WorldModel` and `ActorCritic` class encapsulates the logic for its training. This was done with the hope of hastening the understand of what happens under the hood of each components independently, instead of hardcoding the interplay of both components during rollout and training.
 
-- More walltime related training stats logging: since Dreamer agents can take a while to train, this implemetnaton has additional lines to provide more insight about the speed of the training process. On top of tracking the (agent) **steps per seconds (SPS)**, it also tracks:
-    - **frames per seconds (FPS)**: in tasks such as Atari's Breakout, one action of the agent is usually repeated `env-action-repeat = 4` by default. Unlike CleanRL, the original paper report performance respectively to the number of frames sampled. The **FPS** metric, as well as the `global_frame` metric is tracked for compatibility of the result plotting.
-    - **updates per seconds (UPS)**: backpropagating through time during Dreamer's training is the most time consuming process. This metric tracks how many update steps (i.e. calls to the `.backward()` method and `optimizer.step()`) are performed per second for the whole agent.
-    - **Estimated Time of Arrival (ETA)**: it provides the estimated training time left for the experiment, based on the **UPS**. This metric is purely informative, and is not logged to Tensorboard / WandB. Instead, it is periodically printed to the console (when tracking with WandB, it can be seen in the "Logs" section of the run).
-    - **PRGS**: Simiarly to **ETA**, this is used when tracking the epxeriment with WandB to mimic a *progress bar* that informs on the progression of the experiment.
+## Underlying theory
+
+### World Model (WM)
+The main function of the WM component is to ...:
+
+- learn low dimensional state representation from pixel, or more generally, observation data
+- learn the dynamics of the task, which can then be used to
+- generate synthetic trajectories to train the decision-making component
+
+The WM is formed of the following components:
+
+- **Encoder** $f_{\text{Encoder}}(o_t): \mathbb{O} \rightarrow \mathbb{S}$: maps from high-dimensional, pixel-based observations $o_t$ to a lower dimensional (feature) vector $x_t$
+- **Decoder**: $f_{\text{Decoder}}(s_t): \mathbb{S} \rightarrow \mathbb{O}$: maps from low-dimensional state vector $s_t$ to an observation $\hat{o}_t$.
+- **Reward predictor**: $\mathbb{S} \rightarrow \mathbb{R}$: maps from low-dimensional state vector $s_t$ to a real, scalar *reward* value.
+- **Discount predictor**: $\mathbb{S} \rightarrow [0,1]$: maps from low-dimensional state vector $s_t$ to a scalar value in range $[0,1]$. This directly predicts the $\gamma$ discounting factor used for the agent's training
+
+Following the RSSM [TODO: Refs.] structure, the low-dimensional state representation $s_t$ is formed by concatenation of a *deterministic component* hereafter denoted as $h_t$, and a *stochastic component* denoted as $y_t$.
+The state transition function [...] deterministic component update.
+This is done using Recurrent Neural Networks.
+- **Deterministci state component update**: $f_{\text{RNN}(h_{t-1}, y_{t-1}, a_{t-1})}$.
+
+The stochastic component $y_t$ of the state vector is approximated using either a *Normal* distribution in case of *continuous latents*, or a *OneHot Categorical* distribution in case of *discrete latents*.
+- **Prior distribution over y_t**: $p(y_t \vert h_t)$: learns to predict the current stochaastic component of $s_t$ based on the history of the episode so far (which is encoded by h_t).
+- **Posterior distribution over y_t**: $q(y_t \vert x_t, h_t)$: performs inference on the current $y_t$ based on the *observed feature vector* $x_t$, and the history so far encoded in $h_t$.
+
+#### Training of the WM
+
+- Assumes a sequence of observed data:
+    - list of pixel-based observations: $\{o_t\}_{t=0}^{T-1}$
+    - list of actions: $\{a_t\}_{t=0}^{T-1}$, and
+    - list of episode termination signla: $\{d_t\}_{t=0}^{T-1}$
+    For convenience, here is a diagram of how said data is structured when passed to the `_train()` method of the WM:
+    **[TODO: Intutive diagram of the sequential observation data, with the action shifted one step right**
+- The following diagram illustrates the overall training process
+    **[TODO: Overall diagram of the training process**
+
+### Actor-Critic (AC)
+
+- based on the low-dimensional state space learned by the WM
+- estimate the *value* of arbitrary states, which is then used to
+- train a *policy* that produces actions maximizing the expected return.
+
+It's component are as follows:
+- **actor** network: policy $ \pi(a_t \vert s_t): \mathbb{S} \rightarrow \mathbb{A}$ that maps from low-dimensiona state vector $s_t$ to an action.
+- **value** network: $V(s_t): \mathbb{S} \rightarrow \mathbb{R}$
+
+### Explanation of the logged metrics
+
+On top of the metrics conventional logged in CleanRL implementation, this implementation of Dreamer agents add other relevant metrics to the *model-based* nature of the algorithm:
+
+- `charts/SPS`: is the number of **steps per second**, i.e. the number of `env.step()` calls made by the agent during rollout per second.
+
+- `charts/FPS`: is the number of **frames per seconds (FPS)** sampled by the agent. This corresponds to `SPS * args.env_action_repeats`. Unlike CleanRL, the research papers report performance relatively to the number of **frames** sampled, instead of **environment steps**.
+This metric is tracked for compatibilty of the result plotting, namely by using `global_frame` on the plots' horizontal axis.
+
+- `charts/n_updates`: the number of updates performed on the overall Dreamer agent, i.e. the number of calls to `.backward()` and `optimizer.step()` on the WM and AC components.
+
+- `charts/UPS`: the average number of model updates per second.
+
+- `charts/PRGS`: tracks to progresion rate of the experiment, namely to be used with the Bar chart of WandB to mimic a progress bar.
+
+Asside of the Tensorboard / WandB metrics, ... [TODO]
+
+More walltime related training stats logging: since Dreamer agents can take a while to train, this implementation has additional lines to provide more insight about the speed of the training process.
+Therefore, the running script will periodically printout a human-readable **Estimated Time of Arrival (ETA)**.
+As the name suggests, it informs the user on how much time is lfet for the trainign to complete, and is computed based on the `charts/UPS` metric.
