@@ -132,12 +132,6 @@ class Agent(nn.Module):
         probs = Normal(action_mean, action_std)
         if action is None:
             action = probs.sample()
-        else: # new to RPO
-            # sample again to add some stochasticity, for update the policy
-            z = torch.FloatTensor(action_mean.shape).uniform_(-0.5, 0.5)
-            action_mean = action_mean + z
-            probs = Normal(action_mean, action_std)
-        
         return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
 
 
@@ -152,7 +146,7 @@ if __name__ == "__main__":
             project=args.wandb_project_name,
             entity=args.wandb_entity,
             dir=result_dir,
-            tags=["pr-331", "c264fe1"],
+            tags=["v1.0.0-13-gcbd83f6"],
             sync_tensorboard=True,
             config=vars(args),
             name=run_name,
