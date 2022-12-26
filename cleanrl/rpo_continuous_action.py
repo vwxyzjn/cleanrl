@@ -1,4 +1,4 @@
-# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_continuous_actionpy
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/rpo/#rpo_continuous_actionpy
 import argparse
 import os
 import random
@@ -86,7 +86,7 @@ def make_env(env_id, idx, capture_video, run_name, gamma):
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"{result_dir}videos/{run_name}")
+                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         env = gym.wrappers.ClipAction(env)
         env = gym.wrappers.NormalizeObservation(env)
         env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
@@ -133,7 +133,7 @@ class Agent(nn.Module):
         if action is None:
             action = probs.sample()
         else: # new to RPO
-            # sample again to add some stochasticity, for update the policy
+            # sample again to add stochasticity, for the policy update
             z = torch.FloatTensor(action_mean.shape).uniform_(-0.5, 0.5)
             action_mean = action_mean + z
             probs = Normal(action_mean, action_std)
@@ -144,22 +144,19 @@ class Agent(nn.Module):
 if __name__ == "__main__":
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    result_dir = "/scratch/bell/rahman64/results/rpo_dev/gym/"
     if args.track:
         import wandb
 
         wandb.init(
             project=args.wandb_project_name,
             entity=args.wandb_entity,
-            dir=result_dir,
-            tags=["pr-331", "c264fe1"],
             sync_tensorboard=True,
             config=vars(args),
             name=run_name,
             # monitor_gym=True, no longer works for gymnasium
             save_code=True,
         )
-    writer = SummaryWriter(f"{result_dir}runs/{run_name}")
+    writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
@@ -332,9 +329,9 @@ if __name__ == "__main__":
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
         if args.track and args.capture_video:
-            for filename in os.listdir(f"{result_dir}videos/{run_name}"):
+            for filename in os.listdir(f"videos/{run_name}"):
                 if filename not in video_filenames and filename.endswith(".mp4"):
-                    wandb.log({f"{result_dir}videos": wandb.Video(f"{result_dir}videos/{run_name}/{filename}")})
+                    wandb.log({f"videos": wandb.Video(f"videos/{run_name}/{filename}")})
                     video_filenames.add(filename)
 
     envs.close()
