@@ -60,6 +60,7 @@ Similar to PPO [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blo
 Results on all dm_control environments. The PPO and RPO run for 8M timesteps, and results are computed over 10 random seeds.
 
 **Table:**
+
 |                                       | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
 |:--------------------------------------|:-------------------------------------------------------------|:----------------------------------------------|
 | dm_control/acrobot-swingup-v0         | 25.12 ± 7.77                                                 | 41.62 ± 5.26                                  |
