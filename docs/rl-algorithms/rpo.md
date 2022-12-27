@@ -55,6 +55,8 @@ Similar to PPO [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blo
 
 ### Experiment results
 
+**DeepMind Control**
+
 Results on all dm_control environments. The PPO and RPO run for 8M timesteps, and results are computed over 10 random seeds.
 
 **Table:**
@@ -112,3 +114,16 @@ Results on all dm_control environments. The PPO and RPO run for 8M timesteps, an
 **Learning curves:**
 ![](../rpo/dm_control_all_ppo_rpo_8M.png)
 
+**Gym (Gymnasium):**
+
+Results on two continuous gym environments. The PPO and RPO run for 8M timesteps, and results are computed over 10 random seeds.
+
+**Table:**
+
+|                  | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
+|:-----------------|:-------------------------------------------------------------|:----------------------------------------------|
+| Pendulum-v1      | -1145.00 ± 125.97                                            | -145.82 ± 7.13                                |
+| BipedalWalker-v3 | 172.74 ± 99.97                                               | 231.28 ± 22.39                                |
+
+**Learning curves:**
+![](../rpo/gym.png)
