@@ -39,8 +39,10 @@ def test_compute_gae():
         _, advantages = jax.lax.scan(
             compute_gae_once_fn, advantages, (dones[1:], values[1:], values[:-1], storage.rewards), reverse=True
         )
-        storage = storage.replace(advantages=advantages)
-        storage = storage.replace(returns=storage.advantages + storage.values)
+        storage = storage.replace(
+            advantages=advantages,
+            returns=storage.advantages + storage.values,
+        )
         return storage
 
     def compute_gae_python_loop(

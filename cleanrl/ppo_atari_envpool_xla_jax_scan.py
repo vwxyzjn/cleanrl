@@ -323,8 +323,10 @@ if __name__ == "__main__":
         _, advantages = jax.lax.scan(
             compute_gae_once, advantages, (dones[1:], values[1:], values[:-1], storage.rewards), reverse=True
         )
-        storage = storage.replace(advantages=advantages)
-        storage = storage.replace(returns=storage.advantages + storage.values)
+        storage = storage.replace(
+            advantages=advantages,
+            returns=storage.advantages + storage.values,
+        )
         return storage
 
     def ppo_loss(params, x, a, logp, mb_advantages, mb_returns):
