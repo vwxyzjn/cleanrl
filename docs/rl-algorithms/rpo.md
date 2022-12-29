@@ -118,7 +118,7 @@ Similar to PPO [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blo
         ![](../rpo/dm_control_all_ppo_rpo_8M.png)
     
     
-    ==MuJoCo v4
+    == "MuJoCo v4"
 
         |                     | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
         |:--------------------|:-------------------------------------------------------------|:----------------------------------------------|
@@ -146,7 +146,7 @@ Similar to PPO [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blo
         Learning curves:
         ![](../rpo/mujoco_v4_part2.png)
     
-    ==MuJoCo v2
+    == "MuJoCo v2"
 
         |                     | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
         |:--------------------|:-------------------------------------------------------------|:----------------------------------------------|
@@ -176,7 +176,7 @@ Similar to PPO [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blo
         Learning curves:
         ![](../rpo/mujoco_v2_part2.png)
     
-    ==Gym(Gymnasium)
+    == "Gym(Gymnasium)"
 
         Results on two continuous gym environments. The PPO and RPO run for 8M timesteps, and results are computed over 10 random seeds.
 
