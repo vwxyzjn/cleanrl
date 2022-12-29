@@ -181,7 +181,7 @@ if __name__ == "__main__":
         target_params=q_network.init(q_key, obs),
         # directly using jnp.linspace leads to numerical errors
         atoms=jnp.asarray(np.linspace(args.v_min, args.v_max, num=args.n_atoms)),
-        tx=optax.adam(learning_rate=args.learning_rate),
+        tx=optax.adam(learning_rate=args.learning_rate, eps=0.01 / args.batch_size),
     )
     q_network.apply = jax.jit(q_network.apply)
     # This step is not necessary as init called on same observation and key will always lead to same initializations
