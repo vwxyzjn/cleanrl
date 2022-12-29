@@ -69,6 +69,8 @@ def parse_args():
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
+    parser.add_argument("--rpo-alpha", type=float, default=0.5,
+        help="the alpha parameter for RPO")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
@@ -134,7 +136,7 @@ class Agent(nn.Module):
             action = probs.sample()
         else: # new to RPO
             # sample again to add stochasticity, for the policy update
-            z = torch.FloatTensor(action_mean.shape).uniform_(-0.5, 0.5)
+            z = torch.FloatTensor(action_mean.shape).uniform_(-self.rpo_alpha, self.rpo_alpha)
             action_mean = action_mean + z
             probs = Normal(action_mean, action_std)
         
