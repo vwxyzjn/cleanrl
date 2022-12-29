@@ -188,9 +188,12 @@ if __name__ == "__main__":
         d_m_u = (b - l) * next_pmfs
         target_pmfs = jnp.zeros_like(next_pmfs)
 
-        for i in range(target_pmfs.shape[0]):
-            target_pmfs = target_pmfs.at[i, l[i].astype(jnp.int32)].add(d_m_l[i])
-            target_pmfs = target_pmfs.at[i, u[i].astype(jnp.int32)].add(d_m_u[i])
+        def project_to_bins(i, val):
+            val = val.at[i, l[i].astype(jnp.int32)].add(d_m_l[i])
+            val = val.at[i, u[i].astype(jnp.int32)].add(d_m_u[i])
+            return val
+
+        target_pmfs = jax.lax.fori_loop(0, target_pmfs.shape[0], project_to_bins, target_pmfs)
 
         def loss(q_params, observations, actions, target_pmfs):
             pmfs = q_network.apply(q_params, observations)
