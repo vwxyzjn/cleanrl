@@ -13,13 +13,13 @@ Original paper:
 
 | Variants Implemented      | Description |
 | ----------- | ----------- |
-| :material-github: [`rpo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/rpo_continuous_action.py), :material-file-document: [docs](/rl-algorithms/rpo/#rpo_continuous_actionpy) | For classic control tasks like Gym `Pendulum-v1`, dm_control, Pybullet. |
+| :material-github: [`rpo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/rpo_continuous_action.py), :material-file-document: [docs](/rl-algorithms/rpo/#rpo_continuous_actionpy) | For classic control tasks like Gym `Pendulum-v1`, and dm_control. |
 
 Below are our single-file implementations of RPO:
 
 ## `rpo_continuous_action.py`
 
-`rpo_continuous_action.py` works with Gym (Gymnasium), dm_control, Pybullet environments with continuous action and vector observations.
+`rpo_continuous_action.py` works with Gym (Gymnasium), dm_control, Mujoco environments with continuous action and vector observations.
 
 The [rpo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/rpo_continuous_action.py) has the following features (similar to [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py)):
 
@@ -203,15 +203,14 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
 
         |                           | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action_alpha_0_01 ({'tag': ['pr-331']})   |
         |:--------------------------|:-------------------------------------------------------------|:---------------------------------------------------------|
-        | Ant-v2                    | 2435.03 ± 955.57                                             | 3142.98 ± 787.87                                         |
-        | HalfCheetah-v2            | 2714.14 ± 1260.34                                            | 2716.46 ± 1241.38                                        |
-        | Hopper-v2                 | 2411.13 ± 657.94                                             | 2286.05 ± 590.10                                         |
-        | InvertedDoublePendulum-v2 | 5727.86 ± 367.86                                             | 5811.94 ± 281.47                                         |
-        | Reacher-v2                | -4.57 ± 0.48                                                 | -4.17 ± 0.22                                             |
-        | Swimmer-v2                | 132.43 ± 10.01                                               | 141.49 ± 8.47                                            |
-        | Pusher-v2                 | -33.60 ± 8.54                                                | -26.08 ± 2.32                                            |
-
-
+        | Ant-v2                    | 2405.17 ± 987.88                                             | 3056.22 ± 760.95                                         |
+        | HalfCheetah-v2            | 2669.75 ± 1208.94                                            | 2715.03 ± 1227.04                                        |
+        | Hopper-v2                 | 2375.85 ± 655.34                                             | 2311.24 ± 623.32                                         |
+        | InvertedDoublePendulum-v2 | 5642.71 ± 390.72                                             | 5644.14 ± 378.06                                         |
+        | Reacher-v2                | -4.80 ± 0.59                                                 | -4.10 ± 0.33                                             |
+        | Swimmer-v2                | 131.93 ± 10.09                                               | 141.20 ± 9.06                                            |
+        | Pusher-v2                 | -32.96 ± 8.70                                                | -26.17 ± 2.37                                            |
+        
         Learning curves:
         ![](../rpo/mujoco_v2_part2.png)
     
