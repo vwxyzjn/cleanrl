@@ -5,9 +5,8 @@ import random
 import time
 from distutils.util import strtobool
 
-import gym
+import gymnasium as gym
 import numpy as np
-import pybullet_envs  # noqa
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -36,7 +35,7 @@ def parse_args():
         help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="HalfCheetahBulletEnv-v0",
+    parser.add_argument("--env-id", type=str, default="HalfCheetah-v4",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -77,9 +76,13 @@ def parse_args():
     return args
 
 
-def make_env(env_id, seed, idx, capture_video, run_name, gamma):
+def make_env(env_id, idx, capture_video, run_name, gamma):
     def thunk():
-        env = gym.make(env_id)
+        if capture_video:
+            env = gym.make(env_id, render_mode="rgb_array")
+        else:
+            env = gym.make(env_id)
+        env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
@@ -89,9 +92,6 @@ def make_env(env_id, seed, idx, capture_video, run_name, gamma):
         env = gym.wrappers.TransformObservation(env, lambda obs: np.clip(obs, -10, 10))
         env = gym.wrappers.NormalizeReward(env, gamma=gamma)
         env = gym.wrappers.TransformReward(env, lambda reward: np.clip(reward, -10, 10))
-        env.seed(seed)
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
         return env
 
     return thunk
@@ -147,7 +147,7 @@ if __name__ == "__main__":
             sync_tensorboard=True,
             config=vars(args),
             name=run_name,
-            monitor_gym=True,
+            # monitor_gym=True, no longer works for gymnasium
             save_code=True,
         )
     writer = SummaryWriter(f"runs/{run_name}")
@@ -166,7 +166,7 @@ if __name__ == "__main__":
 
     # env setup
     envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name, args.gamma) for i in range(args.num_envs)]
+        [make_env(args.env_id, i, args.capture_video, run_name, args.gamma) for i in range(args.num_envs)]
     )
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
@@ -184,9 +184,11 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
-    next_obs = torch.Tensor(envs.reset()).to(device)
+    next_obs, _ = envs.reset(seed=args.seed)
+    next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
+    video_filenames = set()
 
     for update in range(1, num_updates + 1):
         # Annealing the rate if instructed to do so.
@@ -208,16 +210,22 @@ if __name__ == "__main__":
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, done, info = envs.step(action.cpu().numpy())
+            next_obs, reward, terminated, truncated, infos = envs.step(action.cpu().numpy())
+            done = np.logical_or(terminated, truncated)
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
 
-            for item in info:
-                if "episode" in item.keys():
-                    print(f"global_step={global_step}, episodic_return={item['episode']['r']}")
-                    writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
-                    break
+            # Only print when at least 1 env is done
+            if "final_info" not in infos:
+                continue
+
+            for info in infos["final_info"]:
+                # Skip the envs that are not done
+                if info is None:
+                    continue
+                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
 
         # bootstrap value if not done
         with torch.no_grad():
@@ -313,6 +321,12 @@ if __name__ == "__main__":
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+
+        if args.track and args.capture_video:
+            for filename in os.listdir(f"videos/{run_name}"):
+                if filename not in video_filenames and filename.endswith(".mp4"):
+                    wandb.log({f"videos": wandb.Video(f"videos/{run_name}/{filename}")})
+                    video_filenames.add(filename)
 
     envs.close()
     writer.close()
