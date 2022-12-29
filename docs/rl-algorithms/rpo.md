@@ -90,9 +90,11 @@ class Agent(nn.Module):
             probs = Normal(action_mean, action_std)
         
 ```
-[TODO: Add code snippets, and comparison with PPO]
 
 ### Experiment results
+
+To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/rpo.sh). Specifically, execute the following command:
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Frpo.sh%23L1-L6&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
 ???+ note "Result tables, learning curves"
 
