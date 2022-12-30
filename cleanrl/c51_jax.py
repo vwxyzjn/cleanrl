@@ -1,4 +1,4 @@
-# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/c51/#c51py
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/c51/#c51_jaxpy
 import argparse
 import os
 import random
