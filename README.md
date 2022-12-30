@@ -159,7 +159,7 @@ We have a [Discord Community](https://discord.gg/D6RCjA6sVT) for support. Feel f
 
 ## Citing CleanRL
 
-If you use CleanRL in your work, please cite our technical [paper](https://arxiv.org/abs/2111.08819):
+If you use CleanRL in your work, please cite our technical [paper](https://www.jmlr.org/papers/v23/21-1342.html):
 
 ```bibtex
 @article{huang2022cleanrl,
