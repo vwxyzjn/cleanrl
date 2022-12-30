@@ -278,7 +278,7 @@ Tracked experiments and game play videos:
 
 
 ## `dqn_jax.py`
-* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  [dqn_atari_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_jax.py) is roughly 4% faster than  [dqn_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py)
+* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  [dqn_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_jax.py) is roughly 50% faster than  [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py)
 * Works with the `Box` observation space of low-level features
 * Works with the `Discrete` action space
 * Works with envs like `CartPole-v1`
@@ -309,9 +309,9 @@ Below are the average episodic returns for [`dqn_jax.py`](https://github.com/vwx
 
 | Environment    | `dqn_jax.py`   | `dqn.py`  | 
 | ----------- | ----------- | ----------- | 
-| CartPole-v1    |  499.84 ± 0.24 | 488.69 ± 16.11      |
-| Acrobot-v1 | -89.17 ± 8.79 | -91.54 ± 7.20     | 
-| MountainCar-v0 | -173.71 ± 29.14  | -194.95 ± 8.48        | 
+| CartPole-v1    |  498.38 ± 2.29 | 488.69 ± 16.11      |
+| Acrobot-v1 | -88.89 ± 1.56 | -91.54 ± 7.20     | 
+| MountainCar-v0 | -188.90 ± 11.78  | -194.95 ± 8.48        | 
 
 
 
@@ -329,7 +329,7 @@ Below are the average episodic returns for [`dqn_jax.py`](https://github.com/vwx
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/-WIP-Classic-Control-CleanRL-s-DQN-JAX--VmlldzoyMzg5OTg2" style="width:100%; height:500px" title="CleanRL DQN + JAX Tracked Experiments"></iframe>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Classic-Control-CleanRL-s-DQN-JAX--VmlldzozMjM5Mjgx" style="width:100%; height:500px" title="CleanRL DQN + JAX Tracked Experiments"></iframe>
 
 
 
