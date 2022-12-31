@@ -1,10 +1,11 @@
 import random
+from argparse import Namespace
 from typing import Callable
 
 import gym
 import numpy as np
 import torch
-from argparse import Namespace
+
 
 def evaluate(
     model_path: str,

@@ -247,8 +247,8 @@ if __name__ == "__main__":
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
         model_data = {
-            "model_weights":q_network.state_dict(),
-            "args":vars(args),
+            "model_weights": q_network.state_dict(),
+            "args": vars(args),
         }
         torch.save(model_data, model_path)
         print(f"model saved to {model_path}")
