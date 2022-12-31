@@ -325,7 +325,7 @@ if __name__ == "__main__":
         )
         storage = storage.replace(
             advantages=advantages,
-            returns=storage.advantages + storage.values,
+            returns=advantages + storage.values,
         )
         return storage
 
