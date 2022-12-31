@@ -26,9 +26,17 @@ def dqn_atari_jax():
     return cleanrl.dqn_atari_jax.QNetwork, cleanrl.dqn_atari_jax.make_env, cleanrl_utils.evals.dqn_jax_eval.evaluate
 
 
+def c51():
+    import cleanrl.c51
+    import cleanrl_utils.evals.c51_eval
+
+    return cleanrl.c51.QNetwork, cleanrl.c51.make_env, cleanrl_utils.evals.c51_eval.evaluate
+
+
 MODELS = {
     "dqn": dqn,
     "dqn_atari": dqn_atari,
     "dqn_jax": dqn_jax,
     "dqn_atari_jax": dqn_atari_jax,
+    "c51": c51,
 }
