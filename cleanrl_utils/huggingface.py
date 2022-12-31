@@ -55,7 +55,7 @@ found [here](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/{args.exp_na
 ## Command to reproduce the training
 
 ```bash
-curl -OL https://huggingface.co/{repo_id}/raw/main/dqn.py
+curl -OL https://huggingface.co/{repo_id}/raw/main/{algorith_variant_filename}
 curl -OL https://huggingface.co/{repo_id}/raw/main/pyproject.toml
 curl -OL https://huggingface.co/{repo_id}/raw/main/poetry.lock
 poetry install --all-extras
