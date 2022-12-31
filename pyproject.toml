@@ -145,7 +145,6 @@ atari = ["ale-py", "AutoROM", "opencv-python"]
 pybullet = ["pybullet"]
 procgen = ["procgen"]
 plot = ["pandas", "seaborn"]
-spyder = ["spyder"]
 pytest = ["pytest"]
 mujoco = ["mujoco", "imageio"]
 mujoco_py = ["free-mujoco-py"]
@@ -156,3 +155,24 @@ optuna = ["optuna", "optuna-dashboard", "rich"]
 pettingzoo = ["PettingZoo", "SuperSuit", "multi-agent-ale-py"]
 cloud = ["boto3", "awscli"]
 dm_control = ["shimmy", "dm-control", "mujoco"]
+
+# dependencies for algorithm variant (useful when you want to run a specific algorithm)
+dqn = []
+dqn_atari = ["ale-py", "AutoROM", "opencv-python"]
+dqn_jax = ["jax", "jaxlib", "flax"]
+dqn_atari_jax = [
+    "ale-py", "AutoROM", "opencv-python", # atari
+    "jax", "jaxlib", "flax" # jax
+]
+c51 = []
+c51_atari = ["ale-py", "AutoROM", "opencv-python"]
+c51_jax = ["jax", "jaxlib", "flax"]
+c51_atari_jax = [
+    "ale-py", "AutoROM", "opencv-python", # atari
+    "jax", "jaxlib", "flax" # jax
+]
+ppo_atari_envpool_xla_jax_scan = [
+    "ale-py", "AutoROM", "opencv-python", # atari
+    "jax", "jaxlib", "flax", # jax
+    "envpool", # envpool
+]

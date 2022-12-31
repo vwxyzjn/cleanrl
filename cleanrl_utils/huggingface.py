@@ -52,6 +52,18 @@ This is a trained model of a {algo_name} agent playing {args.env_id}.
 The model was trained by using [CleanRL](https://github.com/vwxyzjn/cleanrl) and the most up-to-date training code can be
 found [here](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/{args.exp_name}.py).
 
+## Get Started
+
+To use this model, please install the `cleanrl` package with the following command:
+
+```
+pip install "cleanrl[{args.exp_name}]"
+python -m cleanrl_utils.enjoy --exp-name {args.exp_name} --env-id {args.env_id}
+```
+
+Please refer to the [documentation](https://docs.cleanrl.dev/get-started/zoo/) for more detail.
+
+
 ## Command to reproduce the training
 
 ```bash
