@@ -44,7 +44,7 @@ def push_to_hub(
     ]
 
     # Step 3: Generate the model card
-    algorith_variant_filename = sys.argv[0].split("/")[-1]
+    algorithm_variant_filename = sys.argv[0].split("/")[-1]
     model_card = f"""
 # (CleanRL) **{algo_name}** Agent Playing **{args.env_id}**
 
@@ -55,11 +55,11 @@ found [here](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/{args.exp_na
 ## Command to reproduce the training
 
 ```bash
-curl -OL https://huggingface.co/{repo_id}/raw/main/{algorith_variant_filename}
+curl -OL https://huggingface.co/{repo_id}/raw/main/{algorithm_variant_filename}
 curl -OL https://huggingface.co/{repo_id}/raw/main/pyproject.toml
 curl -OL https://huggingface.co/{repo_id}/raw/main/poetry.lock
 poetry install --all-extras
-python {algorith_variant_filename} {" ".join(sys.argv[1:])}
+python {algorithm_variant_filename} {" ".join(sys.argv[1:])}
 ```
 
 # Hyperparameters
