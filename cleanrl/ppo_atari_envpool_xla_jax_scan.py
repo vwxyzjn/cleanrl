@@ -43,6 +43,12 @@ def parse_args():
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to capture videos of the agent performances (check out `videos` folder)")
+    parser.add_argument("--save-model", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="whether to save model into the `runs/{run_name}` folder")
+    parser.add_argument("--upload-model", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="whether to upload the saved model to huggingface")
+    parser.add_argument("--hf-entity", type=str, default="",
+        help="the user or org name of the model repository from the Hugging Face Hub")
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="Pong-v5",
@@ -83,6 +89,25 @@ def parse_args():
     args.num_updates = args.total_timesteps // args.batch_size
     # fmt: on
     return args
+
+
+def make_env(env_id, seed, num_envs):
+    def thunk():
+        envs = envpool.make(
+            env_id,
+            env_type="gym",
+            num_envs=num_envs,
+            episodic_life=True,
+            reward_clip=True,
+            seed=seed,
+        )
+        envs.num_envs = num_envs
+        envs.single_action_space = envs.action_space
+        envs.single_observation_space = envs.observation_space
+        envs.is_vector_env = True
+        return envs
+
+    return thunk
 
 
 class Network(nn.Module):
@@ -192,18 +217,7 @@ if __name__ == "__main__":
     key, network_key, actor_key, critic_key = jax.random.split(key, 4)
 
     # env setup
-    envs = envpool.make(
-        args.env_id,
-        env_type="gym",
-        num_envs=args.num_envs,
-        episodic_life=True,
-        reward_clip=True,
-        seed=args.seed,
-    )
-    envs.num_envs = args.num_envs
-    envs.single_action_space = envs.action_space
-    envs.single_observation_space = envs.observation_space
-    envs.is_vector_env = True
+    envs = make_env(args.env_id, args.seed, args.num_envs)()
     episode_stats = EpisodeStatistics(
         episode_returns=jnp.zeros(args.num_envs, dtype=jnp.float32),
         episode_lengths=jnp.zeros(args.num_envs, dtype=jnp.int32),
@@ -459,6 +473,42 @@ if __name__ == "__main__":
         writer.add_scalar(
             "charts/SPS_update", int(args.num_envs * args.num_steps / (time.time() - update_time_start)), global_step
         )
+
+    if args.save_model:
+        model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
+        with open(model_path, "wb") as f:
+            f.write(
+                flax.serialization.to_bytes(
+                    [
+                        vars(args),
+                        [
+                            agent_state.params.network_params,
+                            agent_state.params.actor_params,
+                            agent_state.params.critic_params,
+                        ],
+                    ]
+                )
+            )
+        print(f"model saved to {model_path}")
+        from cleanrl_utils.evals.ppo_envpool_jax_eval import evaluate
+
+        episodic_returns = evaluate(
+            model_path,
+            make_env,
+            args.env_id,
+            eval_episodes=10,
+            run_name=f"{run_name}-eval",
+            Model=(Network, Actor, Critic),
+        )
+        for idx, episodic_return in enumerate(episodic_returns):
+            writer.add_scalar("eval/episodic_return", episodic_return, idx)
+
+        if args.upload_model:
+            from cleanrl_utils.huggingface import push_to_hub
+
+            repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
+            repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
+            push_to_hub(args, episodic_returns, repo_id, "PPO", f"runs/{run_name}", f"videos/{run_name}-eval")
 
     envs.close()
     writer.close()
