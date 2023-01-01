@@ -16,16 +16,18 @@ COPY poetry.lock poetry.lock
 COPY README.md README.md
 COPY ./cleanrl/ppo_continuous_action_isaacgym /cleanrl/ppo_continuous_action_isaacgym
 # ENV POETRY_VIRTUALENVS_CREATE=false
-RUN poetry install --with envpool,jax
-RUN poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 
-# # install mujoco
-# RUN apt-get -y install wget unzip software-properties-common \
-#     libgl1-mesa-dev \
-#     libgl1-mesa-glx \
-#     libglew-dev \
-#     libosmesa6-dev patchelf
-# RUN poetry install --with mujoco
+# install mujoco
+RUN apt-get update && apt-get -y install wget unzip software-properties-common \
+    libgl1-mesa-dev \
+    libgl1-mesa-glx \
+    libglew-dev \
+    libosmesa6-dev patchelf
+
+# RUN poetry install --with dev,atari,pybullet,procgen,pytest,mujoco,docs,jax,optuna,envpool,pettingzoo,cloud
+RUN poetry install --with atari
+# RUN poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+RUN poetry run pip install torch==1.12.1+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html
 # RUN poetry run python -c "import mujoco_py"
 
 COPY entrypoint.sh /usr/local/bin/
