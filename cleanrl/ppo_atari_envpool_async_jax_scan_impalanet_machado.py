@@ -471,9 +471,7 @@ if __name__ == "__main__":
     episode_lengths = np.zeros((args.num_envs,), dtype=np.float32)
     returned_episode_lengths = np.zeros((args.num_envs,), dtype=np.float32)
     envs.async_reset()
-    final_env_ids = np.zeros(
-        (async_update, args.async_batch_size), dtype=np.int32
-    )
+    final_env_ids = np.zeros((async_update, args.async_batch_size), dtype=np.int32)
 
     for update in range(1, args.num_updates + 2):
         update_time_start = time.time()
@@ -616,8 +614,6 @@ if __name__ == "__main__":
             repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
             repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
             push_to_hub(args, episodic_returns, repo_id, "PPO", f"runs/{run_name}", f"videos/{run_name}-eval")
-
-
 
     envs.close()
     writer.close()
