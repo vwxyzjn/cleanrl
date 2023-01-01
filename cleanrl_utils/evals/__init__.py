@@ -33,10 +33,26 @@ def c51():
     return cleanrl.c51.QNetwork, cleanrl.c51.make_env, cleanrl_utils.evals.c51_eval.evaluate
 
 
+def ppo_atari_envpool_xla_jax_scan():
+    import cleanrl.ppo_atari_envpool_xla_jax_scan
+    import cleanrl_utils.evals.ppo_envpool_jax_eval
+
+    return (
+        (
+            cleanrl.ppo_atari_envpool_xla_jax_scan.Network,
+            cleanrl.ppo_atari_envpool_xla_jax_scan.Actor,
+            cleanrl.ppo_atari_envpool_xla_jax_scan.Critic,
+        ),
+        cleanrl.ppo_atari_envpool_xla_jax_scan.make_env,
+        cleanrl_utils.evals.ppo_envpool_jax_eval.evaluate,
+    )
+
+
 MODELS = {
     "dqn": dqn,
     "dqn_atari": dqn_atari,
     "dqn_jax": dqn_jax,
     "dqn_atari_jax": dqn_atari_jax,
     "c51": c51,
+    "ppo_atari_envpool_xla_jax_scan": ppo_atari_envpool_xla_jax_scan,
 }
