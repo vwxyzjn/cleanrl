@@ -1,10 +1,13 @@
+import os
 from typing import Callable
 
+import cv2
 import flax
 import flax.linen as nn
 import jax
 import jax.numpy as jnp
 import numpy as np
+from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
 
 
 def evaluate(
@@ -51,10 +54,6 @@ def evaluate(
         return action, key
 
     # a simple non-vectorized version
-    import os
-
-    import cv2
-    from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
 
     episodic_returns = []
     for episode in range(eval_episodes):
