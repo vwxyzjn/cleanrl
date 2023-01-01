@@ -1,13 +1,13 @@
 import random
+from argparse import Namespace
 from typing import Callable
 
 import flax
 import flax.linen as nn
 import gym
 import jax
-import numpy as np
-from argparse import Namespace
 import jax.numpy as jnp
+import numpy as np
 
 
 def evaluate(
