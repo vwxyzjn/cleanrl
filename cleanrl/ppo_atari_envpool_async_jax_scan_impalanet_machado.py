@@ -537,6 +537,7 @@ if __name__ == "__main__":
         # print(returned_episode_returns)
         print(f"global_step={global_step}, avg_episodic_return={avg_episodic_return}")
         writer.add_scalar("charts/avg_episodic_return", avg_episodic_return, global_step)
+        writer.add_scalar("charts/avg_episodic_length", np.mean(returned_episode_lengths), global_step)
         training_time_start = time.time()
         (
             agent_state,
