@@ -482,6 +482,8 @@ if __name__ == "__main__":
         values = []
         env_ids = []
         rewards = []
+        truncations = []
+        terminations = []
         env_recv_time = 0
         inference_time = 0
         storage_time = 0
@@ -517,6 +519,8 @@ if __name__ == "__main__":
             logprobs.append(logprob)
             env_ids.append(env_id)
             rewards.append(next_reward)
+            truncations.append(info["TimeLimit.truncated"])
+            terminations.append(info["terminated"])
             episode_returns[env_id] += info["reward"]
             returned_episode_returns[env_id] = np.where(
                 info["terminated"] + info["TimeLimit.truncated"], episode_returns[env_id], returned_episode_returns[env_id]
@@ -560,6 +564,8 @@ if __name__ == "__main__":
         writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
         # writer.add_scalar("stats/advantages", advantages.mean().item(), global_step)
         # writer.add_scalar("stats/returns", returns.mean().item(), global_step)
+        writer.add_scalar("stats/truncations", np.sum(truncations), global_step)
+        writer.add_scalar("stats/terminations", np.sum(terminations), global_step)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"].item(), global_step)
