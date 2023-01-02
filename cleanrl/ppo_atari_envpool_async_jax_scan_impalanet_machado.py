@@ -519,14 +519,14 @@ if __name__ == "__main__":
             rewards.append(next_reward)
             episode_returns[env_id] += info["reward"]
             returned_episode_returns[env_id] = np.where(
-                info["terminated"], episode_returns[env_id], returned_episode_returns[env_id]
+                info["terminated"] + info["TimeLimit.truncated"], episode_returns[env_id], returned_episode_returns[env_id]
             )
-            episode_returns[env_id] *= 1 - info["terminated"]
+            episode_returns[env_id] *= (1 - info["terminated"]) * (1 - info["TimeLimit.truncated"])
             episode_lengths[env_id] += 1
             returned_episode_lengths[env_id] = np.where(
-                info["terminated"], episode_lengths[env_id], returned_episode_lengths[env_id]
+                info["terminated"] + info["TimeLimit.truncated"], episode_lengths[env_id], returned_episode_lengths[env_id]
             )
-            episode_lengths[env_id] *= 1 - info["terminated"]
+            episode_lengths[env_id] *= (1 - info["terminated"]) * (1 - info["TimeLimit.truncated"])
             storage_time += time.time() - storage_time_start
 
         avg_episodic_return = np.mean(returned_episode_returns)
