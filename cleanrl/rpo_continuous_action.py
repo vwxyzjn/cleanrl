@@ -106,8 +106,9 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 
 
 class Agent(nn.Module):
-    def __init__(self, envs):
+    def __init__(self, envs, rpo_alpha):
         super().__init__()
+        self.rpo_alpha = rpo_alpha
         self.critic = nn.Sequential(
             layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
             nn.Tanh(),
@@ -135,7 +136,7 @@ class Agent(nn.Module):
         if action is None:
             action = probs.sample()
         else: # new to RPO
-            # sample again to add stochasticity, for the policy update
+            # sample again to add stochasticity to the policy
             z = torch.FloatTensor(action_mean.shape).uniform_(-self.rpo_alpha, self.rpo_alpha)
             action_mean = action_mean + z
             probs = Normal(action_mean, action_std)
@@ -178,7 +179,7 @@ if __name__ == "__main__":
     )
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
-    agent = Agent(envs).to(device)
+    agent = Agent(envs, args.rpo_alpha).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage setup
