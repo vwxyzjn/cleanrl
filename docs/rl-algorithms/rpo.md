@@ -102,7 +102,7 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
 
         Results on all dm_control environments. The PPO and RPO run for 8M timesteps, and results are computed over 10 random seeds.
 
-                |                                       | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
+        |                                       | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
         |:--------------------------------------|:-------------------------------------------------------------|:----------------------------------------------|
         | dm_control/acrobot-swingup-v0         | 26.87 ± 7.93                                                 | 42.97 ± 2.71                                  |
         | dm_control/acrobot-swingup_sparse-v0  | 1.70 ± 0.88                                                  | 3.31 ± 0.84                                   |
@@ -281,7 +281,9 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         <!-- Tracked experiments: <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Gym-Gymnasium---VmlldzozMjU3NzUy" style="border:none;height:1024px;width:100%"> -->
 
 
-???+ Failure case of `rpo_alpha=0.5`
+???+ failure 
+
+    Failure case of `rpo_alpha=0.5`
     Overall, we observed that `rpo_alpha=0.5` is strictly equal to or better than the default PPO in 89% of environments tested (all 48/48 dm_control, 2/2 Gym, 7/11 mujoco_v4, 7/11 mujoco_v2. Total 64 out of 72 environments tested). 
 
     Here are the failure cases:
