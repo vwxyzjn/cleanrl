@@ -163,7 +163,7 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/dm_control_all_ppo_rpo_8M.png)
 
-        <!-- Tracked experiments: Part 1: <iframe src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-dm_control-Part-1--VmlldzozMjU4NTE4" style="border:none;height:1024px;width:100%"> -->
+        Tracked experiments: Part 1: <iframe src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-dm_control-Part-1--VmlldzozMjU4NTE4" style="border:none;height:1024px;width:100%" title="RPO-on-dm_control-Part-1">>
 
         <!-- Tracked experiments: Part 2: <iframe src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-dm_control-Part-2--VmlldzozMjU4NjYy" style="border:none;height:1024px;width:100%"> -->
 
