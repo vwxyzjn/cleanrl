@@ -161,58 +161,115 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
 
         |                     | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
         |:--------------------|:-------------------------------------------------------------|:----------------------------------------------|
-        | HumanoidStandup-v4  | 107841.91 ± 15232.17                                         | 150129.37 ± 6447.36                           |
-        | Humanoid-v4         | 590.33 ± 29.38                                               | 763.79 ± 137.91                               |
-        | InvertedPendulum-v4 | 883.61 ± 25.01                                               | 875.56 ± 39.68                                |
-        | Walker2d-v4         | 2872.50 ± 683.82                                             | 3707.25 ± 346.22                              |
+        | HumanoidStandup-v4  | 109325.87 ± 16161.71                                         | 150972.11 ± 6926.19                           |
+        | Humanoid-v4         | 583.17 ± 27.88                                               | 799.44 ± 170.85                               |
+        | InvertedPendulum-v4 | 888.83 ± 34.66                                               | 879.81 ± 35.52                                |
+        | Walker2d-v4         | 2872.92 ± 690.53                                             | 3665.48 ± 278.61                              |
 
         Learning curves:
         ![](../rpo/mujoco_v4_part1.png)
+
+        Tracked experiments:
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-1--VmlldzozMjU3ODIz" style="border:none;height:1024px;width:100%">
 
         The following environments require tuning of `alpha` (Algorithm 1, line 13, paper: https://arxiv.org/pdf/2212.07536.pdf). As described in the paper, this variable should be tuned for environments tested. A larger value means more randomness, whereas a smaller value indicates less randomness. Some mujoco environments require a smaller `alpha=0.01` value to achieve a reasonable performance compared to `alpha=0.5` for the rest of the environments. This version (`alpha=0.01`) of runs is indicated as `rpo_continuous_action_alpha_0_01` in the table and learning curves.
 
 
         |                           | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action_alpha_0_01 ({'tag': ['pr-331']})   |
         |:--------------------------|:-------------------------------------------------------------|:---------------------------------------------------------|
-        | Ant-v4                    | 1777.42 ± 844.67                                             | 2704.84 ± 665.91                                         |
-        | HalfCheetah-v4            | 2654.93 ± 1098.90                                            | 2729.61 ± 1311.41                                        |
-        | Hopper-v4                 | 2784.27 ± 280.23                                             | 2438.67 ± 492.42                                         |
-        | InvertedDoublePendulum-v4 | 5586.45 ± 213.17                                             | 5406.54 ± 269.84                                         |
-        | Reacher-v4                | -4.66 ± 0.84                                                 | -3.97 ± 0.17                                             |
-        | Swimmer-v4                | 124.45 ± 22.31                                               | 130.25 ± 12.48                                           |
-        | Pusher-v4                 | -30.54 ± 6.55                                                | -31.54 ± 9.80                                            |
+        | Ant-v4                    | 1824.17 ± 905.78                                             | 2702.91 ± 683.53                                         |
+        | HalfCheetah-v4            | 2637.19 ± 1068.49                                            | 2716.51 ± 1314.93                                        |
+        | Hopper-v4                 | 2741.42 ± 269.11                                             | 2334.22 ± 441.89                                         |
+        | InvertedDoublePendulum-v4 | 5626.22 ± 289.23                                             | 5409.03 ± 318.68                                         |
+        | Reacher-v4                | -4.65 ± 0.96                                                 | -3.93 ± 0.19                                             |
+        | Swimmer-v4                | 124.88 ± 22.24                                               | 129.97 ± 12.02                                           |
+        | Pusher-v4                 | -30.35 ± 6.43                                                | -31.48 ± 9.83                                            |
 
         Learning curves:
         ![](../rpo/mujoco_v4_part2.png)
+
+        Tracked experiments:
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-2--VmlldzozMjU3OTM4" style="border:none;height:1024px;width:100%">       
+
+        Results with `rpo_alpha=0.5` (not tuned) on the tuned environments:
+
+        |                           | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
+        |:--------------------------|:-------------------------------------------------------------|:----------------------------------------------|
+        | Ant-v4                    | 1774.42 ± 819.08                                             | -7.99 ± 2.47                                  |
+        | HalfCheetah-v4            | 2667.34 ± 1109.99                                            | 2163.57 ± 790.16                              |
+        | Hopper-v4                 | 2761.77 ± 286.88                                             | 1557.18 ± 206.74                              |
+        | InvertedDoublePendulum-v4 | 5644.00 ± 353.46                                             | 296.97 ± 15.95                                |
+        | Reacher-v4                | -4.67 ± 0.88                                                 | -66.35 ± 0.66                                 |
+        | Swimmer-v4                | 124.52 ± 22.10                                               | 117.82 ± 10.07                                |
+        | Pusher-v4                 | -30.62 ± 6.80                                                | -276.32 ± 26.99                               |
+
+        Learning curves:
+        ![](../rpo/mujoco_v4_part2_0_5.png)
+
+        Tracked experiments:
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-on-Mujoco_v4-Part-2--VmlldzozMjU4MTM1" style="border:none;height:1024px;width:100%">
+
+ 
     
     === "MuJoCo v2"
 
         |                     | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
         |:--------------------|:-------------------------------------------------------------|:----------------------------------------------|
-        | HumanoidStandup-v2  | 108982.78 ± 17996.44                                         | 156755.15 ± 10672.52                          |
-        | Humanoid-v2         | 586.11 ± 44.21                                               | 723.01 ± 103.07                               |
-        | InvertedPendulum-v2 | 861.44 ± 27.30                                               | 857.88 ± 30.67                                |
-        | Walker2d-v2         | 3219.50 ± 948.84                                             | 3934.37 ± 428.82                              |
-
+        | HumanoidStandup-v2  | 109118.07 ± 19422.20                                         | 156848.90 ± 11414.50                          |
+        | Humanoid-v2         | 588.22 ± 43.80                                               | 717.37 ± 97.18                                |
+        | InvertedPendulum-v2 | 867.64 ± 19.97                                               | 866.60 ± 27.06                                |
+        | Walker2d-v2         | 3220.99 ± 923.84                                             | 4150.51 ± 348.03                              |
 
         Learning curves:
         ![](../rpo/mujoco_v2_part1.png)
 
-        The following environments require tuning of `alpha` (Algorithm 1, line 13, paper: https://arxiv.org/pdf/2212.07536.pdf). As described in the paper, this variable should be tuned for environments tested. A larger value means more randomness, whereas a smaller value indicates less randomness. Some mujoco environments require a smaller `alpha=0.01` value to achieve a reasonable performance compared to `alpha=0.5` for the rest of the environments. This version (`alpha=0.01`) of runs is indicated as `rpo_continuous_action_alpha_0_01` in the table and learning curves.
+        Tracked experiments:
 
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v2-Part-1--VmlldzozMjU4Mjc5" style="border:none;height:1024px;width:100%">
+
+        The following environments require tuning of `alpha` (Algorithm 1, line 13, paper: https://arxiv.org/pdf/2212.07536.pdf). As described in the paper, this variable should be tuned for environments tested. A larger value means more randomness, whereas a smaller value indicates less randomness. Some mujoco environments require a smaller `alpha=0.01` value to achieve a reasonable performance compared to `alpha=0.5` for the rest of the environments. This version (`alpha=0.01`) of runs is indicated as `rpo_continuous_action_alpha_0_01` in the table and learning curves.
 
         |                           | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action_alpha_0_01 ({'tag': ['pr-331']})   |
         |:--------------------------|:-------------------------------------------------------------|:---------------------------------------------------------|
-        | Ant-v2                    | 2405.17 ± 987.88                                             | 3056.22 ± 760.95                                         |
-        | HalfCheetah-v2            | 2669.75 ± 1208.94                                            | 2715.03 ± 1227.04                                        |
-        | Hopper-v2                 | 2375.85 ± 655.34                                             | 2311.24 ± 623.32                                         |
-        | InvertedDoublePendulum-v2 | 5642.71 ± 390.72                                             | 5644.14 ± 378.06                                         |
-        | Reacher-v2                | -4.80 ± 0.59                                                 | -4.10 ± 0.33                                             |
-        | Swimmer-v2                | 131.93 ± 10.09                                               | 141.20 ± 9.06                                            |
-        | Pusher-v2                 | -32.96 ± 8.70                                                | -26.17 ± 2.37                                            |
+        | Ant-v2                    | 2412.35 ± 949.44                                             | 3084.95 ± 759.51                                         |
+        | HalfCheetah-v2            | 2717.27 ± 1269.85                                            | 2707.91 ± 1215.21                                        |
+        | Hopper-v2                 | 2387.39 ± 645.41                                             | 2272.78 ± 588.66                                         |
+        | InvertedDoublePendulum-v2 | 5630.91 ± 377.93                                             | 5661.29 ± 316.04                                         |
+        | Reacher-v2                | -4.61 ± 0.53                                                 | -4.24 ± 0.25                                             |
+        | Swimmer-v2                | 132.07 ± 9.92                                                | 141.37 ± 8.70                                            |
+        | Pusher-v2                 | -33.93 ± 8.55                                                | -26.22 ± 2.52                                            |
+                
         
         Learning curves:
         ![](../rpo/mujoco_v2_part2.png)
+
+        Tracked experiments:
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v2-Part-2--VmlldzozMjU4MzI1" style="border:none;height:1024px;width:100%">
+
+        Results with `rpo_alpha=0.5` (not tuned) on the tuned environments:
+
+        |                           | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
+        |:--------------------------|:-------------------------------------------------------------|:----------------------------------------------|
+        | Ant-v2                    | 2495.65 ± 991.65                                             | -7.81 ± 3.57                                  |
+        | HalfCheetah-v2            | 2722.03 ± 1231.28                                            | 2605.06 ± 1183.30                             |
+        | Hopper-v2                 | 2356.83 ± 650.91                                             | 1609.79 ± 164.16                              |
+        | InvertedDoublePendulum-v2 | 5675.31 ± 244.34                                             | 274.78 ± 16.40                                |
+        | Reacher-v2                | -4.67 ± 0.48                                                 | -66.55 ± 0.20                                 |
+        | Swimmer-v2                | 131.53 ± 9.94                                                | 114.34 ± 3.95                                 |
+        | Pusher-v2                 | -33.46 ± 8.41                                                | -275.09 ± 15.65                               |
+
+        Learning curves:
+        ![](../rpo/mujoco_v2_part2_0_5.png)
+
+        Tracked experiments:
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-on-Mujoco_v2-Part-2--VmlldzozMjU4MzQ0" style="border:none;height:1024px;width:100%">
+        
+
     
     === "Gym(Gymnasium)"
 
@@ -228,4 +285,48 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         ![](../rpo/gym.png)
 
         Tracked experiments:
+
         <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Gym-Gymnasium---VmlldzozMjU3NzUy" style="border:none;height:1024px;width:100%">
+
+
+??? Failure case of `rpo_alpha=0.5`
+    Overall, we observed that `rpo_alpha=0.5` is strictly equal to or better than the default PPO in 89% of environments tested (all 48/48 dm_control, 2/2 Gym, 7/11 mujoco_v4, 7/11 mujoco_v2. Total 64 out of 72 environments tested). 
+
+    Here are the failure cases:
+    `Mujoco v4: Ant-v4 InvertedDoublePendulum-v4 Reacher-v4 Pusher-v4`
+
+    |                           | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
+    |:--------------------------|:-------------------------------------------------------------|:----------------------------------------------|
+    | Ant-v4                    | 1831.63 ± 867.71                                             | -10.43 ± 8.16                                 |
+    | InvertedDoublePendulum-v4 | 5490.71 ± 261.50                                             | 303.36 ± 13.39                                |
+    | Reacher-v4                | -4.58 ± 0.73                                                 | -66.62 ± 0.56                                 |
+    | Pusher-v4                 | -30.63 ± 6.42                                                | -276.11 ± 26.52                               |
+
+    Tracked experiments:
+
+    <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-s-failure-cases-on-Mujoco_v4--VmlldzozMjU4MTYy" style="border:none;height:1024px;width:100%">
+    
+    Learning curves:
+    ![](../rpo/mujoco_v4_failure_0_5.png)
+
+
+    `Mujoco v2: Ant-v2 InvertedDoublePendulum-v2 Reacher-v2 Pusher-v2`
+
+    |                           | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
+    |:--------------------------|:-------------------------------------------------------------|:----------------------------------------------|
+    | Ant-v2                    | 2493.50 ± 993.24                                             | -7.26 ± 2.28                                  |
+    | InvertedDoublePendulum-v2 | 5568.37 ± 401.65                                             | 278.94 ± 15.34                                |
+    | Reacher-v2                | -4.62 ± 0.47                                                 | -66.61 ± 0.23                                 |
+    | Pusher-v2                 | -33.51 ± 8.47                                                | -276.01 ± 15.93                               |
+
+
+    Learning curves:
+    ![](../rpo/mujoco_v2_failure_0_5.png)
+
+    Tracked experiments:
+
+    <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-s-failure-cases-on-Mujoco_v2--VmlldzozMjU4MjQ1" style="border:none;height:1024px;width:100%">
+
+
+    However, with tuning of `rpo_alpha` (`rpo_alpha=0.01` on failed cases) helps RPO to overcome the failure and RPO perform strictly equal to or better than the default PPO in all (100%) of tested environments.
+
