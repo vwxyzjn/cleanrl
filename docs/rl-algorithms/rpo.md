@@ -163,9 +163,11 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/dm_control_all_ppo_rpo_8M.png)
 
-        <!-- Tracked experiments: Part 1: <iframe src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-dm_control-Part-1--VmlldzozMjU4NTE4" style="border:none;height:1024px;width:100%" title="RPO-on-dm_control-Part-1">> -->
+        Tracked experiments: 
+        
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-dm_control-Part-1--VmlldzozMjU4NTE4" style="width:100%; height:500px" title="dm_control-CleanRL-s-RPO-part-1"></iframe>
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-dm_control-Part-2--VmlldzozMjU4NjYy" style="width:100%; height:500px" title="dm_control-CleanRL-s-RPO-part-2"></iframe>
 
-        <!-- Tracked experiments: Part 2: <iframe src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-dm_control-Part-2--VmlldzozMjU4NjYy" style="border:none;height:1024px;width:100%"> -->
 
     
     
@@ -181,7 +183,11 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/mujoco_v4_part1.png)
 
-        <!-- Tracked experiments: <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-1--VmlldzozMjU3ODIz" style="height:500px;width:100%"> -->
+
+        Tracked experiments:     
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-1--VmlldzozMjU3ODIz" style="width:100%; height:500px" title="RPO-mujoco-v4-part1"></iframe>
+
         
         The following environments require tuning of `alpha` (Algorithm 1, line 13, paper: https://arxiv.org/pdf/2212.07536.pdf). As described in the paper, this variable should be tuned for environments tested. A larger value means more randomness, whereas a smaller value indicates less randomness. Some mujoco environments require a smaller `alpha=0.01` value to achieve a reasonable performance compared to `alpha=0.5` for the rest of the environments. This version (`alpha=0.01`) of runs is indicated as `rpo_continuous_action_alpha_0_01` in the table and learning curves.
 
@@ -198,7 +204,9 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/mujoco_v4_part2.png)
 
-        <!-- Tracked experiments: <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-2--VmlldzozMjU3OTM4" style="height:500px;width:100%">        -->
+        Tracked experiments:     
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-2--VmlldzozMjU3OTM4" style="width:100%; height:500px" title="RPO-mujoco-v4-part2"></iframe>
         
 
         Results with `rpo_alpha=0.5` (not tuned) on the tuned environments:
@@ -233,7 +241,9 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/mujoco_v2_part1.png)
 
-        <!-- Tracked experiments:<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v2-Part-1--VmlldzozMjU4Mjc5" style="border:none;height:1024px;width:100%"> -->
+        Tracked experiments:     
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v2-Part-1--VmlldzozMjU4Mjc5" style="width:100%; height:500px" title="RPO-mujoco-v2-part1"></iframe>
 
         The following environments require tuning of `alpha` (Algorithm 1, line 13, paper: https://arxiv.org/pdf/2212.07536.pdf). As described in the paper, this variable should be tuned for environments tested. A larger value means more randomness, whereas a smaller value indicates less randomness. Some mujoco environments require a smaller `alpha=0.01` value to achieve a reasonable performance compared to `alpha=0.5` for the rest of the environments. This version (`alpha=0.01`) of runs is indicated as `rpo_continuous_action_alpha_0_01` in the table and learning curves.
 
@@ -251,7 +261,9 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/mujoco_v2_part2.png)
 
-        <!-- Tracked experiments: <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v2-Part-2--VmlldzozMjU4MzI1" style="border:none;height:1024px;width:100%"> -->
+        Tracked experiments:     
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v2-Part-2--VmlldzozMjU4MzI1" style="width:100%; height:500px" title="RPO-mujoco-v2-part1"></iframe>
 
         Results with `rpo_alpha=0.5` (not tuned) on the tuned environments:
 
@@ -285,7 +297,10 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/gym.png)
 
-        <!-- Tracked experiments: <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Gym-Gymnasium---VmlldzozMjU3NzUy" style="border:none;height:1024px;width:100%"> -->
+        Tracked experiments:     
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Gym-Gymnasium---VmlldzozMjU3NzUy" style="width:100%; height:500px" title="RPO-gymnasium"></iframe>
+
 
 
 ???+ failure 
