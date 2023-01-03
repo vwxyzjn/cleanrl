@@ -91,6 +91,13 @@ class Agent(nn.Module):
         
 ```
 
+???+ note 
+
+    RPO usages the same PPO-specific hyperparameters. In benchmarking results, we run both algorithms for 8M timesteps.
+    RPO has one additional hyperparameter, `rpo_alpha`, which determines the amount of random perturbation on the action mean. 
+    We set a default value of `rpo_alpha=0.5` at which RPO is strictly equal to or better than the default PPO in 93% of environments tested (all 48/48 dm_control, 2/2 Gym, 7/11 mujoco_v4. Total 57 out of 61 environments tested.).
+    With finetuning `rpo_alpha=0.01` on four mujoco environments, namely, Ant, InvertedDoublePendulum, Reacher, and Pusher, RPO is strictly equal to or better than the default PPO in all tested environments.
+
 ### Experiment results
 
 To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/rpo.sh). Specifically, execute the following command:
@@ -283,11 +290,12 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
 
 ???+ failure 
 
-    Failure case of `rpo_alpha=0.5`
-    Overall, we observed that `rpo_alpha=0.5` is strictly equal to or better than the default PPO in 89% of environments tested (all 48/48 dm_control, 2/2 Gym, 7/11 mujoco_v4, 7/11 mujoco_v2. Total 64 out of 72 environments tested). 
+    Failure case of `rpo_alpha=0.5`:
+
+    Overall, we observed that `rpo_alpha=0.5` is strictly equal to or better than the default PPO in 93% of environments tested (all 48/48 dm_control, 2/2 Gym, 7/11 mujoco_v4. Total 57 out of 61 environments tested). 
 
     Here are the failure cases:
-    `Mujoco v4: Ant-v4 InvertedDoublePendulum-v4 Reacher-v4 Pusher-v4`
+    `Mujoco v4 and v2: Ant InvertedDoublePendulum  Reacher Pusher`
 
     |                           | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
     |:--------------------------|:-------------------------------------------------------------|:----------------------------------------------|
@@ -302,7 +310,6 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
     ![](../rpo/mujoco_v4_failure_0_5.png)
 
 
-    `Mujoco v2: Ant-v2 InvertedDoublePendulum-v2 Reacher-v2 Pusher-v2`
 
     |                           | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
     |:--------------------------|:-------------------------------------------------------------|:----------------------------------------------|
