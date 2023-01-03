@@ -221,9 +221,7 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/mujoco_v2_part1.png)
 
-        Tracked experiments:
-
-        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v2-Part-1--VmlldzozMjU4Mjc5" style="border:none;height:1024px;width:100%">
+        <!-- Tracked experiments:<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v2-Part-1--VmlldzozMjU4Mjc5" style="border:none;height:1024px;width:100%"> -->
 
         The following environments require tuning of `alpha` (Algorithm 1, line 13, paper: https://arxiv.org/pdf/2212.07536.pdf). As described in the paper, this variable should be tuned for environments tested. A larger value means more randomness, whereas a smaller value indicates less randomness. Some mujoco environments require a smaller `alpha=0.01` value to achieve a reasonable performance compared to `alpha=0.5` for the rest of the environments. This version (`alpha=0.01`) of runs is indicated as `rpo_continuous_action_alpha_0_01` in the table and learning curves.
 
@@ -241,9 +239,7 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/mujoco_v2_part2.png)
 
-        Tracked experiments:
-
-        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v2-Part-2--VmlldzozMjU4MzI1" style="border:none;height:1024px;width:100%">
+        <!-- Tracked experiments: <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v2-Part-2--VmlldzozMjU4MzI1" style="border:none;height:1024px;width:100%"> -->
 
         Results with `rpo_alpha=0.5` (not tuned) on the tuned environments:
 
@@ -260,9 +256,7 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/mujoco_v2_part2_0_5.png)
 
-        Tracked experiments:
-
-        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-on-Mujoco_v2-Part-2--VmlldzozMjU4MzQ0" style="border:none;height:1024px;width:100%">
+        <!-- Tracked experiments: <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-on-Mujoco_v2-Part-2--VmlldzozMjU4MzQ0" style="border:none;height:1024px;width:100%"> -->
         
 
     
@@ -279,12 +273,10 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/gym.png)
 
-        Tracked experiments:
-
-        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Gym-Gymnasium---VmlldzozMjU3NzUy" style="border:none;height:1024px;width:100%">
+        <!-- Tracked experiments: <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Gym-Gymnasium---VmlldzozMjU3NzUy" style="border:none;height:1024px;width:100%"> -->
 
 
-??? Failure case of `rpo_alpha=0.5`
+???+ Failure case of `rpo_alpha=0.5`
     Overall, we observed that `rpo_alpha=0.5` is strictly equal to or better than the default PPO in 89% of environments tested (all 48/48 dm_control, 2/2 Gym, 7/11 mujoco_v4, 7/11 mujoco_v2. Total 64 out of 72 environments tested). 
 
     Here are the failure cases:
@@ -297,9 +289,7 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
     | Reacher-v4                | -4.58 ± 0.73                                                 | -66.62 ± 0.56                                 |
     | Pusher-v4                 | -30.63 ± 6.42                                                | -276.11 ± 26.52                               |
 
-    Tracked experiments:
-
-    <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-s-failure-cases-on-Mujoco_v4--VmlldzozMjU4MTYy" style="border:none;height:1024px;width:100%">
+    <!-- Tracked experiments:<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-s-failure-cases-on-Mujoco_v4--VmlldzozMjU4MTYy" style="border:none;height:1024px;width:100%"> -->
     
     Learning curves:
     ![](../rpo/mujoco_v4_failure_0_5.png)
@@ -318,9 +308,7 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
     Learning curves:
     ![](../rpo/mujoco_v2_failure_0_5.png)
 
-    Tracked experiments:
-
-    <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-s-failure-cases-on-Mujoco_v2--VmlldzozMjU4MjQ1" style="border:none;height:1024px;width:100%">
+    <!-- Tracked experiments: <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-s-failure-cases-on-Mujoco_v2--VmlldzozMjU4MjQ1" style="border:none;height:1024px;width:100%"> -->
 
 
     However, with tuning of `rpo_alpha` (`rpo_alpha=0.01` on failed cases) helps RPO to overcome the failure and RPO perform strictly equal to or better than the default PPO in all (100%) of tested environments.
