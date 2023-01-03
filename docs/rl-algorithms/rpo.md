@@ -169,6 +169,9 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/mujoco_v4_part1.png)
 
+        <!-- Tracked experiments:
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-1--VmlldzozMjU3ODIz" style="height:500px;width:100%"> -->
         
         The following environments require tuning of `alpha` (Algorithm 1, line 13, paper: https://arxiv.org/pdf/2212.07536.pdf). As described in the paper, this variable should be tuned for environments tested. A larger value means more randomness, whereas a smaller value indicates less randomness. Some mujoco environments require a smaller `alpha=0.01` value to achieve a reasonable performance compared to `alpha=0.5` for the rest of the environments. This version (`alpha=0.01`) of runs is indicated as `rpo_continuous_action_alpha_0_01` in the table and learning curves.
 
@@ -185,8 +188,10 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/mujoco_v4_part2.png)
 
-        <!-- Tracked experiments: -->
+        <!-- Tracked experiments:
 
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-2--VmlldzozMjU3OTM4" style="height:500px;width:100%">        -->
+        
 
         Results with `rpo_alpha=0.5` (not tuned) on the tuned environments:
 
@@ -204,11 +209,9 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         ![](../rpo/mujoco_v4_part2_0_5.png)
 
 
-        Tracked experiments:
+        <!-- Tracked experiments:
 
-        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-1--VmlldzozMjU3ODIz" style="height:500px;width:100%">
-        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-2--VmlldzozMjU3OTM4" style="height:500px;width:100%">       
-        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-on-Mujoco_v4-Part-2--VmlldzozMjU4MTM1" style="height:500px;width:100%">
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-on-Mujoco_v4-Part-2--VmlldzozMjU4MTM1" style="height:500px;width:100%"> -->
 
  
     
