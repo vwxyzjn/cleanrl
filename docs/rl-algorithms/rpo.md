@@ -206,9 +206,9 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
 
         Tracked experiments:
 
-        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-1--VmlldzozMjU3ODIz" style="border:none;height:1024px;width:100%">
-        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-2--VmlldzozMjU3OTM4" style="border:none;height:1024px;width:100%">       
-        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-on-Mujoco_v4-Part-2--VmlldzozMjU4MTM1" style="border:none;height:1024px;width:100%">
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-1--VmlldzozMjU3ODIz" style="height:500px;width:100%">
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Mujoco_v4-Part-2--VmlldzozMjU3OTM4" style="height:500px;width:100%">       
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-on-Mujoco_v4-Part-2--VmlldzozMjU4MTM1" style="height:500px;width:100%">
 
  
     
