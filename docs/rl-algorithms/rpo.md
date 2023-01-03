@@ -221,8 +221,11 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
 
         |                  | ppo_continuous_action_8M ({'tag': ['v1.0.0-13-gcbd83f6']})   | rpo_continuous_action ({'tag': ['pr-331']})   |
         |:-----------------|:-------------------------------------------------------------|:----------------------------------------------|
-        | Pendulum-v1      | -1145.00 ± 125.97                                            | -145.82 ± 7.13                                |
-        | BipedalWalker-v3 | 172.74 ± 99.97                                               | 231.28 ± 22.39                                |
+        | Pendulum-v1      | -1141.98 ± 135.55                                            | -151.08 ± 3.73                                |
+        | BipedalWalker-v3 | 172.12 ± 96.05                                               | 227.11 ± 18.23                                |
 
         Learning curves:
         ![](../rpo/gym.png)
+
+        Tracked experiments:
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-on-Gym-Gymnasium---VmlldzozMjU3NzUy" style="border:none;height:1024px;width:100%">
