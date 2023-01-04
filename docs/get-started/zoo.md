@@ -1,7 +1,7 @@
 # 🤗 Model Zoo
 
 [<img src="https://img.shields.io/badge/%F0%9F%A4%97%20Models-Huggingface-F8D521">](https://huggingface.co/cleanrl)
-[![Open In Colab](https://github.com/vwxyzjn/cleanrl/raw/hf-integration/docs/get-started/colab-badge.svg)](https://colab.research.google.com/github/vwxyzjn/cleanrl/blob/hf-integration/docs/get-started/CleanRL_Huggingface_Integration_Demo.ipynb)
+[![Open In Colab](https://github.com/vwxyzjn/cleanrl/raw/master/docs/get-started/colab-badge.svg)](https://colab.research.google.com/github/vwxyzjn/cleanrl/blob/master/docs/get-started/CleanRL_Huggingface_Integration_Demo.ipynb)
 
 CleanRL now has 🧪 experimental support for saving and loading models from 🤗 HuggingFace's [Model Hub](https://huggingface.co/models). We are rolling out this feature in phases, and currently only support saving and loading models from the following algorithm varaints:
 
@@ -39,7 +39,7 @@ To see a list of supported models, please visit 🤗 [https://huggingface.co/cle
 
 ???+ info "What happens under the hood?"
     
-    The `cleanrl_utils.enjoy` is a simple wrapper to load the models from the hub and run them in an environment. A minimal version of the script can be found at [cleanrl_utils/evals/dqn_eval.py](https://github.com/vwxyzjn/cleanrl/blob/hf-integration/cleanrl_utils/evals/dqn_eval.py), which may give you a more fine-grained control and access to the model.
+    The `cleanrl_utils.enjoy` is a simple wrapper to load the models from the hub and run them in an environment. A minimal version of the script can be found at [cleanrl_utils/evals/dqn_eval.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl_utils/evals/dqn_eval.py), which may give you a more fine-grained control and access to the model.
     
     <script src="https://emgithub.com/embed-v2.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fcleanrl_utils%2Fevals%2Fdqn_eval.py&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
 
