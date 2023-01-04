@@ -21,7 +21,7 @@ Reference resources:
 | Variants Implemented      | Description |
 | ----------- | ----------- |
 | :material-github: [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py), :material-file-document: [docs](/rl-algorithms/td3/#td3_continuous_actionpy) | For continuous action space |
-
+| :material-github: [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py), :material-file-document: [docs](/rl-algorithms/td3/#td3_continuous_action_jaxpy) | For continuous action space |
 
 Below are our single-file implementations of TD3:
 
