@@ -105,7 +105,6 @@ OMP_NUM_THREADS=1 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --num-seeds 3 \
     --workers 9
  
-
 poetry install --with envpool,jax
 python -m cleanrl_utils.benchmark \
     --env-ids Pong-v5 BeamRider-v5 Breakout-v5 \
