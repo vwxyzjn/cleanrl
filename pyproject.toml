@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "cleanrl-test"
+name = "cleanrl"
 version = "1.1.0"
 description = "High-quality single file implementation of Deep Reinforcement Learning algorithms with research-friendly features"
 authors = ["Costa Huang <costa.huang@outlook.com>"]
