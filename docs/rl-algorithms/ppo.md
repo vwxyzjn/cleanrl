@@ -212,6 +212,11 @@ The [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 * adding experimental support for [Gymnasium](https://gymnasium.farama.org/)
 * 🧪 support `dm_control` environments via [Shimmy](https://github.com/Farama-Foundation/Shimmy)
 
+
+???+ warning
+
+    We are now recommending users to use [`rpo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/rpo_continuous_action.py) instead of [`ppo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py) because `rpo_continuous_action.py` empirically performs better than `ppo_continuous_action.py` in 93% of the environments we tested. Please see [experiment results](/rl-algorithms/rpo/#experiment-results) for detailed analysis.
+
 ### Usage
 
 ```bash
@@ -226,6 +231,17 @@ python cleanrl/ppo_continuous_action.py --env-id dm_control/cartpole-balance-v0
 poetry install --with mujoco_py,mujoco
 python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
 ```
+
+???+ warning "dm_control installation issue"
+
+    If you run into error like `AttributeError: 'GLFWContext' object has no attribute '_context'` in Linux, it's because the rendering dependencies are not installed properly. To fix it, try running
+
+    ```
+    sudo apt-get update && sudo apt-get -y install libgl1-mesa-glx libosmesa6 libglfw3 
+    ```
+
+    See [https://github.com/deepmind/dm_control#rendering](https://github.com/deepmind/dm_control#rendering) for more detail.
+
 
 ### Explanation of the logged metrics
 
