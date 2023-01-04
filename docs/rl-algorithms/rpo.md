@@ -29,11 +29,6 @@ The [rpo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 * adding experimental support for [Gymnasium](https://gymnasium.farama.org/)
 * 🧪 support `dm_control` environments via [Shimmy](https://github.com/Farama-Foundation/Shimmy)
 
-???+ warning
-
-    We are deprecating [`ppo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py) because [rpo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/rpo_continuous_action.py) is a strictly better algorithm. Please see [experiment results](/rl-algorithms/rpo/#experiment-results) for details analysis.
-
-
 ### Usage
 
 ```bash
@@ -230,7 +225,9 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         ![](../rpo/mujoco_v4_part2_0_5.png)
 
 
-        <!-- Tracked experiments: <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-on-Mujoco_v4-Part-2--VmlldzozMjU4MTM1" style="height:500px;width:100%"> -->
+        Tracked experiments:     
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-on-Mujoco_v4-Part-2--VmlldzozMjU4MTM1" style="width:100%; height:500px" title="RPO-mujoco-v4-0-5-part-2"></iframe>
 
  
     
@@ -285,7 +282,11 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
         Learning curves:
         ![](../rpo/mujoco_v2_part2_0_5.png)
 
-        <!-- Tracked experiments: <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-on-Mujoco_v2-Part-2--VmlldzozMjU4MzQ0" style="border:none;height:1024px;width:100%"> -->
+
+        Tracked experiments:     
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-on-Mujoco_v2-Part-2--VmlldzozMjU4MzQ0" style="width:100%; height:500px" title="RPO-mujoco-v2-0-5-part-2s"></iframe>
+
         
 
     
@@ -324,10 +325,12 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
     | Reacher-v4                | -4.58 ± 0.73                                                 | -66.62 ± 0.56                                 |
     | Pusher-v4                 | -30.63 ± 6.42                                                | -276.11 ± 26.52                               |
 
-    <!-- Tracked experiments:<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-s-failure-cases-on-Mujoco_v4--VmlldzozMjU4MTYy" style="border:none;height:1024px;width:100%"> -->
-    
     Learning curves:
     ![](../rpo/mujoco_v4_failure_0_5.png)
+
+    Tracked experiments:     
+
+    <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-s-failure-cases-on-Mujoco_v4--VmlldzozMjU4MTYy" style="width:100%; height:500px" title="RPO-mujoco-v4-failure-cases"></iframe>
 
 
 
@@ -342,7 +345,10 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
     Learning curves:
     ![](../rpo/mujoco_v2_failure_0_5.png)
 
-    <!-- Tracked experiments: <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-s-failure-cases-on-Mujoco_v2--VmlldzozMjU4MjQ1" style="border:none;height:1024px;width:100%"> -->
+
+    Tracked experiments:     
+
+    <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-s-failure-cases-on-Mujoco_v2--VmlldzozMjU4MjQ1" style="width:100%; height:500px" title="RPO-mujoco-v4-failure-cases"></iframe>
 
 
     However, with tuning of `rpo_alpha` (`rpo_alpha=0.01` on failed cases) helps RPO to overcome the failure and RPO perform strictly equal to or better than the default PPO in all (100%) of tested environments.
