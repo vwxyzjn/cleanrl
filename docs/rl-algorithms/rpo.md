@@ -29,6 +29,11 @@ The [rpo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 * adding experimental support for [Gymnasium](https://gymnasium.farama.org/)
 * 🧪 support `dm_control` environments via [Shimmy](https://github.com/Farama-Foundation/Shimmy)
 
+???+ warning
+
+    We are deprecating [`ppo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py) because [rpo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/rpo_continuous_action.py) is a strictly better algorithm. Please see [experiment results](/rl-algorithms/rpo/#experiment-results) for details analysis.
+
+
 ### Usage
 
 ```bash
