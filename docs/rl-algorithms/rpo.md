@@ -2,7 +2,7 @@
 
 ## Overview
 
-RPO leverages a method of perturbing the distribution representing actions. The goal is to encourage high-entropy actions and provide a better representation of the action space. The method consists of a simple modification on top of the objective of the PPO algorithm. Assuming PPO represents action with a parameterized distribution with mean and standard deviation (e.g., Gaussian). In the RPO algorithm, the mean of the action distribution is perturbed using a random number drawn from a Uniform distribution.
+RPO leverages a method of perturbing the distribution representing actions. The goal is to encourage high-entropy actions and provide a better representation of the action space. The method consists of a simple modification on top of the objective of the PPO algorithm. In the RPO algorithm, the mean of the action distribution is perturbed using a random number drawn from a Uniform distribution.
 
 Original paper: 
 
@@ -353,5 +353,5 @@ To run benchmark experiments, see  [benchmark/rpo.sh](https://github.com/vwxyzjn
     <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/cleanrl/reports/RPO-alpha-0-5-s-failure-cases-on-Mujoco_v2--VmlldzozMjU4MjQ1" style="width:100%; height:500px" title="RPO-mujoco-v4-failure-cases"></iframe>
 
 
-    However, with tuning of `rpo_alpha` (`rpo_alpha=0.01` on failed cases) helps RPO to overcome the failure and RPO perform strictly equal to or better than the default PPO in all (100%) of tested environments.
+    However, tuning of `rpo_alpha` (`rpo_alpha=0.01` on failed cases) helps RPO to overcome the failure, and it performs strictly equal to or better than the default PPO in all (100%) of tested environments.
 
