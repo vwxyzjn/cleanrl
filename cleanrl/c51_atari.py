@@ -51,9 +51,9 @@ def parse_args():
     parser.add_argument("--n-atoms", type=int, default=51,
         help="the number of atoms")
     parser.add_argument("--v-min", type=float, default=-10,
-        help="the number of atoms")
+        help="the return lower bound")
     parser.add_argument("--v-max", type=float, default=10,
-        help="the number of atoms")
+        help="the return upper bound")
     parser.add_argument("--buffer-size", type=int, default=1000000,
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
