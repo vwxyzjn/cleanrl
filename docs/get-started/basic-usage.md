@@ -44,6 +44,32 @@ the CleanRL script under the poetry virtual environments.
     **We will assume to run other commands (e.g. `tensorboard`) in the documentation within the poetry's shell.**
 
 
+!!! warning
+
+    If you are using NVIDIA ampere GPUs (e.g., 3060 TI), you might meet the following error
+
+    ```bash
+    NVIDIA GeForce RTX 3060 Ti with CUDA capability sm_86 is not compatible with the current PyTorch installation.
+    The current PyTorch install supports CUDA capabilities sm_37 sm_50 sm_60 sm_70.
+    If you want to use the NVIDIA GeForce RTX 3060 Ti GPU with PyTorch, please check the instructions at https://pytorch.org/get-started/locally/
+
+    warnings.warn(incompatible_device_warn.format(device_name, capability, " ".join(arch_list), device_name))
+    Traceback (most recent call last):
+    File "ppo_atari_envpool.py", line 240, in <module>
+        action, logprob, _, value = agent.get_action_and_value(next_obs)
+    File "ppo_atari_envpool.py", line 156, in get_action_and_value
+        hidden = self.network(x / 255.0)
+    RuntimeError: CUDA error: no kernel image is available for execution on the device
+    CUDA kernel errors might be asynchronously reported at some other API call,so the stacktrace below might be incorrect.
+    For debugging consider passing CUDA_LAUNCH_BLOCKING=1.
+    ```
+
+    This is because the `torch` wheel on PyPi is built with cuda 10.2. You would need to manually install the cuda 11.3 wheel like this:
+    ```bash
+    poetry run pip install torch --upgrade --extra-index-url https://download.pytorch.org/whl/cu113
+    ```
+    Then, you can run the script again.
+
 ## Visualize Training Metrics
 
 By default, the CleanRL scripts record all the training metrics via Tensorboard

@@ -1,0 +1,62 @@
+name: Poetry lock and export (MacOs host)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  create-macos-lock-file:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        python-version: [3.9]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Create virtualenv
+        run: |
+          which python
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --constraint=.github/workflows/constraints.txt --upgrade pip
+          which python
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="/Users/runner/.local/bin:$PATH"
+          poetry --version
+          poetry config virtualenvs.in-project true
+          poetry config virtualenvs.create false
+          poetry config virtualenvs.path venv
+          source venv/bin/activate
+          which python
+
+      - name: Run Poetry update
+        run: |
+          source venv/bin/activate
+          export PATH="/Users/runner/.local/bin:$PATH"
+          rm poetry.lock
+          poetry update isaacgym
+          poetry lock --no-update
+          poetry export -f requirements.txt --output requirements.txt
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v3
+        with:
+          commit-message: Update poetry.lock and requirements.txt
+          title: Update poetry.lock and requirements.txt
+          body: Update poetry.lock and requirements.txt
+          branch: poetry-lock-and-export

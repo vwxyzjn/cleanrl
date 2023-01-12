@@ -13,6 +13,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+import pybullet_envs  # noqa
 from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
@@ -25,10 +26,6 @@ def parse_args():
         help="the name of this experiment")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
-    parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, `torch.backends.cudnn.deterministic=False`")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, cuda will be enabled by default")
     parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
     parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
@@ -36,7 +33,7 @@ def parse_args():
     parser.add_argument("--wandb-entity", type=str, default=None,
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="weather to capture videos of the agent performances (check out `videos` folder)")
+        help="whether to capture videos of the agent performances (check out `videos` folder)")
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="HalfCheetah-v2",
@@ -231,9 +228,9 @@ if __name__ == "__main__":
             actions = actor.apply(actor_state.params, obs)
             actions = np.array(
                 [
-                    (
-                        jax.device_get(actions)[0] + np.random.normal(action_bias, action_scale * args.exploration_noise)[0]
-                    ).clip(envs.single_action_space.low, envs.single_action_space.high)
+                    (jax.device_get(actions)[0] + np.random.normal(0, action_scale * args.exploration_noise)[0]).clip(
+                        envs.single_action_space.low, envs.single_action_space.high
+                    )
                 ]
             )
 
