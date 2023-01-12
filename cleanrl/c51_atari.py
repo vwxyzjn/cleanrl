@@ -40,6 +40,12 @@ def parse_args():
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to capture videos of the agent performances (check out `videos` folder)")
+    parser.add_argument("--save-model", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="whether to save model into the `runs/{run_name}` folder")
+    parser.add_argument("--upload-model", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="whether to upload the saved model to huggingface")
+    parser.add_argument("--hf-entity", type=str, default="",
+        help="the user or org name of the model repository from the Hugging Face Hub")
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4",
@@ -51,9 +57,9 @@ def parse_args():
     parser.add_argument("--n-atoms", type=int, default=51,
         help="the number of atoms")
     parser.add_argument("--v-min", type=float, default=-10,
-        help="the number of atoms")
+        help="the return lower bound")
     parser.add_argument("--v-max", type=float, default=10,
-        help="the number of atoms")
+        help="the return upper bound")
     parser.add_argument("--buffer-size", type=int, default=1000000,
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
@@ -219,45 +225,76 @@ if __name__ == "__main__":
         obs = next_obs
 
         # ALGO LOGIC: training.
-        if global_step > args.learning_starts and global_step % args.train_frequency == 0:
-            data = rb.sample(args.batch_size)
-            with torch.no_grad():
-                _, next_pmfs = target_network.get_action(data.next_observations)
-                next_atoms = data.rewards + args.gamma * target_network.atoms * (1 - data.dones)
-                # projection
-                delta_z = target_network.atoms[1] - target_network.atoms[0]
-                tz = next_atoms.clamp(args.v_min, args.v_max)
+        if global_step > args.learning_starts:
+            if global_step % args.train_frequency == 0:
+                data = rb.sample(args.batch_size)
+                with torch.no_grad():
+                    _, next_pmfs = target_network.get_action(data.next_observations)
+                    next_atoms = data.rewards + args.gamma * target_network.atoms * (1 - data.dones)
+                    # projection
+                    delta_z = target_network.atoms[1] - target_network.atoms[0]
+                    tz = next_atoms.clamp(args.v_min, args.v_max)
 
-                b = (tz - args.v_min) / delta_z
-                l = b.floor().clamp(0, args.n_atoms - 1)
-                u = b.ceil().clamp(0, args.n_atoms - 1)
-                # (l == u).float() handles the case where bj is exactly an integer
-                # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
-                d_m_l = (u + (l == u).float() - b) * next_pmfs
-                d_m_u = (b - l) * next_pmfs
-                target_pmfs = torch.zeros_like(next_pmfs)
-                for i in range(target_pmfs.size(0)):
-                    target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
-                    target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
+                    b = (tz - args.v_min) / delta_z
+                    l = b.floor().clamp(0, args.n_atoms - 1)
+                    u = b.ceil().clamp(0, args.n_atoms - 1)
+                    # (l == u).float() handles the case where bj is exactly an integer
+                    # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
+                    d_m_l = (u + (l == u).float() - b) * next_pmfs
+                    d_m_u = (b - l) * next_pmfs
+                    target_pmfs = torch.zeros_like(next_pmfs)
+                    for i in range(target_pmfs.size(0)):
+                        target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
+                        target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
 
-            _, old_pmfs = q_network.get_action(data.observations, data.actions.flatten())
-            loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5, max=1 - 1e-5).log()).sum(-1)).mean()
+                _, old_pmfs = q_network.get_action(data.observations, data.actions.flatten())
+                loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5, max=1 - 1e-5).log()).sum(-1)).mean()
 
-            if global_step % 100 == 0:
-                writer.add_scalar("losses/loss", loss.item(), global_step)
-                old_val = (old_pmfs * q_network.atoms).sum(1)
-                writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
-                print("SPS:", int(global_step / (time.time() - start_time)))
-                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+                if global_step % 100 == 0:
+                    writer.add_scalar("losses/loss", loss.item(), global_step)
+                    old_val = (old_pmfs * q_network.atoms).sum(1)
+                    writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
+                    print("SPS:", int(global_step / (time.time() - start_time)))
+                    writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
-            # optimize the model
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                # optimize the model
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
             # update the target network
             if global_step % args.target_network_frequency == 0:
                 target_network.load_state_dict(q_network.state_dict())
+
+    if args.save_model:
+        model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
+        model_data = {
+            "model_weights": q_network.state_dict(),
+            "args": vars(args),
+        }
+        torch.save(model_data, model_path)
+        print(f"model saved to {model_path}")
+        from cleanrl_utils.evals.c51_eval import evaluate
+
+        episodic_returns = evaluate(
+            model_path,
+            make_env,
+            args.env_id,
+            eval_episodes=10,
+            run_name=f"{run_name}-eval",
+            Model=QNetwork,
+            device=device,
+            epsilon=0.05,
+        )
+        for idx, episodic_return in enumerate(episodic_returns):
+            writer.add_scalar("eval/episodic_return", episodic_return, idx)
+
+        if args.upload_model:
+            from cleanrl_utils.huggingface import push_to_hub
+
+            repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
+            repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
+            push_to_hub(args, episodic_returns, repo_id, "C51", f"runs/{run_name}", f"videos/{run_name}-eval")
 
     envs.close()
     writer.close()

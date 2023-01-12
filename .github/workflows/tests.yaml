@@ -5,11 +5,6 @@ on:
       - '**/README.md'
       - 'docs/**/*'
       - 'cloud/**/*'
-  pull_request:
-    paths-ignore:
-      - '**/README.md'
-      - 'docs/**/*'
-      - 'cloud/**/*'
 jobs:
   test-core-envs:
     strategy:
@@ -42,6 +37,9 @@ jobs:
       - name: Run core tests with jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry run pytest tests/test_classic_control_jax.py
+      - name: Run gae tests with jax
+        if: runner.os == 'Linux' || runner.os == 'macOS'
+        run: poetry run pytest tests/test_jax_compute_gae.py
       - name: Install tuner dependencies
         run: poetry install --with optuna
       - name: Run tuner tests
@@ -133,7 +131,6 @@ jobs:
       - name: Run pybullet tests
         run: poetry run pytest tests/test_procgen.py
 
-
   test-mujoco-envs:
     strategy:
       fail-fast: false
@@ -153,25 +150,76 @@ jobs:
           poetry-version: ${{ matrix.poetry-version }}
 
       # mujoco tests
-      - name: Install core dependencies
-        run: poetry install --with pytest
-      - name: Install pybullet dependencies
-        run: poetry install --with pybullet
-      - name: Install mujoco dependencies
-        run: poetry install --with mujoco
-      - name: Install jax dependencies
-        run: poetry install --with jax
+      - name: Install dependencies
+        run: poetry install --with pytest,mujoco,dm_control
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: install mujoco dependencies
+        run: |
+          sudo apt-get update && sudo apt-get -y install libgl1-mesa-glx libosmesa6 libglfw3
+      - name: Run mujoco tests
+        continue-on-error: true # MUJOCO_GL=osmesa results in `free(): invalid pointer`
+        run: poetry run pytest tests/test_mujoco.py
+
+  test-mujoco-envs-windows-mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+        poetry-version: [1.2]
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+
+      # mujoco tests
+      - name: Install dependencies
+        run: poetry install --with pytest,mujoco,dm_control
+      - name: Downgrade setuptools
+        run: poetry run pip install setuptools==59.5.0
+      - name: Run mujoco tests
+        run: poetry run pytest tests/test_mujoco.py
+
+
+  test-mujoco_py-envs:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+        poetry-version: [1.2]
+        os: [ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+
+      # mujoco_py tests
+      - name: Install dependencies
+        run: poetry install --with pytest,pybullet,mujoco_py,mujoco,jax
+      - name: Downgrade setuptools
+        run: poetry run pip install setuptools==59.5.0
+      - name: install mujoco_py dependencies
         run: |
           sudo apt-get update && sudo apt-get -y install wget unzip software-properties-common \
             libgl1-mesa-dev \
             libgl1-mesa-glx \
             libglew-dev \
             libosmesa6-dev patchelf
-      - name: Run mujoco tests
-        run: poetry run pytest tests/test_mujoco.py
+      - name: Run mujoco_py tests
+        run: poetry run pytest tests/test_mujoco_py.py
 
   test-envpool-envs:
     strategy:

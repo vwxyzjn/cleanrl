@@ -9,6 +9,7 @@ nav:
     - get-started/experiment-tracking.md
     - get-started/examples.md
     - get-started/benchmark-utility.md
+    - get-started/zoo.md
   - RL Algorithms:
     - rl-algorithms/overview.md
     - rl-algorithms/ppo.md
@@ -19,6 +20,7 @@ nav:
     - rl-algorithms/td3.md
     - rl-algorithms/ppg.md
     - rl-algorithms/ppo-rnd.md
+    - rl-algorithms/rpo.md
     - rl-algorithms/ppo_dna.md
   - Advanced:
     - advanced/hyperparameter-tuning.md
