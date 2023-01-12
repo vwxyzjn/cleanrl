@@ -36,7 +36,7 @@ repos:
       - id: codespell
         args:
           - --ignore-words-list=nd,reacher,thist,ths,magent
-          - --skip=docs/css/termynal.css,docs/js/termynal.js
+          - --skip=docs/css/termynal.css,docs/js/termynal.js,docs/get-started/CleanRL_Huggingface_Integration_Demo.ipynb
   - repo: https://github.com/python-poetry/poetry
     rev: 1.2.1
     hooks:

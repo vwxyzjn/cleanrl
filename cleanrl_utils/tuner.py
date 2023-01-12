@@ -92,9 +92,7 @@ class Tuner:
                         experiment = runpy.run_path(path_name=self.script, run_name="__main__")
 
                     # read metric from tensorboard
-                    ea = event_accumulator.EventAccumulator(
-                        f"runs/{experiment['run_name']}",
-                    )
+                    ea = event_accumulator.EventAccumulator(f"runs/{experiment['run_name']}")
                     ea.Reload()
                     metric_values = [
                         scalar_event.value for scalar_event in ea.Scalars(self.metric)[-self.metric_last_n_average_window :]

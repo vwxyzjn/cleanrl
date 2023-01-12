@@ -10,7 +10,7 @@ python-versions = ">=3.6"
 name = "ale-py"
 version = "0.7.4"
 description = "The Arcade Learning Environment (ALE) - a platform for AI research."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -26,7 +26,7 @@ test = ["gym", "pytest"]
 name = "alembic"
 version = "1.8.1"
 description = "A database migration tool for SQLAlchemy."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -62,7 +62,7 @@ typing-extensions = {version = ">=3.6.5", markers = "python_version < \"3.8\""}
 name = "attrs"
 version = "22.1.0"
 description = "Classes Without Boilerplate"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.5"
 
@@ -76,7 +76,7 @@ tests-no-zope = ["cloudpickle", "coverage[toml] (>=5.0.2)", "hypothesis", "mypy 
 name = "autopage"
 version = "0.5.1"
 description = "A library to provide automatic paging for console output"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -84,7 +84,7 @@ python-versions = ">=3.6"
 name = "AutoROM"
 version = "0.4.2"
 description = "Automated installation of Atari ROMs for Gym/ALE-Py"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -102,7 +102,7 @@ accept-rom-license = ["AutoROM.accept-rom-license"]
 name = "AutoROM.accept-rom-license"
 version = "0.4.2"
 description = "Automated installation of Atari ROMs for Gym/ALE-Py"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -119,7 +119,7 @@ tests = ["ale_py", "multi_agent_ale_py"]
 name = "awscli"
 version = "1.25.71"
 description = "Universal Command Line Environment for AWS."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">= 3.7"
 
@@ -135,7 +135,7 @@ s3transfer = ">=0.6.0,<0.7.0"
 name = "boto3"
 version = "1.24.70"
 description = "The AWS SDK for Python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">= 3.7"
 
@@ -151,7 +151,7 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 name = "botocore"
 version = "1.27.70"
 description = "Low-level, data-driven core of boto 3."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">= 3.7"
 
@@ -167,7 +167,7 @@ crt = ["awscrt (==0.14.0)"]
 name = "bottle"
 version = "0.12.23"
 description = "Fast and simple WSGI-framework for small web-applications."
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -191,7 +191,7 @@ python-versions = ">=3.6"
 name = "cffi"
 version = "1.15.1"
 description = "Foreign Function Interface for Python calling C code."
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -221,7 +221,7 @@ unicode-backport = ["unicodedata2"]
 name = "chex"
 version = "0.1.4"
 description = "Chex: Testing made fun, in JAX!"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -249,7 +249,7 @@ importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
 name = "cliff"
 version = "3.10.1"
 description = "Command Line Interface Formulation Framework"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -274,7 +274,7 @@ python-versions = ">=3.6"
 name = "cmaes"
 version = "0.8.2"
 description = "Lightweight Covariance Matrix Adaptation Evolution Strategy (CMA-ES) implementation for Python 3."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -285,7 +285,7 @@ numpy = "*"
 name = "cmd2"
 version = "2.4.2"
 description = "cmd2 - quickly build feature-rich and user-friendly interactive command line applications in Python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -314,7 +314,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 name = "colorlog"
 version = "6.7.0"
 description = "Add colours to the output of Python's logging module."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -328,7 +328,7 @@ development = ["black", "flake8", "mypy", "pytest", "types-colorama"]
 name = "commonmark"
 version = "0.9.1"
 description = "Python parser for the CommonMark Markdown spec"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -347,7 +347,7 @@ python-versions = ">=3.6"
 name = "Cython"
 version = "0.29.32"
 description = "The Cython compiler for writing C extensions for the Python language."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
@@ -385,7 +385,7 @@ python-versions = "*"
 name = "dm-control"
 version = "1.0.8"
 description = "Continuous control environments and MuJoCo Python bindings."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -413,7 +413,7 @@ hdf5 = ["h5py"]
 name = "dm-env"
 version = "1.5"
 description = "A Python interface for Reinforcement Learning environments."
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -426,7 +426,7 @@ numpy = "*"
 name = "dm-tree"
 version = "0.1.7"
 description = "Tree is a library for working with nested data structures."
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -445,7 +445,7 @@ six = ">=1.4.0"
 name = "docutils"
 version = "0.16"
 description = "Docutils -- Python Documentation Utilities"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
@@ -453,7 +453,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 name = "envpool"
 version = "0.6.4"
 description = "\"C++-based high-performance parallel environment execution engine (vectorized env) for general RL environments.\""
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -468,7 +468,7 @@ typing-extensions = "*"
 name = "etils"
 version = "0.7.1"
 description = "Collection of common python utils"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -496,7 +496,7 @@ etree-tf = ["etils[etree]", "tf-nightly"]
 name = "fasteners"
 version = "0.15"
 description = "A python package that provides useful locks."
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -508,7 +508,7 @@ six = "*"
 name = "filelock"
 version = "3.8.0"
 description = "A platform independent file lock."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -520,7 +520,7 @@ testing = ["covdefaults (>=2.2)", "coverage (>=6.4.2)", "pytest (>=7.1.2)", "pyt
 name = "flax"
 version = "0.6.0"
 description = "Flax: A neural network library for JAX designed for flexibility"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -563,7 +563,7 @@ woff = ["brotli (>=1.0.1)", "brotlicffi (>=0.8.0)", "zopfli (>=0.1.4)"]
 name = "free-mujoco-py"
 version = "2.1.6"
 description = ""
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7.1,<3.11"
 
@@ -579,7 +579,7 @@ numpy = ">=1.21.3,<2.0.0"
 name = "ghp-import"
 version = "2.1.0"
 description = "Copy your docs directly to the gh-pages branch."
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -616,7 +616,7 @@ typing-extensions = {version = ">=3.7.4.3", markers = "python_version < \"3.8\""
 name = "glcontext"
 version = "2.3.6"
 description = "Portable OpenGL Context"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -624,7 +624,7 @@ python-versions = "*"
 name = "glfw"
 version = "1.12.0"
 description = "A ctypes-based wrapper for GLFW3."
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -667,7 +667,7 @@ tool = ["click (>=6.0.0)"]
 name = "greenlet"
 version = "1.1.3"
 description = "Lightweight in-process concurrent programming"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*"
 
@@ -725,7 +725,7 @@ python-versions = "*"
 name = "gym3"
 version = "0.3.3"
 description = "Vectorized Reinforcement Learning Environment Interface"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6.0"
 
@@ -773,6 +773,34 @@ description = "Notices for gymnasium"
 category = "main"
 optional = false
 python-versions = "*"
+
+[[package]]
+name = "huggingface-hub"
+version = "0.11.1"
+description = "Client library to download and publish models, datasets and other repos on the huggingface.co hub"
+category = "main"
+optional = false
+python-versions = ">=3.7.0"
+
+[package.dependencies]
+filelock = "*"
+importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
+packaging = ">=20.9"
+pyyaml = ">=5.1"
+requests = "*"
+tqdm = "*"
+typing-extensions = ">=3.7.4.3"
+
+[package.extras]
+all = ["InquirerPy (==0.3.4)", "Jinja2", "black (==22.3)", "flake8 (>=3.8.3)", "flake8-bugbear", "isort (>=5.5.4)", "jedi", "mypy (==0.982)", "pytest", "pytest-cov", "pytest-env", "soundfile", "types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3"]
+cli = ["InquirerPy (==0.3.4)"]
+dev = ["InquirerPy (==0.3.4)", "Jinja2", "black (==22.3)", "flake8 (>=3.8.3)", "flake8-bugbear", "isort (>=5.5.4)", "jedi", "mypy (==0.982)", "pytest", "pytest-cov", "pytest-env", "soundfile", "types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3"]
+fastai = ["fastai (>=2.4)", "fastcore (>=1.3.27)", "toml"]
+quality = ["black (==22.3)", "flake8 (>=3.8.3)", "flake8-bugbear", "isort (>=5.5.4)", "mypy (==0.982)"]
+tensorflow = ["graphviz", "pydot", "tensorflow"]
+testing = ["InquirerPy (==0.3.4)", "Jinja2", "isort (>=5.5.4)", "jedi", "pytest", "pytest-cov", "pytest-env", "soundfile"]
+torch = ["torch"]
+typing = ["types-PyYAML", "types-requests", "types-simplejson", "types-toml", "types-tqdm", "types-urllib3"]
 
 [[package]]
 name = "hydra-core"
@@ -865,7 +893,7 @@ testing = ["flufl.flake8", "importlib-resources (>=1.3)", "packaging", "pyfakefs
 name = "importlib-resources"
 version = "5.9.0"
 description = "Read resources from Python packages"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -880,7 +908,7 @@ testing = ["pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)",
 name = "iniconfig"
 version = "1.1.1"
 description = "iniconfig: brain-dead simple config-ini parsing"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -936,7 +964,7 @@ resolved_reference = "27cc130a811b2305056c2f03f5f4cc0819b7867c"
 name = "jax"
 version = "0.3.17"
 description = "Differentiate, compile, and transform Numpy code."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -962,7 +990,7 @@ tpu = ["jaxlib (==0.3.15)", "libtpu-nightly (==0.1.dev20220723)", "requests"]
 name = "jaxlib"
 version = "0.3.15"
 description = "XLA library for JAX"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -975,7 +1003,7 @@ scipy = ">=1.5"
 name = "Jinja2"
 version = "3.1.2"
 description = "A very fast and expressive template engine."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -989,7 +1017,7 @@ i18n = ["Babel (>=2.7)"]
 name = "jmespath"
 version = "1.0.1"
 description = "JSON Matching Expressions"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -997,7 +1025,7 @@ python-versions = ">=3.7"
 name = "joblib"
 version = "1.1.0"
 description = "Lightweight pipelining with Python functions"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -1036,7 +1064,7 @@ typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
 name = "labmaze"
 version = "1.0.5"
 description = "LabMaze: DeepMind Lab's text maze generator."
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -1049,7 +1077,7 @@ setuptools = "!=50.0.0"
 name = "lxml"
 version = "4.9.1"
 description = "Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, != 3.4.*"
 
@@ -1063,7 +1091,7 @@ source = ["Cython (>=0.29.7)"]
 name = "Mako"
 version = "1.2.2"
 description = "A super-fast templating language that borrows the best ideas from the existing templating languages."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -1094,7 +1122,7 @@ testing = ["coverage", "pyyaml"]
 name = "markdown-include"
 version = "0.7.0"
 description = "This is an extension to Python-Markdown which provides an \"include\" function, similar to that found in LaTeX (and also the C pre-processor and Fortran). I originally wrote it for my FORD Fortran auto-documentation generator."
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -1132,7 +1160,7 @@ setuptools_scm = ">=4,<7"
 name = "mergedeep"
 version = "1.3.4"
 description = "A deep merge function for 🐍."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -1140,7 +1168,7 @@ python-versions = ">=3.6"
 name = "mkdocs"
 version = "1.3.0"
 description = "Project documentation with Markdown."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -1163,7 +1191,7 @@ i18n = ["babel (>=2.9.0)"]
 name = "mkdocs-material"
 version = "8.4.3"
 description = "Documentation that simply works"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -1179,7 +1207,7 @@ pymdown-extensions = ">=9.4"
 name = "mkdocs-material-extensions"
 version = "1.0.3"
 description = "Extension pack for Python Markdown."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -1187,7 +1215,7 @@ python-versions = ">=3.6"
 name = "moderngl"
 version = "5.6.4"
 description = "ModernGL: High performance rendering for Python 3"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -1198,7 +1226,7 @@ glcontext = ">=2,<3"
 name = "monotonic"
 version = "1.6"
 description = "An implementation of time.monotonic() for Python 2 & < 3.3"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -1231,7 +1259,7 @@ test = ["coverage (<5.0)", "coveralls (>=1.1,<2.0)", "pytest (>=3.0.0,<4.0)", "p
 name = "msgpack"
 version = "1.0.4"
 description = "MessagePack serializer"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -1239,7 +1267,7 @@ python-versions = "*"
 name = "mujoco"
 version = "2.3.0"
 description = "MuJoCo Physics Simulator"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -1253,7 +1281,7 @@ pyopengl = "*"
 name = "multi-agent-ale-py"
 version = "0.1.11"
 description = "Multi-Agent Arcade Learning Environment Python Interface"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -1319,7 +1347,7 @@ PyYAML = ">=5.1.0"
 name = "opencv-python"
 version = "4.6.0.66"
 description = "Wrapper package for OpenCV python bindings."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -1335,7 +1363,7 @@ numpy = [
 name = "opt-einsum"
 version = "3.3.0"
 description = "Optimizing numpys einsum function"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.5"
 
@@ -1350,7 +1378,7 @@ tests = ["pytest", "pytest-cov", "pytest-pep8"]
 name = "optax"
 version = "0.1.3"
 description = "A gradient processing and optimisation library in JAX."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -1366,7 +1394,7 @@ typing-extensions = ">=3.10.0"
 name = "optuna"
 version = "3.0.1"
 description = "A hyperparameter optimization framework"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -1395,7 +1423,7 @@ test = ["codecov", "fakeredis", "fakeredis (<=1.7.1)", "kaleido", "pytest"]
 name = "optuna-dashboard"
 version = "0.7.2"
 description = "Real-time dashboard for Optuna."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -1449,7 +1477,7 @@ python-versions = "*"
 name = "pbr"
 version = "5.10.0"
 description = "Python Build Reasonableness"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.6"
 
@@ -1457,7 +1485,7 @@ python-versions = ">=2.6"
 name = "PettingZoo"
 version = "1.18.1"
 description = "Gym for multi-agent reinforcement learning"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7, <3.11"
 
@@ -1512,7 +1540,7 @@ test = ["appdirs (==1.4.4)", "pytest (>=6)", "pytest-cov (>=2.7)", "pytest-mock 
 name = "pluggy"
 version = "1.0.0"
 description = "plugin and hook calling mechanisms for python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -1544,7 +1572,7 @@ virtualenv = ">=20.0.8"
 name = "prettytable"
 version = "3.4.1"
 description = "A simple Python library for easily displaying tabular data in a visually appealing ASCII table format"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -1559,7 +1587,7 @@ tests = ["pytest", "pytest-cov", "pytest-lazy-fixture"]
 name = "procgen"
 version = "0.10.7"
 description = "Procedurally Generated Game-Like RL Environments"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6.0"
 
@@ -1620,7 +1648,7 @@ test = ["enum34", "ipaddress", "mock", "pywin32", "wmi"]
 name = "py"
 version = "1.11.0"
 description = "library with cross-python path, ini-parsing, io, code, log facilities"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
@@ -1647,7 +1675,7 @@ pyasn1 = ">=0.4.6,<0.5.0"
 name = "pybullet"
 version = "3.1.8"
 description = "Official Python Interface for the Bullet Physics SDK specialized for Robotics Simulation and Reinforcement Learning"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -1655,7 +1683,7 @@ python-versions = "*"
 name = "pycparser"
 version = "2.21"
 description = "C parser in Python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
@@ -1671,7 +1699,7 @@ python-versions = ">=3.6"
 name = "Pygments"
 version = "2.13.0"
 description = "Pygments is a syntax highlighting package written in Python."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -1682,7 +1710,7 @@ plugins = ["importlib-metadata"]
 name = "pymdown-extensions"
 version = "9.5"
 description = "Extension pack for Python Markdown."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -1693,7 +1721,7 @@ markdown = ">=3.2"
 name = "pyopengl"
 version = "3.1.6"
 description = "Standard OpenGL bindings for Python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -1709,7 +1737,7 @@ python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 name = "pyperclip"
 version = "1.8.2"
 description = "A cross-platform clipboard module for Python. (Only handles plain text for now.)"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -1717,7 +1745,7 @@ python-versions = "*"
 name = "pyreadline3"
 version = "3.4.1"
 description = "A python implementation of GNU readline."
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -1733,7 +1761,7 @@ python-versions = ">=3.7"
 name = "pytest"
 version = "7.1.3"
 description = "pytest: simple powerful testing with Python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -1789,7 +1817,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
 name = "pyyaml_env_tag"
 version = "0.1"
 description = "A custom YAML tag for referencing environment variables in YAML files. "
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -1886,7 +1914,7 @@ rsa = ["oauthlib[signedtoken] (>=3.0.0)"]
 name = "rich"
 version = "11.2.0"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6.2,<4.0.0"
 
@@ -1933,7 +1961,7 @@ pyasn1 = ">=0.1.3"
 name = "s3transfer"
 version = "0.6.0"
 description = "An Amazon S3 Transfer Manager"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">= 3.7"
 
@@ -1947,7 +1975,7 @@ crt = ["botocore[crt] (>=1.20.29,<2.0a.0)"]
 name = "scikit-learn"
 version = "1.0.2"
 description = "A set of python modules for machine learning and data mining"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -1967,7 +1995,7 @@ tests = ["black (>=21.6b0)", "flake8 (>=3.8.2)", "matplotlib (>=2.2.3)", "mypy (
 name = "scipy"
 version = "1.7.3"
 description = "SciPy: Scientific Library for Python"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7,<3.11"
 
@@ -2051,7 +2079,7 @@ toml = ["setuptools (>=42)"]
 name = "shimmy"
 version = "0.1.0"
 description = "API for converting popular non-gymnasium environments to a gymnasium compatible environment."
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -2095,7 +2123,7 @@ python-versions = ">=3.6"
 name = "SQLAlchemy"
 version = "1.4.41"
 description = "Database Abstraction Library"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,>=2.7"
 
@@ -2149,7 +2177,7 @@ tests = ["black", "flake8 (>=3.8)", "flake8-bugbear", "isort (>=5.0)", "pytest",
 name = "stevedore"
 version = "3.5.0"
 description = "Manage dynamic plugins for Python applications"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -2161,7 +2189,7 @@ pbr = ">=2.0.0,<2.1.0 || >2.1.0"
 name = "SuperSuit"
 version = "3.4.0"
 description = "Wrappers for Gym and PettingZoo"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -2233,7 +2261,7 @@ python-versions = "*"
 name = "threadpoolctl"
 version = "3.1.0"
 description = "threadpoolctl"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -2241,7 +2269,7 @@ python-versions = ">=3.6"
 name = "tinyscaler"
 version = "1.2.4"
 description = "A tiny, simple image scaler"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -2268,7 +2296,7 @@ python-versions = ">=3.7"
 name = "toolz"
 version = "0.12.0"
 description = "List processing tools and functional utilities"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.5"
 
@@ -2322,7 +2350,7 @@ telegram = ["requests"]
 name = "types-protobuf"
 version = "3.20.2"
 description = "Typing stubs for protobuf"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -2407,7 +2435,7 @@ sweeps = ["sweeps (>=0.2.0)"]
 name = "watchdog"
 version = "2.1.9"
 description = "Filesystem events monitoring"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.6"
 
@@ -2418,7 +2446,7 @@ watchmedo = ["PyYAML (>=3.10)"]
 name = "wcwidth"
 version = "0.2.5"
 description = "Measures the displayed width of unicode strings in a terminal"
-category = "dev"
+category = "main"
 optional = false
 python-versions = "*"
 
@@ -2467,10 +2495,35 @@ python-versions = ">=3.7"
 docs = ["jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx"]
 testing = ["func-timeout", "jaraco.itertools", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)"]
 
+[extras]
+atari = ["ale-py", "AutoROM", "opencv-python"]
+c51 = []
+c51-atari = ["ale-py", "AutoROM", "opencv-python"]
+c51-atari-jax = ["ale-py", "AutoROM", "opencv-python", "jax", "jaxlib", "flax"]
+c51-jax = ["jax", "jaxlib", "flax"]
+cloud = ["boto3", "awscli"]
+dm-control = ["shimmy", "dm-control", "mujoco"]
+docs = ["mkdocs-material", "markdown-include"]
+dqn = []
+dqn-atari = ["ale-py", "AutoROM", "opencv-python"]
+dqn-atari-jax = ["ale-py", "AutoROM", "opencv-python", "jax", "jaxlib", "flax"]
+dqn-jax = ["jax", "jaxlib", "flax"]
+envpool = ["envpool"]
+jax = ["jax", "jaxlib", "flax"]
+mujoco = ["mujoco", "imageio"]
+mujoco-py = ["free-mujoco-py"]
+optuna = ["optuna", "optuna-dashboard", "rich"]
+pettingzoo = ["PettingZoo", "SuperSuit", "multi-agent-ale-py"]
+plot = []
+ppo-atari-envpool-xla-jax-scan = ["ale-py", "AutoROM", "opencv-python", "jax", "jaxlib", "flax", "envpool"]
+procgen = ["procgen"]
+pybullet = ["pybullet"]
+pytest = ["pytest"]
+
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "a4a46de1a1a356cc0d1467dce70a8a6c620e9fc86519205bd9e8a6785f332b70"
+content-hash = "ffabfe67bd036990be95aace02b37dbc326303af0a2d2ec61118fe21258c0131"
 
 [metadata.files]
 absl-py = [
@@ -2972,6 +3025,10 @@ gymnasium = [
 gymnasium-notices = [
     {file = "gymnasium-notices-0.0.1.tar.gz", hash = "sha256:3e8c868046f56dea84c949cc7e97383cccfab27152fc3f4968754e4c9c087ab9"},
     {file = "gymnasium_notices-0.0.1-py3-none-any.whl", hash = "sha256:be68c8399e88b554b6db1eb3c484b00f229cbe5c930f64f6ae9cd1a6e93db1c5"},
+]
+huggingface-hub = [
+    {file = "huggingface_hub-0.11.1-py3-none-any.whl", hash = "sha256:11eed7aab4fa4d1fb532f2aea3379ef4998d9f6bc24a330834dfedd3dac7f441"},
+    {file = "huggingface_hub-0.11.1.tar.gz", hash = "sha256:8b9ebf9bbb1782f6f0419ec490973a6487c6c4ed84293a8a325d34c4f898f53f"},
 ]
 hydra-core = [
     {file = "hydra-core-1.2.0.tar.gz", hash = "sha256:4990721ce4ac69abafaffee566d6b63a54faa6501ecce65b338d3251446ff634"},
