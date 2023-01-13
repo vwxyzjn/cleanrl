@@ -70,7 +70,7 @@ def parse_args():
         help="Entropy regularization coefficient.")
     parser.add_argument("--autotune", type=lambda x:bool(strtobool(x)), default=True, nargs="?", const=True,
         help="automatic tuning of the entropy coefficient")
-    parser.add_argument("--target-entropy-scale", type=float, default=0.9,
+    parser.add_argument("--target-entropy-scale", type=float, default=0.89,
         help="coefficient for scaling the autotune entropy target")
     args = parser.parse_args()
     # fmt: on
