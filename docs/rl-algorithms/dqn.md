@@ -76,7 +76,7 @@ with the Bellman update target is $y = r + \gamma \, Q^{'}(s', a')$ and the repl
         )
         ``` 
     - `dqn_atari.py` uses `--learning-starts=80000` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--learning-starts=50000`.
-    - `dqn_atari.py` uses `--target-network-frequency=1000` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--learning-starts=10000`.
+    - `dqn_atari.py` uses `--target-network-frequency=1000` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--target-network-frequency=10000`.
     - `dqn_atari.py` uses `--total-timesteps=10000000` (i.e., 10M timesteps = 40M frames because of frame-skipping) whereas (Mnih et al., 2015)[^1] uses `--total-timesteps=50000000` (i.e., 50M timesteps = 200M frames) (See "Training details" under "METHODS" on page 6 and the related source code [run_gpu#L32](https://github.com/deepmind/dqn/blob/9d9b1d13a2b491d6ebd4d046740c511c662bbe0f/run_gpu#L32), [dqn/train_agent.lua#L81-L82](https://github.com/deepmind/dqn/blob/9d9b1d13a2b491d6ebd4d046740c511c662bbe0f/dqn/train_agent.lua#L81-L82), and [dqn/train_agent.lua#L165-L169](https://github.com/deepmind/dqn/blob/9d9b1d13a2b491d6ebd4d046740c511c662bbe0f/dqn/train_agent.lua#L165-L169)).
     - `dqn_atari.py` uses `--end-e=0.01` (the final exploration epsilon) whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--end-e=0.1`.
     - `dqn_atari.py` uses `--exploration-fraction=0.1` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--exploration-fraction=0.02` (all corresponds to 250000 steps or 1M frames being the frame that epsilon is annealed to `--end-e=0.1` ).
@@ -278,7 +278,7 @@ Tracked experiments and game play videos:
 
 
 ## `dqn_jax.py`
-* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  [dqn_atari_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_jax.py) is roughly 4% faster than  [dqn_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py)
+* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  [dqn_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_jax.py) is roughly 50% faster than  [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py)
 * Works with the `Box` observation space of low-level features
 * Works with the `Discrete` action space
 * Works with envs like `CartPole-v1`
@@ -309,9 +309,9 @@ Below are the average episodic returns for [`dqn_jax.py`](https://github.com/vwx
 
 | Environment    | `dqn_jax.py`   | `dqn.py`  | 
 | ----------- | ----------- | ----------- | 
-| CartPole-v1    |  499.84 ± 0.24 | 488.69 ± 16.11      |
-| Acrobot-v1 | -89.17 ± 8.79 | -91.54 ± 7.20     | 
-| MountainCar-v0 | -173.71 ± 29.14  | -194.95 ± 8.48        | 
+| CartPole-v1    |  498.38 ± 2.29 | 488.69 ± 16.11      |
+| Acrobot-v1 | -88.89 ± 1.56 | -91.54 ± 7.20     | 
+| MountainCar-v0 | -188.90 ± 11.78  | -194.95 ± 8.48        | 
 
 
 
@@ -329,7 +329,7 @@ Below are the average episodic returns for [`dqn_jax.py`](https://github.com/vwx
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/-WIP-Classic-Control-CleanRL-s-DQN-JAX--VmlldzoyMzg5OTg2" style="width:100%; height:500px" title="CleanRL DQN + JAX Tracked Experiments"></iframe>
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Classic-Control-CleanRL-s-DQN-JAX--VmlldzozMjM5Mjgx" style="width:100%; height:500px" title="CleanRL DQN + JAX Tracked Experiments"></iframe>
 
 
 

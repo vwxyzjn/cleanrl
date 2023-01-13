@@ -2,12 +2,12 @@ INHERIT: mkdocs-base.yml
 plugins:
   - search
   - meta
-  - blog:
-      post_url_date_format: yyyy
-      post_url_format: "{slug}"
-      # archive: false
-      categories: false
-  - tags
+  # - blog:
+  #     post_url_date_format: yyyy
+  #     post_url_format: "{slug}"
+  #     # archive: false
+  #     categories: false
+  # - tags
 nav:
   - Overview: index.md
   - Get Started:
@@ -16,6 +16,7 @@ nav:
     - get-started/experiment-tracking.md
     - get-started/examples.md
     - get-started/benchmark-utility.md
+    - get-started/zoo.md
   - RL Algorithms:
     - rl-algorithms/overview.md
     - rl-algorithms/ppo.md
@@ -26,6 +27,7 @@ nav:
     - rl-algorithms/td3.md
     - rl-algorithms/ppg.md
     - rl-algorithms/ppo-rnd.md
+    - rl-algorithms/rpo.md
   - Advanced:
     - advanced/hyperparameter-tuning.md
     - advanced/resume-training.md
@@ -35,5 +37,5 @@ nav:
   - Cloud Integration: 
     - cloud/installation.md
     - cloud/submit-experiments.md
-  - Blog:
-    - blog/index.md
+  # - Blog:
+  #   - blog/index.md
