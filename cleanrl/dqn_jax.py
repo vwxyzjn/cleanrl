@@ -236,7 +236,9 @@ if __name__ == "__main__":
 
             # update target network
             if global_step % args.target_network_frequency == 0:
-                q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, args.tau)) 
+                q_state = q_state.replace(
+                    target_params=optax.incremental_update(q_state.params, q_state.target_params, args.tau)
+                )
 
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
