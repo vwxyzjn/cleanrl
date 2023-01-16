@@ -55,6 +55,8 @@ def parse_args():
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
+    parser.add_argument("--tau", type=float, default=1.,
+        help="the target network update rate")
     parser.add_argument("--target-network-frequency", type=int, default=1000,
         help="the timesteps it takes to update the target network")
     parser.add_argument("--batch-size", type=int, default=32,
@@ -254,9 +256,9 @@ if __name__ == "__main__":
                     print("SPS:", int(global_step / (time.time() - start_time)))
                     writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
-            # update the target network
+            # update target network
             if global_step % args.target_network_frequency == 0:
-                q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, 1))
+                q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, args.tau)) 
 
     envs.close()
     writer.close()
