@@ -214,7 +214,8 @@ if __name__ == "__main__":
             if global_step % args.target_network_frequency == 0:
                 for target_network_param, q_network_param in zip(target_network.parameters(), q_network.parameters()):
                     target_network_param.data.copy_(
-                        args.tau * q_network_param.data + (1. - args.tau) * target_network_param.data)
+                        args.tau * q_network_param.data + (1.0 - args.tau) * target_network_param.data
+                    )
 
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
