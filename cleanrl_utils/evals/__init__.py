@@ -69,6 +69,21 @@ def ppo_atari_envpool_xla_jax_scan():
     )
 
 
+def muesli_atari_envpool_async_jax_scan_impalanet_machado():
+    import cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado
+    import cleanrl_utils.evals.ppo_envpool_jax_eval
+
+    return (
+        (
+            cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.Network,
+            cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.Actor,
+            cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.Critic,
+        ),
+        cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.make_env,
+        cleanrl_utils.evals.ppo_envpool_jax_eval.evaluate,
+    )
+
+
 MODELS = {
     "dqn": dqn,
     "dqn_atari": dqn_atari,
@@ -79,4 +94,5 @@ MODELS = {
     "c51_jax": c51_jax,
     "c51_atari_jax": c51_atari_jax,
     "ppo_atari_envpool_xla_jax_scan": ppo_atari_envpool_xla_jax_scan,
+    "muesli_atari_envpool_async_jax_scan_impalanet_machado": muesli_atari_envpool_async_jax_scan_impalanet_machado,
 }
