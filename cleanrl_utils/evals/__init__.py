@@ -71,7 +71,7 @@ def ppo_atari_envpool_xla_jax_scan():
 
 def muesli_atari_envpool_async_jax_scan_impalanet_machado():
     import cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado
-    import cleanrl_utils.evals.ppo_envpool_jax_eval
+    import cleanrl_utils.evals.muesli_envpool_jax_eval
 
     return (
         (
@@ -80,7 +80,7 @@ def muesli_atari_envpool_async_jax_scan_impalanet_machado():
             cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.Critic,
         ),
         cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.make_env,
-        cleanrl_utils.evals.ppo_envpool_jax_eval.evaluate,
+        cleanrl_utils.evals.muesli_envpool_jax_eval.evaluate,
     )
 
 
