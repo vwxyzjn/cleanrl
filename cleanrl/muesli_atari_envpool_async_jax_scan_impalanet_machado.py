@@ -67,7 +67,7 @@ def parse_args():
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--gae", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Use GAE for advantage computation")
-    parser.add_argument("--gamma", type=float, default=0.995,  # Hessel et al 2022, Muesli paper, Table 5
+    parser.add_argument("--gamma", type=float, default=0.995,  # Hessel et al. 2022, Muesli paper, Table 5
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
         help="the lambda for the general advantage estimation")
@@ -102,14 +102,14 @@ def make_env(env_id, seed, num_envs, async_batch_size=1):
             env_type="gym",
             num_envs=num_envs,
             batch_size=async_batch_size,
-            stack_num=4,  # Hessel et al 2022, Muesli paper, Table 10
-            img_height=86,  # Hessel et al 2022, Muesli paper, Table 4
-            img_width=86,  # Hessel et al 2022, Muesli paper, Table 4
-            episodic_life=False,  # Hessel et al 2022, Muesli paper, Table 4
-            repeat_action_probability=0.25,  # Hessel et al 2022, Muesli paper, Table 4
-            noop_max=1,  # Hessel et al 2022, Muesli paper, Table 4
-            full_action_space=True,  # Hessel et al 2022, Muesli paper, Table 4
-            max_episode_steps=int(108000 / 4),  # Hessel et al 2022, Muesli paper, Table 4, we divide by 4 because of the skipped frames
+            stack_num=4,  # Hessel et al. 2022, Muesli paper, Table 10
+            img_height=86,  # Hessel et al. 2022, Muesli paper, Table 4
+            img_width=86,  # Hessel et al. 2022, Muesli paper, Table 4
+            episodic_life=False,  # Hessel et al. 2022, Muesli paper, Table 4
+            repeat_action_probability=0.25,  # Hessel et al. 2022, Muesli paper, Table 4
+            noop_max=1,  # Hessel et al. 2022, Muesli paper, Table 4
+            full_action_space=True,  # Hessel et al. 2022, Muesli paper, Table 4
+            max_episode_steps=int(108000 / 4),  # Hessel et al. 2022, Muesli paper, Table 4, we divide by 4 because of the skipped frames
             reward_clip=True,
             seed=seed,
         )
