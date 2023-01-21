@@ -382,6 +382,27 @@ class UniformBuffer:
     ):
         return self._sample_sequence_jit_helper(self.full_buffer_ind, rng, batch_size, sequence_length, distribution_power)
 
+    def sample_rb_and_oq(
+        self,
+        rng: chex.PRNGKey,
+        rb_batch_size: int,
+        oq_batch_size: int,
+        sequence_length: int,
+        distribution_power: float = 1,
+    ):
+        _, rb_rng, oq_rng = jax.random.split(rng, 3)
+        rb_sequence, rb_mask = self.sample_replay_buffer(
+            rb_rng, rb_batch_size, sequence_length, distribution_power=distribution_power
+        )
+        oq_sequence, oq_mask = self.sample_online_queue(
+            oq_rng, oq_batch_size, sequence_length, distribution_power=distribution_power
+        )
+        sequence = jax.tree_util.tree_map(
+            lambda rb_entry, oq_entry: jnp.vstack([rb_entry, oq_entry]), rb_sequence, oq_sequence
+        )
+        mask = jnp.vstack([rb_mask, oq_mask])
+        return sequence, mask
+
 
 if __name__ == "__main__":
     args = parse_args()
