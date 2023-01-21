@@ -336,18 +336,14 @@ class UniformBuffer:
         # Figure out what indices in the buffer matrix that the flattened indices correspond to
         env_indices = (cum_lengths_per_row.reshape(-1, 1) > flattened_indices).argmax(0)
         env_start_index_to_flattened_index = jnp.concatenate([jnp.zeros(1).astype(jnp.int32), cum_lengths_per_row[:-1]], 0)
-        col_indices_before_mod = flattened_indices + (boundary_pointer.tail - env_start_index_to_flattened_index)[env_indices]
-
-        # Find the indices needed to access the sequences in a vectorized manner
-        batched_sequence_index = jnp.repeat(arange_sequence_length.reshape(1, -1), batch_size, axis=0)
-        expanded_env_indices = jnp.repeat(env_indices.reshape(-1, 1), sequence_length, axis=1)
-        expanded_col_indices = (batched_sequence_index + col_indices_before_mod.reshape(-1, 1)) % self.max_size
+        col_indices = flattened_indices + (boundary_pointer.tail - env_start_index_to_flattened_index)[env_indices]
+        col_indices = (arange_sequence_length.reshape(1, -1) + col_indices.reshape(-1, 1)) % self.max_size
 
         sequences = jax.tree_util.tree_map(
-            lambda entry: entry[expanded_env_indices, expanded_col_indices],
+            lambda entry: entry[env_indices.reshape(-1, 1), col_indices],
             self.data,
         )
-        sequence_masks = batched_sequence_index < remaining_sequence_length[flattened_indices].reshape(-1, 1)
+        sequence_masks = arange_sequence_length.reshape(1, -1) < remaining_sequence_length[flattened_indices].reshape(-1, 1)
         return sequences, sequence_masks
 
     def _sample_sequence_jit_helper(
