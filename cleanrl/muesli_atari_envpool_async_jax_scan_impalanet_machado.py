@@ -403,6 +403,17 @@ class UniformBuffer:
         mask = jnp.vstack([rb_mask, oq_mask])
         return sequence, mask
 
+    @jax.jit
+    def peek(self, env_ids: chex.Array):
+        """Peek at the top of the buffer.
+
+        The online queue and the replay buffer have the same head.
+        """
+        return jax.tree_util.tree_map(
+            lambda entry: entry[env_ids, (self.full_buffer_ind.head[env_ids] - 1) % self.max_size],
+            self.data,
+        )
+
 
 if __name__ == "__main__":
     args = parse_args()
