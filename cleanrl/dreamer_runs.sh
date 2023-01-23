@@ -64,54 +64,54 @@ export MKL_NUM_THREADS=$NUM_CORES OMP_NUM_THREADS=$NUM_CORES
 # region: Montezuma Revenge                   #
     export TOTAL_STEPS=25000000
     # region: Baseline experiments
-    # ## Seed 1
-    # export CUDA_VISIBLE_DEVICES=7
-    # (sleep 1s && python dreamer_atari.py \
-    #     --track --capture-video \
-    #     --env-id "MontezumaRevengeNoFrameskip-v4" \
-    #     --total-timesteps $TOTAL_STEPS \
-    #     --batch-size 50 --batch-length 50 \
-    #     --train-every 16 \
-    #     --gamma 0.99 \
-    #     --exp-name "dreamer_B_50_T_50_trnev_16_gamma_0.99" \
-    #     --seed 1 \
-    # ) >& /dev/null &
-    # ## Seed 2
-    # export CUDA_VISIBLE_DEVICES=6
-    # (sleep 1s && python dreamer_atari.py \
-    #     --track --capture-video \
-    #     --env-id "MontezumaRevengeNoFrameskip-v4" \
-    #     --total-timesteps $TOTAL_STEPS \
-    #     --batch-size 50 --batch-length 50 \
-    #     --train-every 16 \
-    #     --gamma 0.99 \
-    #     --exp-name "dreamer_B_50_T_50_trnev_16" \
-    #     --seed 2 \
-    # ) >& /dev/null &
-    # ## Seed 3
-    # export CUDA_VISIBLE_DEVICES=5
-    # (sleep 1s && python dreamer_atari.py \
-    #     --track --capture-video \
-    #     --env-id "MontezumaRevengeNoFrameskip-v4" \
-    #     --total-timesteps $TOTAL_STEPS \
-    #     --batch-size 50 --batch-length 50 \
-    #     --train-every 16 \
-    #     --gamma 0.99 \
-    #     --exp-name "dreamer_B_50_T_50_trnev_16_gamma_0.99" \
-    #     --seed 3 \
-    # ) >& /dev/null &
-    # ## Seed 4
-    # export CUDA_VISIBLE_DEVICES=4
-    # (sleep 1s && python dreamer_atari.py \
-    #     --track --capture-video \
-    #     --env-id "MontezumaRevengeNoFrameskip-v4" \
-    #     --total-timesteps $TOTAL_STEPS \
-    #     --batch-size 50 --batch-length 50 \
-    #     --train-every 16 \
-    #     --gamma 0.99 \
-    #     --exp-name "dreamer_B_50_T_50_trnev_16" \
-    #     --seed 4 \
-    # ) >& /dev/null &
+    ## Seed 1
+    export CUDA_VISIBLE_DEVICES=7
+    (sleep 1s && python dreamer_atari.py \
+        --track --capture-video \
+        --env-id "MontezumaRevengeNoFrameskip-v4" \
+        --total-timesteps $TOTAL_STEPS \
+        --batch-size 50 --batch-length 50 \
+        --train-every 16 \
+        --gamma 0.99 \
+        --exp-name "dreamer_B_50_T_50_trnev_16_gamma_0.99" \
+        --seed 1 \
+    ) >& /dev/null &
+    ## Seed 2
+    export CUDA_VISIBLE_DEVICES=6
+    (sleep 1s && python dreamer_atari.py \
+        --track --capture-video \
+        --env-id "MontezumaRevengeNoFrameskip-v4" \
+        --total-timesteps $TOTAL_STEPS \
+        --batch-size 50 --batch-length 50 \
+        --train-every 16 \
+        --gamma 0.99 \
+        --exp-name "dreamer_B_50_T_50_trnev_16_gamma_0.99" \
+        --seed 2 \
+    ) >& /dev/null &
+    ## Seed 3
+    export CUDA_VISIBLE_DEVICES=5
+    (sleep 1s && python dreamer_atari.py \
+        --track --capture-video \
+        --env-id "MontezumaRevengeNoFrameskip-v4" \
+        --total-timesteps $TOTAL_STEPS \
+        --batch-size 50 --batch-length 50 \
+        --train-every 16 \
+        --gamma 0.99 \
+        --exp-name "dreamer_B_50_T_50_trnev_16_gamma_0.99" \
+        --seed 3 \
+    ) >& /dev/null &
+    ## Seed 4
+    export CUDA_VISIBLE_DEVICES=4
+    (sleep 1s && python dreamer_atari.py \
+        --track --capture-video \
+        --env-id "MontezumaRevengeNoFrameskip-v4" \
+        --total-timesteps $TOTAL_STEPS \
+        --batch-size 50 --batch-length 50 \
+        --train-every 16 \
+        --gamma 0.99 \
+        --exp-name "dreamer_B_50_T_50_trnev_16_gamma_0.99" \
+        --seed 4 \
+    ) >& /dev/null &
     # endregion: Baseline experiments
 
 # endregion: Montezuma Revenge                #
