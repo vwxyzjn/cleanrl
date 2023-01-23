@@ -253,7 +253,9 @@ class UniformBuffer:
     def init(cls, item_prototype: chex.ArrayTree, num_envs: int, max_size: int):
         chex.assert_tree_has_only_ndarrays(item_prototype)
 
-        data = jax.tree_util.tree_map(lambda t: jnp.tile(t[None, None, ...], (num_envs, max_size)), item_prototype)
+        data = jax.tree_util.tree_map(
+            lambda t: jnp.tile(t[None, None, ...], (num_envs, max_size) + (1,) * t.ndim), item_prototype
+        )
         return cls(
             data=data,
             online_queue_ind=BoundaryPointer.init(num_envs, max_size),
