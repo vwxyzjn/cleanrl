@@ -1210,8 +1210,8 @@ if __name__ == "__main__":
         Storage(
             obs=jnp.asarray(envs.single_observation_space.sample()),
             action=jnp.asarray(envs.single_action_space.sample()),
-            logprob=jnp.asarray(0),
-            prev_reward=jnp.asarray(0),
+            logprob=jnp.asarray(0.0),
+            prev_reward=jnp.asarray(0.0),
             done=jnp.asarray(True),
         ),
         num_envs=args.num_envs,
