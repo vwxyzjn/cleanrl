@@ -869,7 +869,7 @@ if __name__ == "__main__":
         logprobs = jax.nn.log_softmax(policy_logits)
         batch_arange = jnp.arange(prev_action.shape[0])
         logprob = logprobs[batch_arange, prev_action]
-        lobprob_sample_actions = logprobs[batch_arange.reshape(-1, 1), sample_actions]
+        logprob_sample_actions = logprobs[batch_arange.reshape(-1, 1), sample_actions]  # (batch_size, n_sampled_actions)
 
         x = dynamics_proj.apply(params.dynamic_proj_params, x)
 
