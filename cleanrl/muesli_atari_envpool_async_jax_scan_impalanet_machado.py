@@ -878,7 +878,7 @@ if __name__ == "__main__":
             (x, x),
             act_seq.swapaxes(0, 1),
         )
-        _, (sample_pred_r, sample_pred_v) = jax.lax.scan(compute_pred_q_and_policy, (x, x), sample_actions)
+        _, (sample_pred_r, sample_pred_v) = jax.lax.scan(compute_pred_q_and_policy, (x, x), sample_actions.swapaxes(0, 1))
         return (params, lstm_carry), (
             logprob,
             logprob_sample_actions,
