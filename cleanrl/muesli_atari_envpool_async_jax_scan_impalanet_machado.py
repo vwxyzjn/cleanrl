@@ -808,20 +808,17 @@ if __name__ == "__main__":
         denom = 2 * eps
         return jnp.sign(tr)((num / denom) ** 2 - 1)
 
-    @jax.jit
     def unroll_model(carry, act):
         carry, pred_latent_state = dynamics.apply(agent_state.params.dynamics_params, carry, act)
         pred_reward, pred_value = reward_value_model.apply(agent_state.params.reward_value_model_params, pred_latent_state)
         pred_policy = normalize_logits(policy_model.apply(agent_state.params.policy_model_params, pred_latent_state))
         return carry, (pred_reward, pred_value, pred_policy)
 
-    @jax.jit
     def compute_pred_q_and_policy(carry, act):
         _, pred_latent_state = dynamics.apply(agent_state.params.dynamics_params, carry, act)
         pred_reward, pred_value = reward_value_model.apply(agent_state.params.reward_value_model_params, pred_latent_state)
         return carry, (pred_reward, pred_value)
 
-    @jax.jit
     def reanalyze_prior_policies_values_latent_states(carry, x):
         target_params, lstm_carry, key = carry
         obs, prev_reward, prev_action, action, done = x
@@ -851,7 +848,6 @@ if __name__ == "__main__":
             sample_actions,
         )
 
-    @jax.jit
     def reanalyze_policies_and_model_preds(carry, x):
         params, lstm_carry = carry
         obs, prev_reward, prev_action, act_seq, sample_actions, done = x
@@ -884,14 +880,12 @@ if __name__ == "__main__":
             sample_pred_v,
         )
 
-    @jax.jit
     def compute_retrace_return_one_step(retrace_return, x):
         reward, q_prior, next_q_prior, log_delta_coeff, should_discard = x
         delta = jnp.exp(log_delta_coeff) * (reward + args.gamma * next_q_prior * should_discard - q_prior)
         retrace_return = jnp.where(should_discard, retrace_return, retrace_return + args.gamma * delta)
         return retrace_return, jnp.array(0)
 
-    @jax.jit
     def compute_retrace_return(carry, x):
         """Compute the Retrace-corrected return G^v(s, a).
 
