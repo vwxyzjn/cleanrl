@@ -809,7 +809,7 @@ if __name__ == "__main__":
         eps = args.reward_transformation_epsilon
         num = jnp.sqrt(1 + 4 * eps * (jnp.abs(tr) + 1 + eps)) - 1
         denom = 2 * eps
-        return jnp.sign(tr)((num / denom) ** 2 - 1)
+        return jnp.sign(tr) * ((num / denom) ** 2 - 1)
 
     def unroll_model(carry, act):
         carry, pred_latent_state = dynamics.apply(agent_state.params.dynamics_params, carry, act)
