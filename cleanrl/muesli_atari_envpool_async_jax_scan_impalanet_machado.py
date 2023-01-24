@@ -831,7 +831,7 @@ if __name__ == "__main__":
 
         lstm_carry, x = network.apply(target_params.network_params, lstm_carry, obs, prev_reward, prev_action)
         policy_logits = normalize_logits(actor.apply(target_params.actor_params, x))
-        value = critic.apply(target_params.critic_params, x)
+        value = critic.apply(target_params.critic_params, x).squeeze()
 
         logprob = jax.nn.log_softmax(policy_logits)[jnp.arange(action.shape[0]), action]
 
