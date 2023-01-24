@@ -279,52 +279,55 @@ class RewardValueModel(nn.Module):
         value = nn.relu(value)
         return reward, value
 
-    @jax.jit
-    def distribution_expectation(self, arr: jnp.ndarray):
-        return (arr * self.atoms).sum(-1)
 
-    @jax.jit
-    def project_to_atoms(self, scalars):
-        """Project the scalars to the distribution of atoms.
+@jax.jit
+def distribution_expectation(arr: jnp.ndarray):
+    return (arr * RewardValueModel.atoms).sum(-1)
 
-        Args:
-            scalars: The scalars to project.
 
-        Returns:
-            distribution: The distribution of scalars. scalars.shape + (n_atoms,)
-        """
-        scalars = jnp.clip(scalars, self.atoms.min(), self.atoms.max())
+@jax.jit
+def project_to_atoms(scalars):
+    """Project the scalars to the distribution of atoms.
 
-        distribution = jnp.zeros(scalars.shape + self.atoms.shape)
-        ceil_scalars = jnp.ceil(scalars)
-        # The contribution of the lower atom.
-        distribution = jnp.where(
-            jnp.floor(scalars)[..., None] == self.atoms,
-            jnp.where(
-                # Ensure we just have a contribution of 1 when a scalar is equal to the value of an atom.
-                (ceil_scalars == scalars),
-                jnp.ones_like(scalars),
-                ceil_scalars - scalars,
-            )[..., None],
-            distribution,
-        )
-        # When a scalar lies strictly between two atoms. Add the contribution of the upper atom.
-        distribution = distribution.at[..., 1:].add(
-            1 - jnp.where((0 < distribution[..., :-1]) & (distribution[..., :-1] < 1), distribution[..., :-1], 1)
-        )
-        return distribution
+    Args:
+        scalars: The scalars to project.
 
-    @jax.jit
-    def compute_q(self, pred_reward, pred_value):
-        """Compute the q-value.
+    Returns:
+        distribution: The distribution of scalars. scalars.shape + (n_atoms,)
+    """
+    scalars = jnp.clip(scalars, RewardValueModel.atoms.min(), RewardValueModel.atoms.max())
 
-        pred_reward and pred_value have shape (seq_length, ..., batch_size, n_atoms)
-        q_prior has shape (batch_size, seq_length, ...)
-        """
-        pred_reward_scalar = inverse_reward_transform(RewardValueModel.distribution_expectation(pred_reward))
-        pred_value_scalar = inverse_reward_transform(RewardValueModel.distribution_expectation(pred_value))
-        q = jnp.moveaxis(pred_reward_scalar + args.gamma * pred_value_scalar, -1, 0)
-        return q
+    distribution = jnp.zeros(scalars.shape + RewardValueModel.atoms.shape)
+    ceil_scalars = jnp.ceil(scalars)
+    # The contribution of the lower atom.
+    distribution = jnp.where(
+        jnp.floor(scalars)[..., None] == RewardValueModel.atoms,
+        jnp.where(
+            # Ensure we just have a contribution of 1 when a scalar is equal to the value of an atom.
+            (ceil_scalars == scalars),
+            jnp.ones_like(scalars),
+            ceil_scalars - scalars,
+        )[..., None],
+        distribution,
+    )
+    # When a scalar lies strictly between two atoms. Add the contribution of the upper atom.
+    distribution = distribution.at[..., 1:].add(
+        1 - jnp.where((0 < distribution[..., :-1]) & (distribution[..., :-1] < 1), distribution[..., :-1], 1)
+    )
+    return distribution
+
+
+@jax.jit
+def compute_q(pred_reward, pred_value):
+    """Compute the q-value.
+
+    pred_reward and pred_value have shape (seq_length, ..., batch_size, n_atoms)
+    q_prior has shape (batch_size, seq_length, ...)
+    """
+    pred_reward_scalar = inverse_reward_transform(distribution_expectation(pred_reward))
+    pred_value_scalar = inverse_reward_transform(distribution_expectation(pred_value))
+    q = jnp.moveaxis(pred_reward_scalar + args.gamma * pred_value_scalar, -1, 0)
+    return q
 
 
 class PolicyModel(nn.Module):
@@ -1000,7 +1003,7 @@ if __name__ == "__main__":
             args.batch_sequence_length,
         )
 
-        q_prior = RewardValueModel.compute_q(pred_reward[:, 0], pred_value[:, 0])  # (batch_size, seq_length)
+        q_prior = compute_q(pred_reward[:, 0], pred_value[:, 0])  # (batch_size, seq_length)
         q_prior_seq, _ = make_batched_sliding_windows(q_prior, seq_mask[:, 1:-1], args.num_retrace_estimator_samples)
         reward_seq, _ = make_batched_sliding_windows(
             seqs.prev_reward[:, 2:], seq_mask[:, 2:], args.num_retrace_estimator_samples
@@ -1038,7 +1041,7 @@ if __name__ == "__main__":
         ema_adv_var_bias_corrected = ema_adv_var / (1 - beta_product)
 
         # Advantages of sampled actions (or all actions when using exact KL-divergence)
-        sample_q_prior = RewardValueModel.compute_q(sample_pred_r, sample_pred_v)
+        sample_q_prior = compute_q(sample_pred_r, sample_pred_v)
         sample_pred_advantages = (
             sample_q_prior - value_prior.swapaxes(0, 1)[..., None]
         )  # (batch_size, sequence_length, n_samples)
