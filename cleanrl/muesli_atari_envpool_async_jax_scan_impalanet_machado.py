@@ -1253,7 +1253,7 @@ if __name__ == "__main__":
             env_send_time += time.time() - env_send_time_start
             storage_time_start = time.time()
 
-            buffer.push_env_updates(
+            buffer = buffer.push_env_updates(
                 update_batch=Storage(
                     obs=jnp.asarray(obs),
                     action=jnp.asarray(action),
@@ -1263,7 +1263,7 @@ if __name__ == "__main__":
                 ),
                 env_ids=jnp.asarray(env_id),
             )
-            lstm_hidden_carryover.push_env_updates(
+            lstm_hidden_carryover = lstm_hidden_carryover.push_env_updates(
                 update_batch=jax.tree_util.tree_map(lambda entry: jnp.asarray(entry), lstm_hidden),
                 env_ids=jnp.asarray(env_id),
             )
