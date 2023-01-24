@@ -123,30 +123,30 @@ def evaluate(
     for episode in range(eval_episodes):
         episodic_return = 0
         next_obs = envs.reset()
-        terminated = False
+        done = False
 
         if capture_video:
             recorded_frames = []
             # conversion from grayscale into rgb
             recorded_frames.append(cv2.cvtColor(next_obs[0][-1], cv2.COLOR_GRAY2RGB))
-        while not terminated:
+        while not done:
             action, logprob, lstm_hidden, key = get_action_and_lstm_carry(
                 network_params, actor_params, next_obs, lstm_hidden, reward, action, key
             )
             next_obs, reward, _, infos = envs.step(np.array(action))
             episodic_return += infos["reward"][0]
-            terminated = sum(infos["terminated"]) == 1
+            done = sum(infos["terminated"]) or sum(infos["TimeLimit.truncated"])
 
-            if capture_video and episode == 0:
+            if capture_video and episode == 0:  # only record the first episode
                 recorded_frames.append(cv2.cvtColor(next_obs[0][-1], cv2.COLOR_GRAY2RGB))
 
-            if terminated:
+            if done:
                 print(f"eval_episode={len(episodic_returns)}, episodic_return={episodic_return}")
                 episodic_returns.append(episodic_return)
                 if capture_video and episode == 0:
                     clip = ImageSequenceClip(recorded_frames, fps=24)
                     os.makedirs(f"videos/{run_name}", exist_ok=True)
-                    clip.write_videofile(f"videos/{run_name}/{episode}.mp4", logger="bar")
+                    clip.write_videofile(f"videos/{run_name}/rl-video-episode-{episode}.mp4", logger="bar")
 
     return episodic_returns
 
