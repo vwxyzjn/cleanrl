@@ -54,6 +54,23 @@ def test_boundary_pointer():
     assert (pointer.length == jnp.array([2])).all()
 
 
+def test_boundary_pointer_jit():
+    @jax.jit
+    def sample_run():
+        pointer = BoundaryPointer.init(3, 2)
+        pointer = pointer.advance(jnp.array([2, 0]))
+        pointer = pointer.advance(jnp.array([2, 0]))
+        pointer = pointer.advance(jnp.array([2, 0]))
+        pointer = pointer.advance(jnp.array([0, 1]))
+        pointer.reset()
+
+        pointer = BoundaryPointer.init(1, 3)
+        pointer = pointer.advance(jnp.array([0]))
+        pointer.advance(jnp.array([0]))
+
+    sample_run()
+
+
 def test_buffer():
     buffer = UniformBuffer.init([jnp.array(0), jnp.array(1)], 3, 5)
     buffer = buffer.push_env_updates([jnp.array([3, 4]), jnp.array([5, 6])], jnp.array([0, 1]))
