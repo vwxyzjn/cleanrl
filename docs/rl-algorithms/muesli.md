@@ -2,8 +2,8 @@
 
 ## Overview
 
-Muesli is a new DRL algorithm that extends Maximum A-Posteriori Esimation (MPO) and is inspired by MuZero.
-It has an auxiliary prediction head that allows 
+Muesli is a new DRL algorithm that extends Maximum a-posteriori Policy Optimization (MPO) and is inspired by MuZero.
+It has an auxiliary prediction head that predicts the reward, value, and policy logits several time steps in the future.
 
 
 Original paper: 
