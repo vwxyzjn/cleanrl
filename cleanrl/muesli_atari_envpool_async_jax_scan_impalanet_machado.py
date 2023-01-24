@@ -220,9 +220,6 @@ class RepresentationNetwork(nn.Module):
         x = x.reshape(batch_size, -1)
         x = nn.Dense(256, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(x)
         x = nn.relu(x)
-        # Reward clipping (See Espeholt et al. 2018, IMPALA paper, Table C.3. Used for single levels.
-        # DMLab-30 uses a different reward transformation: see Figure C.1.)
-        last_reward = jnp.clip(last_reward, -self.reward_clip, self.reward_clip)
         last_action = jax.nn.one_hot(last_action, self.action_dim).reshape(batch_size, -1)
         x = jnp.concatenate([x, last_reward, last_action], axis=-1)
         carry, x = nn.OptimizedLSTMCell()(carry, x)
