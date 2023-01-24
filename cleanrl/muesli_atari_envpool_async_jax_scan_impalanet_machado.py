@@ -701,7 +701,7 @@ if __name__ == "__main__":
     example_carry = RepresentationNetwork.initialize_carry((1,))
     example_reward = np.array([0.0])
     example_action = np.array([envs.single_action_space.sample()])
-    network_params = network.init(network_key, example_obs)
+    network_params = network.init(network_key, example_carry, example_obs, example_reward, example_action)
 
     _, example_latent_obs = network.apply(network_params, example_carry, example_obs, example_reward, example_action)
     actor_params = actor.init(actor_key, example_latent_obs)
