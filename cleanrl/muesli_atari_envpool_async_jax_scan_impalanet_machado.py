@@ -1042,9 +1042,8 @@ if __name__ == "__main__":
 
         # Advantages of sampled actions (or all actions when using exact KL-divergence)
         sample_q_prior = compute_q(sample_pred_r, sample_pred_v)
-        sample_pred_advantages = (
-            sample_q_prior - value_prior.swapaxes(0, 1)[..., None]
-        )  # (batch_size, sequence_length, n_samples)
+        value_prior = value_prior.swapaxes(0, 1)
+        sample_pred_advantages = sample_q_prior - value_prior[..., None]  # (batch_size, sequence_length, n_samples)
 
         if args.norm_adv:
             sample_pred_advantages = sample_pred_advantages / jnp.sqrt(ema_adv_var_bias_corrected + args.epsilon_var)
