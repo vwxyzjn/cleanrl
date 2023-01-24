@@ -833,8 +833,7 @@ if __name__ == "__main__":
         logprob = jax.nn.log_softmax(policy_logits)[jnp.arange(action.shape[0]), action]
 
         if args.cmpo_exact_kl:
-            # TODO (shermansiu): Ensure that the batch_size broadcast works
-            sample_actions = jnp.arange(policy_logits.shape[-1])[:, None]
+            sample_actions = jnp.indices(policy_logits.shape)[1]
         else:
             key, subkey = jax.random.split(key, 2)
             # (n_samples, batch_size, n_actions)
