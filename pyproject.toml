@@ -98,6 +98,7 @@ optional = true
 jax = "^0.3.17"
 jaxlib = "^0.3.15"
 flax = "^0.6.0"
+chex = "^0.1.5"
 
 [tool.poetry.group.optuna]
 optional = true
