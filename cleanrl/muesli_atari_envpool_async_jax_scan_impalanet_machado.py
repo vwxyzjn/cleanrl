@@ -881,7 +881,7 @@ if __name__ == "__main__":
         _, (sample_pred_r, sample_pred_v) = jax.lax.scan(compute_pred_q_and_policy, (x, x), sample_actions)
         return (params, lstm_carry), (
             logprob,
-            lobprob_sample_actions,
+            logprob_sample_actions,
             pred_reward,
             pred_value,
             pred_policy,
