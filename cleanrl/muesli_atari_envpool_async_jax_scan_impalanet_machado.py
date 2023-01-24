@@ -1051,7 +1051,12 @@ if __name__ == "__main__":
 
         # Calculate CMPO policy
         clipped_adv_estimate = jnp.clip(sample_pred_advantages, -args.cmpo_clipping_threshold, args.cmpo_clipping_threshold)
-        prior_log_probs = jax.nn.log_softmax(policy_prior_logits.swapaxes(0, 1), -1)
+        sample_policy_prior_logits = policy_prior_logits[
+            jnp.arange(args.batch_sequence_length).reshape(-1, 1, 1),
+            jnp.arange(args.update_batch_size).reshape(1, -1, 1),
+            sample_actions.swapaxes(1, 2),
+        ]
+        prior_log_probs = jax.nn.log_softmax(sample_policy_prior_logits.swapaxes(0, 1), -1)
         cmpo_log_probs = jax.nn.log_softmax(prior_log_probs + clipped_adv_estimate, -1)
         cmpo_probs = jnp.exp(cmpo_log_probs)
 
