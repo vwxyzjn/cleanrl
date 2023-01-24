@@ -1190,9 +1190,8 @@ if __name__ == "__main__":
         unrolled_is_from_diff_traj = compute_is_from_diff_traj(unrolled_done, unrolled_mask)
         true_scalar = project_to_atoms(reward_transform(unrolled_scalar))
         pred_scalar = jnp.log(pred_scalar.transpose(2, 0, 1, 3))
-        cross_entropy = jnp.where(unrolled_is_from_diff_traj, 0, true_scalar * jnp.log(pred_scalar.transpose(2, 0, 1, 3)))
-        scalar_loss = -cross_entropy.sum(-1).mean()
-        return scalar_loss
+        cross_entropy = -jnp.where(unrolled_is_from_diff_traj[..., None], 0, true_scalar * pred_scalar).sum(-1).mean()
+        return cross_entropy
 
     def compute_is_from_diff_traj(done_seq, mask_seq):
         is_from_diff_traj = jnp.concatenate([jnp.full_like(done_seq[..., 0], False)[..., None], done_seq[..., :-1]], -1)
