@@ -611,6 +611,21 @@ wrapt = ">=1.10,<2"
 dev = ["PyTest", "PyTest (<5)", "PyTest-Cov", "PyTest-Cov (<2.6)", "bump2version (<1)", "configparser (<5)", "importlib-metadata (<3)", "importlib-resources (<4)", "sphinx (<2)", "sphinxcontrib-websupport (<2)", "tox", "zipp (<2)"]
 
 [[package]]
+name = "dill"
+version = "0.3.6"
+description = "serialize all of python"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "dill-0.3.6-py3-none-any.whl", hash = "sha256:a07ffd2351b8c678dfc4a856a3005f8067aea51d6ba6c700796a4d9e280f39f0"},
+    {file = "dill-0.3.6.tar.gz", hash = "sha256:e5db55f3687856d8fbdab002ed78544e1c4559a130302693d839dfe8f93f2373"},
+]
+
+[package.extras]
+graph = ["objgraph (>=1.7.2)"]
+
+[[package]]
 name = "distlib"
 version = "0.3.6"
 description = "Distribution utilities"
@@ -731,23 +746,47 @@ files = [
 ]
 
 [[package]]
+name = "enum-tools"
+version = "0.9.0.post1"
+description = "Tools to expand Python's enum module."
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "enum_tools-0.9.0.post1-py3-none-any.whl", hash = "sha256:d8fd962054e7e400fa7f0a196f7607f19ef78aca4b288543ecb330f890edb60d"},
+    {file = "enum_tools-0.9.0.post1.tar.gz", hash = "sha256:e59eb1c16667400b185f8a61ac427029919be2ec48b9ca04aa1b388a42fb14d5"},
+]
+
+[package.dependencies]
+pygments = ">=2.6.1"
+typing-extensions = ">=3.7.4.3"
+
+[package.extras]
+all = ["sphinx (>=3.2.0)", "sphinx-toolbox (>=2.16.0)"]
+sphinx = ["sphinx (>=3.2.0)", "sphinx-toolbox (>=2.16.0)"]
+
+[[package]]
 name = "envpool"
-version = "0.6.4"
+version = "0.7.1"
 description = "\"C++-based high-performance parallel environment execution engine (vectorized env) for general RL environments.\""
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "envpool-0.6.4-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:74c0e31b777964c166d9ec91cf2812a7850f186e3e18043ee3deb6b45fb061fc"},
-    {file = "envpool-0.6.4-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:937d0ff17d5368956d437014afd902d2c03edc3da225c2ee0469d55f4440623e"},
-    {file = "envpool-0.6.4-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a0846b4aa78ae7e88852c8f1536707e9d2e495060e42415f203bde9bb342b1dc"},
-    {file = "envpool-0.6.4-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8a5b0ca92b2a0cdbcc3463c5c9183a2f09c6ee2444985fda73e3eee9fd20af59"},
+    {file = "envpool-0.7.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7e8c73a2dfb4f2c05e1c884d9eff98ddcfe84b2412fa7124bb94655f844c8d45"},
+    {file = "envpool-0.7.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0e1306bb38e783d3a5012e0d7c382a503c3f9a613a2bddc5feb0a8b168418802"},
+    {file = "envpool-0.7.1-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:cd42c34f3204fe3460f4c580a8a13a7603882f146fa42a7db587e8cffe021d6a"},
+    {file = "envpool-0.7.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:543c0f86a27ceef2e01bb9d327253e86bf70d8139571dcdada2fea1cf0fffeb6"},
+    {file = "envpool-0.7.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:58e4c27ad12070d11335ddfc014d12eae0f9918cdacbddebd57c2806067d3f5e"},
 ]
 
 [package.dependencies]
 dm-env = ">=1.4"
 gym = ">=0.18"
+gymnasium = ">=0.26"
 numpy = ">=1.19"
+packaging = "*"
+treevalue = ">=1.4"
 types-protobuf = ">=3.17.3"
 typing-extensions = "*"
 
@@ -1044,6 +1083,23 @@ requests-oauthlib = ">=0.7.0"
 tool = ["click (>=6.0.0)"]
 
 [[package]]
+name = "graphviz"
+version = "0.20.1"
+description = "Simple Python interface for Graphviz"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "graphviz-0.20.1-py3-none-any.whl", hash = "sha256:587c58a223b51611c0cf461132da386edd896a029524ca61a1462b880bf97977"},
+    {file = "graphviz-0.20.1.zip", hash = "sha256:8c58f14adaa3b947daf26c19bc1e98c4e0702cdc31cf99153e6f06904d492bf8"},
+]
+
+[package.extras]
+dev = ["flake8", "pep8-naming", "tox (>=3)", "twine", "wheel"]
+docs = ["sphinx (>=5)", "sphinx-autodoc-typehints", "sphinx-rtd-theme"]
+test = ["coverage", "mock (>=4)", "pytest (>=7)", "pytest-cov", "pytest-mock (>=3)"]
+
+[[package]]
 name = "greenlet"
 version = "1.1.3"
 description = "Lightweight in-process concurrent programming"
@@ -1275,6 +1331,26 @@ files = [
     {file = "gymnasium-notices-0.0.1.tar.gz", hash = "sha256:3e8c868046f56dea84c949cc7e97383cccfab27152fc3f4968754e4c9c087ab9"},
     {file = "gymnasium_notices-0.0.1-py3-none-any.whl", hash = "sha256:be68c8399e88b554b6db1eb3c484b00f229cbe5c930f64f6ae9cd1a6e93db1c5"},
 ]
+
+[[package]]
+name = "hbutils"
+version = "0.8.0"
+description = "Some useful functions and classes in Python infrastructure development."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "hbutils-0.8.0-py3-none-any.whl", hash = "sha256:6f14e060351c012db60f54489e9d4481e84172e0787133643efa9eef7bf8e767"},
+    {file = "hbutils-0.8.0.tar.gz", hash = "sha256:4a54784fd4e4a0b78e13b278520bc34bc311ef53f7282f5abff0f9f0e1375218"},
+]
+
+[package.dependencies]
+packaging = ">=21.3"
+setuptools = ">=50.0"
+
+[package.extras]
+doc = ["Jinja2 (>=3.0.0,<3.1.0)", "easydict (>=1.7,<2)", "enum-tools", "packaging", "plantumlcli (>=0.0.2)", "sphinx (>=3.2.0,<3.3.0)", "sphinx-multiversion (>=0.2.4,<0.3.0)", "sphinx-rtd-theme (>=0.4.3,<0.5.0)", "sphinx-toolbox"]
+test = ["click (>=7.0.0)", "coverage (>=5)", "easydict (>=1.7,<2)", "flake8 (>=3.5,<4.0)", "mock (>=4.0.3)", "numpy (>=1.20)", "pytest (>=6.2.5,<6.3.0)", "pytest-cov (>=3.0.0,<3.1.0)", "pytest-mock (>=3.6.1,<3.7.0)", "pytest-rerunfailures (>=10.2,<11.0)", "pytest-timeout (>=2.0.2,<2.1.0)", "pytest-xdist (>=1.34.0)"]
 
 [[package]]
 name = "huggingface-hub"
@@ -4150,6 +4226,54 @@ slack = ["slack-sdk"]
 telegram = ["requests"]
 
 [[package]]
+name = "treevalue"
+version = "1.4.3"
+description = "A flexible, generalized tree-based data structure."
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "treevalue-1.4.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:6fa2d50eab6436b00cc6a244e15494434930f881e1adb0d16c83ec43d2705c27"},
+    {file = "treevalue-1.4.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:07d8efdd7587f188bc05924e437b9510c3f398f17ebd38c4c96811369bf7ce8e"},
+    {file = "treevalue-1.4.3-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:81d489a2fbe3eebabfd3728cea454f05b8636f07412af8850b29372fdb4e1989"},
+    {file = "treevalue-1.4.3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e0a824357c989cc6cd68ada5d11bad786a4323fdd1cb3ac9a9b6bdc9247d2640"},
+    {file = "treevalue-1.4.3-cp310-cp310-win32.whl", hash = "sha256:101569218002d95eee39eab228fdb3094f9dfc7e64b6cc0dff315d351360d2ec"},
+    {file = "treevalue-1.4.3-cp310-cp310-win_amd64.whl", hash = "sha256:96a1f2e6d96c2b450d075880f2ff752dc0531036bffc025457fd6d3a42e3f61d"},
+    {file = "treevalue-1.4.3-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:e72a76bac934aadd0b117c2393e4c6fa60efa7b70b702b8d0fd0e100a168f179"},
+    {file = "treevalue-1.4.3-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:e81bb65c1a003da9bde82f1861a725bd2fbe80bf970879820f06308311b2b5ef"},
+    {file = "treevalue-1.4.3-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:bf3f55263b811716cb867c69a5192c2f8cd484cfae69eced5e6e5349d8ef8d20"},
+    {file = "treevalue-1.4.3-cp37-cp37m-win32.whl", hash = "sha256:0c81ae8334d5fb7edc5c1ddd3cea93564658cc9a0d150ea2fdf2630473c9f6ad"},
+    {file = "treevalue-1.4.3-cp37-cp37m-win_amd64.whl", hash = "sha256:0187712d4cbd0dea9e23c64ae457432122830db484fef6ab11260158891bab23"},
+    {file = "treevalue-1.4.3-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:cb2b825784462a094ef301d53ab335b38207a89f84103ad7c4106f20b806b602"},
+    {file = "treevalue-1.4.3-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:d302f1e3b23c58e3e53f70ebae38186acef28bc0dd4e5e5782b184789751eaa2"},
+    {file = "treevalue-1.4.3-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:64e3096bf83066afb1bfbf6f0107c019b4dd6f2f64580e7e39130b0d1bc7add3"},
+    {file = "treevalue-1.4.3-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:88b7917ee2e527f6acc9ad2bc992985ed226d0f92ca0bdabfefa58adb0ec6f1f"},
+    {file = "treevalue-1.4.3-cp38-cp38-win32.whl", hash = "sha256:7a158d3e3ff69d50bbe4aeaf3d689297a79ccab62150696bc990ee55ed5feacc"},
+    {file = "treevalue-1.4.3-cp38-cp38-win_amd64.whl", hash = "sha256:88edd45b84ae3e9074191ee40322e15e403ed9edbdc76ae34a493e56b2b20996"},
+    {file = "treevalue-1.4.3-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:635e030b3061a40ed4bcb335e5aff913c3eac08940c03c2584209aa80f9f9e22"},
+    {file = "treevalue-1.4.3-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:6deeafa72afc1c5df0ccad2570ed38a27a39f51770f1b54f14010bb7f32b5f7a"},
+    {file = "treevalue-1.4.3-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:5a97cdcad4557949ad7988a32568a7ac39c4d70c2e5f913799905c6a315d8f4b"},
+    {file = "treevalue-1.4.3-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:98a3089e7ce26f3480411a2bbfadc90bba9ac015caf2e98cfa705fe49ab3ebee"},
+    {file = "treevalue-1.4.3-cp39-cp39-win32.whl", hash = "sha256:a47b5c6a1fa6b67d7488d17fdeb91973187213db71a31573c47e492961762b79"},
+    {file = "treevalue-1.4.3-cp39-cp39-win_amd64.whl", hash = "sha256:31c3b2840a2a10f5cca475c17457b6b061743ed693868a174cb65dc6d4afad4c"},
+    {file = "treevalue-1.4.3.tar.gz", hash = "sha256:6385c2fe828cd50bb5a7f3391aaa23064040dd15349943d03a2e7a1fcef8346d"},
+]
+
+[package.dependencies]
+click = ">=7.1.0"
+dill = ">=0.3.4,<0.4.0"
+enum-tools = "*"
+graphviz = ">=0.17,<1.0"
+hbutils = ">=0.0.1"
+
+[package.extras]
+benchmark = ["dm-tree (>=0.1.6)", "jax[cpu] (>=0.2.17)", "pytest-benchmark (>=3.4.0,<3.5.0)", "tianshou (>=0.4.5)"]
+build = ["auditwheel (>=4)", "build (>=0.7.0)", "cython (>=0.29)"]
+doc = ["Jinja2 (>=3.0.0,<3.1.0)", "easydict (>=1.7,<2)", "enum-tools", "ipykernel (>=6.15)", "ipython (>=7.16.3)", "nbsphinx (>=0.8.8)", "numpy (>=1.19,<2)", "packaging", "plantumlcli (>=0.0.4)", "potc-treevalue (>=0.0.1)", "psutil (>=5.8.0)", "py-cpuinfo (>=8.0.0)", "scikit-learn (>=0.24.2)", "sphinx (>=3.2.0,<3.3.0)", "sphinx-multiversion (>=0.2.4,<0.3.0)", "sphinx-rtd-theme (>=0.4.3,<0.5.0)", "sphinx-toolbox", "where (>=1.0.2,<1.1.0)"]
+potc = ["potc-treevalue (>=0.0.1)"]
+test = ["coverage (>=5)", "easydict (>=1.7,<2)", "flake8 (>=3.5,<4.0)", "hbutils (>=0.6.13)", "mock (>=4.0.3)", "numpy (>=1.10)", "pytest (>=6.2.5,<6.3.0)", "pytest-benchmark (>=3.4.0,<3.5.0)", "pytest-cov (>=3.0.0,<3.1.0)", "pytest-mock (>=3.6.1,<3.7.0)", "pytest-rerunfailures (>=10.2,<11.0)", "pytest-timeout (>=2.0.2,<2.1.0)", "pytest-xdist (>=1.34.0)", "setuptools (<=59.5.0)", "testtools (>=2)"]
+
+[[package]]
 name = "types-protobuf"
 version = "3.20.2"
 description = "Typing stubs for protobuf"
@@ -4456,4 +4580,4 @@ pytest = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "8188b7f2586c671ae61ec2a595b8184945707941ed4f61edc178fd2b7c208216"
+content-hash = "4d1d6ad63268312106d8a359f90330e454706ab8e39040fc349b0674c742a5c5"
