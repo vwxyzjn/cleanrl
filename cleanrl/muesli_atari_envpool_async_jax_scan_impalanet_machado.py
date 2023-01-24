@@ -1076,7 +1076,9 @@ if __name__ == "__main__":
             z_tilde_cmpo = (
                 args.cmpo_z_init + clipped_adv_estimate.sum(-1)[..., None] - clipped_adv_estimate
             ) / args.num_cmpo_regularizer_samples
-            cmpo_loss = -args.cmpo_regularizer_lambda(clipped_adv_estimate / z_tilde_cmpo * logprob_curr_sample_actions).mean()
+            cmpo_loss = (
+                -args.cmpo_regularizer_lambda * (clipped_adv_estimate / z_tilde_cmpo * logprob_curr_sample_actions).mean()
+            )
 
         # Reward (model) loss
         unrolled_rewards, _ = make_batched_sliding_windows(seqs.prev_reward[:, 2:], seq_mask[:, 2:], args.model_unroll_length)
