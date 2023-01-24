@@ -225,7 +225,7 @@ class RepresentationNetwork(nn.Module):
         last_reward = jnp.clip(last_reward, -self.reward_clip, self.reward_clip)
         last_action = jax.nn.one_hot(last_action, self.action_dim).reshape(batch_size, -1)
         x = jnp.concatenate([x, last_reward, last_action], axis=-1)
-        carry, x = nn.OptimizedLSTMCell(carry, x)
+        carry, x = nn.OptimizedLSTMCell()(carry, x)
         return carry, x
 
     @classmethod
@@ -265,9 +265,7 @@ class Dynamics(nn.Module):
     @nn.compact
     def __call__(self, carry, x):
         x = jax.nn.one_hot(x, self.action_dim).reshape(x.shape[0], -1).astype(jnp.float_)  # Work with both 1D and 2D arrays.
-        carry, x = nn.scan(
-            nn.OptimizedLSTMCellLSTMCell, variable_broadcast="params", split_rngs={"params": False}, in_axes=1, out_axes=1
-        )(carry, x)
+        carry, x = nn.OptimizedLSTMCell()(carry, x)
         return carry, x
 
 
