@@ -436,18 +436,15 @@ class BoundaryPointer:
             max_size=max_size,
         )
 
-    @jax.jit
     def advance(self, env_ids: chex.Array) -> BoundaryPointer:
         new_head = self.head.at[env_ids].add(1) % self.max_size
         new_length = self.length.at[env_ids].add(jnp.where(self.length[env_ids] == self.max_size, 0, 1))
         return self.replace(head=new_head, length=new_length)
 
     @property
-    @jax.jit
     def tail(self):
         return (self.head - self.length) % self.max_size
 
-    @jax.jit
     def reset(self) -> BoundaryPointer:
         return self.replace(
             length=self.length.at[:].set(0),
