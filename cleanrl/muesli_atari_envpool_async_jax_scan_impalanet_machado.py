@@ -221,7 +221,7 @@ class RepresentationNetwork(nn.Module):
         x = nn.Dense(256, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(x)
         x = nn.relu(x)
         last_action = jax.nn.one_hot(last_action, self.action_dim).reshape(batch_size, -1)
-        x = jnp.concatenate([x, last_reward, last_action], axis=-1)
+        x = jnp.concatenate([x, last_reward[:, None], last_action], axis=-1)
         carry, x = nn.OptimizedLSTMCell()(carry, x)
         return carry, x
 
@@ -694,7 +694,7 @@ if __name__ == "__main__":
 
     example_obs = np.array([envs.single_observation_space.sample()])
     example_carry = RepresentationNetwork.initialize_carry((1,))
-    example_reward = np.array([[0.0]])
+    example_reward = np.array([0.0])
     example_action = np.array([envs.single_action_space.sample()])
     network_params = network.init(network_key, example_carry, example_obs, example_reward, example_action)
 
