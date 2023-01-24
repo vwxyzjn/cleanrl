@@ -122,7 +122,7 @@ def parse_args():
     args.num_updates = args.total_timesteps // args.batch_size
     args.replay_buffer_size = args.replay_buffer_size // args.num_envs  # The width of the replay buffer is `num_envs`
     args.rb_batch_size = int(args.replay_proportion * args.update_batch_size)
-    args.oq_batch_size = args.update_batch_size - args.update_batch_size
+    args.oq_batch_size = args.update_batch_size - args.rb_batch_size
     # fmt: on
     return args
 
@@ -1264,7 +1264,7 @@ if __name__ == "__main__":
                 env_ids=jnp.asarray(env_id),
             )
             lstm_hidden_carryover.push_env_updates(
-                update_batch=jnp.asarray(lstm_hidden),
+                update_batch=jax.tree_util.tree_map(lambda entry: jnp.asarray(entry), lstm_hidden),
                 env_ids=jnp.asarray(env_id),
             )
 
