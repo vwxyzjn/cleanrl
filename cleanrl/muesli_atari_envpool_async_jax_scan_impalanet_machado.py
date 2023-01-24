@@ -824,7 +824,7 @@ if __name__ == "__main__":
         obs, prev_reward, prev_action, action, done = x
 
         # Reset the LSTM carry when necessary
-        lstm_carry = jnp.where(done, jnp.zeros_like(lstm_carry), lstm_carry)
+        lstm_carry = jax.tree_util.tree_map(lambda entry: jnp.where(done[:, None], jnp.zeros_like(entry), entry), lstm_carry)
 
         lstm_carry, x = network.apply(target_params.network_params, lstm_carry, obs, prev_reward, prev_action)
         policy_logits = normalize_logits(actor.apply(target_params.actor_params, x))
@@ -853,7 +853,7 @@ if __name__ == "__main__":
         obs, prev_reward, prev_action, act_seq, sample_actions, done = x
 
         # Reset the LSTM carry when necessary
-        lstm_carry = jnp.where(done, jnp.zeros_like(lstm_carry), lstm_carry)
+        lstm_carry = jax.tree_util.tree_map(lambda entry: jnp.where(done[:, None], jnp.zeros_like(entry), entry), lstm_carry)
 
         lstm_carry, x = network.apply(params.network_params, lstm_carry, obs, prev_reward, prev_action)
         policy_logits = normalize_logits(actor.apply(params.actor_params, x))
@@ -1112,7 +1112,7 @@ if __name__ == "__main__":
             valid_masks[:, indices] & (indices < batched_sequence.shape[-1])[None, ...],
         )
 
-    @jax.jit
+    # @jax.jit
     def update_muesli(
         agent_state: TrainState,
         target_agent_state: TrainState,
