@@ -101,7 +101,7 @@ def parse_args():
                         help="the coefficient of the value model loss")
     parser.add_argument("--retrace-lambda", type=float, default=0.95,  # Hessel et al. 2022, Muesli paper, Table 6
                         help="the coefficient of the Retrace importance weight")
-    parser.add_argument("--cmpo-exact-kl", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+    parser.add_argument("--cmpo-exact-kl", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
                         # Hessel et al. 2022, Muesli paper, Figure 3b
                         help="whether to use exact KL-divergence when using the CMPO regularizer")
     parser.add_argument("--cmpo-regularizer-lambda", type=float, default=1.0,  # Hessel et al. 2022, Muesli paper, Figure 3b
