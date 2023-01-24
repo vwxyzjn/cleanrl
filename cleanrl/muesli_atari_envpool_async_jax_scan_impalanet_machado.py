@@ -223,7 +223,7 @@ class RepresentationNetwork(nn.Module):
         # Reward clipping (See Espeholt et al. 2018, IMPALA paper, Table C.3. Used for single levels.
         # DMLab-30 uses a different reward transformation: see Figure C.1.)
         last_reward = jnp.clip(last_reward, -self.reward_clip, self.reward_clip)
-        last_action = jax.nn.one_hot(last_action).reshape(batch_size, -1)
+        last_action = jax.nn.one_hot(last_action, self.action_dim).reshape(batch_size, -1)
         x = jax.lax.concatenate([x, last_reward, last_action], -1)
         carry, x = nn.OptimizedLSTMCell(carry, x)
         return carry, x
