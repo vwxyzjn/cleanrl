@@ -848,6 +848,16 @@ if __name__ == "__main__":
         )
 
     def reanalyze_policies_and_model_preds(carry, x):
+        """Re-run the batch through the prior model.
+
+        obs: (batch_size, c, h, w)
+        prev_reward: (batch_size)
+        prev_action: (batch_size)
+        act_seq: (batch_size)
+        sample_actions: (batch_size, n_sampled_actions)
+        done: (batch_size)
+        lstm_carry[0]: (batch_size, lstm_dim)
+        """
         params, lstm_carry = carry
         obs, prev_reward, prev_action, act_seq, sample_actions, done = x
 
