@@ -1034,7 +1034,7 @@ if __name__ == "__main__":
             ),
         )
 
-        retrace_advantage = retrace_return - value_prior
+        retrace_advantage = (retrace_return - value_prior).swapaxes(0, 1)
         new_advantage_variance = (retrace_advantage**2).mean()
         ema_adv_var = args.beta_var * ema_adv_var + (1 - args.beta_var) * new_advantage_variance
         beta_product = beta_product * args.beta_var
