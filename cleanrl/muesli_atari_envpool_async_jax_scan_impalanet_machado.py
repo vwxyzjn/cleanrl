@@ -1294,6 +1294,7 @@ if __name__ == "__main__":
         seqs, seq_mask = buffer.sample_rb_and_oq(
             sequence_key, args.rb_batch_size, args.oq_batch_size, sequence_length=sequence_length, distribution_power=2
         )
+        buffer.reset_online_queue()
         buffer_sample_time = time.time() - buffer_sample_time_start
 
         avg_episodic_return = np.mean(returned_episode_returns)
