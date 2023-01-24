@@ -1238,7 +1238,7 @@ if __name__ == "__main__":
             prev_lstm_hidden = lstm_hidden_carryover.peek(env_id)
             prev_action = buffer.peek(env_id).action
             prev_lstm_hidden = jax.tree_util.tree_map(
-                lambda entry: jnp.where(done, jnp.zeros_like(entry), entry), prev_lstm_hidden
+                lambda entry: jnp.where(done[:, None], jnp.zeros_like(entry), entry), prev_lstm_hidden
             )
             buffer_peek_time += time.time() - buffer_peek_time_start
 
