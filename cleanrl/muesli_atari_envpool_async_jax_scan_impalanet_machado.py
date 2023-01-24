@@ -261,7 +261,7 @@ class Dynamics(nn.Module):
     @nn.remat
     @nn.compact
     def __call__(self, carry, x):
-        x = jax.nn.one_hot(x, self.action_dim).reshape(x.shape[0], -1).astype(jnp.float_)  # Work with both 1D and 2D arrays.
+        x = jax.nn.one_hot(x, self.action_dim).reshape(x.shape[0], -1).astype(jnp.float32)  # Work with both 1D and 2D arrays.
         carry, x = nn.OptimizedLSTMCell()(carry, x)
         return carry, x
 
@@ -1195,15 +1195,13 @@ if __name__ == "__main__":
     beta_product = jnp.asarray(1.0)
 
     buffer = UniformBuffer.init(
-        [
-            Storage(
-                obs=jnp.asarray(envs.single_observation_space.sample()),
-                action=jnp.asarray(envs.single_action_space.sample()),
-                logprob=jnp.asarray(0),
-                prev_reward=jnp.asarray(0),
-                done=jnp.asarray(True),
-            )
-        ],
+        Storage(
+            obs=jnp.asarray(envs.single_observation_space.sample()),
+            action=jnp.asarray(envs.single_action_space.sample()),
+            logprob=jnp.asarray(0),
+            prev_reward=jnp.asarray(0),
+            done=jnp.asarray(True),
+        ),
         num_envs=args.num_envs,
         max_size=args.replay_buffer_size,
     )
