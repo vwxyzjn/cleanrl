@@ -1066,6 +1066,7 @@ if __name__ == "__main__":
         pg_loss = -(policy_importance_ratio * retrace_advantage).mean()
 
         # CMPO regularizer
+        logprob_curr_sample_actions = logprob_curr_sample_actions.swapaxes(0, 1)
         if args.cmpo_exact_kl:  # Used for large-scale Atari experiments. See Hessel et al. 2021, Muesli paper, Table 6.
             cmpo_loss = (
                 args.cmpo_regularizer_lambda * (cmpo_probs * (cmpo_log_probs - logprob_curr_sample_actions)).sum(-1).mean()
