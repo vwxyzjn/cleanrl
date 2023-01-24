@@ -228,8 +228,9 @@ class RepresentationNetwork(nn.Module):
         carry, x = nn.OptimizedLSTMCell(carry, x)
         return carry, x
 
-    def initialize_carry(self, batch_size: tp.Tuple[int, ...] = tuple()):
-        init_hidden = jnp.zeros(batch_size + (self.lstm_dim,))
+    @classmethod
+    def initialize_carry(cls, batch_size: tp.Tuple[int, ...] = tuple()):
+        init_hidden = jnp.zeros(batch_size + (cls.lstm_dim,))
         return init_hidden, init_hidden
 
 
@@ -697,6 +698,7 @@ if __name__ == "__main__":
     policy_model = PolicyModel(action_dim=envs.single_action_space.n)
 
     example_obs = np.array([envs.single_observation_space.sample()])
+    print(type(RepresentationNetwork))
     example_carry = RepresentationNetwork.initialize_carry((1,))
     example_reward = np.array([0.0])
     example_action = np.array([envs.single_action_space.sample()])
