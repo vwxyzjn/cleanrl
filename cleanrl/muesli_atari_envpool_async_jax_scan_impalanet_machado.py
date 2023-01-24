@@ -1261,11 +1261,11 @@ if __name__ == "__main__":
                     prev_reward=jnp.asarray(prev_reward),
                     done=jnp.asarray(done),
                 ),
-                env_id=jnp.asarray(env_id),
+                env_ids=jnp.asarray(env_id),
             )
             lstm_hidden_carryover.push_env_updates(
                 update_batch=jnp.asarray(lstm_hidden),
-                env_id=jnp.asarray(env_id),
+                env_ids=jnp.asarray(env_id),
             )
 
             truncations.append(info["TimeLimit.truncated"])
