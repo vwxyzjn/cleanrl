@@ -75,9 +75,13 @@ def muesli_atari_envpool_async_jax_scan_impalanet_machado():
 
     return (
         (
-            cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.Network,
+            cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.RepresentationNetwork,
             cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.Actor,
             cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.Critic,
+            cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.DynamicsProjector,
+            cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.Dynamics,
+            cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.RewardValueModel,
+            cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.PolicyModel,
         ),
         cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado.make_env,
         cleanrl_utils.evals.muesli_envpool_jax_eval.evaluate,

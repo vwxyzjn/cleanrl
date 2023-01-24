@@ -1,16 +1,20 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/muesli/#muesli_atari_envpool_async_jax_scan_impalanet_machadopy
 # https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
+from __future__ import annotations
+
 import argparse
 import os
 import random
 import time
+import typing as tp
 from distutils.util import strtobool
-from typing import Sequence
+from functools import partial
 
 os.environ[
     "XLA_PYTHON_CLIENT_MEM_FRACTION"
 ] = "0.7"  # see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
 
+import chex
 import envpool
 import flax
 import flax.linen as nn
@@ -31,10 +35,6 @@ def parse_args():
         help="the name of this experiment")
     parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
-    parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, `torch.backends.cudnn.deterministic=False`")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, cuda will be enabled by default")
     parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
     parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
@@ -57,40 +57,72 @@ def parse_args():
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=2.5e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=64,
+    parser.add_argument("--num-envs", type=int, default=96,
         help="the number of parallel game environments")
     parser.add_argument("--async-batch-size", type=int, default=16,
         help="the envpool's batch size in the async mode")
-    parser.add_argument("--num-steps", type=int, default=32,
+    # The +2 is because async mode means we need to shift the rewards to the right once
+    # and the fact that we need the previous action means we need to shift everything to the right once.
+    parser.add_argument("--num-steps", type=int, default=30 + 2,  # Hessel et al. 2022, Muesli paper, Table 5
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument("--gae", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Use GAE for advantage computation")
     parser.add_argument("--gamma", type=float, default=0.995,  # Hessel et al. 2022, Muesli paper, Table 5
         help="the discount factor gamma")
-    parser.add_argument("--gae-lambda", type=float, default=0.95,
-        help="the lambda for the general advantage estimation")
-    parser.add_argument("--num-minibatches", type=int, default=2,
-        help="the number of mini-batches")
-    parser.add_argument("--update-epochs", type=int, default=2,
-        help="the K epochs to update the policy")
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.1,
         help="the surrogate clipping coefficient")
-    parser.add_argument("--ent-coef", type=float, default=0.01,
-        help="coefficient of the entropy")
-    parser.add_argument("--vf-coef", type=float, default=0.5,
-        help="coefficient of the value function")
-    parser.add_argument("--max-grad-norm", type=float, default=0.5,
-        help="the maximum norm for the gradient clipping")
-    parser.add_argument("--target-kl", type=float, default=None,
-        help="the target KL divergence threshold")
+    parser.add_argument("--max-parameter-update", type=float, default=1.0,
+        help="the maximum norm for the parameter update")
+    parser.add_argument("--prior-network-update-rate", type=float, default=0.1,  # Hessel et al. 2022, Muesli paper, Table 5
+                        help="the update rate of the prior/target network")
+    parser.add_argument("--adamw-weight-decay", type=float, default=0,  # Hessel et al. 2022, Muesli paper, Tables 5 and 6
+                        help="the AdamW weight decay.")
+    parser.add_argument("--beta-var", type=float, default=0.99,  # Hessel et al. 2022, Muesli paper, Table 5
+        help="the variance moving average decay")
+    parser.add_argument("--epsilon-var", type=float, default=1e-12,  # Hessel et al. 2022, Muesli paper, Table 5
+                        help="the variance offset")
+    parser.add_argument("--update-batch-size", type=int, default=96,  # Hessel et al. 2022, Muesli paper, Table 5
+                        help="the minibatch size of each update")
+    parser.add_argument("--num-retrace-estimator-samples", type=int, default=16,  # Hessel et al. 2022, Muesli paper, Table 5
+                        help="the number of samples to use for the Retrace estimator.")
+    parser.add_argument("--num-cmpo-regularizer-samples", type=int, default=16,
+                        # Hessel et al. 2022, Muesli paper, Table 5
+                        help="the number of samples to use for the CMPO regularizer estimator.")
+    parser.add_argument("--cmpo-clipping-threshold", type=float, default=1.0,
+                        # Hessel et al. 2022, Muesli paper, Section 4.1, last paragraph.
+                        help="the clipping threshold used for the CMPO policy.")
+    parser.add_argument("--cmpo-z-init", type=int, default=1.0, # Hessel et al. 2022, Muesli paper, Section 4.2, last paragraph.
+                        help="the initial guess for the normalization constant in the sampled CMPO KL-divergence.")
+    parser.add_argument("--reward-loss-coeff", type=float, default=1.0,  # Hessel et al. 2022, Muesli paper, Table 5
+                        help="the coefficient of the reward model loss")
+    parser.add_argument("--value-loss-coeff", type=float, default=0.25,  # Hessel et al. 2022, Muesli paper, Table 5
+                        help="the coefficient of the value model loss")
+    parser.add_argument("--retrace-lambda", type=float, default=0.95,  # Hessel et al. 2022, Muesli paper, Table 6
+                        help="the coefficient of the Retrace importance weight")
+    parser.add_argument("--cmpo-exact-kl", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+                        # Hessel et al. 2022, Muesli paper, Figure 3b
+                        help="whether to use exact KL-divergence when using the CMPO regularizer")
+    parser.add_argument("--cmpo-regularizer-lambda", type=float, default=1.0,  # Hessel et al. 2022, Muesli paper, Figure 3b
+                        help="the coefficient of the CMPO regularizer")
+    parser.add_argument("--replay-proportion", type=float, default=0.95,  # Hessel et al. 2022, Muesli paper, Table 6
+                        help="the proportion of data to sample from the replay buffer.")
+    parser.add_argument("--replay-buffer-size", type=int, default=6_000_000,  # Hessel et al. 2022, Muesli paper, Table 5
+                        help="the maximum number of frames the replay buffer can store.")
+    parser.add_argument("--model-unroll-length", type=int, default=5,
+                        # Hessel et al. 2022, Muesli paper, Table 5
+                        help="the number of steps to unroll the model.")
+    parser.add_argument("--reward-transformation-epsilon", type=float, default=1e-3,  # Schrittwieser et al. 2019, MuZero paper, Appendix F
+                        help="the Lipschitz continuity regularization coefficient for the reward transformation.")
+
     args = parser.parse_args()
+    args.batch_sequence_length = args.num_steps-2
     args.batch_size = int(args.num_envs * args.num_steps)
-    args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_updates = args.total_timesteps // args.batch_size
+    args.replay_buffer_size = args.replay_buffer_size // args.num_envs  # The width of the replay buffer is `num_envs`
+    args.rb_batch_size = int(args.replay_proportion * args.update_batch_size)
+    args.oq_batch_size = args.update_batch_size - args.update_batch_size
     # fmt: on
     return args
 
@@ -109,7 +141,9 @@ def make_env(env_id, seed, num_envs, async_batch_size=1):
             repeat_action_probability=0.25,  # Hessel et al. 2022, Muesli paper, Table 4
             noop_max=1,  # Hessel et al. 2022, Muesli paper, Table 4
             full_action_space=True,  # Hessel et al. 2022, Muesli paper, Table 4
-            max_episode_steps=int(108000 / 4),  # Hessel et al. 2022, Muesli paper, Table 4, we divide by 4 because of the skipped frames
+            max_episode_steps=int(
+                108000 / 4
+            ),  # Hessel et al. 2022, Muesli paper, Table 4, we divide by 4 because of the skipped frames
             reward_clip=True,
             seed=seed,
         )
@@ -156,20 +190,47 @@ class ConvSequence(nn.Module):
         return x
 
 
-class Network(nn.Module):
-    channelss: Sequence[int] = (16, 32, 32)
+class RepresentationNetwork(nn.Module):
+    """Large IMPALA network.
+
+    See Espeholt et al. 2018, IMPALA paper, Figure 4.
+    """
+
+    action_dim: tp.Sequence[int]
+    channelss: tp.Sequence[int] = (16, 32, 32)
+    lstm_dim: int = 256
+    reward_clip: int = 1
 
     @nn.compact
-    def __call__(self, x):
+    def __call__(self, carry, x, last_reward, last_action):
+        """Encode a batch of observations into the latent space.
+
+        Args:
+            carry: The carry to pass to the LSTM. <(batch_size, lstm_dim), (batch_size, lstm_dim)>
+            x: The batch of observations. (batch_size, channels, height, width)
+            last_reward: The reward from the previous step. (batch_size)
+            last_action: The action from the previous step. (batch_size)
+        """
         x = jnp.transpose(x, (0, 2, 3, 1))
-        x = x / (255.0)
+        x = x / 255.0
         for channels in self.channelss:
             x = ConvSequence(channels)(x)
         x = nn.relu(x)
-        x = x.reshape((x.shape[0], -1))
+        batch_size = x.shape[0]
+        x = x.reshape(batch_size, -1)
         x = nn.Dense(256, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(x)
         x = nn.relu(x)
-        return x
+        # Reward clipping (See Espeholt et al. 2018, IMPALA paper, Table C.3. Used for single levels.
+        # DMLab-30 uses a different reward transformation: see Figure C.1.)
+        last_reward = jnp.clip(last_reward, -self.reward_clip, self.reward_clip)
+        last_action = jax.nn.one_hot(last_action).reshape(batch_size, -1)
+        x = jax.lax.concatenate([x, last_reward, last_action], -1)
+        carry, x = nn.OptimizedLSTMCell(carry, x)
+        return carry, x
+
+    def initialize_carry(self, batch_size: tp.Tuple[int, ...] = tuple()):
+        init_hidden = jnp.zeros(batch_size + (self.lstm_dim,))
+        return init_hidden, init_hidden
 
 
 class Critic(nn.Module):
@@ -179,11 +240,105 @@ class Critic(nn.Module):
 
 
 class Actor(nn.Module):
-    action_dim: Sequence[int]
+    action_dim: tp.Sequence[int]
 
     @nn.compact
     def __call__(self, x):
         return nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0))(x)
+
+
+class DynamicsProjector(nn.Module):
+    dynamics_hidden_dim: int = 1024
+
+    @nn.compact
+    def __call__(self, x):
+        x = nn.Dense(self.dynamics_hidden_dim, kernel_init=orthogonal(1), bias_init=constant(0.0))(x)
+        # An LSTM carry has both the cell and hidden variables.
+        return x
+
+
+class Dynamics(nn.Module):
+    action_dim: tp.Sequence[int]
+
+    @nn.remat
+    @nn.compact
+    def __call__(self, carry, x):
+        x = jax.nn.one_hot(x, self.action_dim).reshape(x.shape[0], -1).astype(jnp.float_)  # Work with both 1D and 2D arrays.
+        carry, x = nn.scan(
+            nn.OptimizedLSTMCellLSTMCell, variable_broadcast="params", split_rngs={"params": False}, in_axes=1, out_axes=1
+        )(carry, x)
+        return carry, x
+
+
+class RewardValueModel(nn.Module):
+    n_atoms: int = 601  # Schrittwieser et al. 2019, MuZero paper, Appendix F
+    atoms = jnp.linspace(-300, 300, 601)
+
+    @nn.compact
+    def __call__(self, x):
+        # Muesli uses MuZero's distributional reward and value representation. See the last paragraph of Section 4.5.
+        reward = nn.Dense(self.n_atoms, kernel_init=orthogonal(0.01), bias_init=constant(0.0))(x)
+        reward = nn.relu(reward)
+        value = nn.Dense(self.n_atoms, kernel_init=orthogonal(0.01), bias_init=constant(0.0))(x)
+        value = nn.relu(value)
+        return reward, value
+
+    @jax.jit
+    def distribution_expectation(self, arr: jnp.ndarray):
+        return (arr * self.atoms).sum(-1)
+
+    @jax.jit
+    def project_to_atoms(self, scalars):
+        """Project the scalars to the distribution of atoms.
+
+        Args:
+            scalars: The scalars to project.
+
+        Returns:
+            distribution: The distribution of scalars. scalars.shape + (n_atoms,)
+        """
+        scalars = jnp.clip(scalars, self.atoms.min(), self.atoms.max())
+
+        distribution = jnp.zeros(scalars.shape + self.atoms.shape)
+        ceil_scalars = jnp.ceil(scalars)
+        # The contribution of the lower atom.
+        distribution = jnp.where(
+            jnp.floor(scalars)[..., None] == self.atoms,
+            jnp.where(
+                # Ensure we just have a contribution of 1 when a scalar is equal to the value of an atom.
+                (ceil_scalars == scalars),
+                jnp.ones_like(scalars),
+                ceil_scalars - scalars,
+            )[..., None],
+            distribution,
+        )
+        # When a scalar lies strictly between two atoms. Add the contribution of the upper atom.
+        distribution = distribution.at[..., 1:].add(
+            1 - jnp.where((0 < distribution[..., :-1]) & (distribution[..., :-1] < 1), distribution[..., :-1], 1)
+        )
+        return distribution
+
+    @jax.jit
+    def compute_q(self, pred_reward, pred_value):
+        """Compute the q-value.
+
+        pred_reward and pred_value have shape (seq_length, ..., batch_size, n_atoms)
+        q_prior has shape (batch_size, seq_length, ...)
+        """
+        pred_reward_scalar = inverse_reward_transform(RewardValueModel.distribution_expectation(pred_reward))
+        pred_value_scalar = inverse_reward_transform(RewardValueModel.distribution_expectation(pred_value))
+        q = jnp.moveaxis(pred_reward_scalar + args.gamma * pred_value_scalar, -1, 0)
+        return q
+
+
+class PolicyModel(nn.Module):
+    action_dim: tp.Sequence[int]
+
+    @nn.compact
+    def __call__(self, x):
+        policy = nn.Dense(self.action_dim, kernel_init=orthogonal(0.01), bias_init=constant(0.0))(x)
+        policy = nn.relu(policy)
+        return policy
 
 
 @flax.struct.dataclass
@@ -191,6 +346,77 @@ class AgentParams:
     network_params: flax.core.FrozenDict
     actor_params: flax.core.FrozenDict
     critic_params: flax.core.FrozenDict
+    dynamic_proj_params: flax.core.FrozenDict
+    dynamics_params: flax.core.FrozenDict
+    reward_value_model_params: flax.core.FrozenDict
+    policy_model_params: flax.core.FrozenDict
+
+
+def scale_by_learning_rate(learning_rate: optax.ScalarOrSchedule, flip_sign=True):
+    """Scale by the learning rate.
+
+    Taken from https://github.com/deepmind/optax/blob/master/optax/_src/alias.py#L34#L38
+    """
+    m = -1 if flip_sign else 1
+    if callable(learning_rate):
+        return optax.scale_by_schedule(lambda count: m * learning_rate(count))
+    return optax.scale(m * learning_rate)
+
+
+def clipped_adamw(
+    learning_rate: optax.ScalarOrSchedule,
+    b1: float = 0.9,
+    b2: float = 0.999,
+    eps: float = 1e-8,
+    eps_root: float = 0.0,
+    mu_dtype: tp.Any | None = None,
+    weight_decay: float = 1e-4,
+    mask: tp.Optional[tp.Union[tp.Any, tp.Callable[[optax.Params], tp.Any]]] = None,
+    max_parameter_update: float = 1.0,
+) -> optax.GradientTransformation:
+    r"""The AdamW optimizer, except we clip the gradient before scaling by the learning rate.
+
+    See Hessel et al. 2022, Muesli paper, Muesli Supplement F.1: Optimizers for details.
+
+    Args:
+        learning_rate: A fixed global scaling factor.
+        b1: Exponential decay rate to track the first moment of past gradients.
+        b2: Exponential decay rate to track the second moment of past gradients.
+        eps: A small constant applied to denominator outside of the square root
+          (as in the Adam paper) to avoid dividing by zero when rescaling.
+        eps_root: A small constant applied to denominator inside the square root (as
+          in RMSProp), to avoid dividing by zero when rescaling. This is needed for
+          example when computing (meta-)gradients through Adam.
+        mu_dtype: Optional `dtype` to be used for the first order accumulator; if
+          `None` then the `dtype` is inferred from `params` and `updates`.
+        weight_decay: Strength of the weight decay regularization. Note that this
+          weight decay is multiplied with the learning rate. This is consistent
+          with other frameworks such as PyTorch, but different from
+          (Loshchilov et al, 2019) where the weight decay is only multiplied with
+          the "schedule multiplier", but not the base learning rate.
+        mask: A tree with same structure as (or a prefix of) the params PyTree,
+          or a Callable that returns such a pytree given the params/updates.
+          The leaves should be booleans, `True` for leaves/subtrees you want to
+          apply the weight decay to, and `False` for those you want to skip. Note
+          that the Adam gradient transformations are applied to all parameters.
+        max_parameter_update: The amount to clip the parameter update by.
+    Returns:
+        The corresponding `GradientTransformation`.
+    """
+    return optax.chain(
+        optax.scale_by_adam(b1=b1, b2=b2, eps=eps, eps_root=eps_root, mu_dtype=mu_dtype),
+        optax.add_decayed_weights(weight_decay, mask),
+        optax.clip(max_parameter_update),
+        scale_by_learning_rate(learning_rate),
+    )
+
+
+def update_target_network(state: TrainState, target_state: TrainState, alpha_target: float) -> TrainState:
+    new_target_params = jax.tree_multimap(
+        lambda p, tp: p * alpha_target + tp * (1 - alpha_target), state.params, target_state.params
+    )
+
+    return target_state.replace(params=new_target_params)
 
 
 IntScalar = chex.Array
@@ -417,6 +643,15 @@ class UniformBuffer:
         )
 
 
+@chex.dataclass
+class Storage:
+    obs: chex.Array
+    action: chex.Array
+    logprob: chex.Array
+    prev_reward: chex.Array
+    done: chex.Array
+
+
 if __name__ == "__main__":
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -442,7 +677,9 @@ if __name__ == "__main__":
     random.seed(args.seed)
     np.random.seed(args.seed)
     key = jax.random.PRNGKey(args.seed)
-    key, network_key, actor_key, critic_key = jax.random.split(key, 4)
+    key, network_key, actor_key, critic_key, dynamics_proj_key, dynamics_key, rv_model_key, p_model_key = jax.random.split(
+        key, 8
+    )
 
     # env setup
     envs = make_env(args.env_id, args.seed, args.num_envs, args.async_batch_size)()
@@ -451,241 +688,505 @@ if __name__ == "__main__":
     def linear_schedule(count):
         # anneal learning rate linearly after one training iteration which contains
         # (args.num_minibatches * args.update_epochs) gradient updates
-        frac = 1.0 - (count // (args.num_minibatches * args.update_epochs)) / args.num_updates
+        frac = 1.0 - (count // args.update_epochs) / args.num_updates
         return args.learning_rate * frac
 
-    network = Network()
+    network = RepresentationNetwork(action_dim=envs.single_action_space.n)
     actor = Actor(action_dim=envs.single_action_space.n)
     critic = Critic()
-    network_params = network.init(network_key, np.array([envs.single_observation_space.sample()]))
+    dynamics_proj = DynamicsProjector()
+    dynamics = Dynamics(action_dim=envs.single_action_space.n)
+    reward_value_model = RewardValueModel()
+    policy_model = PolicyModel(action_dim=envs.single_action_space.n)
+
+    example_obs = np.array([envs.single_observation_space.sample()])
+    example_carry = RepresentationNetwork.initialize_carry((1,))
+    example_reward = np.array([0.0])
+    example_action = np.array([envs.single_action_space.sample()])
+    network_params = network.init(network_key, example_obs)
+
+    _, example_latent_obs = network.apply(network_params, example_carry, example_obs, example_reward, example_action)
+    actor_params = actor.init(actor_key, example_latent_obs)
+    critic_params = critic.init(critic_key, example_latent_obs)
+    dynamics_proj_params = dynamics_proj.init(critic_key, example_latent_obs)
+
+    example_dyn_carry = dynamics_proj.apply(dynamics_proj_params, example_latent_obs)
+    example_dyn_carry = (example_dyn_carry, example_dyn_carry)
+    dynamics_params = dynamics.init(dynamics_key, example_dyn_carry, example_action)
+
+    _, example_predicted_latent_obs = dynamics.apply(dynamics_params, example_dyn_carry, example_action)
+    reward_value_model_params = reward_value_model.init(rv_model_key, example_predicted_latent_obs)
+    policy_model_params = policy_model.init(p_model_key, example_predicted_latent_obs)
+
     agent_state = TrainState.create(
         apply_fn=None,
         params=AgentParams(
             network_params,
-            actor.init(actor_key, network.apply(network_params, np.array([envs.single_observation_space.sample()]))),
-            critic.init(critic_key, network.apply(network_params, np.array([envs.single_observation_space.sample()]))),
+            actor_params,
+            critic_params,
+            dynamics_proj_params,
+            dynamics_params,
+            reward_value_model_params,
+            policy_model_params,
         ),
-        tx=optax.chain(
-            optax.clip_by_global_norm(args.max_grad_norm),
-            optax.inject_hyperparams(optax.adam)(
-                learning_rate=linear_schedule if args.anneal_lr else args.learning_rate, eps=1e-5
-            ),
+        tx=clipped_adamw(
+            learning_rate=linear_schedule if args.anneal_lr else args.learning_rate,
+            eps=1e-5,
+            weight_decay=args.adamw_weight_decay,
+            max_parameter_update=args.max_parameter_update,
         ),
+    )
+    target_agent_state = TrainState.create(
+        apply_fn=None,
+        params=AgentParams(
+            network_params,
+            actor_params,
+            critic_params,
+            dynamics_proj_params,
+            dynamics_params,
+            reward_value_model_params,
+            policy_model_params,
+        ),
+        tx=optax.set_to_zero(),
     )
 
     @jax.jit
-    def get_action_and_value(
+    def get_action_and_lstm_carry(
         agent_state: TrainState,
-        next_obs: np.ndarray,
+        obs: np.ndarray,
+        lstm_carry: np.ndarray,
+        prev_reward: np.ndarray,
+        prev_action: np.ndarray,
         key: jax.random.PRNGKey,
     ):
-        hidden = network.apply(agent_state.params.network_params, next_obs)
-        logits = actor.apply(agent_state.params.actor_params, hidden)
+        lstm_carry, hidden = network.apply(agent_state.params.network_params, lstm_carry, obs, prev_reward, prev_action)
+        logits = normalize_logits(actor.apply(agent_state.params.actor_params, hidden))
         # sample action: Gumbel-softmax trick
         # see https://stats.stackexchange.com/questions/359442/sampling-from-a-categorical-distribution
         key, subkey = jax.random.split(key)
         u = jax.random.uniform(subkey, shape=logits.shape)
         action = jnp.argmax(logits - jnp.log(-jnp.log(u)), axis=1)
         logprob = jax.nn.log_softmax(logits)[jnp.arange(action.shape[0]), action]
-        value = critic.apply(agent_state.params.critic_params, hidden)
-        return action, logprob, value.squeeze(), key
+        return action, logprob, lstm_carry, key
 
     @jax.jit
-    def get_action_and_value2(
-        params: flax.core.FrozenDict,
-        x: np.ndarray,
-        action: np.ndarray,
-    ):
-        hidden = network.apply(params.network_params, x)
-        logits = actor.apply(params.actor_params, hidden)
-        logprob = jax.nn.log_softmax(logits)[jnp.arange(action.shape[0]), action]
+    def normalize_logits(logits: jnp.ndarray) -> jnp.ndarray:
+        """Normalize thhe logits.
+
+        # https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
+        """
         logits = logits - jax.scipy.special.logsumexp(logits, axis=-1, keepdims=True)
         logits = logits.clip(min=jnp.finfo(logits.dtype).min)
-        p_log_p = logits * jax.nn.softmax(logits)
-        entropy = -p_log_p.sum(-1)
-        value = critic.apply(params.critic_params, hidden).squeeze()
-        return logprob, entropy, value
+        return logits
 
-    def compute_gae_once(carry, x):
-        lastvalues, lastdones, advantages, lastgaelam, final_env_ids, final_env_id_checked = carry
-        (
-            done,
+    @jax.jit
+    def reward_transform(r: jnp.ndarray) -> jnp.ndarray:
+        """Transform the reward.
+
+        h(x): R -> R, epsilon > 0
+        x -> sgn(x)(sqrt(abs(x)+1)-1) + epsilon * x
+
+        The function is applied element-wise.
+
+        See the last paragraph of Hessel et al., 2021. Muesli paper. Section 4.5. for details.
+        Alternatively, see Pohlen et al., 2018. Observe and Look Further: Achieving Consistent Performance on Atari.
+        - Section 3.2: how to use it
+        - Proposition A.2: the inverse and some properties of the transformation.
+        """
+        eps = args.reward_transformation_epsilon
+        return jnp.sign(r) * (jnp.sqrt(jnp.abs(r) + 1) - 1) + eps * r
+
+    @jax.jit
+    def inverse_reward_transform(tr: jnp.ndarray) -> jnp.ndarray:
+        """De-transform the reward.
+
+        h^-1(x): R -> R, epsilon > 0
+        x -> sgn(x)(((sqrt(1 + 4*epsilon*(abs(x)+1+epsilon)) - 1)/(2*epsilon))^2-1)
+
+        The function is applied element-wise.
+
+        See the last paragraph of Hessel et al., 2021. Muesli paper. Section 4.5. for details.
+        Alternatively, see Pohlen et al., 2018. Observe and Look Further: Achieving Consistent Performance on Atari.
+        - Section 3.2: how to use it
+        - Proposition A.2: the inverse and some properties of the transformation.
+        """
+        eps = args.reward_transformation_epsilon
+        num = jnp.sqrt(1 + 4 * eps * (jnp.abs(tr) + 1 + eps)) - 1
+        denom = 2 * eps
+        return jnp.sign(tr)((num / denom) ** 2 - 1)
+
+    @jax.jit
+    def unroll_model(carry, act):
+        carry, pred_latent_state = dynamics.apply(agent_state.params.dynamics_params, carry, act)
+        pred_reward, pred_value = reward_value_model.apply(agent_state.params.reward_value_model_params, pred_latent_state)
+        pred_policy = normalize_logits(policy_model.apply(agent_state.params.policy_model_params, pred_latent_state))
+        return carry, (pred_reward, pred_value, pred_policy)
+
+    @jax.jit
+    def compute_pred_q_and_policy(carry, act):
+        _, pred_latent_state = dynamics.apply(agent_state.params.dynamics_params, carry, act)
+        pred_reward, pred_value = reward_value_model.apply(agent_state.params.reward_value_model_params, pred_latent_state)
+        return carry, (pred_reward, pred_value)
+
+    @jax.jit
+    def reanalyze_prior_policies_values_latent_states(carry, x):
+        target_params, lstm_carry, key = carry
+        obs, prev_reward, prev_action, action, done = x
+
+        # Reset the LSTM carry when necessary
+        lstm_carry = jnp.where(done, jnp.zeros_like(lstm_carry), lstm_carry)
+
+        lstm_carry, x = network.apply(target_params.network_params, lstm_carry, obs, prev_reward, prev_action)
+        policy_logits = normalize_logits(actor.apply(target_params.actor_params, x))
+        value = critic.apply(target_params.critic_params, x)
+
+        logprob = jax.nn.log_softmax(policy_logits)[jnp.arange(action.shape[0]), action]
+
+        if args.cmpo_exact_kl:
+            # TODO (shermansiu): Ensure that the batch_size broadcast works
+            sample_actions = jnp.arange(policy_logits.shape[-1])[:, None]
+        else:
+            key, subkey = jax.random.split(key, 2)
+            # (n_samples, batch_size, n_actions)
+            u = jax.random.uniform(subkey, shape=(args.num_cmpo_regularizer_samples,) + policy_logits.shape)
+            sample_actions = jnp.argmax(policy_logits[None, ...] - jnp.log(-jnp.log(u)), axis=-1)
+
+        return (target_params, lstm_carry, key), (
+            policy_logits,
             value,
-            eid,
-            reward,
-        ) = x
-        nextnonterminal = 1.0 - lastdones[eid]
-        nextvalues = lastvalues[eid]
-        delta = jnp.where(final_env_id_checked[eid] == -1, 0, reward + args.gamma * nextvalues * nextnonterminal - value)
-        advantages = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam[eid]
-        final_env_ids = jnp.where(final_env_id_checked[eid] == 1, 1, 0)
-        final_env_id_checked = final_env_id_checked.at[eid].set(
-            jnp.where(final_env_id_checked[eid] == -1, 1, final_env_id_checked[eid])
-        )
-
-        # the last_ variables keeps track of the actual `num_steps`
-        lastgaelam = lastgaelam.at[eid].set(advantages)
-        lastdones = lastdones.at[eid].set(done)
-        lastvalues = lastvalues.at[eid].set(value)
-        return (lastvalues, lastdones, advantages, lastgaelam, final_env_ids, final_env_id_checked), (
-            advantages,
-            final_env_ids,
+            logprob,
+            sample_actions,
         )
 
     @jax.jit
-    def compute_gae(
-        env_ids: np.ndarray,
-        rewards: np.ndarray,
-        values: np.ndarray,
-        dones: np.ndarray,
-    ):
-        dones = jnp.asarray(dones)
-        values = jnp.asarray(values)
-        env_ids = jnp.asarray(env_ids)
-        rewards = jnp.asarray(rewards)
+    def reanalyze_policies_and_model_preds(carry, x):
+        params, lstm_carry = carry
+        obs, prev_reward, prev_action, act_seq, sample_actions, done = x
 
-        _, B = env_ids.shape
-        final_env_id_checked = jnp.zeros(args.num_envs, jnp.int32) - 1
-        final_env_ids = jnp.zeros(B, jnp.int32)
-        advantages = jnp.zeros(B)
-        lastgaelam = jnp.zeros(args.num_envs)
-        lastdones = jnp.zeros(args.num_envs) + 1
-        lastvalues = jnp.zeros(args.num_envs)
+        # Reset the LSTM carry when necessary
+        lstm_carry = jnp.where(done, jnp.zeros_like(lstm_carry), lstm_carry)
 
-        (_, _, _, _, final_env_ids, final_env_id_checked), (advantages, final_env_ids) = jax.lax.scan(
-            compute_gae_once,
+        lstm_carry, x = network.apply(params.network_params, lstm_carry, obs, prev_reward, prev_action)
+        policy_logits = normalize_logits(actor.apply(params.actor_params, x))
+        logprobs = jax.nn.log_softmax(policy_logits)
+        batch_arange = jnp.arange(prev_action.shape[0])
+        logprob = logprobs[batch_arange, prev_action]
+        lobprob_sample_actions = logprobs[batch_arange.reshape(-1, 1), sample_actions]
+
+        x = dynamics_proj.apply(params.dynamic_proj_params, x)
+
+        _, (pred_reward, pred_value, pred_policy) = jax.lax.scan(
+            unroll_model,
+            (x, x),
+            act_seq.swapaxes(0, 1),
+        )
+        _, (sample_pred_r, sample_pred_v) = jax.lax.scan(compute_pred_q_and_policy, (x, x), sample_actions)
+        return (params, lstm_carry), (
+            logprob,
+            lobprob_sample_actions,
+            pred_reward,
+            pred_value,
+            pred_policy,
+            sample_pred_r,
+            sample_pred_v,
+        )
+
+    @jax.jit
+    def compute_retrace_return_one_step(retrace_return, x):
+        reward, q_prior, next_q_prior, log_delta_coeff, should_discard = x
+        delta = jnp.exp(log_delta_coeff) * (reward + args.gamma * next_q_prior * should_discard - q_prior)
+        retrace_return = jnp.where(should_discard, retrace_return, retrace_return + args.gamma * delta)
+        return retrace_return, jnp.array(0)
+
+    @jax.jit
+    def compute_retrace_return(carry, x):
+        """Compute the Retrace-corrected return G^v(s, a).
+
+        All xs should have the shape (batch_size, window_width).
+
+        Returns:
+            retrace_return: The Retrace estimate of the return, bootstrapped with q_prior. (batch_size)
+        """
+        reward, q_prior, logprob_diff, should_discard = x
+        # The Retrace estimator uses the coefficients c_s = lambda * min(1, pi(a_s|x_s)/mu(a_s|x_s)).
+        logprob_diff = jnp.cumsum(jnp.log(args.retrace_lambda) * jnp.clip(logprob_diff.at[:, 0].set(0), a_max=0), axis=-1)
+        batch_size = reward.shape[0]
+        q_prior = q_prior.swapaxes(0, 1)
+        retrace_return, _ = jax.lax.scan(
+            compute_retrace_return_one_step,
+            jnp.zeros(batch_size),
             (
-                lastvalues,
-                lastdones,
-                advantages,
-                lastgaelam,
-                final_env_ids,
-                final_env_id_checked,
-            ),
-            (
-                dones,
-                values,
-                env_ids,
-                rewards,
+                reward.swapaxes(0, 1)[:-1],
+                q_prior[:-1],
+                q_prior[1:],
+                logprob_diff.swapaxes(0, 1)[:-1],
+                should_discard.swapaxes(0, 1)[1:],
             ),
             reverse=True,
         )
-        return advantages, advantages + values, final_env_id_checked, final_env_ids
+        retrace_return = retrace_return + q_prior[0]
+        return carry, retrace_return
 
-    def muesli_loss(params, x, a, logp, mb_advantages, mb_returns):
-        newlogprob, entropy, newvalue = get_action_and_value2(params, x, a)
-        logratio = newlogprob - logp
-        ratio = jnp.exp(logratio)
-        approx_kl = ((ratio - 1) - logratio).mean()
+    @jax.jit
+    def muesli_loss(
+        params: AgentParams,
+        target_params: AgentParams,
+        ema_adv_var: jnp.ndarray,
+        beta_product: jnp.ndarray,
+        seqs: Storage,
+        seq_mask: jnp.ndarray,
+        key: jax.random.PRNGKey,
+    ):
+        """Calculate the loss for Muesli.
+
+        We need to shift the rewards to the future by one time step because of the way the async API works.
+        Because the LSTM takes the previous rewards, the offset cancels out.
+        But since we need the previous action for the LSTM, we end up shifting everything to the right once anyway.
+
+        obs: -1, ..., t+1
+        reward: -2, ..., t
+        action: -1, ..., t+1
+        logprob: -1, ..., t+1
+        done: -1, ..., t+1
+
+        Args:
+            params: The parameters of the Muesli model.
+            target_params: The parameters of the target Muesli model. Used to make actions.
+            ema_adv_var: The exponential moving average of the variance of the advantage estimator.
+            beta_product: The memoized version of beta_var^t. Used for bias correction.
+            seqs: The batch of sequences.
+            seq_mask: The mask of "valid sequences."
+            key: The pseudo-random number generator key.
+        """
+
+        # TODO: Slight problem: When learning, we have to use LSTM hiddens generated from scratch because
+        # the original ones are from an outdated network.
+        lstm_carry = RepresentationNetwork.initialize_carry((args.update_batch_size,))
+        unrolled_actions, _ = make_batched_sliding_windows(
+            seqs.action[:, 1:-1], seq_mask[:, 1:-1], args.model_unroll_length
+        )  # (batch_size, sequence_length, window_width)
+
+        # Replay the sequences in B through the target/prior network.
+        # If only we could scan over axis 1 instead of axis 0...
+        (_, _, key), (policy_prior_logits, value_prior, logprob_prior, sample_actions) = jax.lax.scan(
+            reanalyze_prior_policies_values_latent_states,
+            (target_params, lstm_carry, key),
+            (
+                seqs.obs.swapaxes(0, 1)[1:-1],
+                seqs.prev_reward.swapaxes(0, 1)[1:-1],
+                seqs.action.swapaxes(0, 1)[:-2],
+                seqs.action.swapaxes(0, 1)[1:-1],
+                seqs.done.swapaxes(0, 1)[1:-1],
+            ),
+            args.batch_sequence_length,
+        )
+
+        # Replay the sequences in B through the current network.
+        _, (
+            logprob_curr,
+            logprob_curr_sample_actions,
+            pred_reward,
+            pred_value,
+            pred_policy_logits,
+            sample_pred_r,
+            sample_pred_v,
+        ) = jax.lax.scan(
+            reanalyze_policies_and_model_preds,
+            (params, lstm_carry),
+            (
+                seqs.obs.swapaxes(0, 1)[1:-1],
+                seqs.prev_reward.swapaxes(0, 1)[1:-1],
+                seqs.action.swapaxes(0, 1)[:-2],
+                unrolled_actions.swapaxes(0, 1),
+                sample_actions.swapaxes(1, 2),  # (seq_length, batch_size, n_samples)
+                seqs.done.swapaxes(0, 1)[1:-1],
+            ),
+            args.batch_sequence_length,
+        )
+
+        q_prior = RewardValueModel.compute_q(pred_reward[:, 0], pred_value[:, 0])  # (batch_size, seq_length)
+        q_prior_seq, _ = make_batched_sliding_windows(q_prior, seq_mask[:, 1:-1], args.num_retrace_estimator_samples)
+        reward_seq, _ = make_batched_sliding_windows(
+            seqs.prev_reward[:, 2:], seq_mask[:, 2:], args.num_retrace_estimator_samples
+        )
+        # log(pi_prior(a|s)/pi_b(a|s))
+        logprob_diff_seq, _ = make_batched_sliding_windows(
+            logprob_prior.swapaxes(0, 1) - seqs.logprob[:, 1:-1], seq_mask[:, 1:-1], args.num_retrace_estimator_samples
+        )
+
+        done_seq, mask_seq = make_batched_sliding_windows(
+            # Sync with reward's mask
+            seqs.done[:, :-2],
+            seq_mask[:, 2:],
+            args.num_retrace_estimator_samples,
+        )
+        # We figure out if the current entry in the window is from the same trajectory as the first entry
+        is_from_diff_traj = compute_is_from_diff_traj(done_seq, mask_seq)
+
+        # Calculate Retrace estimates G^v(s,a)
+        _, retrace_return = jax.lax.scan(
+            compute_retrace_return,
+            (),
+            (
+                reward_seq.swapaxes(0, 1),
+                q_prior_seq.swapaxes(0, 1),
+                logprob_diff_seq.swapaxes(0, 1),
+                is_from_diff_traj.swapaxes(0, 1),
+            ),
+        )
+
+        retrace_advantage = retrace_return - value_prior
+        new_advantage_variance = (retrace_advantage**2).mean()
+        ema_adv_var = args.beta_var * ema_adv_var + (1 - args.beta_var) * new_advantage_variance
+        beta_product = beta_product * args.beta_var
+        ema_adv_var_bias_corrected = ema_adv_var / (1 - beta_product)
+
+        # Advantages of sampled actions (or all actions when using exact KL-divergence)
+        sample_q_prior = RewardValueModel.compute_q(sample_pred_r, sample_pred_v)
+        sample_pred_advantages = (
+            sample_q_prior - value_prior.swapaxes(0, 1)[..., None]
+        )  # (batch_size, sequence_length, n_samples)
 
         if args.norm_adv:
-            mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
+            sample_pred_advantages = sample_pred_advantages / jnp.sqrt(ema_adv_var_bias_corrected + args.epsilon_var)
+
+        # Calculate CMPO policy
+        clipped_adv_estimate = jnp.clip(sample_pred_advantages, -args.cmpo_clipping_threshold, args.cmpo_clipping_threshold)
+        prior_log_probs = jax.nn.log_softmax(policy_prior_logits.swapaxes(0, 1), -1)
+        cmpo_log_probs = jax.nn.log_softmax(prior_log_probs + clipped_adv_estimate, -1)
+        cmpo_probs = jnp.exp(cmpo_log_probs)
 
         # Policy loss
-        pg_loss1 = -mb_advantages * ratio
-        pg_loss2 = -mb_advantages * jnp.clip(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
-        pg_loss = jnp.maximum(pg_loss1, pg_loss2).mean()
+        # NOTE (shermansiu): In Appendix A, the author's use beta-LOO action-dependant baselines to correct for the bias from clipping the importance weight.
+        policy_importance_ratio = jnp.clip(jnp.exp(logprob_curr.swapaxes(0, 1) - seqs.logprob[:, 1:-1]), 0, 1)
+        pg_loss = -(policy_importance_ratio * retrace_advantage).mean()
 
-        # Value loss
-        v_loss = 0.5 * ((newvalue - mb_returns) ** 2).mean()
+        # CMPO regularizer
+        if args.cmpo_exact_kl:  # Used for large-scale Atari experiments. See Hessel et al. 2021, Muesli paper, Table 6.
+            cmpo_loss = (
+                args.cmpo_regularizer_lambda * (cmpo_probs * (cmpo_log_probs - logprob_curr_sample_actions)).sum(-1).mean()
+            )
+        else:
+            clipped_adv_estimate = jnp.exp(clipped_adv_estimate)
+            z_tilde_cmpo = (
+                args.cmpo_z_init + clipped_adv_estimate.sum(-1) - clipped_adv_estimate
+            ) / args.num_cmpo_regularizer_samples
+            cmpo_loss = -args.cmpo_regularizer_lambda(clipped_adv_estimate / z_tilde_cmpo * logprob_curr_sample_actions).mean()
 
-        entropy_loss = entropy.mean()
-        loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
-        return loss, (pg_loss, v_loss, entropy_loss, jax.lax.stop_gradient(approx_kl))
+        # Reward (model) loss
+        unrolled_rewards, _ = make_batched_sliding_windows(seqs.prev_reward[:, 2:], seq_mask[:, 2:], args.model_unroll_length)
+        unrolled_done, unrolled_mask = make_batched_sliding_windows(
+            seqs.done[:, :-2], seq_mask[:, 2:], args.model_unroll_length
+        )
+        # We figure out if the current entry in the window is from the same trajectory as the first entry
+        r_loss = calculate_categorical_scalar_loss(pred_reward, unrolled_done, unrolled_mask, unrolled_rewards)
+
+        # Value (model) loss
+        unrolled_values, _ = make_batched_sliding_windows(value_prior, seq_mask[:, 1:-1], args.model_unroll_length)
+        unrolled_done, unrolled_mask = make_batched_sliding_windows(
+            seqs.done[:, :-2], seq_mask[:, :-2], args.model_unroll_length
+        )
+        # We figure out if the current entry in the window is from the same trajectory as the first entry
+        v_loss = calculate_categorical_scalar_loss(pred_value, unrolled_done, unrolled_mask, unrolled_values)
+
+        # Policy model loss
+        unrolled_cmpo_log_probs, _ = make_batched_sliding_windows(cmpo_log_probs, seq_mask[:, 1:-1], args.model_unroll_length)
+        unrolled_done, unrolled_mask = make_batched_sliding_windows(
+            seqs.done[:, :-2], seq_mask[:, :-2], args.model_unroll_length
+        )
+        # We figure out if the current entry in the window is from the same trajectory as the first entry
+        unrolled_is_from_diff_traj = compute_is_from_diff_traj(unrolled_done, unrolled_mask)
+        pred_policy_logits = pred_policy_logits.transpose(2, 0, 1, 3)  # (batch_size, seq_length, window_width, n_actions)
+        pi_model_kl_div = (unrolled_cmpo_log_probs * (unrolled_cmpo_log_probs - pred_policy_logits)).sum(-1)
+        m_loss = jnp.where(unrolled_is_from_diff_traj, 0, pi_model_kl_div).mean()
+
+        loss = pg_loss + cmpo_loss + m_loss + args.reward_loss_coeff * r_loss + args.value_loss_coeff * v_loss
+
+        return loss, (loss, pg_loss, cmpo_loss, m_loss, r_loss, v_loss, ema_adv_var, beta_product, key)
 
     muesli_loss_grad_fn = jax.value_and_grad(muesli_loss, has_aux=True)
+
+    @partial(jax.jit, static_argnums=(2,))
+    def make_batched_sliding_windows(batched_sequence, valid_masks, window_width: int):
+        """Make batched sliding windows.
+
+        Args:
+            batched_sequence: A sequence of batches. (batch_size, ..., sequence_length)
+            valid_masks: Which elements in the sequence are valid. Denotes when the sequence ends. (batch_size, sequence_length)
+            window_width: The width of the window.
+
+        Returns:
+            batched_windows: A batch of windows. (batch_size, ..., sequence_length, window_width)
+            valid_masks: Which windows are valid. (batch_size, sequence_length, window_width)
+        """
+        indices = jnp.arange(window_width).reshape(1, -1) + jnp.arange(batched_sequence.shape[-1]).reshape(-1, 1)
+        return (
+            batched_sequence.swapaxes(1, -1)[..., indices].swapaxes(1, -2),
+            valid_masks[:, indices] & (indices < batched_sequence.shape[-1])[None, ...],
+        )
 
     @jax.jit
     def update_muesli(
         agent_state: TrainState,
-        obs: list,
-        dones: list,
-        values: list,
-        actions: list,
-        logprobs: list,
-        env_ids: list,
-        rewards: list,
+        target_agent_state: TrainState,
+        ema_adv_var: jnp.ndarray,
+        beta_product: jnp.ndarray,
+        seqs: Storage,
+        seq_mask: jnp.ndarray,
         key: jax.random.PRNGKey,
     ):
-        obs = jnp.asarray(obs)
-        dones = jnp.asarray(dones)
-        values = jnp.asarray(values)
-        actions = jnp.asarray(actions)
-        logprobs = jnp.asarray(logprobs)
-        env_ids = jnp.asarray(env_ids)
-        rewards = jnp.asarray(rewards)
+        """Update the Muesli model.
 
-        # TODO: in an unlikely event, one of the envs might have not stepped at all, which may results in unexpected behavior
-        T, B = env_ids.shape
-        index_ranges = jnp.arange(T * B, dtype=jnp.int32)
-        next_index_ranges = jnp.zeros_like(index_ranges, dtype=jnp.int32)
-        last_env_ids = jnp.zeros(args.num_envs, dtype=jnp.int32) - 1
+        Args:
+            agent_state: The state of the Muesli model.
+            target_agent_state: The state of the target Muesli model. Used to make actions.
+            ema_adv_var: The exponential moving average of the variance of the advantage estimator.
+            beta_product: The memoized version of beta_var^t. Used for bias correction.
+            seqs: The batch of sequences.
+            seq_mask: The mask of "valid sequences."
+            key: The pseudo-random number generator key.
+        """
 
-        def f(carry, x):
-            last_env_ids, next_index_ranges = carry
-            env_id, index_range = x
-            next_index_ranges = next_index_ranges.at[last_env_ids[env_id]].set(
-                jnp.where(last_env_ids[env_id] != -1, index_range, next_index_ranges[last_env_ids[env_id]])
-            )
-            last_env_ids = last_env_ids.at[env_id].set(index_range)
-            return (last_env_ids, next_index_ranges), None
-
-        (last_env_ids, next_index_ranges), _ = jax.lax.scan(
-            f,
-            (last_env_ids, next_index_ranges),
-            (env_ids.reshape(-1), index_ranges),
+        (loss, (loss, pg_loss, cmpo_loss, m_loss, r_loss, v_loss, ema_adv_var, beta_product, key)), grads = muesli_loss(
+            agent_state.params,
+            target_agent_state.params,
+            ema_adv_var,
+            beta_product,
+            seqs,
+            seq_mask,
+            key,
         )
 
-        # rewards is off by one time step
-        rewards = rewards.reshape(-1)[next_index_ranges].reshape((args.num_steps) * async_update, args.async_batch_size)
-        advantages, returns, _, final_env_ids = compute_gae(env_ids, rewards, values, dones)
-        b_inds = jnp.nonzero(final_env_ids.reshape(-1), size=(args.num_steps) * async_update * args.async_batch_size)[0]
-        b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
-        b_actions = actions.reshape(-1)
-        b_logprobs = logprobs.reshape(-1)
-        b_advantages = advantages.reshape(-1)
-        b_returns = returns.reshape(-1)
+        agent_state = agent_state.apply_gradients(grads=grads)
+        update_target_network(agent_state, target_agent_state, alpha_target=args.prior_network_update_rate)
 
-        def update_epoch(carry, _):
-            agent_state, key = carry
-            key, subkey = jax.random.split(key)
-
-            # taken from: https://github.com/google/brax/blob/main/brax/training/agents/ppo/train.py
-            def convert_data(x: jnp.ndarray):
-                x = jax.random.permutation(subkey, x)
-                x = jnp.reshape(x, (args.num_minibatches, -1) + x.shape[1:])
-                return x
-
-            def update_minibatch(agent_state, minibatch):
-                mb_obs, mb_actions, mb_logprobs, mb_advantages, mb_returns = minibatch
-                (loss, (pg_loss, v_loss, entropy_loss, approx_kl)), grads = muesli_loss_grad_fn(
-                    agent_state.params,
-                    mb_obs,
-                    mb_actions,
-                    mb_logprobs,
-                    mb_advantages,
-                    mb_returns,
-                )
-                agent_state = agent_state.apply_gradients(grads=grads)
-                return agent_state, (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads)
-
-            agent_state, (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads) = jax.lax.scan(
-                update_minibatch,
-                agent_state,
-                (
-                    convert_data(b_obs),
-                    convert_data(b_actions),
-                    convert_data(b_logprobs),
-                    convert_data(b_advantages),
-                    convert_data(b_returns),
-                ),
-            )
-            return (agent_state, key), (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads)
-
-        (agent_state, key), (loss, pg_loss, v_loss, entropy_loss, approx_kl, _) = jax.lax.scan(
-            update_epoch, (agent_state, key), (), length=args.update_epochs
+        return (
+            agent_state,
+            target_agent_state,
+            ema_adv_var,
+            beta_product,
+            loss,
+            pg_loss,
+            cmpo_loss,
+            m_loss,
+            r_loss,
+            v_loss,
+            key,
         )
-        return agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, advantages, returns, b_inds, final_env_ids, key
+
+    @jax.jit
+    def calculate_categorical_scalar_loss(pred_scalar, unrolled_done, unrolled_mask, unrolled_scalar):
+        unrolled_is_from_diff_traj = compute_is_from_diff_traj(unrolled_done, unrolled_mask)
+        true_scalar = RewardValueModel.project_to_atoms(reward_transform(unrolled_scalar))
+        pred_scalar = jnp.log(pred_scalar.transpose(2, 0, 1, 3))
+        cross_entropy = jnp.where(unrolled_is_from_diff_traj, 0, true_scalar * jnp.log(pred_scalar.transpose(2, 0, 1, 3)))
+        scalar_loss = -cross_entropy.sum(-1).mean()
+        return scalar_loss
+
+    def compute_is_from_diff_traj(done_seq, mask_seq):
+        is_from_diff_traj = jnp.concatenate([jnp.full_like(done_seq[..., 0], False)[..., None], done_seq[..., :-1]], -1)
+        is_from_diff_traj = jnp.cumsum(is_from_diff_traj, axis=-1).astype(jnp.bool_) | ~mask_seq
+        return is_from_diff_traj
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
@@ -698,54 +1199,84 @@ if __name__ == "__main__":
     episode_lengths = np.zeros((args.num_envs,), dtype=np.float32)
     returned_episode_lengths = np.zeros((args.num_envs,), dtype=np.float32)
     envs.async_reset()
-    final_env_ids = np.zeros((async_update, args.async_batch_size), dtype=np.int32)
 
-    for update in range(1, args.num_updates + 2):
+    ema_adv_var = jnp.asarray(0.0)
+    beta_product = jnp.asarray(1.0)
+
+    buffer = UniformBuffer.init(
+        [
+            Storage(
+                obs=jnp.asarray(envs.single_observation_space.sample()),
+                action=jnp.asarray(envs.single_action_space.sample()),
+                logprob=jnp.asarray(0),
+                prev_reward=jnp.asarray(0),
+                done=jnp.asarray(True),
+            )
+        ],
+        num_envs=args.num_envs,
+        max_size=args.replay_buffer_size,
+    )
+    lstm_hidden_carryover = UniformBuffer.init(
+        RepresentationNetwork.initialize_carry(),
+        num_envs=args.num_envs,
+        max_size=1,
+    )
+
+    for _ in range(args.num_updates + 1):
         update_time_start = time.time()
-        obs = []
-        dones = []
-        actions = []
-        logprobs = []
-        values = []
-        env_ids = []
-        rewards = []
         truncations = []
         terminations = []
         env_recv_time = 0
         inference_time = 0
         storage_time = 0
         env_send_time = 0
+        buffer_peek_time = 0
 
         # NOTE: This is a major difference from the sync version:
         # at the end of the rollout phase, the sync version will have the next observation
         # ready for the value bootstrap, but the async version will not have it.
         # for this reason we do `num_steps + 1`` to get the extra states for value bootstrapping.
-        # but note that the extra states are not used for the loss computation in the next iteration,
-        # while the sync version will use the extra state for the loss computation.
         for step in range(
             async_update, (args.num_steps + 1) * async_update
         ):  # num_steps + 1 to get the states for value bootstrapping.
             env_recv_time_start = time.time()
-            next_obs, next_reward, next_done, info = envs.recv()
+            obs, prev_reward, done, info = envs.recv()
             env_recv_time += time.time() - env_recv_time_start
-            global_step += len(next_done)
+            global_step += len(done)
             env_id = info["env_id"]
 
+            buffer_peek_time_start = time.time()
+            prev_lstm_hidden = lstm_hidden_carryover.peek(env_id)
+            prev_action = buffer.peek(env_id).action
+            prev_lstm_hidden = jnp.where(done, jnp.zeros_like(prev_lstm_hidden), prev_lstm_hidden)
+            buffer_peek_time += time.time() - buffer_peek_time_start
+
             inference_time_start = time.time()
-            action, logprob, value, key = get_action_and_value(agent_state, next_obs, key)
+            action, logprob, lstm_hidden, key = get_action_and_lstm_carry(
+                target_agent_state, obs, prev_lstm_hidden, prev_reward, prev_action, key
+            )
             inference_time += time.time() - inference_time_start
 
             env_send_time_start = time.time()
             envs.send(np.array(action), env_id)
             env_send_time += time.time() - env_send_time_start
             storage_time_start = time.time()
-            obs.append(next_obs)
-            dones.append(next_done)
-            values.append(value)
-            actions.append(action)
-            logprobs.append(logprob)
-            env_ids.append(env_id)
-            rewards.append(next_reward)
+
+            buffer.push_env_updates(
+                update_batch=Storage(
+                    obs=jnp.asarray(obs),
+                    action=jnp.asarray(action),
+                    logprob=jnp.asarray(logprob),
+                    prev_reward=jnp.asarray(prev_reward),
+                    done=jnp.asarray(done),
+                ),
+                env_id=jnp.asarray(env_id),
+            )
+            lstm_hidden_carryover.push_env_updates(
+                update_batch=jnp.asarray(lstm_hidden),
+                env_id=jnp.asarray(env_id),
+            )
+
             truncations.append(info["TimeLimit.truncated"])
             terminations.append(info["terminated"])
             episode_returns[env_id] += info["reward"]
@@ -760,6 +1291,20 @@ if __name__ == "__main__":
             episode_lengths[env_id] *= (1 - info["terminated"]) * (1 - info["TimeLimit.truncated"])
             storage_time += time.time() - storage_time_start
 
+        # Get sequence for current batch.
+        # Sequence sampling is mostly but not fully jitted.
+        buffer_sample_time_start = time.time()
+        key, sequence_key = jax.random.split(key, 2)
+        # The rewards lag by one time step, so we need to shift them right once.
+        # And because we need the previous actions for the LSTM, we need to shift everything right once.
+        sequence_length = args.batch_sequence_length + 2
+        seqs: Storage
+        seq_mask: jnp.ndarray
+        seqs, seq_mask = buffer.sample_rb_and_oq(
+            sequence_key, args.rb_batch_size, args.oq_batch_size, sequence_length=sequence_length, distribution_power=2
+        )
+        buffer_sample_time = time.time() - buffer_sample_time_start
+
         avg_episodic_return = np.mean(returned_episode_returns)
         # print(returned_episode_returns)
         print(f"global_step={global_step}, avg_episodic_return={avg_episodic_return}")
@@ -768,25 +1313,23 @@ if __name__ == "__main__":
         training_time_start = time.time()
         (
             agent_state,
+            target_agent_state,
+            ema_adv_var,
+            beta_product,
             loss,
             pg_loss,
+            cmpo_loss,
+            m_loss,
+            r_loss,
             v_loss,
-            entropy_loss,
-            approx_kl,
-            advantages,
-            returns,
-            b_inds,
-            final_env_ids,
             key,
         ) = update_muesli(
             agent_state,
-            obs,
-            dones,
-            values,
-            actions,
-            logprobs,
-            env_ids,
-            rewards,
+            target_agent_state,
+            ema_adv_var,
+            beta_product,
+            seqs,
+            seq_mask,
             key,
         )
         writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
@@ -797,10 +1340,11 @@ if __name__ == "__main__":
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"].item(), global_step)
-        writer.add_scalar("losses/value_loss", v_loss[-1, -1].item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss[-1, -1].item(), global_step)
-        writer.add_scalar("losses/entropy", entropy_loss[-1, -1].item(), global_step)
-        writer.add_scalar("losses/approx_kl", approx_kl[-1, -1].item(), global_step)
+        writer.add_scalar("losses/cmpo_loss", cmpo_loss[-1, -1].item(), global_step)
+        writer.add_scalar("losses/reward_model_loss", r_loss[-1, -1].item(), global_step)
+        writer.add_scalar("losses/value_model_loss", v_loss[-1, -1].item(), global_step)
+        writer.add_scalar("losses/policy_model_loss", m_loss[-1, -1].item(), global_step)
         writer.add_scalar("losses/loss", loss[-1, -1].item(), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
@@ -811,6 +1355,8 @@ if __name__ == "__main__":
         writer.add_scalar("stats/inference_time", inference_time, global_step)
         writer.add_scalar("stats/storage_time", storage_time, global_step)
         writer.add_scalar("stats/env_send_time", env_send_time, global_step)
+        writer.add_scalar("stats/buffer_peek_time", buffer_peek_time, global_step)
+        writer.add_scalar("stats/buffer_sample_time", buffer_peek_time, global_step)
         writer.add_scalar("stats/update_time", time.time() - update_time_start, global_step)
 
     if args.save_model:
@@ -821,9 +1367,9 @@ if __name__ == "__main__":
                     [
                         vars(args),
                         [
-                            agent_state.params.network_params,
-                            agent_state.params.actor_params,
-                            agent_state.params.critic_params,
+                            target_agent_state.params.network_params,
+                            target_agent_state.params.actor_params,
+                            target_agent_state.params.critic_params,
                         ],
                     ]
                 )
@@ -837,7 +1383,7 @@ if __name__ == "__main__":
             args.env_id,
             eval_episodes=10,
             run_name=f"{run_name}-eval",
-            Model=(Network, Actor, Critic),
+            Model=(RepresentationNetwork, Actor, Critic, DynamicsProjector, Dynamics, RewardValueModel, PolicyModel),
         )
         for idx, episodic_return in enumerate(episodic_returns):
             writer.add_scalar("eval/episodic_return", episodic_return, idx)

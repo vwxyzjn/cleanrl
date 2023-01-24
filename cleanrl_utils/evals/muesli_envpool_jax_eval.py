@@ -21,41 +21,105 @@ def evaluate(
     seed=1,
 ):
     envs = make_env(env_id, seed, num_envs=1)()
-    Network, Actor, Critic = Model
-    next_obs = envs.reset()
-    network = Network()
+    RepresentationNetwork, Actor, Critic, DynamicsProjector, Dynamics, RewardValueModel, PolicyModel = Model
+    _ = envs.reset()
+    network = RepresentationNetwork(action_dim=envs.single_action_space.n)
     actor = Actor(action_dim=envs.single_action_space.n)
     critic = Critic()
+    dynamics_proj = DynamicsProjector()
+    dynamics = Dynamics(action_dim=envs.single_action_space.n)
+    reward_value_model = RewardValueModel()
+    policy_model = PolicyModel(action_dim=envs.single_action_space.n)
+
     key = jax.random.PRNGKey(seed)
-    key, network_key, actor_key, critic_key = jax.random.split(key, 4)
-    network_params = network.init(network_key, np.array([envs.single_observation_space.sample()]))
-    actor_params = actor.init(actor_key, network.apply(network_params, np.array([envs.single_observation_space.sample()])))
-    critic_params = critic.init(critic_key, network.apply(network_params, np.array([envs.single_observation_space.sample()])))
+    key, network_key, actor_key, critic_key, dynamics_proj_key, dynamics_key, rv_model_key, p_model_key = jax.random.split(
+        key, 8
+    )
+
+    example_obs = np.array([envs.single_observation_space.sample()])
+    example_carry = RepresentationNetwork.initialize_carry((1,))
+    example_reward = np.array([0.0])
+    example_action = np.array([envs.single_action_space.sample()])
+    network_params = network.init(network_key, example_obs)
+
+    _, example_latent_obs = network.apply(network_params, example_carry, example_obs, example_reward, example_action)
+    actor_params = actor.init(actor_key, example_latent_obs)
+    critic_params = critic.init(critic_key, example_latent_obs)
+    dynamics_proj_params = dynamics_proj.init(critic_key, example_latent_obs)
+
+    example_dyn_carry = dynamics_proj.apply(dynamics_proj_params, example_latent_obs)
+    example_dyn_carry = (example_dyn_carry, example_dyn_carry)
+    dynamics_params = dynamics.init(dynamics_key, example_dyn_carry, example_action)
+
+    _, example_predicted_latent_obs = dynamics.apply(dynamics_params, example_dyn_carry, example_action)
+    reward_value_model_params = reward_value_model.init(rv_model_key, example_predicted_latent_obs)
+    policy_model_params = policy_model.init(p_model_key, example_predicted_latent_obs)
+
     # note: critic_params is not used in this script
     with open(model_path, "rb") as f:
-        (args, (network_params, actor_params, critic_params)) = flax.serialization.from_bytes(
-            (None, (network_params, actor_params, critic_params)), f.read()
+        (
+            args,
+            (
+                network_params,
+                actor_params,
+                critic_params,
+                dynamics_proj_params,
+                dynamics_params,
+                reward_value_model_params,
+                policy_model_params,
+            ),
+        ) = flax.serialization.from_bytes(
+            (
+                None,
+                (
+                    network_params,
+                    actor_params,
+                    critic_params,
+                    dynamics_proj_params,
+                    dynamics_params,
+                    reward_value_model_params,
+                    policy_model_params,
+                ),
+            ),
+            f.read(),
         )
 
     @jax.jit
-    def get_action_and_value(
+    def normalize_logits(logits: jnp.ndarray) -> jnp.ndarray:
+        """Normalize thhe logits.
+
+        # https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
+        """
+        logits = logits - jax.scipy.special.logsumexp(logits, axis=-1, keepdims=True)
+        logits = logits.clip(min=jnp.finfo(logits.dtype).min)
+        return logits
+
+    @jax.jit
+    def get_action_and_lstm_carry(
         network_params: flax.core.FrozenDict,
         actor_params: flax.core.FrozenDict,
-        next_obs: np.ndarray,
+        obs: np.ndarray,
+        lstm_carry: np.ndarray,
+        prev_reward: np.ndarray,
+        prev_action: np.ndarray,
         key: jax.random.PRNGKey,
     ):
-        hidden = network.apply(network_params, next_obs)
-        logits = actor.apply(actor_params, hidden)
+        lstm_carry, hidden = network.apply(network_params, lstm_carry, obs, prev_reward, prev_action)
+        logits = normalize_logits(actor.apply(actor_params, hidden))
         # sample action: Gumbel-softmax trick
         # see https://stats.stackexchange.com/questions/359442/sampling-from-a-categorical-distribution
         key, subkey = jax.random.split(key)
         u = jax.random.uniform(subkey, shape=logits.shape)
         action = jnp.argmax(logits - jnp.log(-jnp.log(u)), axis=1)
-        return action, key
+        logprob = jax.nn.log_softmax(logits)[jnp.arange(action.shape[0]), action]
+        return action, logprob, lstm_carry, key
 
     # a simple non-vectorized version
 
     episodic_returns = []
+    lstm_hidden = example_carry
+    reward = jnp.asarray([0.0])
+    action = jnp.asarray([0], jnp.int32)
     for episode in range(eval_episodes):
         episodic_return = 0
         next_obs = envs.reset()
@@ -66,8 +130,10 @@ def evaluate(
             # conversion from grayscale into rgb
             recorded_frames.append(cv2.cvtColor(next_obs[0][-1], cv2.COLOR_GRAY2RGB))
         while not terminated:
-            actions, key = get_action_and_value(network_params, actor_params, next_obs, key)
-            next_obs, _, _, infos = envs.step(np.array(actions))
+            action, logprob, lstm_hidden, key = get_action_and_lstm_carry(
+                network_params, actor_params, next_obs, lstm_hidden, reward, action, key
+            )
+            next_obs, reward, _, infos = envs.step(np.array(action))
             episodic_return += infos["reward"][0]
             terminated = sum(infos["terminated"]) == 1
 
@@ -88,10 +154,20 @@ def evaluate(
 if __name__ == "__main__":
     from huggingface_hub import hf_hub_download
 
-    from cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado import Actor, Critic, Network, make_env
+    from cleanrl.muesli_atari_envpool_async_jax_scan_impalanet_machado import (
+        Actor,
+        Critic,
+        Dynamics,
+        DynamicsProjector,
+        PolicyModel,
+        RepresentationNetwork,
+        RewardValueModel,
+        make_env,
+    )
 
     model_path = hf_hub_download(
-        repo_id="vwxyzjn/Pong-v5-ppo_atari_envpool_xla_jax_scan-seed1", filename="muesli_atari_envpool_xla_jax_scan_machado.cleanrl_model"
+        repo_id="vwxyzjn/Pong-v5-muesli_atari_envpool_xla_jax_scan_machado-seed1",
+        filename="muesli_atari_envpool_xla_jax_scan_machado.cleanrl_model",
     )
     evaluate(
         model_path,
@@ -99,6 +175,6 @@ if __name__ == "__main__":
         "Pong-v5",
         eval_episodes=10,
         run_name=f"eval",
-        Model=(Network, Actor, Critic),
+        Model=(RepresentationNetwork, Actor, Critic, DynamicsProjector, Dynamics, RewardValueModel, PolicyModel),
         capture_video=False,
     )
