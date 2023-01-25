@@ -857,12 +857,11 @@ if __name__ == "__main__":
         prev_reward: (batch_size)
         prev_action: (batch_size)
         act_seq: (batch_size)
-        sample_actions: (batch_size, n_sampled_actions)
         done: (batch_size)
         lstm_carry[0]: (batch_size, lstm_dim)
         """
         params, lstm_carry = carry
-        obs, prev_reward, prev_action, act_seq, sample_actions, done = x
+        obs, prev_reward, prev_action, act_seq, done = x
 
         # Reset the LSTM carry when necessary
         lstm_carry = jax.tree_util.tree_map(lambda entry: jnp.where(done[:, None], jnp.zeros_like(entry), entry), lstm_carry)
@@ -872,7 +871,6 @@ if __name__ == "__main__":
         logprobs = jax.nn.log_softmax(policy_logits)
         batch_arange = jnp.arange(prev_action.shape[0])
         logprob = logprobs[batch_arange, prev_action]
-        logprob_sample_actions = logprobs[batch_arange.reshape(-1, 1), sample_actions]  # (batch_size, n_sampled_actions)
 
         x = dynamics_proj.apply(params.dynamic_proj_params, x)
 
@@ -881,15 +879,19 @@ if __name__ == "__main__":
             (x, x),
             act_seq.swapaxes(0, 1),
         )
-        _, (sample_pred_r, sample_pred_v) = jax.lax.scan(compute_pred_q_and_policy, (x, x), sample_actions.swapaxes(0, 1))
+
+        batch_size = x.shape[0]
+        _, (all_act_pred_r_1, all_act_pred_v_1) = jax.lax.scan(
+            compute_pred_q_and_policy, (x, x), jnp.indices((envs.single_action_space.n, batch_size))[0]
+        )
         return (params, lstm_carry), (
             logprob,
-            logprob_sample_actions,
+            logprobs,
             pred_reward,
             pred_value,
             pred_policy,
-            sample_pred_r,
-            sample_pred_v,
+            all_act_pred_r_1,
+            all_act_pred_v_1,
         )
 
     def compute_retrace_return_one_step(retrace_return, x):
@@ -983,12 +985,12 @@ if __name__ == "__main__":
         # Replay the sequences in B through the current network.
         _, (
             logprob_curr,
-            logprob_curr_sample_actions,
+            all_act_logprob_curr,
             pred_reward,
             pred_value,
             pred_policy_logits,
-            sample_pred_r,
-            sample_pred_v,
+            all_act_pred_r_1,
+            all_act_pred_v_1,
         ) = jax.lax.scan(
             reanalyze_policies_and_model_preds,
             (params, lstm_carry),
@@ -997,7 +999,6 @@ if __name__ == "__main__":
                 seqs.prev_reward.swapaxes(0, 1)[1:-1],
                 seqs.action.swapaxes(0, 1)[:-2],
                 unrolled_actions.swapaxes(0, 1),
-                sample_actions.swapaxes(1, 2),  # (seq_length, batch_size, n_samples)
                 seqs.done.swapaxes(0, 1)[1:-1],
             ),
             args.batch_sequence_length,
@@ -1041,42 +1042,51 @@ if __name__ == "__main__":
         ema_adv_var_bias_corrected = ema_adv_var / (1 - beta_product)
 
         # Advantages of sampled actions (or all actions when using exact KL-divergence)
-        sample_q_prior = compute_q(sample_pred_r, sample_pred_v)
+        all_act_q_prior = compute_q(all_act_pred_r_1, all_act_pred_v_1)
         value_prior = value_prior.swapaxes(0, 1)
-        sample_pred_advantages = sample_q_prior - value_prior[..., None]  # (batch_size, sequence_length, n_samples)
+        all_act_pred_advantages = all_act_q_prior - value_prior[..., None]  # (batch_size, sequence_length, n_actions)
 
         if args.norm_adv:
-            sample_pred_advantages = sample_pred_advantages / jnp.sqrt(ema_adv_var_bias_corrected + args.epsilon_var)
+            all_act_pred_advantages = all_act_pred_advantages / jnp.sqrt(ema_adv_var_bias_corrected + args.epsilon_var)
 
         # Calculate CMPO policy
-        clipped_adv_estimate = jnp.clip(sample_pred_advantages, -args.cmpo_clipping_threshold, args.cmpo_clipping_threshold)
-        sample_policy_prior_logits = policy_prior_logits[
-            jnp.arange(args.batch_sequence_length).reshape(-1, 1, 1),
-            jnp.arange(args.update_batch_size).reshape(1, -1, 1),
-            sample_actions.swapaxes(1, 2),
-        ]
-        prior_log_probs = jax.nn.log_softmax(sample_policy_prior_logits.swapaxes(0, 1), -1)
+        clipped_adv_estimate = jnp.clip(all_act_pred_advantages, -args.cmpo_clipping_threshold, args.cmpo_clipping_threshold)
+        prior_log_probs = jax.nn.log_softmax(policy_prior_logits.swapaxes(0, 1), -1)
         cmpo_log_probs = jax.nn.log_softmax(prior_log_probs + clipped_adv_estimate, -1)
         cmpo_probs = jnp.exp(cmpo_log_probs)
 
         # Policy loss
         # NOTE (shermansiu): In Appendix A, the author's use beta-LOO action-dependant baselines to correct for the bias from clipping the importance weight.
-        policy_importance_ratio = jnp.clip(jnp.exp(logprob_curr.swapaxes(0, 1) - seqs.logprob[:, 1:-1]), 0, 1)
+        logprob_curr = logprob_curr.swapaxes(0, 1)
+        policy_importance_ratio = jnp.clip(jnp.exp(logprob_curr - seqs.logprob[:, 1:-1]), 0, 1)
         pg_loss = -(policy_importance_ratio * retrace_advantage).mean()
 
         # CMPO regularizer
-        logprob_curr_sample_actions = logprob_curr_sample_actions.swapaxes(0, 1)
+        all_act_logprob_curr = all_act_logprob_curr.swapaxes(0, 1)
         if args.cmpo_exact_kl:  # Used for large-scale Atari experiments. See Hessel et al. 2021, Muesli paper, Table 6.
-            cmpo_loss = (
-                args.cmpo_regularizer_lambda * (cmpo_probs * (cmpo_log_probs - logprob_curr_sample_actions)).sum(-1).mean()
-            )
+            cmpo_loss = args.cmpo_regularizer_lambda * (cmpo_probs * (cmpo_log_probs - all_act_logprob_curr)).sum(-1).mean()
         else:
-            clipped_adv_estimate = jnp.exp(clipped_adv_estimate)
+            batch_indices = jnp.arange(args.update_batch_size).reshape(-1, 1, 1)
+            seq_length_indices = jnp.arange(args.batch_sequence_length).reshape(1, -1, 1)
+            sample_actions = jnp.moveaxis(sample_actions, 2, 0)  # (batch_size, seq_length, n_sampled_actions)
+            sample_clipped_adv_estimate = jnp.exp(
+                clipped_adv_estimate[
+                    batch_indices,
+                    seq_length_indices,
+                    sample_actions,
+                ]
+            )
             z_tilde_cmpo = (
-                args.cmpo_z_init + clipped_adv_estimate.sum(-1)[..., None] - clipped_adv_estimate
+                args.cmpo_z_init + sample_clipped_adv_estimate.sum(-1)[..., None] - sample_clipped_adv_estimate
             ) / args.num_cmpo_regularizer_samples
+            logprob_curr_sample_actions = all_act_logprob_curr[
+                batch_indices,
+                seq_length_indices,
+                sample_actions,
+            ]
             cmpo_loss = (
-                -args.cmpo_regularizer_lambda * (clipped_adv_estimate / z_tilde_cmpo * logprob_curr_sample_actions).mean()
+                -args.cmpo_regularizer_lambda
+                * (sample_clipped_adv_estimate / z_tilde_cmpo * logprob_curr_sample_actions).mean()
             )
 
         # Reward (model) loss
