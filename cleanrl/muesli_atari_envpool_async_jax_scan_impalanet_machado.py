@@ -1059,12 +1059,13 @@ if __name__ == "__main__":
         # NOTE (shermansiu): In Appendix A, the author's use beta-LOO action-dependant baselines to correct for the bias from clipping the importance weight.
         logprob_curr = logprob_curr.swapaxes(0, 1)
         policy_importance_ratio = jnp.clip(jnp.exp(logprob_curr - seqs.logprob[:, 1:-1]), 0, 1)
-        pg_loss = -(policy_importance_ratio * retrace_advantage).mean()
+        pg_loss = -(policy_importance_ratio * retrace_advantage).mean(-1)
+        assert pg_loss.shape == (96,)
 
         # CMPO regularizer
         all_act_logprob_curr = all_act_logprob_curr.swapaxes(0, 1)
         if args.cmpo_exact_kl:  # Used for large-scale Atari experiments. See Hessel et al. 2021, Muesli paper, Table 6.
-            cmpo_loss = args.cmpo_regularizer_lambda * (cmpo_probs * (cmpo_log_probs - all_act_logprob_curr)).sum(-1).mean()
+            cmpo_loss = args.cmpo_regularizer_lambda * (cmpo_probs * (cmpo_log_probs - all_act_logprob_curr)).sum(-1).mean(-1)
         else:
             batch_indices = jnp.arange(args.update_batch_size).reshape(-1, 1, 1)
             seq_length_indices = jnp.arange(args.batch_sequence_length).reshape(1, -1, 1)
@@ -1084,10 +1085,10 @@ if __name__ == "__main__":
                 seq_length_indices,
                 sample_actions,
             ]
-            cmpo_loss = (
-                -args.cmpo_regularizer_lambda
-                * (sample_clipped_adv_estimate / z_tilde_cmpo * logprob_curr_sample_actions).mean()
-            )
+            cmpo_loss = -args.cmpo_regularizer_lambda * (
+                sample_clipped_adv_estimate / z_tilde_cmpo * logprob_curr_sample_actions
+            ).mean(axis=(1, 2))
+        assert cmpo_loss.shape == (96,)
 
         # Reward (model) loss
         unrolled_rewards, _ = make_batched_sliding_windows(seqs.prev_reward[:, 2:], seq_mask[:, 2:], args.model_unroll_length)
@@ -1114,7 +1115,8 @@ if __name__ == "__main__":
         unrolled_is_from_diff_traj = compute_is_from_diff_traj(unrolled_done, unrolled_mask)
         pred_policy_logits = pred_policy_logits.transpose(2, 0, 3, 1)  # (batch_size, seq_length, n_actions, window_width)
         pi_model_kl_div = (unrolled_cmpo_log_probs * (unrolled_cmpo_log_probs - pred_policy_logits)).sum(axis=2)
-        m_loss = jnp.where(unrolled_is_from_diff_traj, 0, pi_model_kl_div).mean()
+        m_loss = jnp.where(unrolled_is_from_diff_traj, 0, pi_model_kl_div).mean(axis=(1, 2))
+        assert m_loss.shape == (96,)
 
         loss = pg_loss + cmpo_loss + m_loss + args.reward_loss_coeff * r_loss + args.value_loss_coeff * v_loss
 
@@ -1163,7 +1165,10 @@ if __name__ == "__main__":
             key: The pseudo-random number generator key.
         """
 
-        (loss, (loss, pg_loss, cmpo_loss, m_loss, r_loss, v_loss, ema_adv_var, beta_product, key)), grads = muesli_loss(
+        (
+            loss,
+            (loss, pg_loss, cmpo_loss, m_loss, r_loss, v_loss, ema_adv_var, beta_product, key),
+        ), grads = muesli_loss_grad_fn(
             agent_state.params,
             target_agent_state.params,
             ema_adv_var,
@@ -1199,7 +1204,9 @@ if __name__ == "__main__":
         unrolled_is_from_diff_traj = compute_is_from_diff_traj(unrolled_done, unrolled_mask)
         true_scalar = project_to_atoms(reward_transform(unrolled_scalar))
         pred_scalar = jnp.log(pred_scalar.transpose(2, 0, 1, 3))
-        cross_entropy = -jnp.where(unrolled_is_from_diff_traj[..., None], 0, true_scalar * pred_scalar).sum(-1).mean()
+        cross_entropy = (
+            -jnp.where(unrolled_is_from_diff_traj[..., None], 0, true_scalar * pred_scalar).sum(-1).mean(axis=(1, 2))
+        )
         return cross_entropy
 
     def compute_is_from_diff_traj(done_seq, mask_seq):
