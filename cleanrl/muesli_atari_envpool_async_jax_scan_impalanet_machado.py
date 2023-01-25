@@ -1361,13 +1361,17 @@ if __name__ == "__main__":
         writer.add_scalar("stats/terminations", np.sum(terminations), global_step)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"].item(), global_step)
-        writer.add_scalar("losses/policy_loss", pg_loss[-1, -1].item(), global_step)
-        writer.add_scalar("losses/cmpo_loss", cmpo_loss[-1, -1].item(), global_step)
-        writer.add_scalar("losses/reward_model_loss", r_loss[-1, -1].item(), global_step)
-        writer.add_scalar("losses/value_model_loss", v_loss[-1, -1].item(), global_step)
-        writer.add_scalar("losses/policy_model_loss", m_loss[-1, -1].item(), global_step)
-        writer.add_scalar("losses/loss", loss[-1, -1].item(), global_step)
+        if args.anneal_lr:
+            learning_rate = args.learning_rate
+        else:
+            learning_rate = linear_schedule(agent_state.opt_state[3].hyperparams["count"]).item()
+        writer.add_scalar("charts/learning_rate", learning_rate, global_step)
+        writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
+        writer.add_scalar("losses/cmpo_loss", cmpo_loss.item(), global_step)
+        writer.add_scalar("losses/reward_model_loss", r_loss.item(), global_step)
+        writer.add_scalar("losses/value_model_loss", v_loss.item(), global_step)
+        writer.add_scalar("losses/policy_model_loss", m_loss.item(), global_step)
+        writer.add_scalar("losses/loss", loss.item(), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
         writer.add_scalar(
