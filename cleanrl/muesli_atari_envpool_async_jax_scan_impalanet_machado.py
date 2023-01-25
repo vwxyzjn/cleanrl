@@ -318,12 +318,12 @@ def project_to_atoms(scalars):
 def compute_q(pred_reward, pred_value):
     """Compute the q-value.
 
-    pred_reward and pred_value have shape (seq_length, ..., batch_size, n_atoms)
-    q_prior has shape (batch_size, seq_length, ...)
+    pred_reward and pred_value have shape (batch_size, seq_length, n_atoms)
+    q_prior has shape (batch_size, seq_length)
     """
     pred_reward_scalar = inverse_reward_transform(distribution_expectation(pred_reward))
     pred_value_scalar = inverse_reward_transform(distribution_expectation(pred_value))
-    q = jnp.moveaxis(pred_reward_scalar + args.gamma * pred_value_scalar, -1, 0)
+    q = pred_reward_scalar + args.gamma * pred_value_scalar
     return q
 
 
@@ -974,13 +974,17 @@ if __name__ == "__main__":
             ),
             args.batch_sequence_length,
         )
+        policy_prior_logits = policy_prior_logits.swapaxes(0, 1)
+        value_prior = value_prior.swapaxes(0, 1)
+        logprob_prior = logprob_prior.swapaxes(0, 1)
+        sample_actions = jnp.moveaxis(sample_actions, 2, 0)  # (batch_size, seq_length, n_sampled_actions)
 
         # Replay the sequences in B through the current network.
         _, (
             logprob_curr,
             all_act_logprob_curr,
-            pred_reward,
-            pred_value,
+            pred_reward_logits,
+            pred_value_logits,
             pred_policy_logits,
             all_act_pred_r_1,
             all_act_pred_v_1,
@@ -996,15 +1000,22 @@ if __name__ == "__main__":
             ),
             args.batch_sequence_length,
         )
+        logprob_curr = logprob_curr.swapaxes(0, 1)
+        all_act_logprob_curr = all_act_logprob_curr.swapaxes(0, 1)
+        pred_reward_logits = pred_reward_logits.transpose(2, 0, 1, 3)  # (batch_size, seq_length, window_width, n_atoms)
+        pred_value_logits = pred_value_logits.transpose(2, 0, 1, 3)  # (batch_size, seq_length, window_width, n_atoms)
+        pred_policy_logits = pred_policy_logits.transpose(2, 0, 3, 1)  # (batch_size, seq_length, n_actions, window_width)
+        all_act_pred_r_1 = all_act_pred_r_1.transpose(2, 0, 1, 3)  # (batch_size, seq_length, n_actions, n_atoms)
+        all_act_pred_v_1 = all_act_pred_v_1.transpose(2, 0, 1, 3)  # (batch_size, seq_length, n_actions, n_atoms)
 
-        q_prior = compute_q(pred_reward[:, 0], pred_value[:, 0])  # (batch_size, seq_length)
+        q_prior = compute_q(pred_reward_logits[..., 0, :], pred_value_logits[..., 0, :])  # (batch_size, seq_length)
         q_prior_seq, _ = make_batched_sliding_windows(q_prior, seq_mask[:, 1:-1], args.num_retrace_estimator_samples)
         reward_seq, _ = make_batched_sliding_windows(
             seqs.prev_reward[:, 2:], seq_mask[:, 2:], args.num_retrace_estimator_samples
         )
         # log(pi_prior(a|s)/pi_b(a|s))
         logprob_diff_seq, _ = make_batched_sliding_windows(
-            logprob_prior.swapaxes(0, 1) - seqs.logprob[:, 1:-1], seq_mask[:, 1:-1], args.num_retrace_estimator_samples
+            logprob_prior - seqs.logprob[:, 1:-1], seq_mask[:, 1:-1], args.num_retrace_estimator_samples
         )
 
         done_seq, mask_seq = make_batched_sliding_windows(
@@ -1027,8 +1038,9 @@ if __name__ == "__main__":
                 is_from_diff_traj.swapaxes(0, 1),
             ),
         )
+        retrace_return = retrace_return.swapaxes(0, 1)
 
-        retrace_advantage = (retrace_return - value_prior).swapaxes(0, 1)
+        retrace_advantage = retrace_return - value_prior
         new_advantage_variance = (retrace_advantage**2).mean()
         ema_adv_var = args.beta_var * ema_adv_var + (1 - args.beta_var) * new_advantage_variance
         beta_product = beta_product * args.beta_var
@@ -1036,7 +1048,6 @@ if __name__ == "__main__":
 
         # Advantages of sampled actions (or all actions when using exact KL-divergence)
         all_act_q_prior = compute_q(all_act_pred_r_1, all_act_pred_v_1)
-        value_prior = value_prior.swapaxes(0, 1)
         all_act_pred_advantages = all_act_q_prior - value_prior[..., None]  # (batch_size, sequence_length, n_actions)
 
         if args.norm_adv:
@@ -1044,24 +1055,21 @@ if __name__ == "__main__":
 
         # Calculate CMPO policy
         clipped_adv_estimate = jnp.clip(all_act_pred_advantages, -args.cmpo_clipping_threshold, args.cmpo_clipping_threshold)
-        prior_log_probs = jax.nn.log_softmax(policy_prior_logits.swapaxes(0, 1), -1)
+        prior_log_probs = jax.nn.log_softmax(policy_prior_logits, -1)
         cmpo_log_probs = jax.nn.log_softmax(prior_log_probs + clipped_adv_estimate, -1)
         cmpo_probs = jnp.exp(cmpo_log_probs)
 
         # Policy loss
         # NOTE (shermansiu): In Appendix A, the author's use beta-LOO action-dependant baselines to correct for the bias from clipping the importance weight.
-        logprob_curr = logprob_curr.swapaxes(0, 1)
         policy_importance_ratio = jnp.clip(jnp.exp(logprob_curr - seqs.logprob[:, 1:-1]), 0, 1)
         pg_loss = -(policy_importance_ratio * retrace_advantage).mean()
 
         # CMPO regularizer
-        all_act_logprob_curr = all_act_logprob_curr.swapaxes(0, 1)
         if args.cmpo_exact_kl:  # Used for large-scale Atari experiments. See Hessel et al. 2021, Muesli paper, Table 6.
             cmpo_loss = args.cmpo_regularizer_lambda * (cmpo_probs * (cmpo_log_probs - all_act_logprob_curr)).sum(-1).mean()
         else:
             batch_indices = jnp.arange(args.update_batch_size).reshape(-1, 1, 1)
             seq_length_indices = jnp.arange(args.batch_sequence_length).reshape(1, -1, 1)
-            sample_actions = jnp.moveaxis(sample_actions, 2, 0)  # (batch_size, seq_length, n_sampled_actions)
             sample_clipped_adv_estimate = jnp.exp(
                 clipped_adv_estimate[
                     batch_indices,
@@ -1088,7 +1096,7 @@ if __name__ == "__main__":
             seqs.done[:, :-2], seq_mask[:, 2:], args.model_unroll_length
         )
         # We figure out if the current entry in the window is from the same trajectory as the first entry
-        r_loss = calculate_categorical_scalar_loss(pred_reward, unrolled_done, unrolled_mask, unrolled_rewards)
+        r_loss = calculate_categorical_scalar_loss(pred_reward_logits, unrolled_done, unrolled_mask, unrolled_rewards)
 
         # Value (model) loss
         unrolled_values, _ = make_batched_sliding_windows(value_prior, seq_mask[:, 1:-1], args.model_unroll_length)
@@ -1096,7 +1104,7 @@ if __name__ == "__main__":
             seqs.done[:, :-2], seq_mask[:, :-2], args.model_unroll_length
         )
         # We figure out if the current entry in the window is from the same trajectory as the first entry
-        v_loss = calculate_categorical_scalar_loss(pred_value, unrolled_done, unrolled_mask, unrolled_values)
+        v_loss = calculate_categorical_scalar_loss(pred_value_logits, unrolled_done, unrolled_mask, unrolled_values)
 
         # Policy model loss
         unrolled_cmpo_log_probs, _ = make_batched_sliding_windows(cmpo_log_probs, seq_mask[:, 1:-1], args.model_unroll_length)
@@ -1106,7 +1114,7 @@ if __name__ == "__main__":
         # We figure out if the current entry in the window is from the same trajectory as the first entry
         unrolled_is_from_diff_traj = compute_is_from_diff_traj(unrolled_done, unrolled_mask)
         pred_policy_log_probs = jax.nn.log_softmax(
-            normalize_logits(pred_policy_logits.transpose(2, 0, 3, 1))
+            normalize_logits(pred_policy_logits)
         )  # (batch_size, seq_length, n_actions, window_width)
         pi_model_kl_div = (unrolled_cmpo_log_probs * (unrolled_cmpo_log_probs - pred_policy_log_probs)).sum(axis=2)
         m_loss = jnp.where(unrolled_is_from_diff_traj, 0, pi_model_kl_div).mean()
@@ -1195,7 +1203,7 @@ if __name__ == "__main__":
     def calculate_categorical_scalar_loss(pred_scalar_logits, unrolled_done, unrolled_mask, unrolled_scalar):
         unrolled_is_from_diff_traj = compute_is_from_diff_traj(unrolled_done, unrolled_mask)
         true_scalar = project_to_atoms(reward_transform(unrolled_scalar))
-        pred_scalar_log_probs = jax.nn.log_softmax(normalize_logits(pred_scalar_logits.transpose(2, 0, 1, 3)))
+        pred_scalar_log_probs = jax.nn.log_softmax(normalize_logits(pred_scalar_logits))
         cross_entropy = (
             -jnp.where(unrolled_is_from_diff_traj[..., None], 0, true_scalar * pred_scalar_log_probs).sum(-1).mean()
         )
