@@ -1127,15 +1127,15 @@ if __name__ == "__main__":
         """Make batched sliding windows.
 
         Args:
-            batched_sequence: A sequence of batches. (batch_size, ..., sequence_length)
+            batched_sequence: A sequence of batches. (batch_size, sequence_length, ...)
             valid_masks: Which elements in the sequence are valid. Denotes when the sequence ends. (batch_size, sequence_length)
             window_width: The width of the window.
 
         Returns:
-            batched_windows: A batch of windows. (batch_size, ..., sequence_length, window_width)
+            batched_windows: A batch of windows. (batch_size, sequence_length, ..., window_width)
             valid_masks: Which windows are valid. (batch_size, sequence_length, window_width)
         """
-        indices = jnp.arange(window_width).reshape(1, -1) + jnp.arange(batched_sequence.shape[-1]).reshape(-1, 1)
+        indices = jnp.arange(window_width).reshape(1, -1) + jnp.arange(batched_sequence.shape[1]).reshape(-1, 1)
         return (
             batched_sequence.swapaxes(1, -1)[..., indices].swapaxes(1, -2),
             valid_masks[:, indices] & (indices < batched_sequence.shape[-1])[None, ...],
