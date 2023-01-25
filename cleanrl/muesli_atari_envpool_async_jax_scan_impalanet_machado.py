@@ -148,7 +148,7 @@ def make_env(env_id, seed, num_envs, async_batch_size=1):
             max_episode_steps=int(
                 108000 / 4
             ),  # Hessel et al. 2022, Muesli paper, Table 4, we divide by 4 because of the skipped frames
-            reward_clip=True,
+            reward_clip=False,
             seed=seed,
         )
         envs.num_envs = num_envs
@@ -203,7 +203,6 @@ class RepresentationNetwork(nn.Module):
     action_dim: tp.Sequence[int]
     channelss: tp.Sequence[int] = (16, 32, 32)
     lstm_dim: int = 256
-    reward_clip: int = 1
 
     @nn.compact
     def __call__(self, carry, x, last_reward, last_action):
@@ -224,6 +223,9 @@ class RepresentationNetwork(nn.Module):
         x = x.reshape(batch_size, -1)
         x = nn.Dense(256, kernel_init=orthogonal(np.sqrt(2)), bias_init=constant(0.0))(x)
         x = nn.relu(x)
+        # Reward clipping (See Espeholt et al. 2018, IMPALA paper, Table C.3. Used for single levels.
+        # DMLab-30 uses a different reward transformation: see Figure C.1.)
+        last_reward = jnp.sign(last_reward)
         last_action = jax.nn.one_hot(last_action, self.action_dim).reshape(batch_size, -1)
         x = jnp.concatenate([x, last_reward[:, None], last_action], axis=-1)
         carry, x = nn.OptimizedLSTMCell()(carry, x)
