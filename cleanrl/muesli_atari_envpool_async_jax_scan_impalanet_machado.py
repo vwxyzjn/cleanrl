@@ -95,6 +95,10 @@ def parse_args():
                         help="the clipping threshold used for the CMPO policy.")
     parser.add_argument("--cmpo-z-init", type=int, default=1.0, # Hessel et al. 2022, Muesli paper, Section 4.2, last paragraph.
                         help="the initial guess for the normalization constant in the sampled CMPO KL-divergence.")
+    parser.add_argument("--pg-loss-coeff", type=float, default=3.0,  # Hessel et al. 2022, Muesli paper, Table 9
+                        help="the coefficient of the policy gradient loss")
+    parser.add_argument("--cmpo-loss-coeff", type=float, default=1.0,  # Hessel et al. 2022, Muesli paper, Table 9
+                        help="the coefficient of the CMPO regularizer loss")
     parser.add_argument("--reward-loss-coeff", type=float, default=1.0,  # Hessel et al. 2022, Muesli paper, Table 5
                         help="the coefficient of the reward model loss")
     parser.add_argument("--value-loss-coeff", type=float, default=0.25,  # Hessel et al. 2022, Muesli paper, Table 5
@@ -1119,7 +1123,13 @@ if __name__ == "__main__":
         pi_model_kl_div = (unrolled_cmpo_log_probs * (unrolled_cmpo_log_probs - pred_policy_log_probs)).sum(axis=2)
         m_loss = jnp.where(unrolled_is_from_diff_traj, 0, pi_model_kl_div).mean()
 
-        loss = pg_loss + cmpo_loss + m_loss + args.reward_loss_coeff * r_loss + args.value_loss_coeff * v_loss
+        loss = (
+            args.pg_loss_coeff * pg_loss
+            + args.cmpo_loss_coeff * cmpo_loss
+            + m_loss
+            + args.reward_loss_coeff * r_loss
+            + args.value_loss_coeff * v_loss
+        )
 
         return loss, (loss, pg_loss, cmpo_loss, m_loss, r_loss, v_loss, ema_adv_var, beta_product, key)
 
