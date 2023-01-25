@@ -1120,7 +1120,7 @@ if __name__ == "__main__":
         pred_policy_log_probs = jax.nn.log_softmax(
             normalize_logits(pred_policy_logits)
         )  # (batch_size, seq_length, n_actions, window_width)
-        pi_model_kl_div = (unrolled_cmpo_log_probs * (unrolled_cmpo_log_probs - pred_policy_log_probs)).sum(axis=2)
+        pi_model_kl_div = (jnp.exp(unrolled_cmpo_log_probs) * (unrolled_cmpo_log_probs - pred_policy_log_probs)).sum(axis=2)
         m_loss = jnp.where(unrolled_is_from_diff_traj, 0, pi_model_kl_div).mean()
 
         loss = (
