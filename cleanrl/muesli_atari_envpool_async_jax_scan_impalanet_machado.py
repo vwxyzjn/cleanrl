@@ -103,6 +103,8 @@ def parse_args():
                         help="the coefficient of the reward dynamics loss")
     parser.add_argument("--value-loss-coeff", type=float, default=0.25,  # Hessel et al. 2022, Muesli paper, Table 5
                         help="the coefficient of the value dynamics loss")
+    parser.add_argument("--policy-dynamics-loss-coeff", type=float, default=1.0,
+                        help="the coefficient of the policy dynamics loss")
     parser.add_argument("--retrace-lambda", type=float, default=0.95,  # Hessel et al. 2022, Muesli paper, Table 6
                         help="the coefficient of the Retrace importance weight")
     parser.add_argument("--cmpo-exact-kl", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
@@ -1120,7 +1122,7 @@ if __name__ == "__main__":
         loss = (
             args.pg_loss_coeff * pg_loss
             + args.cmpo_loss_coeff * cmpo_loss
-            + m_loss
+            + args.policy_dynamics_loss_coeff * m_loss
             + args.reward_loss_coeff * r_loss
             + args.value_loss_coeff * v_loss
         )
