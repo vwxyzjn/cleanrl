@@ -1371,7 +1371,7 @@ if __name__ == "__main__":
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if args.anneal_lr:
-            learning_rate = linear_schedule(agent_state.opt_state[3].hyperparams["count"]).item()
+            learning_rate = linear_schedule(agent_state.opt_state[3].count).item()
         else:
             learning_rate = args.learning_rate
         writer.add_scalar("charts/learning_rate", learning_rate, global_step)
