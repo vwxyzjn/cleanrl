@@ -1178,7 +1178,7 @@ if __name__ == "__main__":
         agent_state = agent_state.apply_gradients(grads=grads)
         target_agent_state.replace(
             params=optax.incremental_update(
-                agent_state.params, target_agent_state.target_params, step_size=args.prior_network_update_rate
+                agent_state.params, target_agent_state.params, step_size=args.prior_network_update_rate
             )
         )
 
