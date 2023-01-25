@@ -810,7 +810,7 @@ if __name__ == "__main__":
         pred_policy = normalize_logits(policy_model.apply(agent_state.params.policy_model_params, pred_latent_state))
         return carry, (pred_reward, pred_value, pred_policy)
 
-    def compute_pred_q_and_policy(carry, act):
+    def compute_pred_reward_and_value(carry, act):
         _, pred_latent_state = dynamics.apply(agent_state.params.dynamics_params, carry, act)
         pred_reward, pred_value = reward_value_model.apply(agent_state.params.reward_value_model_params, pred_latent_state)
         return carry, (pred_reward, pred_value)
@@ -875,7 +875,7 @@ if __name__ == "__main__":
 
         batch_size = x.shape[0]
         _, (all_act_pred_r_1, all_act_pred_v_1) = jax.lax.scan(
-            compute_pred_q_and_policy, (x, x), jnp.indices((envs.single_action_space.n, batch_size))[0]
+            compute_pred_reward_and_value, (x, x), jnp.indices((envs.single_action_space.n, batch_size))[0]
         )
         return (params, lstm_carry), (
             logprob,
