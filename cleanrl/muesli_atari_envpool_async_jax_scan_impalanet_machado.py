@@ -413,14 +413,6 @@ def clipped_adamw(
     )
 
 
-def update_target_network(state: TrainState, target_state: TrainState, alpha_target: float) -> TrainState:
-    new_target_params = jax.tree_multimap(
-        lambda p, tp: p * alpha_target + tp * (1 - alpha_target), state.params, target_state.params
-    )
-
-    return target_state.replace(params=new_target_params)
-
-
 IntScalar = chex.Array
 
 
