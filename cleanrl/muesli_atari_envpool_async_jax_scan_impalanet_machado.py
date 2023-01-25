@@ -280,12 +280,10 @@ class RewardValueModel(nn.Module):
         return reward, value
 
 
-@jax.jit
 def distribution_expectation(arr: jnp.ndarray):
     return (jax.nn.softmax(arr, axis=-1) * RewardValueModel.atoms).sum(-1)
 
 
-@jax.jit
 def project_to_atoms(scalars):
     """Project the scalars to the distribution of atoms.
 
@@ -317,7 +315,6 @@ def project_to_atoms(scalars):
     return distribution
 
 
-@jax.jit
 def compute_q(pred_reward, pred_value):
     """Compute the q-value.
 
@@ -764,7 +761,6 @@ if __name__ == "__main__":
         logprob = jax.nn.log_softmax(logits)[jnp.arange(action.shape[0]), action]
         return action, logprob, lstm_carry, key
 
-    @jax.jit
     def normalize_logits(logits: jnp.ndarray) -> jnp.ndarray:
         """Normalize thhe logits.
 
@@ -774,7 +770,6 @@ if __name__ == "__main__":
         logits = logits.clip(min=jnp.finfo(logits.dtype).min)
         return logits
 
-    @jax.jit
     def reward_transform(r: jnp.ndarray) -> jnp.ndarray:
         """Transform the reward.
 
@@ -791,7 +786,6 @@ if __name__ == "__main__":
         eps = args.reward_transformation_epsilon
         return jnp.sign(r) * (jnp.sqrt(jnp.abs(r) + 1) - 1) + eps * r
 
-    @jax.jit
     def inverse_reward_transform(tr: jnp.ndarray) -> jnp.ndarray:
         """De-transform the reward.
 
@@ -1198,7 +1192,6 @@ if __name__ == "__main__":
             key,
         )
 
-    @jax.jit
     def calculate_categorical_scalar_loss(pred_scalar_logits, unrolled_done, unrolled_mask, unrolled_scalar):
         unrolled_is_from_diff_traj = compute_is_from_diff_traj(unrolled_done, unrolled_mask)
         true_scalar = project_to_atoms(reward_transform(unrolled_scalar))
