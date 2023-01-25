@@ -97,8 +97,8 @@ def parse_args():
                         help="the initial guess for the normalization constant in the sampled CMPO KL-divergence.")
     parser.add_argument("--pg-loss-coeff", type=float, default=3.0,  # Hessel et al. 2022, Muesli paper, Table 9
                         help="the coefficient of the policy gradient loss")
-    parser.add_argument("--cmpo-loss-coeff", type=float, default=1.0,  # Hessel et al. 2022, Muesli paper, Table 9
-                        help="the coefficient of the CMPO regularizer loss")
+    parser.add_argument("--cmpo-loss-coeff", type=float, default=1.0,  # Hessel et al. 2022, Muesli paper, Figure 3b, Table 9
+                        help="the lambda coefficient of the CMPO regularizer loss")
     parser.add_argument("--reward-loss-coeff", type=float, default=1.0,  # Hessel et al. 2022, Muesli paper, Table 5
                         help="the coefficient of the reward dynamics loss")
     parser.add_argument("--value-loss-coeff", type=float, default=0.25,  # Hessel et al. 2022, Muesli paper, Table 5
@@ -110,8 +110,6 @@ def parse_args():
     parser.add_argument("--cmpo-exact-kl", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
                         # Hessel et al. 2022, Muesli paper, Figure 3b
                         help="whether to use exact KL-divergence when using the CMPO regularizer")
-    parser.add_argument("--cmpo-regularizer-lambda", type=float, default=1.0,  # Hessel et al. 2022, Muesli paper, Figure 3b
-                        help="the coefficient of the CMPO regularizer")
     parser.add_argument("--replay-proportion", type=float, default=0.75,  # Hessel et al. 2022, Muesli paper, Table 5
                         help="the proportion of data to sample from the replay buffer.")
     parser.add_argument("--replay-buffer-size", type=int, default=6_000_000,  # Hessel et al. 2022, Muesli paper, Table 5
@@ -1066,7 +1064,7 @@ if __name__ == "__main__":
 
         # CMPO regularizer
         if args.cmpo_exact_kl:  # Used for large-scale Atari experiments. See Hessel et al. 2021, Muesli paper, Table 6.
-            cmpo_loss = args.cmpo_regularizer_lambda * (cmpo_probs * (cmpo_log_probs - all_act_logprob_curr)).sum(-1).mean()
+            cmpo_loss = (cmpo_probs * (cmpo_log_probs - all_act_logprob_curr)).sum(-1).mean()
         else:
             batch_indices = jnp.arange(args.update_batch_size).reshape(-1, 1, 1)
             seq_length_indices = jnp.arange(args.batch_sequence_length).reshape(1, -1, 1)
@@ -1085,10 +1083,7 @@ if __name__ == "__main__":
                 seq_length_indices,
                 sample_actions,
             ]
-            cmpo_loss = (
-                -args.cmpo_regularizer_lambda
-                * (sample_clipped_adv_estimate / z_tilde_cmpo * logprob_curr_sample_actions).mean()
-            )
+            cmpo_loss = -(sample_clipped_adv_estimate / z_tilde_cmpo * logprob_curr_sample_actions).mean()
 
         # Reward (dynamics) loss
         unrolled_rewards, _ = make_batched_sliding_windows(seqs.prev_reward[:, 2:], seq_mask[:, 2:], args.model_unroll_length)
