@@ -282,7 +282,7 @@ class RewardValueModel(nn.Module):
 
 @jax.jit
 def distribution_expectation(arr: jnp.ndarray):
-    return (arr * RewardValueModel.atoms).sum(-1)
+    return (jax.nn.softmax(arr, axis=-1) * RewardValueModel.atoms).sum(-1)
 
 
 @jax.jit
@@ -1111,8 +1111,10 @@ if __name__ == "__main__":
         )
         # We figure out if the current entry in the window is from the same trajectory as the first entry
         unrolled_is_from_diff_traj = compute_is_from_diff_traj(unrolled_done, unrolled_mask)
-        pred_policy_logits = pred_policy_logits.transpose(2, 0, 3, 1)  # (batch_size, seq_length, n_actions, window_width)
-        pi_model_kl_div = (unrolled_cmpo_log_probs * (unrolled_cmpo_log_probs - pred_policy_logits)).sum(axis=2)
+        pred_policy_log_probs = jax.nn.log_softmax(
+            normalize_logits(pred_policy_logits.transpose(2, 0, 3, 1))
+        )  # (batch_size, seq_length, n_actions, window_width)
+        pi_model_kl_div = (unrolled_cmpo_log_probs * (unrolled_cmpo_log_probs - pred_policy_log_probs)).sum(axis=2)
         m_loss = jnp.where(unrolled_is_from_diff_traj, 0, pi_model_kl_div).mean()
 
         loss = pg_loss + cmpo_loss + m_loss + args.reward_loss_coeff * r_loss + args.value_loss_coeff * v_loss
@@ -1197,11 +1199,13 @@ if __name__ == "__main__":
         )
 
     @jax.jit
-    def calculate_categorical_scalar_loss(pred_scalar, unrolled_done, unrolled_mask, unrolled_scalar):
+    def calculate_categorical_scalar_loss(pred_scalar_logits, unrolled_done, unrolled_mask, unrolled_scalar):
         unrolled_is_from_diff_traj = compute_is_from_diff_traj(unrolled_done, unrolled_mask)
         true_scalar = project_to_atoms(reward_transform(unrolled_scalar))
-        pred_scalar = jnp.log(pred_scalar.transpose(2, 0, 1, 3))
-        cross_entropy = -jnp.where(unrolled_is_from_diff_traj[..., None], 0, true_scalar * pred_scalar).sum(-1).mean()
+        pred_scalar_log_probs = jax.nn.log_softmax(normalize_logits(pred_scalar_logits.transpose(2, 0, 1, 3)))
+        cross_entropy = (
+            -jnp.where(unrolled_is_from_diff_traj[..., None], 0, true_scalar * pred_scalar_log_probs).sum(-1).mean()
+        )
         return cross_entropy
 
     def compute_is_from_diff_traj(done_seq, mask_seq):
