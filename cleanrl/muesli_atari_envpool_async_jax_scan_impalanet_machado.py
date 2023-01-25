@@ -1141,7 +1141,7 @@ if __name__ == "__main__":
             valid_masks[:, indices] & (indices < batched_sequence.shape[-1])[None, ...],
         )
 
-    # @jax.jit
+    @jax.jit
     def update_muesli(
         agent_state: TrainState,
         target_agent_state: TrainState,
