@@ -1112,8 +1112,8 @@ if __name__ == "__main__":
         )
         # We figure out if the current entry in the window is from the same trajectory as the first entry
         unrolled_is_from_diff_traj = compute_is_from_diff_traj(unrolled_done, unrolled_mask)
-        pred_policy_logits = pred_policy_logits.transpose(2, 0, 1, 3)  # (batch_size, seq_length, window_width, n_actions)
-        pi_model_kl_div = (unrolled_cmpo_log_probs * (unrolled_cmpo_log_probs - pred_policy_logits)).sum(-1)
+        pred_policy_logits = pred_policy_logits.transpose(2, 0, 3, 1)  # (batch_size, seq_length, n_actions, window_width)
+        pi_model_kl_div = (unrolled_cmpo_log_probs * (unrolled_cmpo_log_probs - pred_policy_logits)).sum(axis=2)
         m_loss = jnp.where(unrolled_is_from_diff_traj, 0, pi_model_kl_div).mean()
 
         loss = pg_loss + cmpo_loss + m_loss + args.reward_loss_coeff * r_loss + args.value_loss_coeff * v_loss
