@@ -55,7 +55,7 @@ def parse_args():
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=50000000,
         help="total timesteps of the experiments")
-    parser.add_argument("--learning-rate", type=float, default=2.5e-4,
+    parser.add_argument("--learning-rate", type=float, default=3e-4,  # Hessel et al. 2022, Muesli paper, Table 5
         help="the learning rate of the optimizer")
     parser.add_argument("--num-envs", type=int, default=96,
         help="the number of parallel game environments")
@@ -110,7 +110,7 @@ def parse_args():
                         help="whether to use exact KL-divergence when using the CMPO regularizer")
     parser.add_argument("--cmpo-regularizer-lambda", type=float, default=1.0,  # Hessel et al. 2022, Muesli paper, Figure 3b
                         help="the coefficient of the CMPO regularizer")
-    parser.add_argument("--replay-proportion", type=float, default=0.95,  # Hessel et al. 2022, Muesli paper, Table 6
+    parser.add_argument("--replay-proportion", type=float, default=0.75,  # Hessel et al. 2022, Muesli paper, Table 5
                         help="the proportion of data to sample from the replay buffer.")
     parser.add_argument("--replay-buffer-size", type=int, default=6_000_000,  # Hessel et al. 2022, Muesli paper, Table 5
                         help="the maximum number of frames the replay buffer can store.")
