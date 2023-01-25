@@ -100,9 +100,9 @@ def parse_args():
     parser.add_argument("--cmpo-loss-coeff", type=float, default=1.0,  # Hessel et al. 2022, Muesli paper, Table 9
                         help="the coefficient of the CMPO regularizer loss")
     parser.add_argument("--reward-loss-coeff", type=float, default=1.0,  # Hessel et al. 2022, Muesli paper, Table 5
-                        help="the coefficient of the reward model loss")
+                        help="the coefficient of the reward dynamics loss")
     parser.add_argument("--value-loss-coeff", type=float, default=0.25,  # Hessel et al. 2022, Muesli paper, Table 5
-                        help="the coefficient of the value model loss")
+                        help="the coefficient of the value dynamics loss")
     parser.add_argument("--retrace-lambda", type=float, default=0.95,  # Hessel et al. 2022, Muesli paper, Table 6
                         help="the coefficient of the Retrace importance weight")
     parser.add_argument("--cmpo-exact-kl", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
@@ -1088,7 +1088,7 @@ if __name__ == "__main__":
                 * (sample_clipped_adv_estimate / z_tilde_cmpo * logprob_curr_sample_actions).mean()
             )
 
-        # Reward (model) loss
+        # Reward (dynamics) loss
         unrolled_rewards, _ = make_batched_sliding_windows(seqs.prev_reward[:, 2:], seq_mask[:, 2:], args.model_unroll_length)
         unrolled_done, unrolled_mask = make_batched_sliding_windows(
             seqs.done[:, :-2], seq_mask[:, 2:], args.model_unroll_length
@@ -1096,7 +1096,7 @@ if __name__ == "__main__":
         # We figure out if the current entry in the window is from the same trajectory as the first entry
         r_loss = calculate_categorical_scalar_loss(pred_reward_logits, unrolled_done, unrolled_mask, unrolled_rewards)
 
-        # Value (model) loss
+        # Value (dynamics) loss
         unrolled_values, _ = make_batched_sliding_windows(value_prior, seq_mask[:, 1:-1], args.model_unroll_length)
         unrolled_done, unrolled_mask = make_batched_sliding_windows(
             seqs.done[:, :-2], seq_mask[:, :-2], args.model_unroll_length
@@ -1104,7 +1104,7 @@ if __name__ == "__main__":
         # We figure out if the current entry in the window is from the same trajectory as the first entry
         v_loss = calculate_categorical_scalar_loss(pred_value_logits, unrolled_done, unrolled_mask, unrolled_values)
 
-        # Policy model loss
+        # Policy dynamics loss
         unrolled_cmpo_log_probs, _ = make_batched_sliding_windows(cmpo_log_probs, seq_mask[:, 1:-1], args.model_unroll_length)
         unrolled_done, unrolled_mask = make_batched_sliding_windows(
             seqs.done[:, :-2], seq_mask[:, :-2], args.model_unroll_length
@@ -1377,9 +1377,9 @@ if __name__ == "__main__":
         writer.add_scalar("charts/learning_rate", learning_rate, global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
         writer.add_scalar("losses/cmpo_loss", cmpo_loss.item(), global_step)
-        writer.add_scalar("losses/reward_model_loss", r_loss.item(), global_step)
-        writer.add_scalar("losses/value_model_loss", v_loss.item(), global_step)
-        writer.add_scalar("losses/policy_model_loss", m_loss.item(), global_step)
+        writer.add_scalar("losses/reward_dynamics_loss", r_loss.item(), global_step)
+        writer.add_scalar("losses/value_dynamics_loss", v_loss.item(), global_step)
+        writer.add_scalar("losses/policy_dynamics_loss", m_loss.item(), global_step)
         writer.add_scalar("losses/loss", loss.item(), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
