@@ -682,9 +682,8 @@ if __name__ == "__main__":
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     def linear_schedule(count):
-        # anneal learning rate linearly after one training iteration which contains
-        # (args.num_minibatches * args.update_epochs) gradient updates
-        frac = 1.0 - (count // args.update_epochs) / args.num_updates
+        # anneal learning rate linearly after one training iteration
+        frac = 1.0 - count / args.num_updates
         return args.learning_rate * frac
 
     network = RepresentationNetwork(action_dim=envs.single_action_space.n)
