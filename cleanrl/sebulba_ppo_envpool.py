@@ -1,6 +1,7 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpool_async_jax_scan_impalanet_machadopy
 # https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
 import argparse
+from collections import deque
 from functools import partial
 import os
 import random
@@ -235,6 +236,8 @@ def rollout(
     returned_episode_lengths = np.zeros((args.num_envs,), dtype=np.float32)
     envs.async_reset()
     final_env_ids = np.zeros((args.async_update, args.async_batch_size), dtype=np.int32)
+
+    params_queue_get_time = deque(maxlen=10)
     for update in range(1, args.num_updates + 2):
         update_time_start = time.time()
         obs = []
@@ -257,7 +260,10 @@ def rollout(
         # for this reason we do `num_steps + 1`` to get the extra states for value bootstrapping.
         # but note that the extra states are not used for the loss computation in the next iteration,
         # while the sync version will use the extra state for the loss computation.
+        params_queue_get_time_start = time.time()
         params = params_queue.get()
+        params_queue_get_time.append(time.time() - params_queue_get_time_start)
+        writer.add_scalar("stats/params_queue_get_time", np.mean(params_queue_get_time), global_step)
         for step in range(
             args.async_update, (args.num_steps + 1) * args.async_update
         ):  # num_steps + 1 to get the states for value bootstrapping.
@@ -303,6 +309,9 @@ def rollout(
         writer.add_scalar("charts/avg_episodic_length", np.mean(returned_episode_lengths), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+
+        writer.add_scalar("stats/truncations", np.sum(truncations), global_step)
+        writer.add_scalar("stats/terminations", np.sum(terminations), global_step)
         # writer.add_scalar(
         #     "charts/SPS_update", int(args.num_envs * args.num_steps / (time.time() - update_time_start)), global_step
         # )
@@ -316,12 +325,9 @@ def rollout(
         #     env_ids,
         #     rewards,
         # ))
-        obs = jnp.asarray(obs)
-        newobs = jax.device_put(obs, devices[1])
-        print("=====", newobs.device(), obs.device())
         rollout_queue.put((
             global_step,
-            newobs,
+            jax.device_put(jnp.asarray(obs), devices[1]),
             jax.device_put(jnp.asarray(dones), devices[1]),
             jax.device_put(jnp.asarray(values), devices[1]),
             jax.device_put(jnp.asarray(actions), devices[1]),
@@ -586,65 +592,7 @@ if __name__ == "__main__":
         )
         return agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, advantages, returns, b_inds, final_env_ids, key
 
-
-
-        # # training_time_start = time.time()
-        # # (
-        # #     agent_state,
-        # #     loss,
-        # #     pg_loss,
-        # #     v_loss,
-        # #     entropy_loss,
-        # #     approx_kl,
-        # #     advantages,
-        # #     returns,
-        # #     b_inds,
-        # #     final_env_ids,
-        # #     key,
-        # # ) = update_ppo(
-        # #     agent_state,
-        # #     obs,
-        # #     dones,
-        # #     values,
-        # #     actions,
-        # #     logprobs,
-        # #     env_ids,
-        # #     rewards,
-        # #     key,
-        # # )
-        # # writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
-        # # # writer.add_scalar("stats/advantages", advantages.mean().item(), global_step)
-        # # # writer.add_scalar("stats/returns", returns.mean().item(), global_step)
-        # # writer.add_scalar("stats/truncations", np.sum(truncations), global_step)
-        # # writer.add_scalar("stats/terminations", np.sum(terminations), global_step)
-
-        # # # TRY NOT TO MODIFY: record rewards for plotting purposes
-        # # writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"].item(), global_step)
-        # # writer.add_scalar("losses/value_loss", v_loss[-1, -1].item(), global_step)
-        # # writer.add_scalar("losses/policy_loss", pg_loss[-1, -1].item(), global_step)
-        # # writer.add_scalar("losses/entropy", entropy_loss[-1, -1].item(), global_step)
-        # # writer.add_scalar("losses/approx_kl", approx_kl[-1, -1].item(), global_step)
-        # # writer.add_scalar("losses/loss", loss[-1, -1].item(), global_step)
-        # print("SPS:", int(global_step / (time.time() - start_time)))
-        # writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
-        # writer.add_scalar(
-        #     "charts/SPS_update", int(args.num_envs * args.num_steps / (time.time() - update_time_start)), global_step
-        # )
-        # writer.add_scalar("stats/env_recv_time", env_recv_time, global_step)
-        # writer.add_scalar("stats/inference_time", inference_time, global_step)
-        # writer.add_scalar("stats/storage_time", storage_time, global_step)
-        # writer.add_scalar("stats/env_send_time", env_send_time, global_step)
-        # writer.add_scalar("stats/update_time", time.time() - update_time_start, global_step)
-
-
-    # rollout(
-    #     global_step,
-    #     agent_state,
-    #     envs,
-    #     key,
-    #     args,
-    # )
-    rollout_queue = queue.Queue(maxsize=4)
+    rollout_queue = queue.Queue(maxsize=2)
     params_queue = queue.Queue(maxsize=2)
     params_queue.put(jax.device_put(agent_state.params, devices[0]))
     for i in range(1):
@@ -656,20 +604,13 @@ if __name__ == "__main__":
             writer,
         )).start()
 
-
-
-    # rollout_queue = mp.Queue(maxsize=4)
-    # for i in range(4):
-    #     p = mp.Process(target=rollout, args=(
-    #         jax.device_put(agent_state.params, devices[0]),
-    #         jax.device_put(key, devices[0]),
-    #         args,
-    #         rollout_queue,
-    #     )).start()
-
     update = 1
+    rollout_queue_get_time = deque(maxlen=10)
     while True:
+        rollout_queue_get_time_start = time.time()
         global_step, obs, dones, values, actions, logprobs, env_ids, rewards = rollout_queue.get()
+        rollout_queue_get_time.append(time.time() - rollout_queue_get_time_start)
+        writer.add_scalar("stats/rollout_queue_get_time", np.mean(rollout_queue_get_time), global_step)
 
         training_time_start = time.time()
         # update_ppo(agent_state,obs,dones,values,actions,logprobs,env_ids,rewards,key)
@@ -698,8 +639,20 @@ if __name__ == "__main__":
         )
         params_queue.put(jax.device_put(agent_state.params, devices[0]))
         writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
+        writer.add_scalar("stats/rollout_queue_size", rollout_queue.qsize(), global_step)
+        writer.add_scalar("stats/params_queue_size", params_queue.qsize(), global_step)
         update += 1
         print(global_step, obs.device(), update, rollout_queue.qsize(), f"training time: {time.time() - training_time_start}s")
+
+        writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
+
+        # TRY NOT TO MODIFY: record rewards for plotting purposes
+        writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"].item(), global_step)
+        writer.add_scalar("losses/value_loss", v_loss[-1, -1].item(), global_step)
+        writer.add_scalar("losses/policy_loss", pg_loss[-1, -1].item(), global_step)
+        writer.add_scalar("losses/entropy", entropy_loss[-1, -1].item(), global_step)
+        writer.add_scalar("losses/approx_kl", approx_kl[-1, -1].item(), global_step)
+        writer.add_scalar("losses/loss", loss[-1, -1].item(), global_step)
         
     envs.close()
     writer.close()
