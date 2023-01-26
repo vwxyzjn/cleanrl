@@ -215,10 +215,11 @@ def get_action_and_value(
 
 
 def rollout(
-    params: TrainState,
     key: jax.random.PRNGKey,
     args,
-    ptrqueue,
+    rollout_queue,
+    params_queue,
+    writer,
 ):
     devices = jax.devices("gpu")
     envs = make_env(args.env_id, args.seed, args.num_envs, args.async_batch_size)()
@@ -234,7 +235,6 @@ def rollout(
     returned_episode_lengths = np.zeros((args.num_envs,), dtype=np.float32)
     envs.async_reset()
     final_env_ids = np.zeros((args.async_update, args.async_batch_size), dtype=np.int32)
-
     for update in range(1, args.num_updates + 2):
         update_time_start = time.time()
         obs = []
@@ -257,6 +257,7 @@ def rollout(
         # for this reason we do `num_steps + 1`` to get the extra states for value bootstrapping.
         # but note that the extra states are not used for the loss computation in the next iteration,
         # while the sync version will use the extra state for the loss computation.
+        params = params_queue.get()
         for step in range(
             args.async_update, (args.num_steps + 1) * args.async_update
         ):  # num_steps + 1 to get the states for value bootstrapping.
@@ -298,14 +299,14 @@ def rollout(
         avg_episodic_return = np.mean(returned_episode_returns)
         # print(returned_episode_returns)
         print(f"global_step={global_step}, avg_episodic_return={avg_episodic_return}")
-        # writer.add_scalar("charts/avg_episodic_return", avg_episodic_return, global_step)
-        # writer.add_scalar("charts/avg_episodic_length", np.mean(returned_episode_lengths), global_step)
+        writer.add_scalar("charts/avg_episodic_return", avg_episodic_return, global_step)
+        writer.add_scalar("charts/avg_episodic_length", np.mean(returned_episode_lengths), global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
-        # writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+        writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
         # writer.add_scalar(
         #     "charts/SPS_update", int(args.num_envs * args.num_steps / (time.time() - update_time_start)), global_step
         # )
-        # ptrqueue.put((
+        # rollout_queue.put((
         #     global_step,
         #     obs,
         #     dones,
@@ -318,7 +319,7 @@ def rollout(
         obs = jnp.asarray(obs)
         newobs = jax.device_put(obs, devices[1])
         print("=====", newobs.device(), obs.device())
-        ptrqueue.put((
+        rollout_queue.put((
             global_step,
             newobs,
             jax.device_put(jnp.asarray(dones), devices[1]),
@@ -643,29 +644,32 @@ if __name__ == "__main__":
     #     key,
     #     args,
     # )
-    ptrqueue = queue.Queue(maxsize=4)
+    rollout_queue = queue.Queue(maxsize=4)
+    params_queue = queue.Queue(maxsize=2)
+    params_queue.put(jax.device_put(agent_state.params, devices[0]))
     for i in range(1):
         threading.Thread(target=rollout, args=(
-            jax.device_put(agent_state.params, devices[0]),
             jax.device_put(key, devices[0]),
             args,
-            ptrqueue,
+            rollout_queue,
+            params_queue,
+            writer,
         )).start()
 
 
 
-    # ptrqueue = mp.Queue(maxsize=4)
+    # rollout_queue = mp.Queue(maxsize=4)
     # for i in range(4):
     #     p = mp.Process(target=rollout, args=(
     #         jax.device_put(agent_state.params, devices[0]),
     #         jax.device_put(key, devices[0]),
     #         args,
-    #         ptrqueue,
+    #         rollout_queue,
     #     )).start()
 
     update = 1
     while True:
-        global_step, obs, dones, values, actions, logprobs, env_ids, rewards = ptrqueue.get()
+        global_step, obs, dones, values, actions, logprobs, env_ids, rewards = rollout_queue.get()
 
         training_time_start = time.time()
         # update_ppo(agent_state,obs,dones,values,actions,logprobs,env_ids,rewards,key)
@@ -692,9 +696,10 @@ if __name__ == "__main__":
             rewards,
             key,
         )
+        params_queue.put(jax.device_put(agent_state.params, devices[0]))
         writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
         update += 1
-        print(global_step, obs.device(), update, ptrqueue.qsize(), f"training time: {time.time() - training_time_start}s")
+        print(global_step, obs.device(), update, rollout_queue.qsize(), f"training time: {time.time() - training_time_start}s")
         
     envs.close()
     writer.close()
