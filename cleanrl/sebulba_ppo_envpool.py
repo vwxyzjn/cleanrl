@@ -1,19 +1,22 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpool_async_jax_scan_impalanet_machadopy
 # https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
 import argparse
-from collections import deque
-from functools import partial
 import os
 import random
 import time
+from collections import deque
 from distutils.util import strtobool
+from functools import partial
 from typing import Sequence
 
 os.environ[
     "XLA_PYTHON_CLIENT_MEM_FRACTION"
 ] = "0.6"  # see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
-os.environ["XLA_FLAGS"] = ("--xla_cpu_multi_thread_eigen=false "
-                           "intra_op_parallelism_threads=1")
+os.environ["XLA_FLAGS"] = "--xla_cpu_multi_thread_eigen=false " "intra_op_parallelism_threads=1"
+import multiprocessing as mp
+import queue
+import threading
+
 import envpool
 import flax
 import flax.linen as nn
@@ -25,9 +28,7 @@ import optax
 from flax.linen.initializers import constant, orthogonal
 from flax.training.train_state import TrainState
 from torch.utils.tensorboard import SummaryWriter
-import threading
-import queue
-import multiprocessing as mp
+
 
 def parse_args():
     # fmt: off
@@ -235,11 +236,9 @@ def rollout(
     episode_lengths = np.zeros((args.num_envs,), dtype=np.float32)
     returned_episode_lengths = np.zeros((args.num_envs,), dtype=np.float32)
     envs.async_reset()
-    final_env_ids = np.zeros((args.async_update, args.async_batch_size), dtype=np.int32)
 
     params_queue_get_time = deque(maxlen=10)
     for update in range(1, args.num_updates + 2):
-        update_time_start = time.time()
         obs = []
         dones = []
         actions = []
@@ -264,7 +263,7 @@ def rollout(
         params = params_queue.get()
         params_queue_get_time.append(time.time() - params_queue_get_time_start)
         writer.add_scalar("stats/params_queue_get_time", np.mean(params_queue_get_time), global_step)
-        for step in range(
+        for _ in range(
             args.async_update, (args.num_steps + 1) * args.async_update
         ):  # num_steps + 1 to get the states for value bootstrapping.
             env_recv_time_start = time.time()
@@ -312,9 +311,10 @@ def rollout(
 
         writer.add_scalar("stats/truncations", np.sum(truncations), global_step)
         writer.add_scalar("stats/terminations", np.sum(terminations), global_step)
-        # writer.add_scalar(
-        #     "charts/SPS_update", int(args.num_envs * args.num_steps / (time.time() - update_time_start)), global_step
-        # )
+        writer.add_scalar("stats/env_recv_time", env_recv_time, global_step)
+        writer.add_scalar("stats/inference_time", inference_time, global_step)
+        writer.add_scalar("stats/storage_time", storage_time, global_step)
+        writer.add_scalar("stats/env_send_time", env_send_time, global_step)
         # rollout_queue.put((
         #     global_step,
         #     obs,
@@ -325,16 +325,19 @@ def rollout(
         #     env_ids,
         #     rewards,
         # ))
-        rollout_queue.put((
-            global_step,
-            jax.device_put(jnp.asarray(obs), devices[1]),
-            jax.device_put(jnp.asarray(dones), devices[1]),
-            jax.device_put(jnp.asarray(values), devices[1]),
-            jax.device_put(jnp.asarray(actions), devices[1]),
-            jax.device_put(jnp.asarray(logprobs), devices[1]),
-            jax.device_put(jnp.asarray(env_ids), devices[1]),
-            jax.device_put(jnp.asarray(rewards), devices[1]),
-        ))
+        rollout_queue.put(
+            (
+                global_step,
+                update,
+                jax.device_put(jnp.asarray(obs), devices[1]),
+                jax.device_put(jnp.asarray(dones), devices[1]),
+                jax.device_put(jnp.asarray(values), devices[1]),
+                jax.device_put(jnp.asarray(actions), devices[1]),
+                jax.device_put(jnp.asarray(logprobs), devices[1]),
+                jax.device_put(jnp.asarray(env_ids), devices[1]),
+                jax.device_put(jnp.asarray(rewards), devices[1]),
+            )
+        )
 
 
 if __name__ == "__main__":
@@ -395,6 +398,7 @@ if __name__ == "__main__":
             ),
         ),
     )
+
     @jax.jit
     def get_action_and_value2(
         params: flax.core.FrozenDict,
@@ -596,19 +600,21 @@ if __name__ == "__main__":
     params_queue = queue.Queue(maxsize=2)
     params_queue.put(jax.device_put(agent_state.params, devices[0]))
     for i in range(1):
-        threading.Thread(target=rollout, args=(
-            jax.device_put(key, devices[0]),
-            args,
-            rollout_queue,
-            params_queue,
-            writer,
-        )).start()
+        threading.Thread(
+            target=rollout,
+            args=(
+                jax.device_put(key, devices[0]),
+                args,
+                rollout_queue,
+                params_queue,
+                writer,
+            ),
+        ).start()
 
-    update = 1
     rollout_queue_get_time = deque(maxlen=10)
     while True:
         rollout_queue_get_time_start = time.time()
-        global_step, obs, dones, values, actions, logprobs, env_ids, rewards = rollout_queue.get()
+        global_step, update, obs, dones, values, actions, logprobs, env_ids, rewards = rollout_queue.get()
         rollout_queue_get_time.append(time.time() - rollout_queue_get_time_start)
         writer.add_scalar("stats/rollout_queue_get_time", np.mean(rollout_queue_get_time), global_step)
 
@@ -641,7 +647,6 @@ if __name__ == "__main__":
         writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
         writer.add_scalar("stats/rollout_queue_size", rollout_queue.qsize(), global_step)
         writer.add_scalar("stats/params_queue_size", params_queue.qsize(), global_step)
-        update += 1
         print(global_step, obs.device(), update, rollout_queue.qsize(), f"training time: {time.time() - training_time_start}s")
 
         writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
@@ -653,6 +658,8 @@ if __name__ == "__main__":
         writer.add_scalar("losses/entropy", entropy_loss[-1, -1].item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl[-1, -1].item(), global_step)
         writer.add_scalar("losses/loss", loss[-1, -1].item(), global_step)
-        
+        if update > args.num_updates:
+            break
+
     envs.close()
     writer.close()
