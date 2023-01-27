@@ -216,6 +216,114 @@ def get_action_and_value(
     return action, logprob, value.squeeze(), key
 
 
+@partial(jax.jit, static_argnums=(3))
+def get_action_and_value2(
+    params: flax.core.FrozenDict,
+    x: np.ndarray,
+    action: np.ndarray,
+    action_dim: int,
+):
+    hidden = Network().apply(params.network_params, x)
+    logits = Actor(action_dim).apply(params.actor_params, hidden)
+    logprob = jax.nn.log_softmax(logits)[jnp.arange(action.shape[0]), action]
+    logits = logits - jax.scipy.special.logsumexp(logits, axis=-1, keepdims=True)
+    logits = logits.clip(min=jnp.finfo(logits.dtype).min)
+    p_log_p = logits * jax.nn.softmax(logits)
+    entropy = -p_log_p.sum(-1)
+    value = Critic().apply(params.critic_params, hidden).squeeze()
+    return logprob, entropy, value
+
+
+def compute_gae_once(carry, x):
+    lastvalues, lastdones, advantages, lastgaelam, final_env_ids, final_env_id_checked = carry
+    (
+        done,
+        value,
+        eid,
+        reward,
+    ) = x
+    nextnonterminal = 1.0 - lastdones[eid]
+    nextvalues = lastvalues[eid]
+    delta = jnp.where(final_env_id_checked[eid] == -1, 0, reward + args.gamma * nextvalues * nextnonterminal - value)
+    advantages = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam[eid]
+    final_env_ids = jnp.where(final_env_id_checked[eid] == 1, 1, 0)
+    final_env_id_checked = final_env_id_checked.at[eid].set(
+        jnp.where(final_env_id_checked[eid] == -1, 1, final_env_id_checked[eid])
+    )
+
+    # the last_ variables keeps track of the actual `num_steps`
+    lastgaelam = lastgaelam.at[eid].set(advantages)
+    lastdones = lastdones.at[eid].set(done)
+    lastvalues = lastvalues.at[eid].set(value)
+    return (lastvalues, lastdones, advantages, lastgaelam, final_env_ids, final_env_id_checked), (
+        advantages,
+        final_env_ids,
+    )
+
+
+@jax.jit
+def compute_gae(
+    env_ids: np.ndarray,
+    rewards: np.ndarray,
+    values: np.ndarray,
+    dones: np.ndarray,
+):
+    dones = jnp.asarray(dones)
+    values = jnp.asarray(values)
+    env_ids = jnp.asarray(env_ids)
+    rewards = jnp.asarray(rewards)
+
+    _, B = env_ids.shape
+    final_env_id_checked = jnp.zeros(args.num_envs, jnp.int32) - 1
+    final_env_ids = jnp.zeros(B, jnp.int32)
+    advantages = jnp.zeros(B)
+    lastgaelam = jnp.zeros(args.num_envs)
+    lastdones = jnp.zeros(args.num_envs) + 1
+    lastvalues = jnp.zeros(args.num_envs)
+
+    (_, _, _, _, final_env_ids, final_env_id_checked), (advantages, final_env_ids) = jax.lax.scan(
+        compute_gae_once,
+        (
+            lastvalues,
+            lastdones,
+            advantages,
+            lastgaelam,
+            final_env_ids,
+            final_env_id_checked,
+        ),
+        (
+            dones,
+            values,
+            env_ids,
+            rewards,
+        ),
+        reverse=True,
+    )
+    return advantages, advantages + values, final_env_id_checked, final_env_ids
+
+
+def ppo_loss(params, x, a, logp, mb_advantages, mb_returns, action_dim):
+    newlogprob, entropy, newvalue = get_action_and_value2(params, x, a, action_dim)
+    logratio = newlogprob - logp
+    ratio = jnp.exp(logratio)
+    approx_kl = ((ratio - 1) - logratio).mean()
+
+    if args.norm_adv:
+        mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
+
+    # Policy loss
+    pg_loss1 = -mb_advantages * ratio
+    pg_loss2 = -mb_advantages * jnp.clip(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
+    pg_loss = jnp.maximum(pg_loss1, pg_loss2).mean()
+
+    # Value loss
+    v_loss = 0.5 * ((newvalue - mb_returns) ** 2).mean()
+
+    entropy_loss = entropy.mean()
+    loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
+    return loss, (pg_loss, v_loss, entropy_loss, jax.lax.stop_gradient(approx_kl))
+
+
 def rollout(
     key: jax.random.PRNGKey,
     args,
@@ -325,19 +433,147 @@ def rollout(
         #     env_ids,
         #     rewards,
         # ))
+        # rollout_queue.put(
+        #     (
+        #         global_step,
+        #         update,
+        #         jax.device_put(jnp.asarray(obs), devices[1]),
+        #         jax.device_put(jnp.asarray(dones), devices[1]),
+        #         jax.device_put(jnp.asarray(values), devices[1]),
+        #         jax.device_put(jnp.asarray(actions), devices[1]),
+        #         jax.device_put(jnp.asarray(logprobs), devices[1]),
+        #         jax.device_put(jnp.asarray(env_ids), devices[1]),
+        #         jax.device_put(jnp.asarray(rewards), devices[1]),
+        #     )
+        # )
+        b_obs, b_actions, b_logprobs, b_advantages, b_returns, b_inds = prepare_data(
+            obs,
+            dones,
+            values,
+            actions,
+            logprobs,
+            env_ids,
+            rewards,
+        )
         rollout_queue.put(
             (
                 global_step,
                 update,
-                jax.device_put(jnp.asarray(obs), devices[1]),
-                jax.device_put(jnp.asarray(dones), devices[1]),
-                jax.device_put(jnp.asarray(values), devices[1]),
-                jax.device_put(jnp.asarray(actions), devices[1]),
-                jax.device_put(jnp.asarray(logprobs), devices[1]),
-                jax.device_put(jnp.asarray(env_ids), devices[1]),
-                jax.device_put(jnp.asarray(rewards), devices[1]),
+                jax.device_put_sharded(jnp.array_split(b_obs, len(devices)), devices),
+                jax.device_put_sharded(jnp.array_split(b_actions, len(devices)), devices),
+                jax.device_put_sharded(jnp.array_split(b_logprobs, len(devices)), devices),
+                jax.device_put_sharded(jnp.array_split(b_advantages, len(devices)), devices),
+                jax.device_put_sharded(jnp.array_split(b_returns, len(devices)), devices),
+                jax.device_put_sharded(jnp.array_split(b_inds, len(devices)), devices),
             )
         )
+
+
+@jax.jit
+def prepare_data(
+    obs: list,
+    dones: list,
+    values: list,
+    actions: list,
+    logprobs: list,
+    env_ids: list,
+    rewards: list,
+):
+    obs = jnp.asarray(obs)
+    dones = jnp.asarray(dones)
+    values = jnp.asarray(values)
+    actions = jnp.asarray(actions)
+    logprobs = jnp.asarray(logprobs)
+    env_ids = jnp.asarray(env_ids)
+    rewards = jnp.asarray(rewards)
+
+    # TODO: in an unlikely event, one of the envs might have not stepped at all, which may results in unexpected behavior
+    T, B = env_ids.shape
+    index_ranges = jnp.arange(T * B, dtype=jnp.int32)
+    next_index_ranges = jnp.zeros_like(index_ranges, dtype=jnp.int32)
+    last_env_ids = jnp.zeros(args.num_envs, dtype=jnp.int32) - 1
+
+    def f(carry, x):
+        last_env_ids, next_index_ranges = carry
+        env_id, index_range = x
+        next_index_ranges = next_index_ranges.at[last_env_ids[env_id]].set(
+            jnp.where(last_env_ids[env_id] != -1, index_range, next_index_ranges[last_env_ids[env_id]])
+        )
+        last_env_ids = last_env_ids.at[env_id].set(index_range)
+        return (last_env_ids, next_index_ranges), None
+
+    (last_env_ids, next_index_ranges), _ = jax.lax.scan(
+        f,
+        (last_env_ids, next_index_ranges),
+        (env_ids.reshape(-1), index_ranges),
+    )
+
+    # rewards is off by one time step
+    rewards = rewards.reshape(-1)[next_index_ranges].reshape((args.num_steps) * args.async_update, args.async_batch_size)
+    advantages, returns, _, final_env_ids = compute_gae(env_ids, rewards, values, dones)
+    b_inds = jnp.nonzero(final_env_ids.reshape(-1), size=(args.num_steps) * args.async_update * args.async_batch_size)[0]
+    b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
+    b_actions = actions.reshape(-1)
+    b_logprobs = logprobs.reshape(-1)
+    b_advantages = advantages.reshape(-1)
+    b_returns = returns.reshape(-1)
+    return b_obs, b_actions, b_logprobs, b_advantages, b_returns, b_inds
+
+
+@partial(jax.jit, static_argnums=(7))
+def single_device_update(
+    agent_state: TrainState,
+    b_obs,
+    b_actions,
+    b_logprobs,
+    b_advantages,
+    b_returns,
+    b_inds,
+    action_dim,
+    key: jax.random.PRNGKey,
+):
+    def update_epoch(carry, _):
+        agent_state, key = carry
+        key, subkey = jax.random.split(key)
+
+        # taken from: https://github.com/google/brax/blob/main/brax/training/agents/ppo/train.py
+        def convert_data(x: jnp.ndarray):
+            x = jax.random.permutation(subkey, x)
+            x = jnp.reshape(x, (args.num_minibatches, -1) + x.shape[1:])
+            return x
+
+        def update_minibatch(agent_state, minibatch):
+            mb_obs, mb_actions, mb_logprobs, mb_advantages, mb_returns = minibatch
+            (loss, (pg_loss, v_loss, entropy_loss, approx_kl)), grads = ppo_loss_grad_fn(
+                agent_state.params,
+                mb_obs,
+                mb_actions,
+                mb_logprobs,
+                mb_advantages,
+                mb_returns,
+                action_dim,
+            )
+            grads = jax.lax.pmean(grads, axis_name="devices")
+            agent_state = agent_state.apply_gradients(grads=grads)
+            return agent_state, (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads)
+
+        agent_state, (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads) = jax.lax.scan(
+            update_minibatch,
+            agent_state,
+            (
+                convert_data(b_obs),
+                convert_data(b_actions),
+                convert_data(b_logprobs),
+                convert_data(b_advantages),
+                convert_data(b_returns),
+            ),
+        )
+        return (agent_state, key), (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads)
+
+    (agent_state, key), (loss, pg_loss, v_loss, entropy_loss, approx_kl, _) = jax.lax.scan(
+        update_epoch, (agent_state, key), (), length=args.update_epochs
+    )
+    return agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, b_inds, key
 
 
 if __name__ == "__main__":
@@ -399,202 +635,16 @@ if __name__ == "__main__":
         ),
     )
 
-    @jax.jit
-    def get_action_and_value2(
-        params: flax.core.FrozenDict,
-        x: np.ndarray,
-        action: np.ndarray,
-    ):
-        hidden = Network().apply(params.network_params, x)
-        logits = actor.apply(params.actor_params, hidden)
-        logprob = jax.nn.log_softmax(logits)[jnp.arange(action.shape[0]), action]
-        logits = logits - jax.scipy.special.logsumexp(logits, axis=-1, keepdims=True)
-        logits = logits.clip(min=jnp.finfo(logits.dtype).min)
-        p_log_p = logits * jax.nn.softmax(logits)
-        entropy = -p_log_p.sum(-1)
-        value = Critic().apply(params.critic_params, hidden).squeeze()
-        return logprob, entropy, value
-
-    def compute_gae_once(carry, x):
-        lastvalues, lastdones, advantages, lastgaelam, final_env_ids, final_env_id_checked = carry
-        (
-            done,
-            value,
-            eid,
-            reward,
-        ) = x
-        nextnonterminal = 1.0 - lastdones[eid]
-        nextvalues = lastvalues[eid]
-        delta = jnp.where(final_env_id_checked[eid] == -1, 0, reward + args.gamma * nextvalues * nextnonterminal - value)
-        advantages = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam[eid]
-        final_env_ids = jnp.where(final_env_id_checked[eid] == 1, 1, 0)
-        final_env_id_checked = final_env_id_checked.at[eid].set(
-            jnp.where(final_env_id_checked[eid] == -1, 1, final_env_id_checked[eid])
-        )
-
-        # the last_ variables keeps track of the actual `num_steps`
-        lastgaelam = lastgaelam.at[eid].set(advantages)
-        lastdones = lastdones.at[eid].set(done)
-        lastvalues = lastvalues.at[eid].set(value)
-        return (lastvalues, lastdones, advantages, lastgaelam, final_env_ids, final_env_id_checked), (
-            advantages,
-            final_env_ids,
-        )
-
-    @jax.jit
-    def compute_gae(
-        env_ids: np.ndarray,
-        rewards: np.ndarray,
-        values: np.ndarray,
-        dones: np.ndarray,
-    ):
-        dones = jnp.asarray(dones)
-        values = jnp.asarray(values)
-        env_ids = jnp.asarray(env_ids)
-        rewards = jnp.asarray(rewards)
-
-        _, B = env_ids.shape
-        final_env_id_checked = jnp.zeros(args.num_envs, jnp.int32) - 1
-        final_env_ids = jnp.zeros(B, jnp.int32)
-        advantages = jnp.zeros(B)
-        lastgaelam = jnp.zeros(args.num_envs)
-        lastdones = jnp.zeros(args.num_envs) + 1
-        lastvalues = jnp.zeros(args.num_envs)
-
-        (_, _, _, _, final_env_ids, final_env_id_checked), (advantages, final_env_ids) = jax.lax.scan(
-            compute_gae_once,
-            (
-                lastvalues,
-                lastdones,
-                advantages,
-                lastgaelam,
-                final_env_ids,
-                final_env_id_checked,
-            ),
-            (
-                dones,
-                values,
-                env_ids,
-                rewards,
-            ),
-            reverse=True,
-        )
-        return advantages, advantages + values, final_env_id_checked, final_env_ids
-
-    def ppo_loss(params, x, a, logp, mb_advantages, mb_returns):
-        newlogprob, entropy, newvalue = get_action_and_value2(params, x, a)
-        logratio = newlogprob - logp
-        ratio = jnp.exp(logratio)
-        approx_kl = ((ratio - 1) - logratio).mean()
-
-        if args.norm_adv:
-            mb_advantages = (mb_advantages - mb_advantages.mean()) / (mb_advantages.std() + 1e-8)
-
-        # Policy loss
-        pg_loss1 = -mb_advantages * ratio
-        pg_loss2 = -mb_advantages * jnp.clip(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
-        pg_loss = jnp.maximum(pg_loss1, pg_loss2).mean()
-
-        # Value loss
-        v_loss = 0.5 * ((newvalue - mb_returns) ** 2).mean()
-
-        entropy_loss = entropy.mean()
-        loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
-        return loss, (pg_loss, v_loss, entropy_loss, jax.lax.stop_gradient(approx_kl))
-
     ppo_loss_grad_fn = jax.value_and_grad(ppo_loss, has_aux=True)
 
-    @partial(jax.jit, device=devices[1])
-    def update_ppo(
-        agent_state: TrainState,
-        obs: list,
-        dones: list,
-        values: list,
-        actions: list,
-        logprobs: list,
-        env_ids: list,
-        rewards: list,
-        key: jax.random.PRNGKey,
-    ):
-        obs = jnp.asarray(obs)
-        dones = jnp.asarray(dones)
-        values = jnp.asarray(values)
-        actions = jnp.asarray(actions)
-        logprobs = jnp.asarray(logprobs)
-        env_ids = jnp.asarray(env_ids)
-        rewards = jnp.asarray(rewards)
-
-        # TODO: in an unlikely event, one of the envs might have not stepped at all, which may results in unexpected behavior
-        T, B = env_ids.shape
-        index_ranges = jnp.arange(T * B, dtype=jnp.int32)
-        next_index_ranges = jnp.zeros_like(index_ranges, dtype=jnp.int32)
-        last_env_ids = jnp.zeros(args.num_envs, dtype=jnp.int32) - 1
-
-        def f(carry, x):
-            last_env_ids, next_index_ranges = carry
-            env_id, index_range = x
-            next_index_ranges = next_index_ranges.at[last_env_ids[env_id]].set(
-                jnp.where(last_env_ids[env_id] != -1, index_range, next_index_ranges[last_env_ids[env_id]])
-            )
-            last_env_ids = last_env_ids.at[env_id].set(index_range)
-            return (last_env_ids, next_index_ranges), None
-
-        (last_env_ids, next_index_ranges), _ = jax.lax.scan(
-            f,
-            (last_env_ids, next_index_ranges),
-            (env_ids.reshape(-1), index_ranges),
-        )
-
-        # rewards is off by one time step
-        rewards = rewards.reshape(-1)[next_index_ranges].reshape((args.num_steps) * args.async_update, args.async_batch_size)
-        advantages, returns, _, final_env_ids = compute_gae(env_ids, rewards, values, dones)
-        b_inds = jnp.nonzero(final_env_ids.reshape(-1), size=(args.num_steps) * args.async_update * args.async_batch_size)[0]
-        b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
-        b_actions = actions.reshape(-1)
-        b_logprobs = logprobs.reshape(-1)
-        b_advantages = advantages.reshape(-1)
-        b_returns = returns.reshape(-1)
-
-        def update_epoch(carry, _):
-            agent_state, key = carry
-            key, subkey = jax.random.split(key)
-
-            # taken from: https://github.com/google/brax/blob/main/brax/training/agents/ppo/train.py
-            def convert_data(x: jnp.ndarray):
-                x = jax.random.permutation(subkey, x)
-                x = jnp.reshape(x, (args.num_minibatches, -1) + x.shape[1:])
-                return x
-
-            def update_minibatch(agent_state, minibatch):
-                mb_obs, mb_actions, mb_logprobs, mb_advantages, mb_returns = minibatch
-                (loss, (pg_loss, v_loss, entropy_loss, approx_kl)), grads = ppo_loss_grad_fn(
-                    agent_state.params,
-                    mb_obs,
-                    mb_actions,
-                    mb_logprobs,
-                    mb_advantages,
-                    mb_returns,
-                )
-                agent_state = agent_state.apply_gradients(grads=grads)
-                return agent_state, (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads)
-
-            agent_state, (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads) = jax.lax.scan(
-                update_minibatch,
-                agent_state,
-                (
-                    convert_data(b_obs),
-                    convert_data(b_actions),
-                    convert_data(b_logprobs),
-                    convert_data(b_advantages),
-                    convert_data(b_returns),
-                ),
-            )
-            return (agent_state, key), (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads)
-
-        (agent_state, key), (loss, pg_loss, v_loss, entropy_loss, approx_kl, _) = jax.lax.scan(
-            update_epoch, (agent_state, key), (), length=args.update_epochs
-        )
-        return agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, advantages, returns, b_inds, final_env_ids, key
+    multi_device_update = jax.pmap(
+        single_device_update,
+        axis_name="devices",
+        devices=devices,
+        in_axes=(None, 0, 0, 0, 0, 0, 0, None, None),
+        out_axes=(None, 0, 0, 0, 0, 0, None, None),
+        static_broadcasted_argnums=(7),
+    )
 
     rollout_queue = queue.Queue(maxsize=2)
     params_queue = queue.Queue(maxsize=2)
@@ -614,50 +664,37 @@ if __name__ == "__main__":
     rollout_queue_get_time = deque(maxlen=10)
     while True:
         rollout_queue_get_time_start = time.time()
-        global_step, update, obs, dones, values, actions, logprobs, env_ids, rewards = rollout_queue.get()
+        global_step, update, b_obs, b_actions, b_logprobs, b_advantages, b_returns, b_inds = rollout_queue.get()
         rollout_queue_get_time.append(time.time() - rollout_queue_get_time_start)
         writer.add_scalar("stats/rollout_queue_get_time", np.mean(rollout_queue_get_time), global_step)
 
         training_time_start = time.time()
         # update_ppo(agent_state,obs,dones,values,actions,logprobs,env_ids,rewards,key)
-        (
+        # multi_device_update(agent_state, b_obs, b_actions, b_logprobs, b_advantages, b_returns, b_inds, key)
+        (agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, b_inds, key,) = multi_device_update(
             agent_state,
-            loss,
-            pg_loss,
-            v_loss,
-            entropy_loss,
-            approx_kl,
-            advantages,
-            returns,
+            b_obs,
+            b_actions,
+            b_logprobs,
+            b_advantages,
+            b_returns,
             b_inds,
-            final_env_ids,
-            key,
-        ) = update_ppo(
-            agent_state,
-            obs,
-            dones,
-            values,
-            actions,
-            logprobs,
-            env_ids,
-            rewards,
+            envs.single_action_space.n,
             key,
         )
         params_queue.put(jax.device_put(agent_state.params, devices[0]))
         writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
         writer.add_scalar("stats/rollout_queue_size", rollout_queue.qsize(), global_step)
         writer.add_scalar("stats/params_queue_size", params_queue.qsize(), global_step)
-        print(global_step, obs.device(), update, rollout_queue.qsize(), f"training time: {time.time() - training_time_start}s")
-
-        writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
+        print(global_step, update, rollout_queue.qsize(), f"training time: {time.time() - training_time_start}s")
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"].item(), global_step)
-        writer.add_scalar("losses/value_loss", v_loss[-1, -1].item(), global_step)
-        writer.add_scalar("losses/policy_loss", pg_loss[-1, -1].item(), global_step)
-        writer.add_scalar("losses/entropy", entropy_loss[-1, -1].item(), global_step)
-        writer.add_scalar("losses/approx_kl", approx_kl[-1, -1].item(), global_step)
-        writer.add_scalar("losses/loss", loss[-1, -1].item(), global_step)
+        writer.add_scalar("losses/value_loss", v_loss[-1, -1, -1].item(), global_step)
+        writer.add_scalar("losses/policy_loss", pg_loss[-1, -1, -1].item(), global_step)
+        writer.add_scalar("losses/entropy", entropy_loss[-1, -1, -1].item(), global_step)
+        writer.add_scalar("losses/approx_kl", approx_kl[-1, -1, -1].item(), global_step)
+        writer.add_scalar("losses/loss", loss[-1, -1, -1].item(), global_step)
         if update > args.num_updates:
             break
 
