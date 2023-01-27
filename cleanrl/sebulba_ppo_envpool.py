@@ -1,16 +1,34 @@
 """
 # throughput
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_thpt --actor-device-ids 0 --learner-device-ids 1 --update-epochs 8 --profile --test-actor-learner-throughput --track
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_thpt --actor-device-ids 0 --learner-device-ids 1 --update-epochs 8 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
 
-# shared: actor on GPU0 and learner on GPU0
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_1gpu --actor-device-ids 0 --learner-device-ids 0 --track
+# 1. rollout is faster than training
 
-# separate: actor on GPU0 and learner on GPU1
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l1 --actor-device-ids 0 --learner-device-ids 1 --track
+## shared: actor on GPU0 and learner on GPU0
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_1gpu_rollout_is_faster --actor-device-ids 0 --learner-device-ids 0 --total-timesteps 500000 --track
 
-# shared: actor on GPU0 and learner on GPU0,1
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01 --actor-device-ids 0 --learner-device-ids 0 1 --track
+## separate: actor on GPU0 and learner on GPU1
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l1_rollout_is_faster --actor-device-ids 0 --learner-device-ids 1 --total-timesteps 500000 --track
 
+## shared: actor on GPU0 and learner on GPU0,1
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01_rollout_is_faster --actor-device-ids 0 --learner-device-ids 0 1 --total-timesteps 500000 --track
+
+## separate: actor on GPU0 and learner on GPU1,2
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l12_rollout_is_faster --actor-device-ids 0 --learner-device-ids 1 2 --total-timesteps 500000 --track
+
+# 2. training is faster than rollout
+
+## shared: actor on GPU0 and learner on GPU0
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_1gpu_training_is_faster --update-epochs 1 --actor-device-ids 0 --learner-device-ids 0 --total-timesteps 500000 --track
+
+## separate: actor on GPU0 and learner on GPU1
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l1_training_is_faster --update-epochs 1 --actor-device-ids 0 --learner-device-ids 1 --total-timesteps 500000 --track
+
+## shared: actor on GPU0 and learner on GPU0,1
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01_training_is_faster --update-epochs 1 --actor-device-ids 0 --learner-device-ids 0 1 --total-timesteps 500000 --track
+
+## separate: actor on GPU0 and learner on GPU1,2
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l12_training_is_faster --update-epochs 1 --actor-device-ids 0 --learner-device-ids 1 2 --total-timesteps 500000 --track
 
 """
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpool_async_jax_scan_impalanet_machadopy
@@ -116,6 +134,10 @@ def parse_args():
         help="whether to call block_until_ready() for profiling")
     parser.add_argument("--test-actor-learner-throughput", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to test actor-learner throughput by removing the actor-learner communication")
+    parser.add_argument("--params-queue-timeout", type=float, default=None,
+        help="the timeout for the `params_queue.get()` operation in the actor thread to pull params;" + \
+             "by default it's `None`; if you set a timeout, it will likely make the actor run faster but will introduce some side effects," + \
+             "such as the actor will not be able to pull the latest params from the learner and will use the old params instead")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
@@ -263,6 +285,7 @@ def rollout(
     params_queue_get_time = deque(maxlen=10)
     rollout_time = deque(maxlen=10)
     data_transfer_time = deque(maxlen=10)
+    params_timeout_count = 0
     for update in range(1, args.num_updates + 2):
         obs = []
         dones = []
@@ -285,16 +308,14 @@ def rollout(
         # but note that the extra states are not used for the loss computation in the next iteration,
         # while the sync version will use the extra state for the loss computation.
         params_queue_get_time_start = time.time()
-        if args.test_actor_learner_throughput:
-            try:
-                params = params_queue.get(timeout=0.02)
-            except queue.Empty:
-                # print("params_queue.get timeout triggered")
-                pass
-        else:
-            params = params_queue.get()
+        try:
+            params = params_queue.get(timeout=args.params_queue_timeout)
+        except queue.Empty:
+            # print("params_queue.get timeout triggered")
+            params_timeout_count += 1
         params_queue_get_time.append(time.time() - params_queue_get_time_start)
         writer.add_scalar("stats/params_queue_get_time", np.mean(params_queue_get_time), global_step)
+        writer.add_scalar("stats/params_queue_timeout_count", params_timeout_count, global_step)
         rollout_time_start = time.time()
         for _ in range(
             args.async_update, (args.num_steps + 1) * args.async_update
