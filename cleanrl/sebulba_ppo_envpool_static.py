@@ -1,18 +1,4 @@
-"""
-# throughput
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_thpt --actor-device-ids 0 --learner-device-ids 1 --update-epochs 8 --profile --test-actor-learner-throughput --track
-
-# shared: actor on GPU0 and learner on GPU0
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_1gpu --actor-device-ids 0 --learner-device-ids 0 --track
-
-# separate: actor on GPU0 and learner on GPU1
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l1 --actor-device-ids 0 --learner-device-ids 1 --track
-
-# shared: actor on GPU0 and learner on GPU0,1
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01 --actor-device-ids 0 --learner-device-ids 0 1 --track
-
-
-"""
+# python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 --update-epochs 8 --profile --test-actor-learner-throughput --track
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpool_async_jax_scan_impalanet_machadopy
 # https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
 import argparse
@@ -354,6 +340,12 @@ def rollout(
         if update == 1 or not args.test_actor_learner_throughput:
             data_transfer_time_start = time.time()
             b_obs, b_actions, b_logprobs, b_advantages, b_returns, b_inds = prepare_data(
+                args.num_envs,
+                args.async_update,
+                args.async_batch_size,
+                args.num_steps,
+                args.gamma,
+                args.gae_lambda,
                 obs,
                 dones,
                 values,
@@ -396,8 +388,11 @@ def get_action_and_value2(
     return logprob, entropy, value
 
 
-@jax.jit
+@partial(jax.jit, static_argnums=(0, 1, 2))
 def compute_gae(
+    num_envs: int,
+    gamma: float,
+    gae_lambda: float,
     env_ids: np.ndarray,
     rewards: np.ndarray,
     values: np.ndarray,
@@ -409,12 +404,12 @@ def compute_gae(
     rewards = jnp.asarray(rewards)
 
     _, B = env_ids.shape
-    final_env_id_checked = jnp.zeros(args.num_envs, jnp.int32) - 1
+    final_env_id_checked = jnp.zeros(num_envs, jnp.int32) - 1
     final_env_ids = jnp.zeros(B, jnp.int32)
     advantages = jnp.zeros(B)
-    lastgaelam = jnp.zeros(args.num_envs)
-    lastdones = jnp.zeros(args.num_envs) + 1
-    lastvalues = jnp.zeros(args.num_envs)
+    lastgaelam = jnp.zeros(num_envs)
+    lastdones = jnp.zeros(num_envs) + 1
+    lastvalues = jnp.zeros(num_envs)
 
     def compute_gae_once(carry, x):
         lastvalues, lastdones, advantages, lastgaelam, final_env_ids, final_env_id_checked = carry
@@ -426,8 +421,8 @@ def compute_gae(
         ) = x
         nextnonterminal = 1.0 - lastdones[eid]
         nextvalues = lastvalues[eid]
-        delta = jnp.where(final_env_id_checked[eid] == -1, 0, reward + args.gamma * nextvalues * nextnonterminal - value)
-        advantages = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam[eid]
+        delta = jnp.where(final_env_id_checked[eid] == -1, 0, reward + gamma * nextvalues * nextnonterminal - value)
+        advantages = delta + gamma * gae_lambda * nextnonterminal * lastgaelam[eid]
         final_env_ids = jnp.where(final_env_id_checked[eid] == 1, 1, 0)
         final_env_id_checked = final_env_id_checked.at[eid].set(
             jnp.where(final_env_id_checked[eid] == -1, 1, final_env_id_checked[eid])
@@ -485,8 +480,16 @@ def ppo_loss(params, x, a, logp, mb_advantages, mb_returns, action_dim):
     return loss, (pg_loss, v_loss, entropy_loss, jax.lax.stop_gradient(approx_kl))
 
 
-@jax.jit
+partial(jax.jit, static_argnums=(0, 1, 2, 3, 4, 5))
+
+
 def prepare_data(
+    num_envs: int,
+    async_update: int,
+    async_batch_size: int,
+    num_steps: int,
+    gamma: float,
+    gae_lambda: float,
     obs: list,
     dones: list,
     values: list,
@@ -507,7 +510,7 @@ def prepare_data(
     T, B = env_ids.shape
     index_ranges = jnp.arange(T * B, dtype=jnp.int32)
     next_index_ranges = jnp.zeros_like(index_ranges, dtype=jnp.int32)
-    last_env_ids = jnp.zeros(args.num_envs, dtype=jnp.int32) - 1
+    last_env_ids = jnp.zeros(num_envs, dtype=jnp.int32) - 1
 
     def f(carry, x):
         last_env_ids, next_index_ranges = carry
@@ -525,9 +528,9 @@ def prepare_data(
     )
 
     # rewards is off by one time step
-    rewards = rewards.reshape(-1)[next_index_ranges].reshape((args.num_steps) * args.async_update, args.async_batch_size)
-    advantages, returns, _, final_env_ids = compute_gae(env_ids, rewards, values, dones)
-    b_inds = jnp.nonzero(final_env_ids.reshape(-1), size=(args.num_steps) * args.async_update * args.async_batch_size)[0]
+    rewards = rewards.reshape(-1)[next_index_ranges].reshape((num_steps) * async_update, async_batch_size)
+    advantages, returns, _, final_env_ids = compute_gae(num_envs, gamma, gae_lambda, env_ids, rewards, values, dones)
+    b_inds = jnp.nonzero(final_env_ids.reshape(-1), size=(num_steps) * async_update * async_batch_size)[0]
     b_obs = obs.reshape((-1,) + obs.shape[2:])
     b_actions = actions.reshape(-1)
     b_logprobs = logprobs.reshape(-1)
