@@ -1,6 +1,6 @@
 """
 0. multi-threaded actor
-python sebulba_ppo_envpool.py --num-envs 64  --actor-device-ids 0 --num-actor-threads 2 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
+python sebulba_ppo_envpool.py --actor-device-ids 0 --num-actor-threads 2 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
 python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
 
 
@@ -71,7 +71,7 @@ import argparse
 import os
 import random
 import time
-from collections import deque
+from collections import deque, namedtuple
 from distutils.util import strtobool
 from functools import partial
 from typing import Sequence
@@ -732,13 +732,16 @@ if __name__ == "__main__":
             ),
         ),
     )
+    learner_devices = [devices[d_id] for d_id in args.learner_device_ids]
+    actor_devices = [devices[d_id] for d_id in args.actor_device_ids]
+    agent_state = flax.jax_utils.replicate(agent_state, devices=learner_devices)
 
     multi_device_update = jax.pmap(
         single_device_update,
         axis_name="devices",
-        devices=[devices[d_id] for d_id in args.learner_device_ids],
-        in_axes=(None, 0, 0, 0, 0, 0, None, None),
-        out_axes=(None, 0, 0, 0, 0, 0, None),
+        devices=learner_devices,
+        in_axes=(0, 0, 0, 0, 0, 0, None, None),
+        out_axes=(0, 0, 0, 0, 0, 0, None),
         static_broadcasted_argnums=(6),
     )
 
@@ -751,12 +754,15 @@ if __name__ == "__main__":
         def add_scalar(self, arg0, arg1, arg3):
             pass
 
+    # lock = threading.Lock()
+    # AgentParamsStore = namedtuple("AgentParamsStore", ["params", "version"])
+    # agent_params_store = AgentParamsStore(agent_state.params, 0)
+
     dummy_writer = DummyWriter()
-    learner_devices = [devices[d_id] for d_id in args.learner_device_ids]
     for d_idx, d_id in enumerate(args.actor_device_ids):
         for j in range(args.num_actor_threads):
             params_queue = queue.Queue(maxsize=2)
-            params_queue.put(jax.device_put(agent_state.params, devices[d_id]))
+            params_queue.put(jax.device_put(flax.jax_utils.unreplicate(agent_state.params), devices[d_id]))
             threading.Thread(
                 target=rollout,
                 args=(
@@ -797,7 +803,7 @@ if __name__ == "__main__":
         if learner_update == 1 or not args.test_actor_learner_throughput:
             for d_idx, d_id in enumerate(args.actor_device_ids):
                 for j in range(args.num_actor_threads):
-                    params_queues[d_idx * args.num_actor_threads + j].put(jax.device_put(agent_state.params, devices[d_id]))
+                    params_queues[d_idx * args.num_actor_threads + j].put(jax.device_put(flax.jax_utils.unreplicate(agent_state.params), devices[d_id]))
         if args.profile:
             v_loss[-1, -1, -1].block_until_ready()
         writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
@@ -806,7 +812,7 @@ if __name__ == "__main__":
         print(global_step, update, rollout_queue.qsize(), f"training time: {time.time() - training_time_start}s")
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"].item(), global_step)
+        writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"][0].item(), global_step)
         writer.add_scalar("losses/value_loss", v_loss[-1, -1, -1].item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss[-1, -1, -1].item(), global_step)
         writer.add_scalar("losses/entropy", entropy_loss[-1, -1, -1].item(), global_step)
