@@ -483,14 +483,14 @@ def rollout(
         payload = (
             global_step,
             update,
-            jax.device_put_sharded(jnp.array_split(b_obs, len(learner_devices)), learner_devices),
-            jax.device_put_sharded(jnp.array_split(b_actions, len(learner_devices)), learner_devices),
-            jax.device_put_sharded(jnp.array_split(b_logprobs, len(learner_devices)), learner_devices),
-            jax.device_put_sharded(jnp.array_split(b_advantages, len(learner_devices)), learner_devices),
-            jax.device_put_sharded(jnp.array_split(b_returns, len(learner_devices)), learner_devices),
+            jnp.array_split(b_obs, len(learner_devices)),
+            jnp.array_split(b_actions, len(learner_devices)),
+            jnp.array_split(b_logprobs, len(learner_devices)),
+            jnp.array_split(b_advantages, len(learner_devices)),
+            jnp.array_split(b_returns, len(learner_devices)),
         )
         if args.profile:
-            payload[2].block_until_ready()
+            payload[2][0].block_until_ready()
         data_transfer_time.append(time.time() - data_transfer_time_start)
         writer.add_scalar("stats/data_transfer_time", np.mean(data_transfer_time), global_step)
         if update == 1 or not args.test_actor_learner_throughput:
@@ -752,6 +752,7 @@ if __name__ == "__main__":
             pass
 
     dummy_writer = DummyWriter()
+    learner_devices = [devices[d_id] for d_id in args.learner_device_ids]
     for d_idx, d_id in enumerate(args.actor_device_ids):
         for j in range(args.num_actor_threads):
             params_queue = queue.Queue(maxsize=2)
@@ -767,7 +768,7 @@ if __name__ == "__main__":
                     rollout_queue,
                     params_queue,
                     writer if d_idx == 0 and j == 0 else dummy_writer,
-                    [devices[d_id] for d_id in args.learner_device_ids],
+                    learner_devices,
                 ),
             ).start()
             params_queues.append(params_queue)
@@ -785,11 +786,11 @@ if __name__ == "__main__":
         training_time_start = time.time()
         (agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, key) = multi_device_update(
             agent_state,
-            b_obs,
-            b_actions,
-            b_logprobs,
-            b_advantages,
-            b_returns,
+            jax.device_put_sharded(b_obs, learner_devices),
+            jax.device_put_sharded(b_actions, learner_devices),
+            jax.device_put_sharded(b_logprobs, learner_devices),
+            jax.device_put_sharded(b_advantages, learner_devices),
+            jax.device_put_sharded(b_returns, learner_devices),
             envs.single_action_space.n,
             key,
         )

@@ -1,4 +1,70 @@
-# python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 --update-epochs 8 --profile --test-actor-learner-throughput --track
+"""
+0. multi-threaded actor
+python sebulba_ppo_envpool.py --num-envs 64  --actor-device-ids 0 --num-actor-threads 2 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
+python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
+
+
+# 1. rollout is faster than training
+
+## throughput
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_thpt_rollout_is_faster --actor-device-ids 0 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
+
+## shared: actor on GPU0 and learner on GPU0
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_1gpu_rollout_is_faster --actor-device-ids 0 --learner-device-ids 0 --total-timesteps 500000 --track
+
+## separate: actor on GPU0 and learner on GPU1
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l1_rollout_is_faster --actor-device-ids 0 --learner-device-ids 1 --total-timesteps 500000 --track
+
+## shared: actor on GPU0 and learner on GPU0,1
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01_rollout_is_faster --actor-device-ids 0 --learner-device-ids 0 1 --total-timesteps 500000 --track
+
+## separate: actor on GPU0 and learner on GPU1,2
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l12_rollout_is_faster --actor-device-ids 0 --learner-device-ids 1 2 --total-timesteps 500000 --track
+
+
+# 1.1 rollout is faster than training w/ timeout
+
+## shared: actor on GPU0 and learner on GPU0
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_1gpu_rollout_is_faster_timeout --actor-device-ids 0 --learner-device-ids 0 --params-queue-timeout 0.02 --total-timesteps 500000 --track
+
+## separate: actor on GPU0 and learner on GPU1
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l1_rollout_is_faster_timeout --actor-device-ids 0 --learner-device-ids 1 --params-queue-timeout 0.02 --total-timesteps 500000 --track
+
+## shared: actor on GPU0 and learner on GPU0,1
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01_rollout_is_faster_timeout --actor-device-ids 0 --learner-device-ids 0 1 --params-queue-timeout 0.02 --total-timesteps 500000 --track
+
+## separate: actor on GPU0 and learner on GPU1,2
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l12_rollout_is_faster_timeout --actor-device-ids 0 --learner-device-ids 1 2 --params-queue-timeout 0.02 --total-timesteps 500000 --track
+
+# 1.2. rollout is much faster than training w/ timeout
+
+## throughput
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_thpt_rollout_is_much_faster_timeout --actor-device-ids 0 --learner-device-ids 1 --update-epochs 8 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
+
+## shared: actor on GPU0 and learner on GPU0,1
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01_rollout_is_much_faster_timeout --actor-device-ids 0 --learner-device-ids 0 1 --update-epochs 8 --params-queue-timeout 0.02 --total-timesteps 500000 --track
+
+## separate: actor on GPU0 and learner on GPU1,2
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l12_rollout_is_much_faster_timeout --actor-device-ids 0 --learner-device-ids 1 2 --update-epochs 8 --params-queue-timeout 0.02 --total-timesteps 500000 --track
+
+# 2. training is faster than rollout
+
+## throughput
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_thpt_training_is_faster --update-epochs 1 --async-batch-size 64 --actor-device-ids 0 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
+
+## shared: actor on GPU0 and learner on GPU0
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_1gpu_training_is_faster --update-epochs 1 --async-batch-size 64 --actor-device-ids 0 --learner-device-ids 0 --total-timesteps 500000 --track
+
+## separate: actor on GPU0 and learner on GPU1
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l1_training_is_faster --update-epochs 1 --async-batch-size 64 --actor-device-ids 0 --learner-device-ids 1 --total-timesteps 500000 --track
+
+## shared: actor on GPU0 and learner on GPU0,1
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01_training_is_faster --update-epochs 1 --async-batch-size 64 --actor-device-ids 0 --learner-device-ids 0 1 --total-timesteps 500000 --track
+
+## separate: actor on GPU0 and learner on GPU1,2
+python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l12_training_is_faster --update-epochs 1 --async-batch-size 64 --actor-device-ids 0 --learner-device-ids 1 2 --total-timesteps 500000 --track
+
+"""
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpool_async_jax_scan_impalanet_machadopy
 # https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
 import argparse
@@ -14,6 +80,7 @@ os.environ[
     "XLA_PYTHON_CLIENT_MEM_FRACTION"
 ] = "0.6"  # see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
 os.environ["XLA_FLAGS"] = "--xla_cpu_multi_thread_eigen=false " "intra_op_parallelism_threads=1"
+import multiprocessing as mp
 import queue
 import threading
 
@@ -98,10 +165,16 @@ def parse_args():
         help="the device ids that actor workers will use")
     parser.add_argument("--learner-device-ids", type=int, nargs="+", default=[0], # type is actually List[int]
         help="the device ids that actor workers will use")
+    parser.add_argument("--num-actor-threads", type=int, default=1,
+        help="the number of actor threads")
     parser.add_argument("--profile", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to call block_until_ready() for profiling")
     parser.add_argument("--test-actor-learner-throughput", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to test actor-learner throughput by removing the actor-learner communication")
+    parser.add_argument("--params-queue-timeout", type=float, default=None,
+        help="the timeout for the `params_queue.get()` operation in the actor thread to pull params;" + \
+             "by default it's `None`; if you set a timeout, it will likely make the actor run faster but will introduce some side effects," + \
+             "such as the actor will not be able to pull the latest params from the learner and will use the old params instead")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
@@ -112,12 +185,14 @@ def parse_args():
     return args
 
 
-def make_env(env_id, seed, num_envs, async_batch_size=1):
+def make_env(env_id, seed, num_envs, async_batch_size=1, num_threads=None, thread_affinity_offset=-1):
     def thunk():
         envs = envpool.make(
             env_id,
             env_type="gym",
             num_envs=num_envs,
+            num_threads=num_threads if num_threads is not None else async_batch_size,
+            thread_affinity_offset=thread_affinity_offset,
             batch_size=async_batch_size,
             episodic_life=False,  # Machado et al. 2017 (Revisitng ALE: Eval protocols) p. 6
             repeat_action_probability=0.25,  # Machado et al. 2017 (Revisitng ALE: Eval protocols) p. 12
@@ -226,7 +301,61 @@ def get_action_and_value(
     return action, logprob, value.squeeze(), key
 
 
+@jax.jit
+def prepare_data(
+    obs: list,
+    dones: list,
+    values: list,
+    actions: list,
+    logprobs: list,
+    env_ids: list,
+    rewards: list,
+):
+    obs = jnp.asarray(obs)
+    dones = jnp.asarray(dones)
+    values = jnp.asarray(values)
+    actions = jnp.asarray(actions)
+    logprobs = jnp.asarray(logprobs)
+    env_ids = jnp.asarray(env_ids)
+    rewards = jnp.asarray(rewards)
+
+    # TODO: in an unlikely event, one of the envs might have not stepped at all, which may results in unexpected behavior
+    T, B = env_ids.shape
+    index_ranges = jnp.arange(T * B, dtype=jnp.int32)
+    next_index_ranges = jnp.zeros_like(index_ranges, dtype=jnp.int32)
+    last_env_ids = jnp.zeros(args.num_envs, dtype=jnp.int32) - 1
+
+    def f(carry, x):
+        last_env_ids, next_index_ranges = carry
+        env_id, index_range = x
+        next_index_ranges = next_index_ranges.at[last_env_ids[env_id]].set(
+            jnp.where(last_env_ids[env_id] != -1, index_range, next_index_ranges[last_env_ids[env_id]])
+        )
+        last_env_ids = last_env_ids.at[env_id].set(index_range)
+        return (last_env_ids, next_index_ranges), None
+
+    (last_env_ids, next_index_ranges), _ = jax.lax.scan(
+        f,
+        (last_env_ids, next_index_ranges),
+        (env_ids.reshape(-1), index_ranges),
+    )
+
+    # rewards is off by one time step
+    rewards = rewards.reshape(-1)[next_index_ranges].reshape((args.num_steps) * args.async_update, args.async_batch_size)
+    advantages, returns, _, final_env_ids = compute_gae(env_ids, rewards, values, dones)
+    # b_inds = jnp.nonzero(final_env_ids.reshape(-1), size=(args.num_steps) * args.async_update * args.async_batch_size)[0] # useful for debugging
+    b_obs = obs.reshape((-1,) + obs.shape[2:])
+    b_actions = actions.reshape(-1)
+    b_logprobs = logprobs.reshape(-1)
+    b_advantages = advantages.reshape(-1)
+    b_returns = returns.reshape(-1)
+    return b_obs, b_actions, b_logprobs, b_advantages, b_returns
+
+
 def rollout(
+    i,
+    num_threads,  # =None,
+    thread_affinity_offset,  # =-1,
     key: jax.random.PRNGKey,
     args,
     rollout_queue,
@@ -234,7 +363,8 @@ def rollout(
     writer,
     learner_devices,
 ):
-    envs = make_env(args.env_id, args.seed, args.num_envs, args.async_batch_size)()
+    envs = make_env(args.env_id, args.seed, args.num_envs, args.async_batch_size, num_threads, thread_affinity_offset)()
+    len_actor_device_ids = len(args.actor_device_ids)
     global_step = 0
     # TRY NOT TO MODIFY: start the game
     start_time = time.time()
@@ -249,7 +379,10 @@ def rollout(
     params_queue_get_time = deque(maxlen=10)
     rollout_time = deque(maxlen=10)
     data_transfer_time = deque(maxlen=10)
+    rollout_queue_put_time = deque(maxlen=10)
+    params_timeout_count = 0
     for update in range(1, args.num_updates + 2):
+        update_time_start = time.time()
         obs = []
         dones = []
         actions = []
@@ -271,16 +404,14 @@ def rollout(
         # but note that the extra states are not used for the loss computation in the next iteration,
         # while the sync version will use the extra state for the loss computation.
         params_queue_get_time_start = time.time()
-        if args.test_actor_learner_throughput:
-            try:
-                params = params_queue.get(timeout=0.02)
-            except queue.Empty:
-                # print("params_queue.get timeout triggered")
-                pass
-        else:
-            params = params_queue.get()
+        try:
+            params = params_queue.get(timeout=args.params_queue_timeout)
+        except queue.Empty:
+            # print("params_queue.get timeout triggered")
+            params_timeout_count += 1
         params_queue_get_time.append(time.time() - params_queue_get_time_start)
         writer.add_scalar("stats/params_queue_get_time", np.mean(params_queue_get_time), global_step)
+        writer.add_scalar("stats/params_queue_timeout_count", params_timeout_count, global_step)
         rollout_time_start = time.time()
         for _ in range(
             args.async_update, (args.num_steps + 1) * args.async_update
@@ -288,7 +419,7 @@ def rollout(
             env_recv_time_start = time.time()
             next_obs, next_reward, next_done, info = envs.recv()
             env_recv_time += time.time() - env_recv_time_start
-            global_step += len(next_done)
+            global_step += len(next_done) * args.num_actor_threads * len_actor_device_ids
             env_id = info["env_id"]
 
             inference_time_start = time.time()
@@ -325,10 +456,11 @@ def rollout(
         writer.add_scalar("stats/rollout_time", np.mean(rollout_time), global_step)
 
         avg_episodic_return = np.mean(returned_episode_returns)
-        print(f"global_step={global_step}, avg_episodic_return={avg_episodic_return}")
         writer.add_scalar("charts/avg_episodic_return", avg_episodic_return, global_step)
         writer.add_scalar("charts/avg_episodic_length", np.mean(returned_episode_lengths), global_step)
-        print("SPS:", int(global_step / (time.time() - start_time)))
+        if i == 0:
+            print(f"global_step={global_step}, avg_episodic_return={avg_episodic_return}")
+            print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
         writer.add_scalar("stats/truncations", np.sum(truncations), global_step)
@@ -337,37 +469,47 @@ def rollout(
         writer.add_scalar("stats/inference_time", inference_time, global_step)
         writer.add_scalar("stats/storage_time", storage_time, global_step)
         writer.add_scalar("stats/env_send_time", env_send_time, global_step)
+
+        data_transfer_time_start = time.time()
+        b_obs, b_actions, b_logprobs, b_advantages, b_returns = prepare_data(
+            obs,
+            dones,
+            values,
+            actions,
+            logprobs,
+            env_ids,
+            rewards,
+        )
+        payload = (
+            global_step,
+            update,
+            jax.device_put_sharded(jnp.array_split(b_obs, len(learner_devices)), learner_devices),
+            jax.device_put_sharded(jnp.array_split(b_actions, len(learner_devices)), learner_devices),
+            jax.device_put_sharded(jnp.array_split(b_logprobs, len(learner_devices)), learner_devices),
+            jax.device_put_sharded(jnp.array_split(b_advantages, len(learner_devices)), learner_devices),
+            jax.device_put_sharded(jnp.array_split(b_returns, len(learner_devices)), learner_devices),
+        )
+        if args.profile:
+            payload[2].block_until_ready()
+        data_transfer_time.append(time.time() - data_transfer_time_start)
+        writer.add_scalar("stats/data_transfer_time", np.mean(data_transfer_time), global_step)
         if update == 1 or not args.test_actor_learner_throughput:
-            data_transfer_time_start = time.time()
-            b_obs, b_actions, b_logprobs, b_advantages, b_returns, b_inds = prepare_data(
-                args.num_envs,
-                args.async_update,
-                args.async_batch_size,
-                args.num_steps,
-                args.gamma,
-                args.gae_lambda,
-                obs,
-                dones,
-                values,
-                actions,
-                logprobs,
-                env_ids,
-                rewards,
-            )
-            rollout_queue.put(
-                (
-                    global_step,
-                    update,
-                    jax.device_put_sharded(jnp.array_split(b_obs, len(learner_devices)), learner_devices),
-                    jax.device_put_sharded(jnp.array_split(b_actions, len(learner_devices)), learner_devices),
-                    jax.device_put_sharded(jnp.array_split(b_logprobs, len(learner_devices)), learner_devices),
-                    jax.device_put_sharded(jnp.array_split(b_advantages, len(learner_devices)), learner_devices),
-                    jax.device_put_sharded(jnp.array_split(b_returns, len(learner_devices)), learner_devices),
-                    jax.device_put_sharded(jnp.array_split(b_inds, len(learner_devices)), learner_devices),
-                )
-            )
-            data_transfer_time.append(time.time() - data_transfer_time_start)
-            writer.add_scalar("stats/data_transfer_time", np.mean(data_transfer_time), global_step)
+            rollout_queue_put_time_start = time.time()
+            rollout_queue.put(payload)
+            rollout_queue_put_time.append(time.time() - rollout_queue_put_time_start)
+            writer.add_scalar("stats/rollout_queue_put_time", np.mean(rollout_queue_put_time), global_step)
+
+        writer.add_scalar(
+            "charts/SPS_update",
+            int(
+                args.num_envs
+                * args.num_steps
+                * args.num_actor_threads
+                * len_actor_device_ids
+                / (time.time() - update_time_start)
+            ),
+            global_step,
+        )
 
 
 @partial(jax.jit, static_argnums=(3))
@@ -388,11 +530,8 @@ def get_action_and_value2(
     return logprob, entropy, value
 
 
-@partial(jax.jit, static_argnums=(0, 1, 2))
+@jax.jit
 def compute_gae(
-    num_envs: int,
-    gamma: float,
-    gae_lambda: float,
     env_ids: np.ndarray,
     rewards: np.ndarray,
     values: np.ndarray,
@@ -404,12 +543,12 @@ def compute_gae(
     rewards = jnp.asarray(rewards)
 
     _, B = env_ids.shape
-    final_env_id_checked = jnp.zeros(num_envs, jnp.int32) - 1
+    final_env_id_checked = jnp.zeros(args.num_envs, jnp.int32) - 1
     final_env_ids = jnp.zeros(B, jnp.int32)
     advantages = jnp.zeros(B)
-    lastgaelam = jnp.zeros(num_envs)
-    lastdones = jnp.zeros(num_envs) + 1
-    lastvalues = jnp.zeros(num_envs)
+    lastgaelam = jnp.zeros(args.num_envs)
+    lastdones = jnp.zeros(args.num_envs) + 1
+    lastvalues = jnp.zeros(args.num_envs)
 
     def compute_gae_once(carry, x):
         lastvalues, lastdones, advantages, lastgaelam, final_env_ids, final_env_id_checked = carry
@@ -421,8 +560,8 @@ def compute_gae(
         ) = x
         nextnonterminal = 1.0 - lastdones[eid]
         nextvalues = lastvalues[eid]
-        delta = jnp.where(final_env_id_checked[eid] == -1, 0, reward + gamma * nextvalues * nextnonterminal - value)
-        advantages = delta + gamma * gae_lambda * nextnonterminal * lastgaelam[eid]
+        delta = jnp.where(final_env_id_checked[eid] == -1, 0, reward + args.gamma * nextvalues * nextnonterminal - value)
+        advantages = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam[eid]
         final_env_ids = jnp.where(final_env_id_checked[eid] == 1, 1, 0)
         final_env_id_checked = final_env_id_checked.at[eid].set(
             jnp.where(final_env_id_checked[eid] == -1, 1, final_env_id_checked[eid])
@@ -480,66 +619,7 @@ def ppo_loss(params, x, a, logp, mb_advantages, mb_returns, action_dim):
     return loss, (pg_loss, v_loss, entropy_loss, jax.lax.stop_gradient(approx_kl))
 
 
-partial(jax.jit, static_argnums=(0, 1, 2, 3, 4, 5))
-
-
-def prepare_data(
-    num_envs: int,
-    async_update: int,
-    async_batch_size: int,
-    num_steps: int,
-    gamma: float,
-    gae_lambda: float,
-    obs: list,
-    dones: list,
-    values: list,
-    actions: list,
-    logprobs: list,
-    env_ids: list,
-    rewards: list,
-):
-    obs = jnp.asarray(obs)
-    dones = jnp.asarray(dones)
-    values = jnp.asarray(values)
-    actions = jnp.asarray(actions)
-    logprobs = jnp.asarray(logprobs)
-    env_ids = jnp.asarray(env_ids)
-    rewards = jnp.asarray(rewards)
-
-    # TODO: in an unlikely event, one of the envs might have not stepped at all, which may results in unexpected behavior
-    T, B = env_ids.shape
-    index_ranges = jnp.arange(T * B, dtype=jnp.int32)
-    next_index_ranges = jnp.zeros_like(index_ranges, dtype=jnp.int32)
-    last_env_ids = jnp.zeros(num_envs, dtype=jnp.int32) - 1
-
-    def f(carry, x):
-        last_env_ids, next_index_ranges = carry
-        env_id, index_range = x
-        next_index_ranges = next_index_ranges.at[last_env_ids[env_id]].set(
-            jnp.where(last_env_ids[env_id] != -1, index_range, next_index_ranges[last_env_ids[env_id]])
-        )
-        last_env_ids = last_env_ids.at[env_id].set(index_range)
-        return (last_env_ids, next_index_ranges), None
-
-    (last_env_ids, next_index_ranges), _ = jax.lax.scan(
-        f,
-        (last_env_ids, next_index_ranges),
-        (env_ids.reshape(-1), index_ranges),
-    )
-
-    # rewards is off by one time step
-    rewards = rewards.reshape(-1)[next_index_ranges].reshape((num_steps) * async_update, async_batch_size)
-    advantages, returns, _, final_env_ids = compute_gae(num_envs, gamma, gae_lambda, env_ids, rewards, values, dones)
-    b_inds = jnp.nonzero(final_env_ids.reshape(-1), size=(num_steps) * async_update * async_batch_size)[0]
-    b_obs = obs.reshape((-1,) + obs.shape[2:])
-    b_actions = actions.reshape(-1)
-    b_logprobs = logprobs.reshape(-1)
-    b_advantages = advantages.reshape(-1)
-    b_returns = returns.reshape(-1)
-    return b_obs, b_actions, b_logprobs, b_advantages, b_returns, b_inds
-
-
-@partial(jax.jit, static_argnums=(7))
+@partial(jax.jit, static_argnums=(6))
 def single_device_update(
     agent_state: TrainState,
     b_obs,
@@ -547,7 +627,6 @@ def single_device_update(
     b_logprobs,
     b_advantages,
     b_returns,
-    b_inds,
     action_dim,
     key: jax.random.PRNGKey,
 ):
@@ -594,7 +673,7 @@ def single_device_update(
     (agent_state, key), (loss, pg_loss, v_loss, entropy_loss, approx_kl, _) = jax.lax.scan(
         update_epoch, (agent_state, key), (), length=args.update_epochs
     )
-    return agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, b_inds, key
+    return agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, key
 
 
 if __name__ == "__main__":
@@ -658,28 +737,40 @@ if __name__ == "__main__":
         single_device_update,
         axis_name="devices",
         devices=[devices[d_id] for d_id in args.learner_device_ids],
-        in_axes=(None, 0, 0, 0, 0, 0, 0, None, None),
-        out_axes=(None, 0, 0, 0, 0, 0, None, None),
-        static_broadcasted_argnums=(7),
+        in_axes=(None, 0, 0, 0, 0, 0, None, None),
+        out_axes=(None, 0, 0, 0, 0, 0, None),
+        static_broadcasted_argnums=(6),
     )
 
     rollout_queue = queue.Queue(maxsize=2)
     params_queues = []
-    for d_id in args.actor_device_ids:
-        params_queue = queue.Queue(maxsize=2)
-        params_queue.put(jax.device_put(agent_state.params, devices[d_id]))
-        threading.Thread(
-            target=rollout,
-            args=(
-                jax.device_put(key, devices[d_id]),
-                args,
-                rollout_queue,
-                params_queue,
-                writer,
-                [devices[d_id] for d_id in args.learner_device_ids],
-            ),
-        ).start()
-        params_queues.append(params_queue)
+    num_cpus = mp.cpu_count()
+    fair_num_cpus = num_cpus // len(args.actor_device_ids)
+
+    class DummyWriter:
+        def add_scalar(self, arg0, arg1, arg3):
+            pass
+
+    dummy_writer = DummyWriter()
+    for d_idx, d_id in enumerate(args.actor_device_ids):
+        for j in range(args.num_actor_threads):
+            params_queue = queue.Queue(maxsize=2)
+            params_queue.put(jax.device_put(agent_state.params, devices[d_id]))
+            threading.Thread(
+                target=rollout,
+                args=(
+                    j,
+                    fair_num_cpus if args.num_actor_threads > 1 else None,
+                    j * args.num_actor_threads if args.num_actor_threads > 1 else -1,
+                    jax.device_put(key, devices[d_id]),
+                    args,
+                    rollout_queue,
+                    params_queue,
+                    writer if d_idx == 0 and j == 0 else dummy_writer,
+                    [devices[d_id] for d_id in args.learner_device_ids],
+                ),
+            ).start()
+            params_queues.append(params_queue)
 
     rollout_queue_get_time = deque(maxlen=10)
     learner_update = 0
@@ -687,25 +778,25 @@ if __name__ == "__main__":
         learner_update += 1
         if learner_update == 1 or not args.test_actor_learner_throughput:
             rollout_queue_get_time_start = time.time()
-            global_step, update, b_obs, b_actions, b_logprobs, b_advantages, b_returns, b_inds = rollout_queue.get()
+            global_step, update, b_obs, b_actions, b_logprobs, b_advantages, b_returns = rollout_queue.get()
             rollout_queue_get_time.append(time.time() - rollout_queue_get_time_start)
             writer.add_scalar("stats/rollout_queue_get_time", np.mean(rollout_queue_get_time), global_step)
 
         training_time_start = time.time()
-        (agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, _, key) = multi_device_update(
+        (agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, key) = multi_device_update(
             agent_state,
             b_obs,
             b_actions,
             b_logprobs,
             b_advantages,
             b_returns,
-            b_inds,
             envs.single_action_space.n,
             key,
         )
         if learner_update == 1 or not args.test_actor_learner_throughput:
-            for i, d_id in enumerate(args.actor_device_ids):
-                params_queues[i].put(jax.device_put(agent_state.params, devices[d_id]))
+            for d_idx, d_id in enumerate(args.actor_device_ids):
+                for j in range(args.num_actor_threads):
+                    params_queues[d_idx * args.num_actor_threads + j].put(jax.device_put(agent_state.params, devices[d_id]))
         if args.profile:
             v_loss[-1, -1, -1].block_until_ready()
         writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
