@@ -301,6 +301,57 @@ def get_action_and_value(
     return action, logprob, value.squeeze(), key
 
 
+@jax.jit
+def prepare_data(
+    obs: list,
+    dones: list,
+    values: list,
+    actions: list,
+    logprobs: list,
+    env_ids: list,
+    rewards: list,
+):
+    obs = jnp.asarray(obs)
+    dones = jnp.asarray(dones)
+    values = jnp.asarray(values)
+    actions = jnp.asarray(actions)
+    logprobs = jnp.asarray(logprobs)
+    env_ids = jnp.asarray(env_ids)
+    rewards = jnp.asarray(rewards)
+
+    # TODO: in an unlikely event, one of the envs might have not stepped at all, which may results in unexpected behavior
+    T, B = env_ids.shape
+    index_ranges = jnp.arange(T * B, dtype=jnp.int32)
+    next_index_ranges = jnp.zeros_like(index_ranges, dtype=jnp.int32)
+    last_env_ids = jnp.zeros(args.num_envs, dtype=jnp.int32) - 1
+
+    def f(carry, x):
+        last_env_ids, next_index_ranges = carry
+        env_id, index_range = x
+        next_index_ranges = next_index_ranges.at[last_env_ids[env_id]].set(
+            jnp.where(last_env_ids[env_id] != -1, index_range, next_index_ranges[last_env_ids[env_id]])
+        )
+        last_env_ids = last_env_ids.at[env_id].set(index_range)
+        return (last_env_ids, next_index_ranges), None
+
+    (last_env_ids, next_index_ranges), _ = jax.lax.scan(
+        f,
+        (last_env_ids, next_index_ranges),
+        (env_ids.reshape(-1), index_ranges),
+    )
+
+    # rewards is off by one time step
+    rewards = rewards.reshape(-1)[next_index_ranges].reshape((args.num_steps) * args.async_update, args.async_batch_size)
+    advantages, returns, _, final_env_ids = compute_gae(env_ids, rewards, values, dones)
+    # b_inds = jnp.nonzero(final_env_ids.reshape(-1), size=(args.num_steps) * args.async_update * args.async_batch_size)[0] # useful for debugging
+    b_obs = obs.reshape((-1,) + obs.shape[2:])
+    b_actions = actions.reshape(-1)
+    b_logprobs = logprobs.reshape(-1)
+    b_advantages = advantages.reshape(-1)
+    b_returns = returns.reshape(-1)
+    return b_obs, b_actions, b_logprobs, b_advantages, b_returns
+
+
 def rollout(
     i,
     num_threads,  # =None,
@@ -420,7 +471,7 @@ def rollout(
         writer.add_scalar("stats/env_send_time", env_send_time, global_step)
 
         data_transfer_time_start = time.time()
-        b_obs, b_actions, b_logprobs, b_advantages, b_returns, _ = prepare_data(
+        b_obs, b_actions, b_logprobs, b_advantages, b_returns = prepare_data(
             obs,
             dones,
             values,
@@ -566,57 +617,6 @@ def ppo_loss(params, x, a, logp, mb_advantages, mb_returns, action_dim):
     entropy_loss = entropy.mean()
     loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
     return loss, (pg_loss, v_loss, entropy_loss, jax.lax.stop_gradient(approx_kl))
-
-
-@jax.jit
-def prepare_data(
-    obs: list,
-    dones: list,
-    values: list,
-    actions: list,
-    logprobs: list,
-    env_ids: list,
-    rewards: list,
-):
-    obs = jnp.asarray(obs)
-    dones = jnp.asarray(dones)
-    values = jnp.asarray(values)
-    actions = jnp.asarray(actions)
-    logprobs = jnp.asarray(logprobs)
-    env_ids = jnp.asarray(env_ids)
-    rewards = jnp.asarray(rewards)
-
-    # TODO: in an unlikely event, one of the envs might have not stepped at all, which may results in unexpected behavior
-    T, B = env_ids.shape
-    index_ranges = jnp.arange(T * B, dtype=jnp.int32)
-    next_index_ranges = jnp.zeros_like(index_ranges, dtype=jnp.int32)
-    last_env_ids = jnp.zeros(args.num_envs, dtype=jnp.int32) - 1
-
-    def f(carry, x):
-        last_env_ids, next_index_ranges = carry
-        env_id, index_range = x
-        next_index_ranges = next_index_ranges.at[last_env_ids[env_id]].set(
-            jnp.where(last_env_ids[env_id] != -1, index_range, next_index_ranges[last_env_ids[env_id]])
-        )
-        last_env_ids = last_env_ids.at[env_id].set(index_range)
-        return (last_env_ids, next_index_ranges), None
-
-    (last_env_ids, next_index_ranges), _ = jax.lax.scan(
-        f,
-        (last_env_ids, next_index_ranges),
-        (env_ids.reshape(-1), index_ranges),
-    )
-
-    # rewards is off by one time step
-    rewards = rewards.reshape(-1)[next_index_ranges].reshape((args.num_steps) * args.async_update, args.async_batch_size)
-    advantages, returns, _, final_env_ids = compute_gae(env_ids, rewards, values, dones)
-    b_inds = jnp.nonzero(final_env_ids.reshape(-1), size=(args.num_steps) * args.async_update * args.async_batch_size)[0]
-    b_obs = obs.reshape((-1,) + obs.shape[2:])
-    b_actions = actions.reshape(-1)
-    b_logprobs = logprobs.reshape(-1)
-    b_advantages = advantages.reshape(-1)
-    b_returns = returns.reshape(-1)
-    return b_obs, b_actions, b_logprobs, b_advantages, b_returns, b_inds
 
 
 @partial(jax.jit, static_argnums=(6))
