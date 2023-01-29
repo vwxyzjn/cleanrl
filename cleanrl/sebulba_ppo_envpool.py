@@ -328,6 +328,7 @@ def rollout(
     params_queue_get_time = deque(maxlen=10)
     rollout_time = deque(maxlen=10)
     data_transfer_time = deque(maxlen=10)
+    rollout_queue_put_time = deque(maxlen=10)
     params_timeout_count = 0
     for update in range(1, args.num_updates + 2):
         update_time_start = time.time()
@@ -417,30 +418,36 @@ def rollout(
         writer.add_scalar("stats/inference_time", inference_time, global_step)
         writer.add_scalar("stats/storage_time", storage_time, global_step)
         writer.add_scalar("stats/env_send_time", env_send_time, global_step)
+
+        data_transfer_time_start = time.time()
+        b_obs, b_actions, b_logprobs, b_advantages, b_returns, _ = prepare_data(
+            obs,
+            dones,
+            values,
+            actions,
+            logprobs,
+            env_ids,
+            rewards,
+        )
+        payload = (
+            global_step,
+            update,
+            jax.device_put_sharded(jnp.array_split(b_obs, len(learner_devices)), learner_devices),
+            jax.device_put_sharded(jnp.array_split(b_actions, len(learner_devices)), learner_devices),
+            jax.device_put_sharded(jnp.array_split(b_logprobs, len(learner_devices)), learner_devices),
+            jax.device_put_sharded(jnp.array_split(b_advantages, len(learner_devices)), learner_devices),
+            jax.device_put_sharded(jnp.array_split(b_returns, len(learner_devices)), learner_devices),
+        )
+        if args.profile:
+            payload[2].block_until_ready()
+        data_transfer_time.append(time.time() - data_transfer_time_start)
+        writer.add_scalar("stats/data_transfer_time", np.mean(data_transfer_time), global_step)
         if update == 1 or not args.test_actor_learner_throughput:
-            data_transfer_time_start = time.time()
-            b_obs, b_actions, b_logprobs, b_advantages, b_returns, b_inds = prepare_data(
-                obs,
-                dones,
-                values,
-                actions,
-                logprobs,
-                env_ids,
-                rewards,
-            )
-            rollout_queue.put(
-                (
-                    global_step,
-                    update,
-                    jax.device_put_sharded(jnp.array_split(b_obs, len(learner_devices)), learner_devices),
-                    jax.device_put_sharded(jnp.array_split(b_actions, len(learner_devices)), learner_devices),
-                    jax.device_put_sharded(jnp.array_split(b_logprobs, len(learner_devices)), learner_devices),
-                    jax.device_put_sharded(jnp.array_split(b_advantages, len(learner_devices)), learner_devices),
-                    jax.device_put_sharded(jnp.array_split(b_returns, len(learner_devices)), learner_devices),
-                )
-            )
-            data_transfer_time.append(time.time() - data_transfer_time_start)
-            writer.add_scalar("stats/data_transfer_time", np.mean(data_transfer_time), global_step)
+            rollout_queue_put_time_start = time.time()
+            rollout_queue.put(payload)
+            rollout_queue_put_time.append(time.time() - rollout_queue_put_time_start)
+            writer.add_scalar("stats/rollout_queue_put_time", np.mean(rollout_queue_put_time), global_step)
+
         writer.add_scalar(
             "charts/SPS_update",
             int(
