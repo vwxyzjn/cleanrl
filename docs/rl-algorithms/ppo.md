@@ -30,6 +30,7 @@ All our PPO implementations below are augmented with the same code-level optimiz
 | :material-github: [`ppo_atari_envpool.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_envpoolpy) | Uses the blazing fast Envpool Atari vectorized environment. |
 | :material-github: [`ppo_atari_envpool_xla_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_envpool_xla_jaxpy) | Uses the blazing fast Envpool Atari vectorized environment with EnvPool's XLA interface and JAX. |
 | :material-github: [`ppo_atari_envpool_xla_jax_scan.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax_scan.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_envpool_xla_jax_scanpy) | Uses native `jax.scan` as opposed to python loops for faster compilation time. |
+| :material-github: [`ppo_mujoco_envpool_xla_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_mujoco_envpool_xla_jax.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_mujoco_envpool_xla_jaxpy) | Uses native `jax.scan` as opposed to python loops for faster compilation time. |
 | :material-github: [`ppo_procgen.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_procgen.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_procgenpy) | For the procgen environments. |
 | :material-github: [`ppo_atari_multigpu.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_multigpu.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_multigpupy)| For Atari environments leveraging multi-GPUs. |
 | :material-github: [`ppo_pettingzoo_ma_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_pettingzoo_ma_atari.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_pettingzoo_ma_ataripy)| For Pettingzoo's multi-agent Atari environments. |
@@ -782,6 +783,43 @@ Learning curves:
 Tracked experiments:
 
 <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Regression-Report-ppo_atari_envpool_xla_jax_scan--VmlldzozMTk2MzM2" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-Jax-scan"></iframe>
+
+## `ppo_mujoco_envpool_xla_jax.py`
+
+The [ppo_mujoco_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_mujoco_envpool_xla_jax.py) has the following features:
+
+* Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  
+* Uses jax style env wrapper
+* Have same hyparameter and similar training process as mujoco SOTA [tianshou](https://github.com/thu-ml/tianshou/tree/master/examples/mujoco)
+
+### Usage
+
+```bash
+poetry install -E "envpool jax"
+poetry run pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+python cleanrl/ppo_mujoco_envpool_xla_jax.py --help
+python cleanrl/ppo_mujoco_envpool_xla_jax.py --env-id Ant-v4
+```
+
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`. The metrics are the same as those in [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py).
+
+### Implementation details
+
+[ppo_mujoco_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_mujoco_envpool_xla_jax.py) has following differences between [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py) 
+
+1. Use "recompute advantage" strategy, which is claimed to ["contributes a lot to SOTA benchmark"](https://github.com/thu-ml/tianshou/tree/master/examples/mujoco#hints-for-ppo).
+
+2. Use the exact setting in tianshou code, using default eps(1e-8) in Adam Optimizer, not multiply value loss with a factor of 0.5.
+
+
+This implementation uses a customized `EnvWrapper` class to wrap environment. Different from traditional Gym-type wrap which has `step` and `reset` method. `EnvWrapper` requires three methods `recv`,`send` and `reset`, these methods need to be pure functions in order to be transformed in jax. The `recv` method will modify what env received after an action step, and the `send` method will modify the action send to env.
+
+
+
+
+### Experiment results
 
 
 
