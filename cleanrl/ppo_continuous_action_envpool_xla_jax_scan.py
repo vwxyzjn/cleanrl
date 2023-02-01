@@ -365,7 +365,9 @@ if __name__ == "__main__":
         ),
         tx=optax.chain(
             optax.clip_by_global_norm(args.max_grad_norm),
-            optax.inject_hyperparams(optax.adam)(learning_rate=linear_schedule if args.anneal_lr else args.learning_rate),
+            optax.inject_hyperparams(optax.adam)(
+                learning_rate=linear_schedule if args.anneal_lr else args.learning_rate, eps=1e-5
+            ),
         ),
         ret_rms=RunningMeanStd(),
     )
