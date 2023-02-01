@@ -652,7 +652,6 @@ if __name__ == "__main__":
             storage,
             key,
         )
-        print(f"pg_loss={pg_loss.mean()}, loss={loss.mean()}, v_loss={v_loss.mean()}, entropy_loss={entropy_loss.mean()}")
         avg_episodic_return = np.mean(jax.device_get(episode_stats.returned_episode_returns))
         avg_episodic_length = np.mean(jax.device_get(episode_stats.returned_episode_lengths))
         print(
@@ -663,11 +662,11 @@ if __name__ == "__main__":
         writer.add_scalar("charts/avg_episodic_return", avg_episodic_return, global_step)
         writer.add_scalar("charts/avg_episodic_length", avg_episodic_length, global_step)
         writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"].item(), global_step)
-        writer.add_scalar("losses/value_loss", v_loss.mean().item(), global_step)
-        writer.add_scalar("losses/policy_loss", pg_loss.mean().item(), global_step)
-        writer.add_scalar("losses/entropy", entropy_loss.mean().item(), global_step)
-        writer.add_scalar("losses/approx_kl", approx_kl.mean().item(), global_step)
-        writer.add_scalar("losses/loss", loss.mean().item(), global_step)
+        writer.add_scalar("losses/value_loss", v_loss[-1, -1].item(), global_step)
+        writer.add_scalar("losses/policy_loss", pg_loss[-1, -1].item(), global_step)
+        writer.add_scalar("losses/entropy", entropy_loss[-1, -1].item(), global_step)
+        writer.add_scalar("losses/approx_kl", approx_kl[-1, -1].item(), global_step)
+        writer.add_scalar("losses/loss", loss[-1, -1].item(), global_step)
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
         writer.add_scalar(
             "charts/SPS_update", int(args.num_envs * args.num_steps / (time.time() - update_time_start)), global_step
