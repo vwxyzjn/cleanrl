@@ -457,7 +457,7 @@ if __name__ == "__main__":
         )
         return storage, agent_state
 
-    def ppo_loss(params, x, a, logp, mb_advantages, mb_returns, truncated):
+    def ppo_loss(params, x, a, logp, mb_advantages, mb_returns, mask):
         newlogprob, entropy, newvalue = get_action_and_value2(params, x, a)
         logratio = newlogprob - logp
         ratio = jnp.exp(logratio)
@@ -468,10 +468,10 @@ if __name__ == "__main__":
         pg_loss1 = -mb_advantages * ratio
         pg_loss2 = -mb_advantages * jnp.clip(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
         # mask truncated state
-        pg_loss = (jnp.maximum(pg_loss1, pg_loss2) * (1 - truncated)).sum() / (1 - truncated).sum()
+        pg_loss = (jnp.maximum(pg_loss1, pg_loss2) * (1 - mask)).sum() / (1 - mask).sum()
 
         # Value loss
-        v_loss = (((newvalue - mb_returns) * (1 - truncated)) ** 2).sum() / (1 - truncated).sum()
+        v_loss = (((newvalue - mb_returns) * (1 - mask)) ** 2).sum() / (1 - mask).sum()
 
         entropy_loss = entropy.mean()
         loss = pg_loss + v_loss * args.vf_coef
@@ -513,7 +513,7 @@ if __name__ == "__main__":
                     minibatch.logprobs,
                     minibatch.advantages,
                     minibatch.returns,
-                    minibatch.truncated,
+                    1 - (1 - minibatch.truncated) * (1 - minibatch.dones),
                 )
                 agent_state = agent_state.apply_gradients(grads=grads)
                 return agent_state, (
