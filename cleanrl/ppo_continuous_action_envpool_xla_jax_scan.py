@@ -385,8 +385,9 @@ if __name__ == "__main__":
         key, subkey = jax.random.split(key)
         u = jax.random.normal(subkey, shape=logits.shape)
         action = logits + u * jnp.exp(stdlog)
-        var = jnp.exp(2 * stdlog)
-        logprob = (-((action - logits) ** 2) / (2 * var) - stdlog - jnp.log(jnp.sqrt(2 * jnp.pi))).sum(-1)
+        # taken from https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/distributions.py#L238-L241
+        logprob = -0.5 * ((action - logits) / jnp.exp(stdlog)) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - stdlog
+        logprob = logprob.sum(-1)
         value = critic.apply(agent_state.params.critic_params, next_obs)
         return action, logprob, value.squeeze(1), key
 
@@ -398,8 +399,8 @@ if __name__ == "__main__":
     ):
         """calculate value, logprob of supplied `action`, and entropy"""
         logits, stdlog = actor.apply(params.actor_params, x)
-        var = jnp.exp(2 * stdlog)
-        logprob = (-((action - logits) ** 2) / (2 * var) - stdlog - jnp.log(jnp.sqrt(2 * jnp.pi))).sum(-1)
+        logprob = -0.5 * ((action - logits) / jnp.exp(stdlog)) ** 2 - 0.5 * jnp.log(2.0 * jnp.pi) - stdlog
+        logprob = logprob.sum(-1)
         entropy = (2 * stdlog + jnp.log(2 * jnp.pi) + 1) / 2
         value = critic.apply(params.critic_params, x).squeeze()
         return logprob, entropy.sum(-1), value
