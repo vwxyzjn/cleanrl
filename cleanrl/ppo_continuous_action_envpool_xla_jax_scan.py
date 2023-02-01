@@ -34,7 +34,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
         help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=88,
+    parser.add_argument("--seed", type=int, default=1,
         help="seed of the experiment")
     parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="if toggled, this experiment will be tracked with Weights and Biases")
@@ -45,8 +45,7 @@ def parse_args():
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to capture videos of the agent performances (check out `videos` folder)")
     # Algorithm specific arguments
-    parser.add_argument("--rew-norm", type=int, default=True,help="Toggles rewards normalization")
-    parser.add_argument("--env-id", type=str, default="HalfCheetah-v3",
+    parser.add_argument("--env-id", type=str, default="Ant-v3",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=3000000,
         help="total timesteps of the experiments")
@@ -78,6 +77,8 @@ def parse_args():
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
+    parser.add_argument("--rew-norm", type=int, default=True,
+        help="Toggles rewards normalization")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
@@ -234,8 +235,7 @@ class Actor(nn.Module):
         return x, stdlog
 
 
-# a stateful trainstate
-class PPOTrainState(TrainState):
+class AgentTrainState(TrainState):
     ret_rms: RunningMeanStd = RunningMeanStd()
 
 
@@ -291,7 +291,7 @@ if __name__ == "__main__":
     random.seed(args.seed)
     np.random.seed(args.seed)
     key = jax.random.PRNGKey(args.seed)
-    key, network_key, actor_key, critic_key = jax.random.split(key, 4)
+    key, actor_key, critic_key = jax.random.split(key, 3)
 
     # env setup
     envs = envpool.make(
@@ -349,11 +349,9 @@ if __name__ == "__main__":
         frac = 1.0 - (count // (args.num_minibatches * args.update_epochs)) / args.num_updates
         return args.learning_rate * frac
 
-    actor = Actor(
-        action_dim=np.prod(single_action_space.shape),
-    )
+    actor = Actor(action_dim=np.prod(single_action_space.shape))
     critic = Critic()
-    agent_state = PPOTrainState.create(
+    agent_state = AgentTrainState.create(
         apply_fn=None,
         params=AgentParams(
             actor.init(
