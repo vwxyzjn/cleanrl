@@ -227,7 +227,7 @@ class Actor(nn.Module):
         x = nn.tanh(x)
         x = nn.Dense(
             self.action_dim,
-            kernel_init=orthogonal((0.01) * jnp.float_(np.sqrt(2))),
+            kernel_init=orthogonal(jnp.float_(0.0)),
             bias_init=constant(0.0),
         )(x)
         # stdlog = -jnp.ones((self.action_dim,))/2
