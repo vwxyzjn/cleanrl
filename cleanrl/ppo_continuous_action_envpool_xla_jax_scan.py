@@ -408,6 +408,7 @@ if __name__ == "__main__":
     def compute_gae_once(carry, inp, gamma, gae_lambda):
         advantages = carry
         nextdone, nexttruncated, nextvalues, curvalues, reward = inp
+        nextvalues = nextvalues * (1 - nextdone)
         nextnonterminal = (1.0 - nextdone) * (1.0 - nexttruncated)
 
         delta = reward + gamma * nextvalues - curvalues
@@ -439,7 +440,7 @@ if __name__ == "__main__":
             (
                 dones[1:],
                 truncated[1:],
-                values[1:] * (1.0 - dones[1:]),
+                values[1:],
                 values[:-1],
                 storage.rewards,
             ),
