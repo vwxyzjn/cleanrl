@@ -147,6 +147,9 @@ class VectorEnvWrapper:
             handles += [handle]
         return handles, result
 
+    def close(self):
+        self.envs.close()
+
     def xla(self):
         @jax.jit
         def send(handle: jnp.ndarray, action, env_id=None):
