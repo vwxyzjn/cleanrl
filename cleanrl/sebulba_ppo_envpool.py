@@ -4,6 +4,19 @@ python sebulba_ppo_envpool.py --actor-device-ids 0 --num-actor-threads 2 --learn
 python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
 
 
+🔥 core settings:
+
+* test throughput
+    * python sebulba_ppo_envpool.py --exp-name sebula_thpt_a0_l1_timeout --actor-device-ids 0 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
+    * python sebulba_ppo_envpool.py --exp-name sebula_thpt_a0_l12_timeout --actor-device-ids 0 --learner-device-ids 1 2 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
+        * this will help us diagnose the throughput issue
+    * python sebulba_ppo_envpool.py --exp-name sebula_thpt_a0_l1 --actor-device-ids 0 --learner-device-ids 1 --profile --total-timesteps 500000 --track
+    * python sebulba_ppo_envpool.py --exp-name sebula_thpt_a0_l12 --actor-device-ids 0 --learner-device-ids 1 2  --profile --total-timesteps 500000 --track
+    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 4 --num-actor-threads 2 --track
+* Best performance so far
+    * python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01_rollout_is_faster --actor-device-ids 0 --learner-device-ids 0 1 --total-timesteps 500000 --track
+    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 4 --params-queue-timeout 0.02 --track
+
 # 1. rollout is faster than training
 
 ## throughput
@@ -138,8 +151,6 @@ def parse_args():
         help="the number of steps to run in each environment per policy rollout")
     parser.add_argument("--anneal-lr", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggle learning rate annealing for policy and value networks")
-    parser.add_argument("--gae", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Use GAE for advantage computation")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
     parser.add_argument("--gae-lambda", type=float, default=0.95,
@@ -183,6 +194,9 @@ def parse_args():
     assert len(args.actor_device_ids) == 1, "only 1 actor_device_ids is supported now"
     # fmt: on
     return args
+
+
+LEARNER_WARMUP_TIME = 10 # seconds
 
 
 def make_env(env_id, seed, num_envs, async_batch_size=1, num_threads=None, thread_affinity_offset=-1):
@@ -498,6 +512,9 @@ def rollout(
             rollout_queue.put(payload)
             rollout_queue_put_time.append(time.time() - rollout_queue_put_time_start)
             writer.add_scalar("stats/rollout_queue_put_time", np.mean(rollout_queue_put_time), global_step)
+
+        if update == 1 or update == 2 or update == 3:
+            time.sleep(LEARNER_WARMUP_TIME) # makes sure the actor does to fill the rollout_queue at the get go
 
         writer.add_scalar(
             "charts/SPS_update",
