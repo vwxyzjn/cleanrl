@@ -6,7 +6,7 @@ repos:
         args: 
           - --py37-plus
   - repo: https://github.com/PyCQA/isort
-    rev: 5.10.1
+    rev: 5.12.0
     hooks:
       - id: isort
         args:
@@ -35,10 +35,10 @@ repos:
     hooks:
       - id: codespell
         args:
-          - --ignore-words-list=nd,reacher,thist,ths,magent
-          - --skip=docs/css/termynal.css,docs/js/termynal.js
+          - --ignore-words-list=nd,reacher,thist,ths,magent,ba
+          - --skip=docs/css/termynal.css,docs/js/termynal.js,docs/get-started/CleanRL_Huggingface_Integration_Demo.ipynb
   - repo: https://github.com/python-poetry/poetry
-    rev: 1.2.1
+    rev: 1.3.2
     hooks:
       - id: poetry-export
         name: poetry-export requirements.txt

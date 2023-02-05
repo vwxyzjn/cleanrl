@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "cleanrl-test"
-version = "1.1.2"
+name = "cleanrl"
+version = "1.1.0"
 description = "High-quality single file implementation of Deep Reinforcement Learning algorithms with research-friendly features"
 authors = ["Costa Huang <costa.huang@outlook.com>"]
 packages = [
@@ -40,7 +40,7 @@ flax = {version = "^0.6.0", optional = true}
 optuna = {version = "^3.0.1", optional = true}
 optuna-dashboard = {version = "^0.7.2", optional = true}
 rich = {version = "<12.0", optional = true}
-envpool = {version = "^0.7.1", optional = true}
+envpool = {version = "^0.8.1", optional = true}
 PettingZoo = {version = "1.18.1", optional = true}
 SuperSuit = {version = "3.4.0", optional = true}
 multi-agent-ale-py = {version = "0.1.11", optional = true}
@@ -108,7 +108,7 @@ rich = "<12.0"
 [tool.poetry.group.envpool]
 optional = true
 [tool.poetry.group.envpool.dependencies]
-envpool = "^0.7.1"
+envpool = "^0.8.1"
 
 [tool.poetry.group.pettingzoo]
 optional = true

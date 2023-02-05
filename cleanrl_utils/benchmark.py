@@ -26,6 +26,9 @@ def parse_args():
     parser.add_argument("--slurm-template-path", type=str, default=None,
         help="the path to the slurm template file (containing the `#SBATCH` lines but not the actual commands")
     args = parser.parse_args()
+    # ensure only one of workers and slurm_template_path is set
+    if args.workers > 0 and args.slurm_template_path is not None:
+        raise ValueError("cannot set both --workers and --slurm-template-path")
     # fmt: on
     return args
 

@@ -1,4 +1,5 @@
 import argparse
+from distutils.util import strtobool
 
 from huggingface_hub import hf_hub_download
 
@@ -20,6 +21,8 @@ def parse_args():
         help="the id of the environment")
     parser.add_argument("--eval-episodes", type=int, default=10,
         help="the number of evaluation episodes")
+    parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="whether to capture videos of the agent performances (check out `videos` folder)")
     args = parser.parse_args()
     # fmt: on
     return args
@@ -39,5 +42,5 @@ if __name__ == "__main__":
         eval_episodes=args.eval_episodes,
         run_name=f"eval",
         Model=Model,
-        capture_video=False,
+        capture_video=args.capture_video,
     )
