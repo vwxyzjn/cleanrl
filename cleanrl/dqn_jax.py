@@ -50,6 +50,8 @@ def parse_args():
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
+    parser.add_argument("--tau", type=float, default=1.,
+        help="the target network update rate")
     parser.add_argument("--target-network-frequency", type=int, default=500,
         help="the timesteps it takes to update the target network")
     parser.add_argument("--batch-size", type=int, default=128,
@@ -232,9 +234,37 @@ if __name__ == "__main__":
                     print("SPS:", int(global_step / (time.time() - start_time)))
                     writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
-            # update the target network
+            # update target network
             if global_step % args.target_network_frequency == 0:
-                q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, 1))
+                q_state = q_state.replace(
+                    target_params=optax.incremental_update(q_state.params, q_state.target_params, args.tau)
+                )
+
+    if args.save_model:
+        model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
+        with open(model_path, "wb") as f:
+            f.write(flax.serialization.to_bytes(q_state.params))
+        print(f"model saved to {model_path}")
+        from cleanrl_utils.evals.dqn_jax_eval import evaluate
+
+        episodic_returns = evaluate(
+            model_path,
+            make_env,
+            args.env_id,
+            eval_episodes=10,
+            run_name=f"{run_name}-eval",
+            Model=QNetwork,
+            epsilon=0.05,
+        )
+        for idx, episodic_return in enumerate(episodic_returns):
+            writer.add_scalar("eval/episodic_return", episodic_return, idx)
+
+        if args.upload_model:
+            from cleanrl_utils.huggingface import push_to_hub
+
+            repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
+            repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
+            push_to_hub(args, episodic_returns, repo_id, "DQN", f"runs/{run_name}", f"videos/{run_name}-eval")
 
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
