@@ -48,7 +48,7 @@ def push_to_hub(
     algorithm_variant_filename = sys.argv[0].split("/")[-1]
     if len(extra_dependencies) == 0:
         extra_dependencies = [args.exp_name]
-    
+
     model_card = f"""
 # (CleanRL) **{algo_name}** Agent Playing **{args.env_id}**
 

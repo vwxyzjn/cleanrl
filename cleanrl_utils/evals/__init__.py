@@ -69,6 +69,21 @@ def ppo_atari_envpool_xla_jax_scan():
     )
 
 
+def sebulba_ppo_envpool():
+    import cleanrl.sebulba_ppo_envpool
+    import cleanrl_utils.evals.ppo_envpool_jax_eval
+
+    return (
+        (
+            cleanrl.sebulba_ppo_envpool.Network,
+            cleanrl.sebulba_ppo_envpool.Actor,
+            cleanrl.sebulba_ppo_envpool.Critic,
+        ),
+        cleanrl.sebulba_ppo_envpool.make_env,
+        cleanrl_utils.evals.ppo_envpool_jax_eval.evaluate,
+    )
+
+
 MODELS = {
     "dqn": dqn,
     "dqn_atari": dqn_atari,
@@ -79,4 +94,5 @@ MODELS = {
     "c51_jax": c51_jax,
     "c51_atari_jax": c51_atari_jax,
     "ppo_atari_envpool_xla_jax_scan": ppo_atari_envpool_xla_jax_scan,
+    "sebulba_ppo_envpool": sebulba_ppo_envpool,
 }
