@@ -20,6 +20,7 @@ def push_to_hub(
     revision: str = "main",
     create_pr: bool = False,
     private: bool = False,
+    extra_dependencies: List[str] = [],
 ):
     # Step 1: lazy import and create / read a huggingface repo
     from huggingface_hub import CommitOperationAdd, CommitOperationDelete, HfApi
@@ -45,6 +46,9 @@ def push_to_hub(
 
     # Step 3: Generate the model card
     algorithm_variant_filename = sys.argv[0].split("/")[-1]
+    if len(extra_dependencies) == 0:
+        extra_dependencies = [args.exp_name]
+    
     model_card = f"""
 # (CleanRL) **{algo_name}** Agent Playing **{args.env_id}**
 
@@ -57,7 +61,7 @@ found [here](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/{args.exp_na
 To use this model, please install the `cleanrl` package with the following command:
 
 ```
-pip install "cleanrl[{args.exp_name}]"
+pip install "cleanrl[{','.join(extra_dependencies)}]"
 python -m cleanrl_utils.enjoy --exp-name {args.exp_name} --env-id {args.env_id}
 ```
 

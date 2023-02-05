@@ -91,6 +91,8 @@ if __name__ == "__main__":
     if args.slurm_template_path is not None:
         if not os.path.exists("slurm"):
             os.makedirs("slurm")
+        if not os.path.exists("slurm/logs"):
+            os.makedirs("slurm/logs")
         print("======= slurm commands to run:")
         with open(args.slurm_template_path) as f:
             slurm_template = f.read()
