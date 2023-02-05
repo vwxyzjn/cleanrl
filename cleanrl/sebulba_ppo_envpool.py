@@ -84,7 +84,8 @@ import argparse
 import os
 import random
 import time
-from collections import deque, namedtuple
+import uuid
+from collections import deque
 from distutils.util import strtobool
 from functools import partial
 from typing import Sequence
@@ -196,7 +197,7 @@ def parse_args():
     return args
 
 
-LEARNER_WARMUP_TIME = 10 # seconds
+LEARNER_WARMUP_TIME = 10  # seconds
 
 
 def make_env(env_id, seed, num_envs, async_batch_size=1, num_threads=None, thread_affinity_offset=-1):
@@ -514,7 +515,7 @@ def rollout(
             writer.add_scalar("stats/rollout_queue_put_time", np.mean(rollout_queue_put_time), global_step)
 
         if update == 1 or update == 2 or update == 3:
-            time.sleep(LEARNER_WARMUP_TIME) # makes sure the actor does to fill the rollout_queue at the get go
+            time.sleep(LEARNER_WARMUP_TIME)  # makes sure the actor does to fill the rollout_queue at the get go
 
         writer.add_scalar(
             "charts/SPS_update",
@@ -696,7 +697,7 @@ def single_device_update(
 if __name__ == "__main__":
     devices = jax.devices("gpu")
     args = parse_args()
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{uuid.uuid4()}"
     if args.track:
         import wandb
 
@@ -820,7 +821,9 @@ if __name__ == "__main__":
         if learner_update == 1 or not args.test_actor_learner_throughput:
             for d_idx, d_id in enumerate(args.actor_device_ids):
                 for j in range(args.num_actor_threads):
-                    params_queues[d_idx * args.num_actor_threads + j].put(jax.device_put(flax.jax_utils.unreplicate(agent_state.params), devices[d_id]))
+                    params_queues[d_idx * args.num_actor_threads + j].put(
+                        jax.device_put(flax.jax_utils.unreplicate(agent_state.params), devices[d_id])
+                    )
         if args.profile:
             v_loss[-1, -1, -1].block_until_ready()
         writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
@@ -837,6 +840,43 @@ if __name__ == "__main__":
         writer.add_scalar("losses/loss", loss[-1, -1, -1].item(), global_step)
         if update > args.num_updates:
             break
+
+    if args.save_model:
+        agent_state = flax.jax_utils.unreplicate(agent_state)
+        model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
+        with open(model_path, "wb") as f:
+            f.write(
+                flax.serialization.to_bytes(
+                    [
+                        vars(args),
+                        [
+                            agent_state.params.network_params,
+                            agent_state.params.actor_params,
+                            agent_state.params.critic_params,
+                        ],
+                    ]
+                )
+            )
+        print(f"model saved to {model_path}")
+        from cleanrl_utils.evals.ppo_envpool_jax_eval import evaluate
+
+        episodic_returns = evaluate(
+            model_path,
+            make_env,
+            args.env_id,
+            eval_episodes=10,
+            run_name=f"{run_name}-eval",
+            Model=(Network, Actor, Critic),
+        )
+        for idx, episodic_return in enumerate(episodic_returns):
+            writer.add_scalar("eval/episodic_return", episodic_return, idx)
+
+        if args.upload_model:
+            from cleanrl_utils.huggingface import push_to_hub
+
+            repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
+            repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
+            push_to_hub(args, episodic_returns, repo_id, "PPO", f"runs/{run_name}", f"videos/{run_name}-eval")
 
     envs.close()
     writer.close()

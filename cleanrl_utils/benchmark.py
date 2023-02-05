@@ -2,6 +2,7 @@ import argparse
 import os
 import shlex
 import subprocess
+import uuid
 from distutils.util import strtobool
 
 import requests
@@ -22,6 +23,8 @@ def parse_args():
         help="the number of workers to run benchmark experimenets")
     parser.add_argument("--auto-tag", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="if toggled, the runs will be tagged with git tags, commit, and pull request number if possible")
+    parser.add_argument("--slurm-template-path", type=str, default=None,
+        help="the path to the slurm template file (containing the `#SBATCH` lines but not the actual commands")
     args = parser.parse_args()
     # fmt: on
     return args
@@ -81,6 +84,20 @@ if __name__ == "__main__":
     print("======= commands to run:")
     for command in commands:
         print(command)
+
+    if args.slurm_template_path is not None:
+        if not os.path.exists("slurm"):
+            os.makedirs("slurm")
+        print("======= slurm commands to run:")
+        with open(args.slurm_template_path) as f:
+            slurm_template = f.read()
+        for command in commands:
+            filled_template = slurm_template.replace("{{command}}", command)
+            filename = str(uuid.uuid4())
+            open(os.path.join("slurm", f"{filename}.slurm"), "w").write(filled_template)
+            slurm_path = os.path.join("slurm", f"{filename}.slurm")
+            print(f"saving command in {slurm_path}: {command}")
+            run_experiment(f"sbatch {slurm_path}")
 
     if args.workers > 0:
         from concurrent.futures import ThreadPoolExecutor
