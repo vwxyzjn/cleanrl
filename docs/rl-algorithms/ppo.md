@@ -430,16 +430,46 @@ See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `p
 
 1. It employs a "recompute advantage" strategy, which is reported to [contribute significantly to the state-of-the-art (SOTA) benchmarks](https://github.com/thu-ml/tianshou/tree/master/examples/mujoco#hints-for-ppo). It's worth noting that this implementation differs significantly from the original "reward scaling" approach. Instead of computing a forward discounted return and normalizing rewards on a per-step basis, this implementation normalizes the returns calculated by the Generalized Advantage Estimator (GAE). As a result, the rewards received from rollouts are not themselves normalized.
 
-2. The main body of this code implementation uses a gymnasium API that returns five values, while the Envpool 0.6.4 adopts a gym API that returns four values. The conversion was implemented inside the Observation Normalization wrapper.
+2. The main body of this code implementation uses a gymnasium API that returns five values, while the Envpool 0.6.4 adopts a gym API that returns four values. The conversion was implemented inside the Observation Normalization wrapper.The switch to the gymnasium API will make it more convenient if a higher gymnasium version is adopted in the future.
 
 3. This implementation utilizes a customized `EnvWrapper` class to wrap the environment. Unlike traditional Gym-style wrappers, which have `step` and `reset` methods, EnvWrapper requires three methods: `recv`, `send`, and `reset`. These methods must be pure functions to be transformed in Jax. The recv method modifies the observation received after a step, and the send method modifies the action sent to the environment.
 
 
 ???+ warning
 
-    The wrapped environment causes an API change, and we will receive a new return handle from the reset API. This is because the XLA API provided by Envpool is not a pure function. The handle passed to the send function is simply a fat pointer pointing to the Envpool class. When we keep all state inside a handle tuple, if we reset the environment, the pointer remains unchanged. Other parts, such as the new statistical state, also require a reset state. As a result, there must be a change to the Envpool API.
+    The wrapped environment leads to an API change. After a reset, we will receive a new return handle from the reset API. This is because the XLA API provided by envpool is not a pure function, and the handle passed to the send function is simply a fat pointer pointing to the envpool class. When all state is kept inside a handle tuple, resetting the environment leaves the pointer unchanged, and other parts (such as new statistics state) also require a reset state. Hence, there must be a change to the envpool API. In order to have a less confusing API, it may be possible to remove the handle from the return values of envs.xla(). However, at present, it is not possible to make things consistent with envpool. 
 
 ### Experiment results
+
+
+| env_id            | 1M steps  | 3M steps    |
+|:--------------------------|:----------------------|:----------------------|
+| Ant-v4                    | 2965.28 +- 664.13     | 3510.94 +- 711.55     |
+| HalfCheetah-v4            | 5547.87 +- 1407.09    | 6684.53 +- 1216.31    |
+| Hopper-v4                 | 2297.56 +- 426.33     | 2461.79 +- 428.26     |
+| Humanoid-v4               | 502.92 +- 31.91       | 611.45 +- 51.19       |
+| HumanoidStandup-v4        | 109515.65 +- 17869.43 | 119289.62 +- 21005.06 |
+| InvertedDoublePendulum-v4 | 7591.31 +- 1088.53    | 6129.24 +- 2029.02    |
+| InvertedPendulum-v4       | 967.05 +- 104.20      | 842.89 +- 307.85      |
+| Pusher-v4                 | -56.24 +- 8.90        | -40.08 +- 14.35       |
+| Reacher-v4                | -8.35 +- 1.92         | -6.73 +- 1.82         |
+| Swimmer-v4                | 27.78 +- 18.22        | 45.00 +- 10.12        |
+| Walker2d-v4               | 2980.62 +- 737.03     | 3631.59 +- 931.09     |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Learning curves:
 
