@@ -15,6 +15,7 @@ python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 --para
 * Best performance so far
     * python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01_rollout_is_faster --actor-device-ids 0 --learner-device-ids 0 1 --total-timesteps 500000 --track
     * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 4 --params-queue-timeout 0.02 --track
+    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 --num-envs 60 --async-batch-size 20 --params-queue-timeout 0.02 --track
 
 # 1. rollout is faster than training
 
@@ -709,6 +710,7 @@ if __name__ == "__main__":
             monitor_gym=True,
             save_code=True,
         )
+    print(devices)
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
         "hyperparameters",
@@ -802,7 +804,12 @@ if __name__ == "__main__":
         learner_update += 1
         if learner_update == 1 or not args.test_actor_learner_throughput:
             rollout_queue_get_time_start = time.time()
-            global_step, update, b_obs, b_actions, b_logprobs, b_advantages, b_returns = rollout_queue.get()
+            try:
+                # a long time out to ensure the program does not get stuck
+                global_step, update, b_obs, b_actions, b_logprobs, b_advantages, b_returns = rollout_queue.get(timeout=30)
+            except queue.Empty:
+                print("rollout_queue.get")
+
             rollout_queue_get_time.append(time.time() - rollout_queue_get_time_start)
             writer.add_scalar("stats/rollout_queue_get_time", np.mean(rollout_queue_get_time), global_step)
 
