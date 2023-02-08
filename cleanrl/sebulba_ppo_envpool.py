@@ -1,90 +1,24 @@
 """
-0. multi-threaded actor
-python sebulba_ppo_envpool.py --actor-device-ids 0 --num-actor-threads 2 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
-python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
-
-🔥 core settings:
-
-* test throughput
-    * python sebulba_ppo_envpool.py --exp-name sebula_thpt_a0_l1_timeout --actor-device-ids 0 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
-    * python sebulba_ppo_envpool.py --exp-name sebula_thpt_a0_l12_timeout --actor-device-ids 0 --learner-device-ids 1 2 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
+* 🥼 Test throughput (see docs):
+    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
+    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
         * this will help us diagnose the throughput issue
-    * python sebulba_ppo_envpool.py --exp-name sebula_thpt_a0_l1 --actor-device-ids 0 --learner-device-ids 1 --profile --total-timesteps 500000 --track
-    * python sebulba_ppo_envpool.py --exp-name sebula_thpt_a0_l12 --actor-device-ids 0 --learner-device-ids 1 2  --profile --total-timesteps 500000 --track
-    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 4 --num-actor-threads 2 --track
-* Best performance so far
-    * python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01_rollout_is_faster --actor-device-ids 0 --learner-device-ids 0 1 --total-timesteps 500000 --track
-    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 4 --params-queue-timeout 0.02 --track
-    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 --num-envs 60 --async-batch-size 20 --params-queue-timeout 0.02 --track
-
-# 1. rollout is faster than training
-
-## throughput
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_thpt_rollout_is_faster --actor-device-ids 0 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
-
-## shared: actor on GPU0 and learner on GPU0
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_1gpu_rollout_is_faster --actor-device-ids 0 --learner-device-ids 0 --total-timesteps 500000 --track
-
-## separate: actor on GPU0 and learner on GPU1
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l1_rollout_is_faster --actor-device-ids 0 --learner-device-ids 1 --total-timesteps 500000 --track
-
-## shared: actor on GPU0 and learner on GPU0,1
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01_rollout_is_faster --actor-device-ids 0 --learner-device-ids 0 1 --total-timesteps 500000 --track
-
-## separate: actor on GPU0 and learner on GPU1,2
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l12_rollout_is_faster --actor-device-ids 0 --learner-device-ids 1 2 --total-timesteps 500000 --track
-
-
-# 1.1 rollout is faster than training w/ timeout
-
-## shared: actor on GPU0 and learner on GPU0
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_1gpu_rollout_is_faster_timeout --actor-device-ids 0 --learner-device-ids 0 --params-queue-timeout 0.02 --total-timesteps 500000 --track
-
-## separate: actor on GPU0 and learner on GPU1
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l1_rollout_is_faster_timeout --actor-device-ids 0 --learner-device-ids 1 --params-queue-timeout 0.02 --total-timesteps 500000 --track
-
-## shared: actor on GPU0 and learner on GPU0,1
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01_rollout_is_faster_timeout --actor-device-ids 0 --learner-device-ids 0 1 --params-queue-timeout 0.02 --total-timesteps 500000 --track
-
-## separate: actor on GPU0 and learner on GPU1,2
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l12_rollout_is_faster_timeout --actor-device-ids 0 --learner-device-ids 1 2 --params-queue-timeout 0.02 --total-timesteps 500000 --track
-
-# 1.2. rollout is much faster than training w/ timeout
-
-## throughput
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_thpt_rollout_is_much_faster_timeout --actor-device-ids 0 --learner-device-ids 1 --update-epochs 8 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
-
-## shared: actor on GPU0 and learner on GPU0,1
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01_rollout_is_much_faster_timeout --actor-device-ids 0 --learner-device-ids 0 1 --update-epochs 8 --params-queue-timeout 0.02 --total-timesteps 500000 --track
-
-## separate: actor on GPU0 and learner on GPU1,2
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l12_rollout_is_much_faster_timeout --actor-device-ids 0 --learner-device-ids 1 2 --update-epochs 8 --params-queue-timeout 0.02 --total-timesteps 500000 --track
-
-# 2. training is faster than rollout
-
-## throughput
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_thpt_training_is_faster --update-epochs 1 --async-batch-size 64 --actor-device-ids 0 --learner-device-ids 1 --params-queue-timeout 0.02 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
-
-## shared: actor on GPU0 and learner on GPU0
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_1gpu_training_is_faster --update-epochs 1 --async-batch-size 64 --actor-device-ids 0 --learner-device-ids 0 --total-timesteps 500000 --track
-
-## separate: actor on GPU0 and learner on GPU1
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l1_training_is_faster --update-epochs 1 --async-batch-size 64 --actor-device-ids 0 --learner-device-ids 1 --total-timesteps 500000 --track
-
-## shared: actor on GPU0 and learner on GPU0,1
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l01_training_is_faster --update-epochs 1 --async-batch-size 64 --actor-device-ids 0 --learner-device-ids 0 1 --total-timesteps 500000 --track
-
-## separate: actor on GPU0 and learner on GPU1,2
-python sebulba_ppo_envpool.py --exp-name sebulba_ppo_envpool_a0_l12_training_is_faster --update-epochs 1 --async-batch-size 64 --actor-device-ids 0 --learner-device-ids 1 2 --total-timesteps 500000 --track
-
+    * python sebulba_ppo_envpool.py --actor-device-ids 0 --num-actor-threads 2 --learner-device-ids 1 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
+* 🔥 Best performance so far (more GPUs -> faster)
+    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 0 --track
+    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 0 1 --track
+    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 --num-envs 60 --async-batch-size 20 --track
+    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 4 --track
+    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 4 5 6 --num-envs 60 --async-batch-size 20 --track
+    * (this actually doesn't work that well) python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 4 5 6 7 --num-envs 70 --async-batch-size 35 --track
 """
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpool_async_jax_scan_impalanet_machadopy
-# https://gregorygundersen.com/blog/2020/02/09/log-sum-exp/
 import argparse
 import os
 import random
 import time
 import uuid
+import warnings
 from collections import deque
 from distutils.util import strtobool
 from functools import partial
@@ -183,21 +117,16 @@ def parse_args():
         help="whether to call block_until_ready() for profiling")
     parser.add_argument("--test-actor-learner-throughput", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to test actor-learner throughput by removing the actor-learner communication")
-    parser.add_argument("--params-queue-timeout", type=float, default=None,
-        help="the timeout for the `params_queue.get()` operation in the actor thread to pull params;" + \
-             "by default it's `None`; if you set a timeout, it will likely make the actor run faster but will introduce some side effects," + \
-             "such as the actor will not be able to pull the latest params from the learner and will use the old params instead")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_updates = args.total_timesteps // args.batch_size
     args.async_update = int(args.num_envs / args.async_batch_size)
     assert len(args.actor_device_ids) == 1, "only 1 actor_device_ids is supported now"
+    if args.num_actor_threads > 1:
+        warnings.warn("⚠️ !!!! `num_actor_threads` > 1 is not tested with learning; see docs for detail")
     # fmt: on
     return args
-
-
-LEARNER_WARMUP_TIME = 10  # seconds
 
 
 def make_env(env_id, seed, num_envs, async_batch_size=1, num_threads=None, thread_affinity_offset=-1):
@@ -395,8 +324,14 @@ def rollout(
     rollout_time = deque(maxlen=10)
     data_transfer_time = deque(maxlen=10)
     rollout_queue_put_time = deque(maxlen=10)
-    params_timeout_count = 0
+    actor_policy_version = 0
     for update in range(1, args.num_updates + 2):
+        # NOTE: This is a major difference from the sync version:
+        # at the end of the rollout phase, the sync version will have the next observation
+        # ready for the value bootstrap, but the async version will not have it.
+        # for this reason we do `num_steps + 1`` to get the extra states for value bootstrapping.
+        # but note that the extra states are not used for the loss computation in the next iteration,
+        # while the sync version will use the extra state for the loss computation.
         update_time_start = time.time()
         obs = []
         dones = []
@@ -412,21 +347,15 @@ def rollout(
         storage_time = 0
         env_send_time = 0
 
-        # NOTE: This is a major difference from the sync version:
-        # at the end of the rollout phase, the sync version will have the next observation
-        # ready for the value bootstrap, but the async version will not have it.
-        # for this reason we do `num_steps + 1`` to get the extra states for value bootstrapping.
-        # but note that the extra states are not used for the loss computation in the next iteration,
-        # while the sync version will use the extra state for the loss computation.
+        # NOTE: `update != 2` is actually IMPORTANT — it allows us to start running policy collection
+        # concurrently with the learning process. It also ensures the actor's policy version is only 1 step
+        # behind the learner's policy version
         params_queue_get_time_start = time.time()
-        try:
-            params = params_queue.get(timeout=args.params_queue_timeout)
-        except queue.Empty:
-            # print("params_queue.get timeout triggered")
-            params_timeout_count += 1
+        if update != 2:
+            params = params_queue.get()
+            actor_policy_version += 1
         params_queue_get_time.append(time.time() - params_queue_get_time_start)
         writer.add_scalar("stats/params_queue_get_time", np.mean(params_queue_get_time), global_step)
-        writer.add_scalar("stats/params_queue_timeout_count", params_timeout_count, global_step)
         rollout_time_start = time.time()
         for _ in range(
             args.async_update, (args.num_steps + 1) * args.async_update
@@ -497,6 +426,7 @@ def rollout(
         )
         payload = (
             global_step,
+            actor_policy_version,
             update,
             jnp.array_split(b_obs, len(learner_devices)),
             jnp.array_split(b_actions, len(learner_devices)),
@@ -513,9 +443,6 @@ def rollout(
             rollout_queue.put(payload)
             rollout_queue_put_time.append(time.time() - rollout_queue_put_time_start)
             writer.add_scalar("stats/rollout_queue_put_time", np.mean(rollout_queue_put_time), global_step)
-
-        if update == 1 or update == 2 or update == 3:
-            time.sleep(LEARNER_WARMUP_TIME)  # makes sure the actor does to fill the rollout_queue at the get go
 
         writer.add_scalar(
             "charts/SPS_update",
@@ -764,7 +691,7 @@ if __name__ == "__main__":
         static_broadcasted_argnums=(6),
     )
 
-    rollout_queue = queue.Queue(maxsize=2)
+    rollout_queue = queue.Queue(maxsize=1)
     params_queues = []
     num_cpus = mp.cpu_count()
     fair_num_cpus = num_cpus // len(args.actor_device_ids)
@@ -773,14 +700,10 @@ if __name__ == "__main__":
         def add_scalar(self, arg0, arg1, arg3):
             pass
 
-    # lock = threading.Lock()
-    # AgentParamsStore = namedtuple("AgentParamsStore", ["params", "version"])
-    # agent_params_store = AgentParamsStore(agent_state.params, 0)
-
     dummy_writer = DummyWriter()
     for d_idx, d_id in enumerate(args.actor_device_ids):
         for j in range(args.num_actor_threads):
-            params_queue = queue.Queue(maxsize=2)
+            params_queue = queue.Queue(maxsize=1)
             params_queue.put(jax.device_put(flax.jax_utils.unreplicate(agent_state.params), devices[d_id]))
             threading.Thread(
                 target=rollout,
@@ -799,17 +722,21 @@ if __name__ == "__main__":
             params_queues.append(params_queue)
 
     rollout_queue_get_time = deque(maxlen=10)
-    learner_update = 0
+    learner_policy_version = 0
     while True:
-        learner_update += 1
-        if learner_update == 1 or not args.test_actor_learner_throughput:
+        learner_policy_version += 1
+        if learner_policy_version == 1 or not args.test_actor_learner_throughput:
             rollout_queue_get_time_start = time.time()
-            try:
-                # a long time out to ensure the program does not get stuck
-                global_step, update, b_obs, b_actions, b_logprobs, b_advantages, b_returns = rollout_queue.get(timeout=30)
-            except queue.Empty:
-                print("rollout_queue.get")
-
+            (
+                global_step,
+                actor_policy_version,
+                update,
+                b_obs,
+                b_actions,
+                b_logprobs,
+                b_advantages,
+                b_returns,
+            ) = rollout_queue.get()
             rollout_queue_get_time.append(time.time() - rollout_queue_get_time_start)
             writer.add_scalar("stats/rollout_queue_get_time", np.mean(rollout_queue_get_time), global_step)
 
@@ -824,7 +751,7 @@ if __name__ == "__main__":
             envs.single_action_space.n,
             key,
         )
-        if learner_update == 1 or not args.test_actor_learner_throughput:
+        if learner_policy_version == 1 or not args.test_actor_learner_throughput:
             for d_idx, d_id in enumerate(args.actor_device_ids):
                 for j in range(args.num_actor_threads):
                     params_queues[d_idx * args.num_actor_threads + j].put(
@@ -835,7 +762,10 @@ if __name__ == "__main__":
         writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
         writer.add_scalar("stats/rollout_queue_size", rollout_queue.qsize(), global_step)
         writer.add_scalar("stats/params_queue_size", params_queue.qsize(), global_step)
-        print(global_step, update, rollout_queue.qsize(), f"training time: {time.time() - training_time_start}s")
+        print(
+            global_step,
+            f"actor_policy_version={actor_policy_version}, actor_update={update}, learner_policy_version={learner_policy_version}, training time: {time.time() - training_time_start}s",
+        )
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"][0].item(), global_step)
