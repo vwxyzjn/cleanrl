@@ -58,5 +58,4 @@ poetry shell
 
 poetry install --with atari
 python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
-python cleanrl/ppo_memory_env_lstm.py
 ```
