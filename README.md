@@ -106,7 +106,6 @@ python cleanrl/ppg_procgen.py --env-id starpilot
 
 # ppo + lstm
 python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
-python cleanrl/ppo_memory_env_lstm.py
 ```
 
 You may also use a prebuilt development environment hosted in Gitpod:
