@@ -774,7 +774,7 @@ if __name__ == "__main__":
         writer.add_scalar("losses/entropy", entropy_loss[-1, -1, -1].item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl[-1, -1, -1].item(), global_step)
         writer.add_scalar("losses/loss", loss[-1, -1, -1].item(), global_step)
-        if update > args.num_updates:
+        if update >= args.num_updates:
             break
 
     if args.save_model:
