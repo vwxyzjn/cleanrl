@@ -10,9 +10,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import tree
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
-import tree
 
 from stable_baselines3.common.atari_wrappers import (  # isort:skip
     ClipRewardEnv,
@@ -147,19 +147,25 @@ class Agent(nn.Module):
 def make_storage(obs_space: gym.Space, batch_dims: tuple, device: torch.device):
     dummy = obs_space.sample()
     return tree.map_structure(
-        lambda x: torch.zeros(batch_dims + np.shape(x), dtype=torch.tensor(x).dtype, device=device), dummy)
+        lambda x: torch.zeros(batch_dims + np.shape(x), dtype=torch.tensor(x).dtype, device=device), dummy
+    )
+
 
 def to_tensor(o, device: torch.device):
     return tree.map_structure(lambda obs: torch.from_numpy(obs).to(device), o)
 
+
 def save_obs(samples, storage, index: int):
     def store(obs, store):
         store[index] = obs
+
     tree.map_structure(store, samples, storage)
+
 
 def minibatch(obs, idx: int):
     "Gathers a minibatch of observation given indices `idx`"
     return tree.map_structure(lambda o: o[idx], obs)
+
 
 def flatten_obs(obs):
     return tree.map_structure(lambda o: o.reshape((-1,) + o.shape[2:]), obs)
@@ -282,7 +288,9 @@ if __name__ == "__main__":
                 end = start + args.minibatch_size
                 mb_inds = b_inds[start:end]
 
-                _, newlogprob, entropy, newvalue = agent.get_action_and_value(minibatch(b_obs, mb_inds), b_actions.long()[mb_inds])
+                _, newlogprob, entropy, newvalue = agent.get_action_and_value(
+                    minibatch(b_obs, mb_inds), b_actions.long()[mb_inds]
+                )
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 
