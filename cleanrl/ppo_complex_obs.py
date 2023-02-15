@@ -85,16 +85,6 @@ def parse_args():
     return args
 
 
-### Dummy Complex Obs Wrapper ###
-class DummyComplex(gym.ObservationWrapper):
-    def __init__(self, env):
-        super().__init__(env)
-        self.observation_space = gym.spaces.Dict({"dummy": gym.spaces.Box(0, 255, (12,12)), "original": self.env.observation_space})
-
-    def observation(self, observation):
-        return {"dummy": 255 * np.random.random((12,12)), "original": observation}
-
-
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         env = gym.make(env_id)
@@ -152,20 +142,6 @@ class Agent(nn.Module):
         if action is None:
             action = probs.sample()
         return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
-
-
-### Dummy Complex obs agent that handles the complex obs space that we defined ###
-class ComplexObsAgent(nn.Module):
-    def __init__(self, envs):
-        super().__init__()
-        self.net = Agent(envs)
-
-    def get_value(self, x):
-        # Can use any of the obs values in `x`
-        return self.net.get_value(x["original"])
-
-    def get_action_and_value(self, x, action=None):
-        return self.net.get_action_and_value(x["original"], action)
 
 
 def make_storage(obs_space: gym.Space, batch_dims: tuple, device: torch.device):
