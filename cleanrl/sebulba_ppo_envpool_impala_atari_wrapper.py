@@ -115,6 +115,8 @@ def parse_args():
         help="the number of actor threads")
     parser.add_argument("--profile", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to call block_until_ready() for profiling")
+    parser.add_argument("--distributed", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="whether to use `jax.distirbuted`")
     parser.add_argument("--test-actor-learner-throughput", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to test actor-learner throughput by removing the actor-learner communication")
     args = parser.parse_args()
@@ -368,7 +370,7 @@ def rollout(
             env_recv_time_start = time.time()
             next_obs, next_reward, next_done, info = envs.recv()
             env_recv_time += time.time() - env_recv_time_start
-            global_step += len(next_done) * args.num_actor_threads * len_actor_device_ids
+            global_step += len(next_done) * args.num_actor_threads * len_actor_device_ids * args.world_size
             env_id = info["env_id"]
 
             inference_time_start = time.time()
@@ -389,7 +391,7 @@ def rollout(
 
             # info["TimeLimit.truncated"] has a bug https://github.com/sail-sg/envpool/issues/239
             # so we use our own truncated flag
-            truncated = info["elapsed_step"] >= ATARI_MAX_FRAMES
+            truncated = info["elapsed_step"] >= envs.spec.config.max_episode_steps
             truncations.append(truncated)
             terminations.append(info["terminated"])
             episode_returns[env_id] += info["reward"]
@@ -460,6 +462,7 @@ def rollout(
                 * args.num_steps
                 * args.num_actor_threads
                 * len_actor_device_ids
+                * args.world_size
                 / (time.time() - update_time_start)
             ),
             global_step,
@@ -607,7 +610,7 @@ def single_device_update(
                 mb_returns,
                 action_dim,
             )
-            grads = jax.lax.pmean(grads, axis_name="devices")
+            grads = jax.lax.pmean(grads, axis_name="local_devices")
             agent_state = agent_state.apply_gradients(grads=grads)
             return agent_state, (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads)
 
@@ -631,10 +634,32 @@ def single_device_update(
 
 
 if __name__ == "__main__":
-    devices = jax.devices("gpu")
     args = parse_args()
+    if args.distributed:
+        jax.distributed.initialize(
+            local_device_ids=range(len(args.learner_device_ids) + len(args.actor_device_ids)),
+        )
+        print(list(range(len(args.learner_device_ids) + len(args.actor_device_ids))))
+
+    args.world_size = jax.process_count()
+    args.local_rank = jax.process_index()
+    args.world_num_envs = args.num_envs * args.world_size
+    args.world_batch_size = args.batch_size * args.world_size
+    args.world_minibatch_size = args.minibatch_size * args.world_size
+    args.num_updates = args.total_timesteps // (args.batch_size * args.world_size)
+    args.async_update = int(args.num_envs / args.async_batch_size)
+    local_devices = jax.local_devices()
+    global_devices = jax.devices()
+    learner_devices = [local_devices[d_id] for d_id in args.learner_device_ids]
+    actor_devices = [local_devices[d_id] for d_id in args.actor_device_ids]
+    global_learner_decices = [global_devices[d_id + process_index * len(local_devices)] for process_index in range(args.world_size) for d_id in args.learner_device_ids]
+    print("global_learner_decices", global_learner_decices)
+    args.global_learner_decices = global_learner_decices
+    args.actor_devices = actor_devices
+    args.learner_devices = learner_devices
+
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{uuid.uuid4()}"
-    if args.track:
+    if args.track and args.local_rank == 0:
         import wandb
 
         wandb.init(
@@ -646,7 +671,6 @@ if __name__ == "__main__":
             monitor_gym=True,
             save_code=True,
         )
-    print(devices)
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
         "hyperparameters",
@@ -682,19 +706,17 @@ if __name__ == "__main__":
         ),
         tx=optax.chain(
             optax.clip_by_global_norm(args.max_grad_norm),
-            optax.inject_hyperparams(optax.adam)(
+            optax.adam(
                 learning_rate=linear_schedule if args.anneal_lr else args.learning_rate, eps=1e-5
             ),
         ),
     )
-    learner_devices = [devices[d_id] for d_id in args.learner_device_ids]
-    actor_devices = [devices[d_id] for d_id in args.actor_device_ids]
     agent_state = flax.jax_utils.replicate(agent_state, devices=learner_devices)
 
     multi_device_update = jax.pmap(
         single_device_update,
-        axis_name="devices",
-        devices=learner_devices,
+        axis_name="local_devices",
+        devices=global_learner_decices,
         in_axes=(0, 0, 0, 0, 0, 0, None, None),
         out_axes=(0, 0, 0, 0, 0, 0, None),
         static_broadcasted_argnums=(6),
@@ -713,14 +735,14 @@ if __name__ == "__main__":
     for d_idx, d_id in enumerate(args.actor_device_ids):
         for j in range(args.num_actor_threads):
             params_queue = queue.Queue(maxsize=1)
-            params_queue.put(jax.device_put(flax.jax_utils.unreplicate(agent_state.params), devices[d_id]))
+            params_queue.put(jax.device_put(flax.jax_utils.unreplicate(agent_state.params), local_devices[d_id]))
             threading.Thread(
                 target=rollout,
                 args=(
                     j,
                     fair_num_cpus if args.num_actor_threads > 1 else None,
                     j * args.num_actor_threads if args.num_actor_threads > 1 else -1,
-                    jax.device_put(key, devices[d_id]),
+                    jax.device_put(key, local_devices[d_id]),
                     args,
                     rollout_queue,
                     params_queue,
@@ -764,7 +786,7 @@ if __name__ == "__main__":
             for d_idx, d_id in enumerate(args.actor_device_ids):
                 for j in range(args.num_actor_threads):
                     params_queues[d_idx * args.num_actor_threads + j].put(
-                        jax.device_put(flax.jax_utils.unreplicate(agent_state.params), devices[d_id])
+                        jax.device_put(flax.jax_utils.unreplicate(agent_state.params), local_devices[d_id])
                     )
         if args.profile:
             v_loss[-1, -1, -1].block_until_ready()
@@ -777,7 +799,7 @@ if __name__ == "__main__":
         )
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"][0].item(), global_step)
+        # writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"][0].item(), global_step)
         writer.add_scalar("losses/value_loss", v_loss[-1, -1, -1].item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss[-1, -1, -1].item(), global_step)
         writer.add_scalar("losses/entropy", entropy_loss[-1, -1, -1].item(), global_step)
