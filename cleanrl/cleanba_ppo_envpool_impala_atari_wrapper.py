@@ -4,7 +4,6 @@ import os
 import random
 import time
 import uuid
-import warnings
 from collections import deque
 from distutils.util import strtobool
 from functools import partial
@@ -14,7 +13,6 @@ os.environ[
     "XLA_PYTHON_CLIENT_MEM_FRACTION"
 ] = "0.6"  # see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
 os.environ["XLA_FLAGS"] = "--xla_cpu_multi_thread_eigen=false " "intra_op_parallelism_threads=1"
-import multiprocessing as mp
 import queue
 import threading
 
@@ -433,13 +431,7 @@ def rollout(
 
         writer.add_scalar(
             "charts/SPS_update",
-            int(
-                args.num_envs
-                * args.num_steps
-                * len_actor_device_ids
-                * args.world_size
-                / (time.time() - update_time_start)
-            ),
+            int(args.num_envs * args.num_steps * len_actor_device_ids * args.world_size / (time.time() - update_time_start)),
             global_step,
         )
 
@@ -627,7 +619,11 @@ if __name__ == "__main__":
     global_devices = jax.devices()
     learner_devices = [local_devices[d_id] for d_id in args.learner_device_ids]
     actor_devices = [local_devices[d_id] for d_id in args.actor_device_ids]
-    global_learner_decices = [global_devices[d_id + process_index * len(local_devices)] for process_index in range(args.world_size) for d_id in args.learner_device_ids]
+    global_learner_decices = [
+        global_devices[d_id + process_index * len(local_devices)]
+        for process_index in range(args.world_size)
+        for d_id in args.learner_device_ids
+    ]
     print("global_learner_decices", global_learner_decices)
     args.global_learner_decices = global_learner_decices
     args.actor_devices = actor_devices
@@ -747,9 +743,7 @@ if __name__ == "__main__":
         )
         if learner_policy_version == 1 or not args.test_actor_learner_throughput:
             for d_idx, d_id in enumerate(args.actor_device_ids):
-                params_queues[d_idx].put(
-                    jax.device_put(flax.jax_utils.unreplicate(agent_state.params), local_devices[d_id])
-                )
+                params_queues[d_idx].put(jax.device_put(flax.jax_utils.unreplicate(agent_state.params), local_devices[d_id]))
         if args.profile:
             v_loss[-1, -1, -1].block_until_ready()
         writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
