@@ -1,17 +1,3 @@
-"""
-* 🥼 Test throughput (see docs):
-    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
-    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
-        * this will help us diagnose the throughput issue
-    * python sebulba_ppo_envpool.py --actor-device-ids 0 --num-actor-threads 2 --learner-device-ids 1 --profile --test-actor-learner-throughput --total-timesteps 500000 --track
-* 🔥 Best performance so far (more GPUs -> faster)
-    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 0 --track
-    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 0 1 --track
-    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 --track
-    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 4 --track
-    * python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 4 5 6 --track
-    * (this actually doesn't work that well) python sebulba_ppo_envpool.py --actor-device-ids 0 --learner-device-ids 1 2 3 4 5 6 7 --num-envs 70 --async-batch-size 35 --track
-"""
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpool_async_jax_scan_impalanet_machadopy
 import argparse
 import os
@@ -108,25 +94,21 @@ def parse_args():
         help="the target KL divergence threshold")
 
     parser.add_argument("--actor-device-ids", type=int, nargs="+", default=[0], # type is actually List[int]
-        help="the device ids that actor workers will use")
+        help="the device ids that actor workers will use (currently only support 1 device)")
     parser.add_argument("--learner-device-ids", type=int, nargs="+", default=[0], # type is actually List[int]
-        help="the device ids that actor workers will use")
-    parser.add_argument("--num-actor-threads", type=int, default=1,
-        help="the number of actor threads")
-    parser.add_argument("--profile", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="whether to call block_until_ready() for profiling")
+        help="the device ids that learner workers will use")
     parser.add_argument("--distributed", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to use `jax.distirbuted`")
+    parser.add_argument("--profile", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="whether to call block_until_ready() for profiling")
     parser.add_argument("--test-actor-learner-throughput", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to test actor-learner throughput by removing the actor-learner communication")
     args = parser.parse_args()
-    args.batch_size = int(args.num_envs * args.num_steps)
-    args.minibatch_size = int(args.batch_size // args.num_minibatches)
-    args.num_updates = args.total_timesteps // args.batch_size
+    args.local_batch_size = int(args.num_envs * args.num_steps)
+    args.local_minibatch_size = int(args.local_batch_size // args.num_minibatches)
+    args.num_updates = args.total_timesteps // args.local_batch_size
     args.async_update = int(args.num_envs / args.async_batch_size)
     assert len(args.actor_device_ids) == 1, "only 1 actor_device_ids is supported now"
-    if args.num_actor_threads > 1:
-        warnings.warn("⚠️ !!!! `num_actor_threads` > 1 is not tested with learning; see docs for detail")
     # fmt: on
     return args
 
@@ -136,14 +118,12 @@ ATARI_MAX_FRAMES = int(
 )  # 108000 is the max number of frames in an Atari game, divided by 4 to account for frame skipping
 
 
-def make_env(env_id, seed, num_envs, async_batch_size=1, num_threads=None, thread_affinity_offset=-1):
+def make_env(env_id, seed, num_envs, async_batch_size=1):
     def thunk():
         envs = envpool.make(
             env_id,
             env_type="gym",
             num_envs=num_envs,
-            num_threads=num_threads if num_threads is not None else async_batch_size,
-            thread_affinity_offset=thread_affinity_offset,
             batch_size=async_batch_size,
             episodic_life=True,  # Espeholt et al., 2018, Tab. G.1
             repeat_action_probability=0,  # Hessel et al., 2022 (Muesli) Tab. 10
@@ -304,9 +284,6 @@ def prepare_data(
 
 
 def rollout(
-    i,
-    num_threads,  # =None,
-    thread_affinity_offset,  # =-1,
     key: jax.random.PRNGKey,
     args,
     rollout_queue,
@@ -314,7 +291,7 @@ def rollout(
     writer,
     learner_devices,
 ):
-    envs = make_env(args.env_id, args.seed, args.num_envs, args.async_batch_size, num_threads, thread_affinity_offset)()
+    envs = make_env(args.env_id, args.seed, args.num_envs, args.async_batch_size)()
     len_actor_device_ids = len(args.actor_device_ids)
     global_step = 0
     # TRY NOT TO MODIFY: start the game
@@ -370,7 +347,7 @@ def rollout(
             env_recv_time_start = time.time()
             next_obs, next_reward, next_done, info = envs.recv()
             env_recv_time += time.time() - env_recv_time_start
-            global_step += len(next_done) * args.num_actor_threads * len_actor_device_ids * args.world_size
+            global_step += len(next_done) * len_actor_device_ids * args.world_size
             env_id = info["env_id"]
 
             inference_time_start = time.time()
@@ -413,9 +390,8 @@ def rollout(
         avg_episodic_return = np.mean(returned_episode_returns)
         writer.add_scalar("charts/avg_episodic_return", avg_episodic_return, global_step)
         writer.add_scalar("charts/avg_episodic_length", np.mean(returned_episode_lengths), global_step)
-        if i == 0:
-            print(f"global_step={global_step}, avg_episodic_return={avg_episodic_return}")
-            print("SPS:", int(global_step / (time.time() - start_time)))
+        print(f"global_step={global_step}, avg_episodic_return={avg_episodic_return}")
+        print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
         writer.add_scalar("stats/truncations", np.sum(truncations), global_step)
@@ -460,7 +436,6 @@ def rollout(
             int(
                 args.num_envs
                 * args.num_steps
-                * args.num_actor_threads
                 * len_actor_device_ids
                 * args.world_size
                 / (time.time() - update_time_start)
@@ -644,9 +619,9 @@ if __name__ == "__main__":
     args.world_size = jax.process_count()
     args.local_rank = jax.process_index()
     args.world_num_envs = args.num_envs * args.world_size
-    args.world_batch_size = args.batch_size * args.world_size
-    args.world_minibatch_size = args.minibatch_size * args.world_size
-    args.num_updates = args.total_timesteps // (args.batch_size * args.world_size)
+    args.world_batch_size = args.local_batch_size * args.world_size
+    args.world_minibatch_size = args.local_minibatch_size * args.world_size
+    args.num_updates = args.total_timesteps // (args.local_batch_size * args.world_size)
     args.async_update = int(args.num_envs / args.async_batch_size)
     local_devices = jax.local_devices()
     global_devices = jax.devices()
@@ -706,7 +681,7 @@ if __name__ == "__main__":
         ),
         tx=optax.chain(
             optax.clip_by_global_norm(args.max_grad_norm),
-            optax.adam(
+            optax.inject_hyperparams(optax.adam)(
                 learning_rate=linear_schedule if args.anneal_lr else args.learning_rate, eps=1e-5
             ),
         ),
@@ -724,33 +699,21 @@ if __name__ == "__main__":
 
     rollout_queue = queue.Queue(maxsize=1)
     params_queues = []
-    num_cpus = mp.cpu_count()
-    fair_num_cpus = num_cpus // len(args.actor_device_ids)
-
-    class DummyWriter:
-        def add_scalar(self, arg0, arg1, arg3):
-            pass
-
-    dummy_writer = DummyWriter()
     for d_idx, d_id in enumerate(args.actor_device_ids):
-        for j in range(args.num_actor_threads):
-            params_queue = queue.Queue(maxsize=1)
-            params_queue.put(jax.device_put(flax.jax_utils.unreplicate(agent_state.params), local_devices[d_id]))
-            threading.Thread(
-                target=rollout,
-                args=(
-                    j,
-                    fair_num_cpus if args.num_actor_threads > 1 else None,
-                    j * args.num_actor_threads if args.num_actor_threads > 1 else -1,
-                    jax.device_put(key, local_devices[d_id]),
-                    args,
-                    rollout_queue,
-                    params_queue,
-                    writer if d_idx == 0 and j == 0 else dummy_writer,
-                    learner_devices,
-                ),
-            ).start()
-            params_queues.append(params_queue)
+        params_queue = queue.Queue(maxsize=1)
+        params_queue.put(jax.device_put(flax.jax_utils.unreplicate(agent_state.params), local_devices[d_id]))
+        threading.Thread(
+            target=rollout,
+            args=(
+                jax.device_put(key, local_devices[d_id]),
+                args,
+                rollout_queue,
+                params_queue,
+                writer,
+                learner_devices,
+            ),
+        ).start()
+        params_queues.append(params_queue)
 
     rollout_queue_get_time = deque(maxlen=10)
     learner_policy_version = 0
@@ -784,10 +747,9 @@ if __name__ == "__main__":
         )
         if learner_policy_version == 1 or not args.test_actor_learner_throughput:
             for d_idx, d_id in enumerate(args.actor_device_ids):
-                for j in range(args.num_actor_threads):
-                    params_queues[d_idx * args.num_actor_threads + j].put(
-                        jax.device_put(flax.jax_utils.unreplicate(agent_state.params), local_devices[d_id])
-                    )
+                params_queues[d_idx].put(
+                    jax.device_put(flax.jax_utils.unreplicate(agent_state.params), local_devices[d_id])
+                )
         if args.profile:
             v_loss[-1, -1, -1].block_until_ready()
         writer.add_scalar("stats/training_time", time.time() - training_time_start, global_step)
@@ -799,7 +761,7 @@ if __name__ == "__main__":
         )
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        # writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"][0].item(), global_step)
+        writer.add_scalar("charts/learning_rate", agent_state.opt_state[1].hyperparams["learning_rate"][0].item(), global_step)
         writer.add_scalar("losses/value_loss", v_loss[-1, -1, -1].item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss[-1, -1, -1].item(), global_step)
         writer.add_scalar("losses/entropy", entropy_loss[-1, -1, -1].item(), global_step)
