@@ -62,7 +62,7 @@ def parse_args():
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=2.5e-4,
         help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=60,
+    parser.add_argument("--local-num-envs", type=int, default=60,
         help="the number of parallel game environments")
     parser.add_argument("--async-batch-size", type=int, default=20,
         help="the envpool's batch size in the async mode")
@@ -102,10 +102,10 @@ def parse_args():
     parser.add_argument("--test-actor-learner-throughput", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to test actor-learner throughput by removing the actor-learner communication")
     args = parser.parse_args()
-    args.local_batch_size = int(args.num_envs * args.num_steps)
+    args.local_batch_size = int(args.local_num_envs * args.num_steps)
     args.local_minibatch_size = int(args.local_batch_size // args.num_minibatches)
     args.num_updates = args.total_timesteps // args.local_batch_size
-    args.async_update = int(args.num_envs / args.async_batch_size)
+    args.async_update = int(args.local_num_envs / args.async_batch_size)
     assert len(args.actor_device_ids) == 1, "only 1 actor_device_ids is supported now"
     # fmt: on
     return args
@@ -252,7 +252,7 @@ def prepare_data(
     T, B = env_ids.shape
     index_ranges = jnp.arange(T * B, dtype=jnp.int32)
     next_index_ranges = jnp.zeros_like(index_ranges, dtype=jnp.int32)
-    last_env_ids = jnp.zeros(args.num_envs, dtype=jnp.int32) - 1
+    last_env_ids = jnp.zeros(args.local_num_envs, dtype=jnp.int32) - 1
 
     def f(carry, x):
         last_env_ids, next_index_ranges = carry
@@ -289,17 +289,17 @@ def rollout(
     writer,
     learner_devices,
 ):
-    envs = make_env(args.env_id, args.seed, args.num_envs, args.async_batch_size)()
+    envs = make_env(args.env_id, args.seed, args.local_num_envs, args.async_batch_size)()
     len_actor_device_ids = len(args.actor_device_ids)
     global_step = 0
     # TRY NOT TO MODIFY: start the game
     start_time = time.time()
 
     # put data in the last index
-    episode_returns = np.zeros((args.num_envs,), dtype=np.float32)
-    returned_episode_returns = np.zeros((args.num_envs,), dtype=np.float32)
-    episode_lengths = np.zeros((args.num_envs,), dtype=np.float32)
-    returned_episode_lengths = np.zeros((args.num_envs,), dtype=np.float32)
+    episode_returns = np.zeros((args.local_num_envs,), dtype=np.float32)
+    returned_episode_returns = np.zeros((args.local_num_envs,), dtype=np.float32)
+    episode_lengths = np.zeros((args.local_num_envs,), dtype=np.float32)
+    returned_episode_lengths = np.zeros((args.local_num_envs,), dtype=np.float32)
     envs.async_reset()
 
     params_queue_get_time = deque(maxlen=10)
@@ -418,7 +418,13 @@ def rollout(
 
         writer.add_scalar(
             "charts/SPS_update",
-            int(args.num_envs * args.num_steps * len_actor_device_ids * args.world_size / (time.time() - update_time_start)),
+            int(
+                args.local_num_envs
+                * args.num_steps
+                * len_actor_device_ids
+                * args.world_size
+                / (time.time() - update_time_start)
+            ),
             global_step,
         )
 
@@ -454,12 +460,12 @@ def compute_gae(
     rewards = jnp.asarray(rewards)
 
     _, B = env_ids.shape
-    final_env_id_checked = jnp.zeros(args.num_envs, jnp.int32) - 1
+    final_env_id_checked = jnp.zeros(args.local_num_envs, jnp.int32) - 1
     final_env_ids = jnp.zeros(B, jnp.int32)
     advantages = jnp.zeros(B)
-    lastgaelam = jnp.zeros(args.num_envs)
-    lastdones = jnp.zeros(args.num_envs) + 1
-    lastvalues = jnp.zeros(args.num_envs)
+    lastgaelam = jnp.zeros(args.local_num_envs)
+    lastdones = jnp.zeros(args.local_num_envs) + 1
+    lastvalues = jnp.zeros(args.local_num_envs)
 
     def compute_gae_once(carry, x):
         lastvalues, lastdones, advantages, lastgaelam, final_env_ids, final_env_id_checked = carry
@@ -597,11 +603,11 @@ if __name__ == "__main__":
 
     args.world_size = jax.process_count()
     args.local_rank = jax.process_index()
-    args.world_num_envs = args.num_envs * args.world_size
-    args.world_batch_size = args.local_batch_size * args.world_size
-    args.world_minibatch_size = args.local_minibatch_size * args.world_size
+    args.num_envs = args.local_num_envs * args.world_size
+    args.batch_size = args.local_batch_size * args.world_size
+    args.minibatch_size = args.local_minibatch_size * args.world_size
     args.num_updates = args.total_timesteps // (args.local_batch_size * args.world_size)
-    args.async_update = int(args.num_envs / args.async_batch_size)
+    args.async_update = int(args.local_num_envs / args.async_batch_size)
     local_devices = jax.local_devices()
     global_devices = jax.devices()
     learner_devices = [local_devices[d_id] for d_id in args.learner_device_ids]
@@ -642,7 +648,7 @@ if __name__ == "__main__":
     key, network_key, actor_key, critic_key = jax.random.split(key, 4)
 
     # env setup
-    envs = make_env(args.env_id, args.seed, args.num_envs, args.async_batch_size)()
+    envs = make_env(args.env_id, args.seed, args.local_num_envs, args.async_batch_size)()
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     def linear_schedule(count):
