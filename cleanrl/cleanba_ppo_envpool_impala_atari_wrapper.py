@@ -618,9 +618,9 @@ if __name__ == "__main__":
         for d_id in args.learner_device_ids
     ]
     print("global_learner_decices", global_learner_decices)
-    args.global_learner_decices = global_learner_decices
-    args.actor_devices = actor_devices
-    args.learner_devices = learner_devices
+    args.global_learner_decices = [str(item) for item in global_learner_decices]
+    args.actor_devices = [str(item) for item in actor_devices]
+    args.learner_devices = [str(item) for item in learner_devices]
 
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{uuid.uuid4()}"
     if args.track and args.local_rank == 0:
@@ -784,16 +784,7 @@ if __name__ == "__main__":
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
         with open(model_path, "wb") as f:
             f.write(
-                flax.serialization.to_bytes(
-                    [
-                        vars(args),
-                        [
-                            agent_state.params.network_params,
-                            agent_state.params.actor_params,
-                            agent_state.params.critic_params,
-                        ],
-                    ]
-                )
+                flax.serialization.to_bytes([    vars(args),    [        agent_state.params.network_params,        agent_state.params.actor_params,        agent_state.params.critic_params,    ],])
             )
         print(f"model saved to {model_path}")
         from cleanrl_utils.evals.ppo_envpool_jax_eval import evaluate
