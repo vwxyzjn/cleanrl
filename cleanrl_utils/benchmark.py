@@ -117,7 +117,7 @@ if __name__ == "__main__":
         )
         slurm_template = slurm_template.replace("{{len_seeds}}", f"{args.num_seeds}")
         slurm_template = slurm_template.replace("{{command}}", args.command)
-        slurm_template = slurm_template.replace("{{gpus_per_task}}", f"{args.slurm_gpus_per_node}")
+        slurm_template = slurm_template.replace("{{gpus_per_task}}", f"{args.slurm_gpus_per_task}")
         slurm_template = slurm_template.replace("{{ntasks}}", f"{args.slurm_ntasks}")
         if args.slurm_nodes is not None:
             slurm_template = slurm_template.replace("{{nodes}}", f"#SBATCH --nodes={args.slurm_nodes}")
@@ -127,4 +127,4 @@ if __name__ == "__main__":
         open(os.path.join("slurm", f"{filename}.slurm"), "w").write(slurm_template)
         slurm_path = os.path.join("slurm", f"{filename}.slurm")
         print(f"saving command in {slurm_path}")
-        # run_experiment(f"sbatch {slurm_path}")
+        run_experiment(f"sbatch {slurm_path}")
