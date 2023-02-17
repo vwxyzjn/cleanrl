@@ -1,0 +1,23 @@
+#!/bin/bash
+#SBATCH --partition=g40423
+#SBATCH --job-name=carperai
+#SBATCH --account carperai
+#SBATCH --requeue
+#SBATCH --gpus-per-task={{gpus_per_task}}
+#SBATCH --cpus-per-gpu=12
+#SBATCH --ntasks={{ntasks}}
+#SBATCH --output=slurm/logs/%x_%j.out
+#SBATCH --array={{array}}
+{{nodes}}
+
+export PATH=$PATH:/admin/home-costa/.local/bin
+module load cuda/11.3
+
+env_ids={{env_ids}}
+seeds={{seeds}}
+env_id=${env_ids[$SLURM_ARRAY_TASK_ID / {{len_seeds}}]}
+seed=${seeds[$SLURM_ARRAY_TASK_ID % {{len_seeds}}]}
+
+echo "Running task $SLURM_ARRAY_TASK_ID with env_id: $env_id and seed: $seed"
+
+{{command}} --env-id $env_id --seed $seed

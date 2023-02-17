@@ -25,6 +25,12 @@ def parse_args():
         help="if toggled, the runs will be tagged with git tags, commit, and pull request number if possible")
     parser.add_argument("--slurm-template-path", type=str, default=None,
         help="the path to the slurm template file (see docs for more details)")
+    parser.add_argument("--slurm-gpus-per-task", type=int, default=1,
+        help="the number of gpus per task to use for slurm jobs")
+    parser.add_argument("--slurm-ntasks", type=int, default=1,
+        help="the number of tasks to use for slurm jobs")
+    parser.add_argument("--slurm-nodes", type=int, default=None,
+        help="the number of nodes to use for slurm jobs")
     args = parser.parse_args()
     # fmt: on
     return args
@@ -111,8 +117,14 @@ if __name__ == "__main__":
         )
         slurm_template = slurm_template.replace("{{len_seeds}}", f"{args.num_seeds}")
         slurm_template = slurm_template.replace("{{command}}", args.command)
+        slurm_template = slurm_template.replace("{{gpus_per_task}}", f"{args.slurm_gpus_per_node}")
+        slurm_template = slurm_template.replace("{{ntasks}}", f"{args.slurm_ntasks}")
+        if args.slurm_nodes is not None:
+            slurm_template = slurm_template.replace("{{nodes}}", f"#SBATCH --nodes={args.slurm_nodes}")
+        else:
+            slurm_template = slurm_template.replace("{{nodes}}", "")
         filename = str(uuid.uuid4())
         open(os.path.join("slurm", f"{filename}.slurm"), "w").write(slurm_template)
         slurm_path = os.path.join("slurm", f"{filename}.slurm")
         print(f"saving command in {slurm_path}")
-        run_experiment(f"sbatch {slurm_path}")
+        # run_experiment(f"sbatch {slurm_path}")
