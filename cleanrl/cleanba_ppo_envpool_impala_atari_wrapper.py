@@ -218,6 +218,7 @@ def get_action_and_value(
     key: jax.random.PRNGKey,
     action_dim: int,
 ):
+    next_obs = jnp.array(next_obs)
     hidden = Network().apply(params.network_params, next_obs)
     logits = Actor(action_dim).apply(params.actor_params, hidden)
     # sample action: Gumbel-softmax trick
@@ -227,10 +228,9 @@ def get_action_and_value(
     action = jnp.argmax(logits - jnp.log(-jnp.log(u)), axis=1)
     logprob = jax.nn.log_softmax(logits)[jnp.arange(action.shape[0]), action]
     value = Critic().apply(params.critic_params, hidden)
-    return action, logprob, value.squeeze(), key
+    return next_obs, action, logprob, value.squeeze(), key
 
 
-@jax.jit
 def prepare_data(
     obs: list,
     dones: list,
@@ -304,7 +304,6 @@ def rollout(
 
     params_queue_get_time = deque(maxlen=10)
     rollout_time = deque(maxlen=10)
-    data_transfer_time = deque(maxlen=10)
     rollout_queue_put_time = deque(maxlen=10)
     actor_policy_version = 0
     for update in range(1, args.num_updates + 2):
@@ -349,7 +348,7 @@ def rollout(
             env_id = info["env_id"]
 
             inference_time_start = time.time()
-            action, logprob, value, key = get_action_and_value(params, next_obs, key, envs.single_action_space.n)
+            next_obs, action, logprob, value, key = get_action_and_value(params, next_obs, key, envs.single_action_space.n)
             inference_time += time.time() - inference_time_start
 
             env_send_time_start = time.time()
@@ -399,8 +398,10 @@ def rollout(
         writer.add_scalar("stats/storage_time", storage_time, global_step)
         writer.add_scalar("stats/env_send_time", env_send_time, global_step)
 
-        data_transfer_time_start = time.time()
-        b_obs, b_actions, b_logprobs, b_advantages, b_returns = prepare_data(
+        payload = (
+            global_step,
+            actor_policy_version,
+            update,
             obs,
             dones,
             values,
@@ -409,20 +410,6 @@ def rollout(
             env_ids,
             rewards,
         )
-        payload = (
-            global_step,
-            actor_policy_version,
-            update,
-            jnp.array_split(b_obs, len(learner_devices)),
-            jnp.array_split(b_actions, len(learner_devices)),
-            jnp.array_split(b_logprobs, len(learner_devices)),
-            jnp.array_split(b_advantages, len(learner_devices)),
-            jnp.array_split(b_returns, len(learner_devices)),
-        )
-        if args.profile:
-            payload[2][0].block_until_ready()
-        data_transfer_time.append(time.time() - data_transfer_time_start)
-        writer.add_scalar("stats/data_transfer_time", np.mean(data_transfer_time), global_step)
         if update == 1 or not args.test_actor_learner_throughput:
             rollout_queue_put_time_start = time.time()
             rollout_queue.put(payload)
@@ -712,7 +699,9 @@ if __name__ == "__main__":
         params_queues.append(params_queue)
 
     rollout_queue_get_time = deque(maxlen=10)
+    data_transfer_time = deque(maxlen=10)
     learner_policy_version = 0
+    prepare_data = jax.jit(prepare_data, device=learner_devices[0])
     while True:
         learner_policy_version += 1
         if learner_policy_version == 1 or not args.test_actor_learner_throughput:
@@ -721,14 +710,34 @@ if __name__ == "__main__":
                 global_step,
                 actor_policy_version,
                 update,
-                b_obs,
-                b_actions,
-                b_logprobs,
-                b_advantages,
-                b_returns,
+                obs,
+                dones,
+                values,
+                actions,
+                logprobs,
+                env_ids,
+                rewards,
             ) = rollout_queue.get()
             rollout_queue_get_time.append(time.time() - rollout_queue_get_time_start)
             writer.add_scalar("stats/rollout_queue_get_time", np.mean(rollout_queue_get_time), global_step)
+
+        data_transfer_time_start = time.time()
+        b_obs, b_actions, b_logprobs, b_advantages, b_returns = prepare_data(
+            obs,
+            dones,
+            values,
+            actions,
+            logprobs,
+            env_ids,
+            rewards,
+        )
+        b_obs = jnp.array_split(b_obs, len(learner_devices))
+        b_actions = jnp.array_split(b_actions, len(learner_devices))
+        b_logprobs = jnp.array_split(b_logprobs, len(learner_devices))
+        b_advantages = jnp.array_split(b_advantages, len(learner_devices))
+        b_returns = jnp.array_split(b_returns, len(learner_devices))
+        data_transfer_time.append(time.time() - data_transfer_time_start)
+        writer.add_scalar("stats/data_transfer_time", np.mean(data_transfer_time), global_step)
 
         training_time_start = time.time()
         (agent_state, loss, pg_loss, v_loss, entropy_loss, approx_kl, key) = multi_device_update(
