@@ -175,7 +175,7 @@ class ConvSequence(nn.Module):
 
 
 class Network(nn.Module):
-    channelss: Sequence[int] = (16, 32, 32)
+    channelss: Sequence[int] = (64, 128, 128)
 
     @nn.compact
     def __call__(self, x):
