@@ -780,6 +780,8 @@ if __name__ == "__main__":
             break
 
     if args.save_model and args.local_rank == 0:
+        if args.distributed:
+            jax.distributed.shutdown()
         agent_state = flax.jax_utils.unreplicate(agent_state)
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
         with open(model_path, "wb") as f:
