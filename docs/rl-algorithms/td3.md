@@ -21,7 +21,7 @@ Reference resources:
 | Variants Implemented      | Description |
 | ----------- | ----------- |
 | :material-github: [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py), :material-file-document: [docs](/rl-algorithms/td3/#td3_continuous_actionpy) | For continuous action space |
-
+| :material-github: [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py), :material-file-document: [docs](/rl-algorithms/td3/#td3_continuous_action_jaxpy) | For continuous action space |
 
 Below are our single-file implementations of TD3:
 
@@ -36,9 +36,12 @@ The [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 ### Usage
 
 ```bash
-poetry install --with mujoco # only works in Linux
+poetry install
+poetry install --with pybullet
 python cleanrl/td3_continuous_action.py --help
-python cleanrl/td3_continuous_action.py --env-id HalfCheetah-v4
+python cleanrl/td3_continuous_action.py --env-id HopperBulletEnv-v0
+poetry install --with mujoco_py # only works in Linux
+python cleanrl/td3_continuous_action.py --env-id Hopper-v3
 ```
 
 ### Explanation of the logged metrics
@@ -173,11 +176,11 @@ The [td3_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/maste
 ### Usage
 
 ```bash
-poetry install --with mujoco,jax
+poetry install --with mujoco_py,jax
 poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
 poetry run python -c "import mujoco_py"
 python cleanrl/td3_continuous_action_jax.py --help
-poetry install --with mujoco # only works in Linux
+poetry install --with mujoco_py # only works in Linux
 python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v3
 ```
 

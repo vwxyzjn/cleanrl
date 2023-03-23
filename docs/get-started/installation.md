@@ -70,7 +70,8 @@ You can install them using the following command
 
 ```bash
 poetry install --with atari
-poetry install --with mujoco
+poetry install --with pybullet
+poetry install --with mujoco_py
 poetry install --with procgen
 poetry install --with envpool
 poetry install --with pettingzoo
@@ -87,7 +88,8 @@ While we recommend using `poetry` to manage environments and dependencies, the t
 ```bash
 pip install -r requirements/requirements.txt
 pip install -r requirements/requirements-atari.txt
-pip install -r requirements/requirements-mujoco.txt
+pip install -r requirements/requirements-pybullet.txt
+pip install -r requirements/requirements-mujoco_py.txt
 pip install -r requirements/requirements-procgen.txt
 pip install -r requirements/requirements-envpool.txt
 pip install -r requirements/requirements-pettingzoo.txt

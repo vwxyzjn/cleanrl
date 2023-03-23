@@ -41,6 +41,12 @@ def parse_args():
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to capture videos of the agent performances (check out `videos` folder)")
+    parser.add_argument("--save-model", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="whether to save model into the `runs/{run_name}` folder")
+    parser.add_argument("--upload-model", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="whether to upload the saved model to huggingface")
+    parser.add_argument("--hf-entity", type=str, default="",
+        help="the user or org name of the model repository from the Hugging Face Hub")
 
     # Algorithm specific arguments
     parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4",
@@ -53,6 +59,8 @@ def parse_args():
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
+    parser.add_argument("--tau", type=float, default=1.,
+        help="the target network update rate")
     parser.add_argument("--target-network-frequency", type=int, default=1000,
         help="the timesteps it takes to update the target network")
     parser.add_argument("--batch-size", type=int, default=32,
@@ -225,9 +233,38 @@ if __name__ == "__main__":
                 loss.backward()
                 optimizer.step()
 
-            # update the target network
+            # update target network
             if global_step % args.target_network_frequency == 0:
-                target_network.load_state_dict(q_network.state_dict())
+                for target_network_param, q_network_param in zip(target_network.parameters(), q_network.parameters()):
+                    target_network_param.data.copy_(
+                        args.tau * q_network_param.data + (1.0 - args.tau) * target_network_param.data
+                    )
+
+    if args.save_model:
+        model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
+        torch.save(q_network.state_dict(), model_path)
+        print(f"model saved to {model_path}")
+        from cleanrl_utils.evals.dqn_eval import evaluate
+
+        episodic_returns = evaluate(
+            model_path,
+            make_env,
+            args.env_id,
+            eval_episodes=10,
+            run_name=f"{run_name}-eval",
+            Model=QNetwork,
+            device=device,
+            epsilon=0.05,
+        )
+        for idx, episodic_return in enumerate(episodic_returns):
+            writer.add_scalar("eval/episodic_return", episodic_return, idx)
+
+        if args.upload_model:
+            from cleanrl_utils.huggingface import push_to_hub
+
+            repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
+            repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
+            push_to_hub(args, episodic_returns, repo_id, "DQN", f"runs/{run_name}", f"videos/{run_name}-eval")
 
     envs.close()
     writer.close()

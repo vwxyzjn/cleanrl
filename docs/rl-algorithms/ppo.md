@@ -29,6 +29,7 @@ All our PPO implementations below are augmented with the same code-level optimiz
 | :material-github: [`ppo_atari_lstm.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_lstmpy) | For Atari games using LSTM without stacked frames. |
 | :material-github: [`ppo_atari_envpool.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_envpoolpy) | Uses the blazing fast Envpool Atari vectorized environment. |
 | :material-github: [`ppo_atari_envpool_xla_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_envpool_xla_jaxpy) | Uses the blazing fast Envpool Atari vectorized environment with EnvPool's XLA interface and JAX. |
+| :material-github: [`ppo_atari_envpool_xla_jax_scan.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax_scan.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_envpool_xla_jax_scanpy) | Uses native `jax.scan` as opposed to python loops for faster compilation time. |
 | :material-github: [`ppo_procgen.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_procgen.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_procgenpy) | For the procgen environments. |
 | :material-github: [`ppo_atari_multigpu.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_multigpu.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_multigpupy)| For Atari environments leveraging multi-GPUs. |
 | :material-github: [`ppo_pettingzoo_ma_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_pettingzoo_ma_atari.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_pettingzoo_ma_ataripy)| For Pettingzoo's multi-agent Atari environments. |
@@ -115,7 +116,7 @@ Learning curves:
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Classic-Control-CleanRL-s-PPO--VmlldzoxODU5MDY1" style="width:100%; height:500px" title="Classic-Control-CleanRL-s-PPO"></iframe>
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Classic-Control-CleanRL-s-PPO--VmlldzoxODU5MDY1" style="width:100%; height:500px" title="Classic-Control-CleanRL-s-PPO"></iframe>
 
 ### Video tutorial
 
@@ -191,7 +192,7 @@ Learning curves:
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO--VmlldzoxNjk3NjYy" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO--VmlldzoxNjk3NjYy" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
 
 ### Video tutorial
 
@@ -208,14 +209,39 @@ The [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 * For continuous action space. Also implemented Mujoco-specific code-level optimizations
 * Works with the `Box` observation space of low-level features
 * Works with the `Box` (continuous) action space
+* adding experimental support for [Gymnasium](https://gymnasium.farama.org/)
+* 🧪 support `dm_control` environments via [Shimmy](https://github.com/Farama-Foundation/Shimmy)
+
+
+???+ warning
+
+    We are now recommending users to use [`rpo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/rpo_continuous_action.py) instead of [`ppo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py) because `rpo_continuous_action.py` empirically performs better than `ppo_continuous_action.py` in 93% of the environments we tested. Please see [experiment results](/rl-algorithms/rpo/#experiment-results) for detailed analysis.
 
 ### Usage
 
 ```bash
-poetry install --with atari
+# mujoco v4 environments
+poetry install --with mujoco
 python cleanrl/ppo_continuous_action.py --help
 python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
+# dm_control v4 environments
+poetry install --with mujoco,dm_control
+python cleanrl/ppo_continuous_action.py --env-id dm_control/cartpole-balance-v0
+# backwards compatibility with mujoco v2 environments
+poetry install --with mujoco_py,mujoco
+python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
 ```
+
+???+ warning "dm_control installation issue"
+
+    If you run into error like `AttributeError: 'GLFWContext' object has no attribute '_context'` in Linux, it's because the rendering dependencies are not installed properly. To fix it, try running
+
+    ```
+    sudo apt-get update && sudo apt-get -y install libgl1-mesa-glx libosmesa6 libglfw3 
+    ```
+
+    See [https://github.com/deepmind/dm_control#rendering](https://github.com/deepmind/dm_control#rendering) for more detail.
+
 
 ### Explanation of the logged metrics
 
@@ -244,31 +270,128 @@ To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://g
 
 <script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fppo.sh%23L31-L38&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fppo.sh%23L93-L106&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
 
 
-Below are the average episodic returns for `ppo_continuous_action.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
+???+ note "Result tables, learning curves, and interactive reports"
 
-| Environment      | `ppo_continuous_action.py` | `openai/baselies`' PPO (Huang et al., 2022)[^1]
-| ----------- | ----------- | ----------- |
-| Hopper-v2      | 2231.12 ± 656.72     | 2518.95 ± 850.46  |
-| Walker2d-v2   | 3050.09 ± 1136.21    |  3208.08 ± 1264.37 |
-| HalfCheetah-v2   | 1822.82 ± 928.11         | 2152.26 ± 1159.84 |
+    === "MuJoCo v2"
+
+        Below are the average episodic returns for `ppo_continuous_action.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
+
+        |                     | ppo_continuous_action ({'tag': ['v1.0.0-27-gde3f410']})   | `openai/baselies`' PPO (results taken from [here](https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-openai-baselines--VmlldzoyMTgyNjM0))   |
+        |:--------------------|:----------------------------------------------------------|:---------------------------------------------------------------------------------------------|
+        | HalfCheetah-v2      | 2262.50 ± 1196.81                                         | 1428.55 ± 62.40                                                                              |
+        | Walker2d-v2         | 3312.32 ± 429.87                                          | 3356.49 ± 322.61                                                                             |
+        | Hopper-v2           | 2311.49 ± 440.99                                          | 2158.65 ± 302.33                                                                             |
+        | InvertedPendulum-v2 | 852.04 ± 17.04                                            | 901.25 ± 35.73                                                                               |
+        | Humanoid-v2         | 676.34 ± 78.68                                            | 673.11 ± 53.02                                                                               |
+        | Pusher-v2           | -60.49 ± 4.37                                             | -56.83 ± 13.33                                                                               |
+
+        Learning curves:
+
+        ![](../ppo/ppo_continuous_action_gymnasium_mujoco_v2.png)
 
 
-Learning curves:
+        Tracked experiments and game play videos:
 
-<div class="grid-container">
-<img src="../ppo/Hopper-v2.png">
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-PPO--VmlldzoxODAwNjkw" style="width:100%; height:500px" title="MuJoCo-CleanRL-s-PPO"></iframe>
 
-<img src="../ppo/Walker2d-v2.png">
+    === "MuJoCo v4"
 
-<img src="../ppo/HalfCheetah-v2.png">
-</div>
+        Below are the average episodic returns for `ppo_continuous_action.py` in MuJoCo v4 environments and `dm_control` environments.
+
+        |                     | ppo_continuous_action ({'tag': ['v1.0.0-12-g99f7789']})   |
+        |:--------------------|:----------------------------------------------------------|
+        | HalfCheetah-v4      | 2905.85 ± 1129.37                                         |
+        | Walker2d-v4         | 2890.97 ± 231.40                                          |
+        | Hopper-v4           | 2051.80 ± 313.94                                          |
+        | InvertedPendulum-v4 | 950.98 ± 36.39                                            |
+        | Humanoid-v4         | 742.19 ± 155.77                                           |
+        | Pusher-v4           | -55.60 ± 3.98                                             |
 
 
-Tracked experiments and game play videos:
+        Learning curves:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-PPO--VmlldzoxODAwNjkw" style="width:100%; height:500px" title="MuJoCo-CleanRL-s-PPO"></iframe>
+        ![](../ppo/ppo_continuous_action_gymnasium_mujoco_v4.png)
+
+        Tracked experiments and game play videos:
+        
+        <iframe loading="lazy" src="https://wandb.ai/costa-huang/cleanRL/reports/MuJoCo-v4-CleanRL-s-PPO--VmlldzozMTIxOTI5" style="width:100%; height:500px" title="MuJoCo-CleanRL-s-PPO"></iframe>
+
+    === "dm_control"
+
+        Below are the average episodic returns for `ppo_continuous_action.py` in `dm_control` environments.
+
+        |                                       | ppo_continuous_action ({'tag': ['v1.0.0-13-gcbd83f6']})   |
+        |:--------------------------------------|:----------------------------------------------------------|
+        | dm_control/acrobot-swingup-v0         | 27.84 ± 9.25                                              |
+        | dm_control/acrobot-swingup_sparse-v0  | 1.60 ± 1.17                                               |
+        | dm_control/ball_in_cup-catch-v0       | 900.78 ± 5.26                                             |
+        | dm_control/cartpole-balance-v0        | 855.47 ± 22.06                                            |
+        | dm_control/cartpole-balance_sparse-v0 | 999.93 ± 0.10                                             |
+        | dm_control/cartpole-swingup-v0        | 640.86 ± 11.44                                            |
+        | dm_control/cartpole-swingup_sparse-v0 | 51.34 ± 58.35                                             |
+        | dm_control/cartpole-two_poles-v0      | 203.86 ± 11.84                                            |
+        | dm_control/cartpole-three_poles-v0    | 164.59 ± 3.23                                             |
+        | dm_control/cheetah-run-v0             | 432.56 ± 82.54                                            |
+        | dm_control/dog-stand-v0               | 307.79 ± 46.26                                            |
+        | dm_control/dog-walk-v0                | 120.05 ± 8.80                                             |
+        | dm_control/dog-trot-v0                | 76.56 ± 6.44                                              |
+        | dm_control/dog-run-v0                 | 60.25 ± 1.33                                              |
+        | dm_control/dog-fetch-v0               | 34.26 ± 2.24                                              |
+        | dm_control/finger-spin-v0             | 590.49 ± 171.09                                           |
+        | dm_control/finger-turn_easy-v0        | 180.42 ± 44.91                                            |
+        | dm_control/finger-turn_hard-v0        | 61.40 ± 9.59                                              |
+        | dm_control/fish-upright-v0            | 516.21 ± 59.52                                            |
+        | dm_control/fish-swim-v0               | 87.91 ± 6.83                                              |
+        | dm_control/hopper-stand-v0            | 2.72 ± 1.72                                               |
+        | dm_control/hopper-hop-v0              | 0.52 ± 0.48                                               |
+        | dm_control/humanoid-stand-v0          | 6.59 ± 0.18                                               |
+        | dm_control/humanoid-walk-v0           | 1.73 ± 0.03                                               |
+        | dm_control/humanoid-run-v0            | 1.11 ± 0.04                                               |
+        | dm_control/humanoid-run_pure_state-v0 | 0.98 ± 0.03                                               |
+        | dm_control/humanoid_CMU-stand-v0      | 4.79 ± 0.18                                               |
+        | dm_control/humanoid_CMU-run-v0        | 0.88 ± 0.05                                               |
+        | dm_control/manipulator-bring_ball-v0  | 0.50 ± 0.29                                               |
+        | dm_control/manipulator-bring_peg-v0   | 1.80 ± 1.58                                               |
+        | dm_control/manipulator-insert_ball-v0 | 35.50 ± 13.04                                             |
+        | dm_control/manipulator-insert_peg-v0  | 60.40 ± 21.76                                             |
+        | dm_control/pendulum-swingup-v0        | 242.81 ± 245.95                                           |
+        | dm_control/point_mass-easy-v0         | 273.95 ± 362.28                                           |
+        | dm_control/point_mass-hard-v0         | 143.25 ± 38.12                                            |
+        | dm_control/quadruped-walk-v0          | 239.03 ± 66.17                                            |
+        | dm_control/quadruped-run-v0           | 180.44 ± 32.91                                            |
+        | dm_control/quadruped-escape-v0        | 28.92 ± 11.21                                             |
+        | dm_control/quadruped-fetch-v0         | 193.97 ± 22.20                                            |
+        | dm_control/reacher-easy-v0            | 626.28 ± 15.51                                            |
+        | dm_control/reacher-hard-v0            | 443.80 ± 9.64                                             |
+        | dm_control/stacker-stack_2-v0         | 75.68 ± 4.83                                              |
+        | dm_control/stacker-stack_4-v0         | 68.02 ± 4.02                                              |
+        | dm_control/swimmer-swimmer6-v0        | 158.19 ± 10.22                                            |
+        | dm_control/swimmer-swimmer15-v0       | 131.94 ± 0.88                                             |
+        | dm_control/walker-stand-v0            | 564.46 ± 235.22                                           |
+        | dm_control/walker-walk-v0             | 392.51 ± 56.25                                            |
+        | dm_control/walker-run-v0              | 125.92 ± 10.01                                            |
+
+        Note that the dm_control/lqr-lqr_2_1-v0 dm_control/lqr-lqr_6_2-v0 environments are never terminated or truncated. See https://wandb.ai/openrlbenchmark/cleanrl/runs/3tm00923 and https://wandb.ai/openrlbenchmark/cleanrl/runs/1z9us07j as an example.
+
+        Learning curves:
+
+        ![](../ppo/ppo_continuous_action_gymnasium_dm_control.png)
+
+        Tracked experiments and game play videos:
+
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/dm_control-CleanRL-s-PPO-part-1---VmlldzozMTI2MjE2" style="width:100%; height:500px" title="dm_control-CleanRL-s-PPO-part-1"></iframe>
+        <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/dm_control-CleanRL-s-PPO-part-2---VmlldzozMTI2MjI1" style="width:100%; height:500px" title="dm_control-CleanRL-s-PPO-part-2"></iframe>
+
+
+???+ info
+
+    In the gymnasium environments, we use the v4 mujoco environments, which roughly results in the same performance as the v2 mujoco environments.
+
+    ![](../ppo/ppo_continuous_action_v2_vs_v4.png)
+
 
 ### Video tutorial
 
@@ -276,8 +399,6 @@ If you'd like to learn `ppo_continuous_action.py` in-depth, consider checking ou
 
 
 <div style="text-align: center;"><iframe width="560" height="315" src="https://www.youtube.com/embed/BvZvx7ENZBw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
-
-
 
 
 ## `ppo_atari_lstm.py`
@@ -344,7 +465,7 @@ Learning curves:
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-LSTM--VmlldzoxODcxMzE4" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-LSTM"></iframe>
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-LSTM--VmlldzoxODcxMzE4" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-LSTM"></iframe>
 
 
 
@@ -424,7 +545,7 @@ Learning curves:
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-Envpool--VmlldzoxODcxMzI3" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool"></iframe>
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-Envpool--VmlldzoxODcxMzI3" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool"></iframe>
 
 
 ## `ppo_atari_envpool_xla_jax.py`
@@ -475,11 +596,14 @@ Additionally, we record the following metric:
 
 ???+ info
 
-    Note that we use `charts/avg_episodic_return` in place of `charts/episodic_return` and `charts/episodic_length` because under the EnvPool's XLA interface, we can only record fixed-shape metrics where as there could be a variable number of raw episodic returns / lengths. To resolve this challenge, we create variables (e.g., `returned_episode_returns`, `returned_episode_lengths`) to keep track of the *latest* episodic returns / lengths of each environment and average them for reporting purposes.
+    Note that we use `charts/avg_episodic_return` and `charts/avg_episodic_length` in place of `charts/episodic_return` and `charts/episodic_length` because under the EnvPool's XLA interface, we can only record fixed-shape metrics where as there could be a variable number of raw episodic returns / lengths. To resolve this challenge, we create variables (e.g., `returned_episode_returns`, `returned_episode_lengths`) to keep track of the *latest* episodic returns / lengths of each environment and average them for reporting purposes.
 
 ### Implementation details
 
-[ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) uses a customized `RecordEpisodeStatistics` to work with EnvPool's experimental [XLA interface](https://envpool.readthedocs.io/en/latest/content/xla_interface.html) but has the same other implementation details as `ppo_atari.py` (see [related docs](/rl-algorithms/ppo/#implementation-details_1)) except that [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) does not use the value function clipping for simplicity. 
+[ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) uses the same other implementation details as `ppo_atari.py` (see [related docs](/rl-algorithms/ppo/#implementation-details_1)), with two differences
+
+1. [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) does not use the value function clipping by default, because there is no sufficient evidence that value function clipping actually improves performance.
+1. [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) uses a customized `EpisodeStatistics` to record episode statistics instead of the `RecordEpisodeStatistics` used in other variants. `RecordEpisodeStatistics` is a *stateful* python wrapper which is incompatible with EnvPool's *stateless* XLA interface. To address this issue, we used a `EpisodeStatistics` dataclass and simply implement the logic of `RecordEpisodeStatistics`. However, `EpisodeStatistics` comes with a major limitation: its storage has a fixed shape and can only record the *latest* episodic return of the sub-environments. Furthermore, the default episodic return values in `EpisodeStatistics` are set to zeros, which does not necessarily correspond to the episodic return obtained by a random policy. For example, we would report `charts/avg_episodic_return=0` for `Pong-v5`, even if they should have been `charts/avg_episodic_return=-21`. That said, this issue goes away as soon as the sub-environments finished their first episodes, therefore not impacting the reported results.
 
 
 ???+ info
@@ -608,6 +732,58 @@ Tracked experiments and game play videos:
 
 
 
+## `ppo_atari_envpool_xla_jax_scan.py`
+
+The [ppo_atari_envpool_xla_jax_scan.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax_scan.py) has the following features:
+
+* Replaces python loops in `compute_gae`, `update_ppo`, and `rollout` functions of [ppo_atari_envpool_xla_jax.py](/rl-algorithms/ppo/#ppo_atari_envpool_xla_jaxpy) with native `jax.scan`
+* Warnings and caveats from [ppo_atari_envpool_xla_jax.py](/rl-algorithms/ppo/#ppo_atari_envpool_xla_jaxpy) also apply here
+
+### Usage
+
+```bash
+poetry install -E "envpool jax"
+poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+python cleanrl/ppo_atari_envpool_xla_jax_scan.py --help
+python cleanrl/ppo_atari_envpool_xla_jax_scan.py --env-id Breakout-v5
+```
+
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`. The metrics are the same as those in [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py).
+
+### Implementation details
+
+[ppo_atari_envpool_xla_jax_scan.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax_scan.py) is a clone of [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) that replaces the python loops with native `jax.scan`.
+
+### Experiment results
+
+To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo.sh). Specifically, execute the following command:
+
+<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fppo.sh%23L108-L113&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
+
+Below are the average episodic returns for `ppo_atari_envpool_xla_jax_scan.py` in 3 atari games. It has the same sample efficiency as `ppo_atari_envpool_xla_jax.py`.
+
+|              | ppo_atari_envpool_xla_jax_scan ({'tag': ['pr-328'], 'user': ['51616']})   | ppo_atari_envpool_xla_jax ({'tag': ['pr-328'], 'user': ['51616']})   | baselines-ppo2-cnn ({})   | ppo_atari_envpool_xla_jax_truncation ({'user': ['costa-huang']})   |
+|:-------------|:--------------------------------------------------------------------------|:---------------------------------------------------------------------|:--------------------------|:-------------------------------------------------------------------|
+| BeamRider-v5 | 2899.62 ± 482.12                                                          | 2222.09 ± 1047.86                                                    | 2835.71 ± 387.92          | 3133.78 ± 293.02                                                   |
+| Breakout-v5  | 451.27 ± 45.52                                                            | 424.97 ± 18.37                                                       | 405.73 ± 11.47            | 465.90 ± 14.30                                                     |
+| Pong-v5      | 20.37 ± 0.20                                                              | 20.59 ± 0.40                                                         | 20.45 ± 0.81              | 20.62 ± 0.18                                                       |
+
+Learning curves:
+
+???+ info
+
+    The trainig time of this variant and that of [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) are very similar but the compilation time is reduced significantly (see [vwxyzjn/cleanrl#328](https://github.com/vwxyzjn/cleanrl/pull/328#issuecomment-1340474894)). Note that the hardware also affects the speed in the learning curve below. Runs from [`costa-huang`](https://github.com/vwxyzjn/) (red) are slower from those of [`51616`](https://github.com/51616/) (blue and orange) because of hardware differences.
+
+![](../ppo/ppo_atari_envpool_xla_jax_scan/compare.png)
+![](../ppo/ppo_atari_envpool_xla_jax_scan/compare-time.png)
+
+Tracked experiments:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Regression-Report-ppo_atari_envpool_xla_jax_scan--VmlldzozMTk2MzM2" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO-Envpool-Jax-scan"></iframe>
+
+
 
 ## `ppo_procgen.py`
 
@@ -678,7 +854,7 @@ Learning curves:
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Procgen-CleanRL-s-PPO--VmlldzoxODcxMzUy" style="width:100%; height:500px" title="Procgen-CleanRL-s-PPO"></iframe>
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Procgen-CleanRL-s-PPO--VmlldzoxODcxMzUy" style="width:100%; height:500px" title="Procgen-CleanRL-s-PPO"></iframe>
 
 
 
@@ -928,7 +1104,7 @@ Under the same hardware, we see that `ppo_atari_multigpu.py` is about **30% fast
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-MultiGPU--VmlldzoxOTM2NDUx" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-PPO-MultiGPU--VmlldzoxOTM2NDUx" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
 
 
 
@@ -1062,7 +1238,7 @@ Learning curves:
 
 Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Pettingzoo-s-Multi-agent-Atari-CleanRL-s-PPO--VmlldzoyMDkxNTE5" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
+<iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Pettingzoo-s-Multi-agent-Atari-CleanRL-s-PPO--VmlldzoyMDkxNTE5" style="width:100%; height:500px" title="Atari-CleanRL-s-PPO"></iframe>
 
 
 
