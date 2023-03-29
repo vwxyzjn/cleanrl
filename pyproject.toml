@@ -90,6 +90,7 @@ optional = true
 [tool.poetry.group.docs.dependencies]
 mkdocs-material = "^8.4.3"
 markdown-include = "^0.7.0"
+openrlbenchmark = "^0.1.1b4"
 
 [tool.poetry.group.jax]
 optional = true
@@ -149,7 +150,7 @@ pytest = ["pytest"]
 mujoco = ["mujoco", "imageio"]
 mujoco_py = ["free-mujoco-py"]
 jax = ["jax", "jaxlib", "flax"]
-docs = ["mkdocs-material", "markdown-include"]
+docs = ["mkdocs-material", "markdown-include", "openrlbenchmark"]
 envpool = ["envpool"]
 optuna = ["optuna", "optuna-dashboard", "rich"]
 pettingzoo = ["PettingZoo", "SuperSuit", "multi-agent-ale-py"]
