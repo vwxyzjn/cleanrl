@@ -38,7 +38,7 @@ repos:
           - --ignore-words-list=nd,reacher,thist,ths,magent,ba
           - --skip=docs/css/termynal.css,docs/js/termynal.js,docs/get-started/CleanRL_Huggingface_Integration_Demo.ipynb
   - repo: https://github.com/python-poetry/poetry
-    rev: 1.2.1
+    rev: 1.3.2
     hooks:
       - id: poetry-export
         name: poetry-export requirements.txt
