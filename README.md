@@ -70,6 +70,24 @@ poetry run python cleanrl/ppo.py \
     --wandb-project-name cleanrltest
 ```
 
+If you are not using `poetry`, you can install CleanRL with `requirements.txt`:
+
+```bash
+# core dependencies
+pip install -r requirements/requirements.txt
+
+# optional dependencies
+pip install -r requirements/requirements-atari.txt
+pip install -r requirements/requirements-pybullet.txt
+pip install -r requirements/requirements-mujoco_py.txt
+pip install -r requirements/requirements-procgen.txt
+pip install -r requirements/requirements-envpool.txt
+pip install -r requirements/requirements-pettingzoo.txt
+pip install -r requirements/requirements-jax.txt
+pip install -r requirements/requirements-docs.txt
+pip install -r requirements/requirements-cloud.txt
+```
+
 To run training scripts in other games:
 ```
 poetry shell

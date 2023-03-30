@@ -73,6 +73,10 @@ repos:
         args: ["--without-hashes", "-o", "requirements/requirements-jax.txt", "--with", "jax"]
         stages: [manual]
       - id: poetry-export
+        name: poetry-export requirements-optuna.txt
+        args: ["--without-hashes", "-o", "requirements/requirements-optuna.txt", "--with", "optuna"]
+        stages: [manual]
+      - id: poetry-export
         name: poetry-export requirements-docs.txt
         args: ["--without-hashes", "-o", "requirements/requirements-docs.txt", "--with", "docs"]
         stages: [manual]

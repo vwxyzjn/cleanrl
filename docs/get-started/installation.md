@@ -91,11 +91,17 @@ poetry install --with cloud
 While we recommend using `poetry` to manage environments and dependencies, the traditional `requirements.txt` are available:
 
 ```bash
+# core dependencies
 pip install -r requirements/requirements.txt
+
+# optional dependencies
 pip install -r requirements/requirements-atari.txt
 pip install -r requirements/requirements-pybullet.txt
 pip install -r requirements/requirements-mujoco_py.txt
 pip install -r requirements/requirements-procgen.txt
 pip install -r requirements/requirements-envpool.txt
 pip install -r requirements/requirements-pettingzoo.txt
+pip install -r requirements/requirements-jax.txt
+pip install -r requirements/requirements-docs.txt
+pip install -r requirements/requirements-cloud.txt
 ```
