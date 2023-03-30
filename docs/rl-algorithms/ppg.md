@@ -29,11 +29,21 @@ Below are our single-file implementations of PPG:
 
 ### Usage
 
-```bash
-poetry install -E procgen
-python cleanrl/ppg_procgen.py --help
-python cleanrl/ppg_procgen.py --env-id "bigfish"
-```
+=== "poetry"
+
+    ```bash
+    poetry install -E procgen
+    poetry run python cleanrl/ppg_procgen.py --help
+    poetry run python cleanrl/ppg_procgen.py --env-id starpilot
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-procgen.txt
+    python cleanrl/ppg_procgen.py --help
+    python cleanrl/ppg_procgen.py --env-id starpilot
+    ```
 
 ### Explanation of the logged metrics
 
