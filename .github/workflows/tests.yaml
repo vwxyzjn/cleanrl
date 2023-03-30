@@ -33,7 +33,7 @@ jobs:
         run: poetry run pytest tests/test_classic_control.py
       - name: Install jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
-        run: poetry install -E jax
+        run: poetry install -E "pytest jax"
       - name: Run core tests with jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry run pytest tests/test_classic_control_jax.py
@@ -41,7 +41,7 @@ jobs:
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry run pytest tests/test_jax_compute_gae.py
       - name: Install tuner dependencies
-        run: poetry install -E optuna
+        run: poetry install -E "pytest optuna"
       - name: Run tuner tests
         run: poetry run pytest tests/test_tuner.py
 
@@ -72,7 +72,7 @@ jobs:
         run: poetry run pytest tests/test_atari.py
       - name: Install jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
-        run: poetry install -E jax
+        run: poetry install -E "pytest atari jax"
       - name: Run core tests with jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry run pytest tests/test_atari_jax.py
@@ -99,7 +99,7 @@ jobs:
       - name: Install core dependencies
         run: poetry install -E pytest
       - name: Install pybullet dependencies
-        run: poetry install -E pybullet
+        run: poetry install -E "pytest pybullet"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run pybullet tests
