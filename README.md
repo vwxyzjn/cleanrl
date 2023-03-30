@@ -79,7 +79,9 @@ pip install -r requirements/requirements.txt
 # optional dependencies
 pip install -r requirements/requirements-atari.txt
 pip install -r requirements/requirements-pybullet.txt
+pip install -r requirements/requirements-mujoco.txt
 pip install -r requirements/requirements-mujoco_py.txt
+pip install -r requirements/requirements/requirements-mujoco.txt
 pip install -r requirements/requirements-procgen.txt
 pip install -r requirements/requirements-envpool.txt
 pip install -r requirements/requirements-pettingzoo.txt
@@ -98,27 +100,27 @@ python cleanrl/ppo.py --env-id CartPole-v1
 python cleanrl/c51.py --env-id CartPole-v1
 
 # atari
-poetry install --with atari
+poetry install -E atari
 python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/c51_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/sac_atari.py --env-id BreakoutNoFrameskip-v4
 
 # NEW: 3-4x side-effects free speed up with envpool's atari (only available to linux)
-poetry install --with envpool
+poetry install -E envpool
 python cleanrl/ppo_atari_envpool.py --env-id BreakoutNoFrameskip-v4
 # Learn Pong-v5 in ~5-10 mins
 # Side effects such as lower sample efficiency might occur
 poetry run python ppo_atari_envpool.py --clip-coef=0.2 --num-envs=16 --num-minibatches=8 --num-steps=128 --update-epochs=3
 
 # pybullet
-poetry install --with pybullet
+poetry install -E pybullet
 python cleanrl/td3_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
 python cleanrl/ddpg_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
 python cleanrl/sac_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
 
 # procgen
-poetry install --with procgen
+poetry install -E procgen
 python cleanrl/ppo_procgen.py --env-id starpilot
 python cleanrl/ppg_procgen.py --env-id starpilot
 
