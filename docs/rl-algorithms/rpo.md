@@ -48,6 +48,43 @@ python cleanrl/rpo_continuous_action.py --env-id BipedalWalker-v3
 ```
 
 
+=== "poetry"
+
+    ```bash
+    # mujoco v4 environments
+    poetry install -E mujoco
+    python cleanrl/rpo_continuous_action.py --help
+    python cleanrl/rpo_continuous_action.py --env-id Hopper-v4
+    # NOTE: we recommend using --rpo-alpha 0.01 for Ant Hopper InvertedDoublePendulum Reacher Pusher
+    python cleanrl/rpo_continuous_action.py --env-id Ant-v4 --rpo-alpha 0.01
+    # dm_control environments
+    poetry install -E "mujoco dm_control"
+    python cleanrl/rpo_continuous_action.py --env-id dm_control/cartpole-balance-v0
+    # backwards compatibility with mujoco v2 environments
+    poetry install -E mujoco_py
+    python cleanrl/rpo_continuous_action.py --env-id Hopper-v2
+    # BipedalWalker-v3 experiment (hack)
+    poetry run pip install box2d-py==2.3.5
+    poetry run python cleanrl/rpo_continuous_action.py --env-id BipedalWalker-v3
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-mujoco.txt
+    python cleanrl/rpo_continuous_action.py --help
+    python cleanrl/rpo_continuous_action.py --env-id Hopper-v4
+    # NOTE: we recommend using --rpo-alpha 0.01 for Ant Hopper InvertedDoublePendulum Reacher Pusher
+    python cleanrl/rpo_continuous_action.py --env-id Ant-v4 --rpo-alpha 0.01
+    pip install -r requirements/requirements-dm_control.txt
+    python cleanrl/rpo_continuous_action.py --env-id dm_control/cartpole-balance-v0
+    pip install -r requirements/requirements-mujoco_py.txt
+    python cleanrl/rpo_continuous_action.py --env-id Hopper-v2
+    pip install box2d-py==2.3.5
+    python cleanrl/rpo_continuous_action.py --env-id BipedalWalker-v3
+    ```
+
+
 ### Explanation of the logged metrics
 
 See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`.

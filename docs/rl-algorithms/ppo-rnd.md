@@ -46,11 +46,21 @@ The [ppo_rnd_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/
 
 ### Usage
 
-```bash
-poetry install -E envpool
-python cleanrl/ppo_rnd_envpool.py --help
-python cleanrl/ppo_rnd_envpool.py --env-id MontezumaRevenge-v5
-```
+=== "poetry"
+
+    ```bash
+    poetry install -E envpool
+    poetry run python cleanrl/ppo_rnd_envpool.py --help
+    poetry run python cleanrl/ppo_rnd_envpool.py --env-id MontezumaRevenge-v5
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-envpool.txt
+    python cleanrl/ppo_rnd_envpool.py --help
+    python cleanrl/ppo_rnd_envpool.py --env-id MontezumaRevenge-v5
+    ```
 
 ### Explanation of the logged metrics
 

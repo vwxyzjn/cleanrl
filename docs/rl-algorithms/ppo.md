@@ -540,11 +540,21 @@ The [ppo_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanr
 
 ### Usage
 
-```bash
-poetry install -E envpool
-python cleanrl/ppo_atari_envpool.py --help
-python cleanrl/ppo_atari_envpool.py --env-id Breakout-v5
-```
+=== "poetry"
+
+    ```bash
+    poetry install -E envpool
+    poetry run python cleanrl/ppo_atari_envpool.py --help
+    poetry run python cleanrl/ppo_atari_envpool.py --env-id Breakout-v5
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-envpool.txt
+    python cleanrl/ppo_atari_envpool.py --help
+    python cleanrl/ppo_atari_envpool.py --env-id Breakout-v5
+    ```
 
 ### Explanation of the logged metrics
 
@@ -623,12 +633,24 @@ The [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/maste
 
 ### Usage
 
-```bash
-poetry install -E "envpool jax"
-poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-python cleanrl/ppo_atari_envpool_xla_jax.py --help
-python cleanrl/ppo_atari_envpool_xla_jax.py --env-id Breakout-v5
-```
+=== "poetry"
+
+    ```bash
+    poetry install -E "envpool jax"
+    poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    poetry run python cleanrl/ppo_atari_envpool_xla_jax.py --help
+    poetry run python cleanrl/ppo_atari_envpool_xla_jax.py --env-id Breakout-v5
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-envpool.txt
+    pip install -r requirements/requirements-jax.txt
+    pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    python cleanrl/ppo_atari_envpool_xla_jax.py --help
+    python cleanrl/ppo_atari_envpool_xla_jax.py --env-id Breakout-v5
+    ```
 
 ### Explanation of the logged metrics
 
@@ -786,12 +808,24 @@ The [ppo_atari_envpool_xla_jax_scan.py](https://github.com/vwxyzjn/cleanrl/blob/
 
 ### Usage
 
-```bash
-poetry install -E "envpool jax"
-poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-python cleanrl/ppo_atari_envpool_xla_jax_scan.py --help
-python cleanrl/ppo_atari_envpool_xla_jax_scan.py --env-id Breakout-v5
-```
+=== "poetry"
+
+    ```bash
+    poetry install -E "envpool jax"
+    poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    poetry run python cleanrl/ppo_atari_envpool_xla_jax_scan.py --help
+    poetry run python cleanrl/ppo_atari_envpool_xla_jax_scan.py --env-id Breakout-v5
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-envpool.txt
+    pip install -r requirements/requirements-jax.txt
+    pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    python cleanrl/ppo_atari_envpool_xla_jax_scan.py --help
+    python cleanrl/ppo_atari_envpool_xla_jax_scan.py --env-id Breakout-v5
+    ```
 
 ### Explanation of the logged metrics
 
@@ -841,11 +875,21 @@ The [ppo_procgen.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_
 
 ### Usage
 
-```bash
-poetry install -E procgen
-python cleanrl/ppo_procgen.py --help
-python cleanrl/ppo_procgen.py --env-id starpilot
-```
+=== "poetry"
+
+    ```bash
+    poetry install -E procgen
+    poetry run python cleanrl/ppo_procgen.py --help
+    poetry run python cleanrl/ppo_procgen.py --env-id starpilot
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-procgen.txt
+    python cleanrl/ppo_procgen.py --help
+    python cleanrl/ppo_procgen.py --env-id starpilot
+    ```
 
 ### Explanation of the logged metrics
 
@@ -920,21 +964,43 @@ The [ppo_atari_multigpu.py](https://github.com/vwxyzjn/cleanrl/blob/master/clean
 
 ### Usage
 
-```bash
-poetry install -E atari
-python cleanrl/ppo_atari_multigpu.py --help
 
-# `--nproc_per_node=2` specifies how many subprocesses we spawn for training with data parallelism
-# note it is possible to run this with a *single GPU*: each process will simply share the same GPU
-torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4
+=== "poetry"
 
-# by default we use the `gloo` backend, but you can use the `nccl` backend for better multi-GPU performance
-torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --backend nccl
+    ```bash
+    poetry install -E atari
+    poetry run python cleanrl/ppo_atari_multigpu.py --help
 
-# it is possible to spawn more processes than the amount of GPUs you have via `--device-ids`
-# e.g., the command below spawns two processes using GPU 0 and two processes using GPU 1
-torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --device-ids 0 0 1 1
-```
+    # `--nproc_per_node=2` specifies how many subprocesses we spawn for training with data parallelism
+    # note it is possible to run this with a *single GPU*: each process will simply share the same GPU
+    poetry run torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4
+
+    # by default we use the `gloo` backend, but you can use the `nccl` backend for better multi-GPU performance
+    poetry run torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --backend nccl
+
+    # it is possible to spawn more processes than the amount of GPUs you have via `--device-ids`
+    # e.g., the command below spawns two processes using GPU 0 and two processes using GPU 1
+    poetry run torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --device-ids 0 0 1 1
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-atari.txt
+    python cleanrl/ppo_atari_multigpu.py --help
+
+    # `--nproc_per_node=2` specifies how many subprocesses we spawn for training with data parallelism
+    # note it is possible to run this with a *single GPU*: each process will simply share the same GPU
+    torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4
+
+    # by default we use the `gloo` backend, but you can use the `nccl` backend for better multi-GPU performance
+    torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --backend nccl
+
+    # it is possible to spawn more processes than the amount of GPUs you have via `--device-ids`
+    # e.g., the command below spawns two processes using GPU 0 and two processes using GPU 1
+    torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --device-ids 0 0 1 1
+    ```
+
 
 ### Explanation of the logged metrics
 
@@ -1170,13 +1236,26 @@ Tracked experiments and game play videos:
 
 ### Usage
 
-```bash
-poetry install -E "pettingzoo atari"
-poetry run AutoROM --accept-license
-python cleanrl/ppo_pettingzoo_ma_atari.py --help
-python cleanrl/ppo_pettingzoo_ma_atari.py --env-id pong_v3
-python cleanrl/ppo_pettingzoo_ma_atari.py --env-id surround_v2
-```
+=== "poetry"
+
+    ```bash
+    poetry install -E "pettingzoo atari"
+    poetry run AutoROM --accept-license
+    poetry run  cleanrl/ppo_pettingzoo_ma_atari.py --help
+    poetry run  cleanrl/ppo_pettingzoo_ma_atari.py --env-id pong_v3
+    poetry run  cleanrl/ppo_pettingzoo_ma_atari.py --env-id surround_v2
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-pettingzoo.txt
+    pip install -r requirements/requirements-atari.txt
+    AutoROM --accept-license
+    python cleanrl/ppo_pettingzoo_ma_atari.py --help
+    python cleanrl/ppo_pettingzoo_ma_atari.py --env-id pong_v3
+    python cleanrl/ppo_pettingzoo_ma_atari.py --env-id surround_v2
+    ```
 
 See [https://www.pettingzoo.ml/atari](https://www.pettingzoo.ml/atari) for a full-list of supported environments such as `basketball_pong_v3`. Notice pettingzoo sometimes introduces breaking changes, so make sure to install the pinned dependencies via `poetry`.
 
