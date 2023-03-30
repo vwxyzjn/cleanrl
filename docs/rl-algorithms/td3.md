@@ -39,10 +39,10 @@ The [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 
     ```bash
     poetry install
-    poetry install --with pybullet
+    poetry install -E pybullet
     poetry run python cleanrl/td3_continuous_action.py --help
     poetry run python cleanrl/td3_continuous_action.py --env-id HopperBulletEnv-v0
-    poetry install --with mujoco_py # only works in Linux
+    poetry install -E mujoco_py # only works in Linux
     poetry run python cleanrl/td3_continuous_action.py --env-id Hopper-v2
     ```
 
@@ -191,10 +191,10 @@ The [td3_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/maste
 
     ```bash
     poetry install
-    poetry install --with pybullet,jax
+    poetry install -E "pybullet jax"
     poetry run python cleanrl/td3_continuous_action_jax.py --help
     poetry run python cleanrl/td3_continuous_action_jax.py --env-id HopperBulletEnv-v0
-    poetry install --with mujoco_py # only works in Linux
+    poetry install -E mujoco_py # only works in Linux
     poetry run python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v2
     ```
 

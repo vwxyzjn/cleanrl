@@ -46,11 +46,20 @@ The [ppo.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py) has 
 
 ### Usage
 
-```bash
-poetry install
-python cleanrl/ppo.py --help
-python cleanrl/ppo.py --env-id CartPole-v1
-```
+=== "poetry"
+
+    ```bash
+    poetry install
+    poetry run python cleanrl/ppo.py --help
+    poetry run python cleanrl/ppo.py --env-id CartPole-v1
+    ```
+
+=== "pip"
+
+    ```bash
+    python cleanrl/ppo.py --help
+    python cleanrl/ppo.py --env-id CartPole-v1
+    ```
 
 ### Explanation of the logged metrics
 
@@ -137,11 +146,21 @@ The [ppo_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_at
 
 ### Usage
 
-```bash
-poetry install --with atari
-python cleanrl/ppo_atari.py --help
-python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
-```
+=== "poetry"
+
+    ```bash
+    poetry install -E atari
+    poetry run python cleanrl/ppo_atari.py --help
+    poetry run python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-atari.txt
+    python cleanrl/ppo_atari.py --help
+    python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
+    ```
 
 ### Explanation of the logged metrics
 
@@ -219,18 +238,32 @@ The [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 
 ### Usage
 
-```bash
-# mujoco v4 environments
-poetry install --with mujoco
-python cleanrl/ppo_continuous_action.py --help
-python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
-# dm_control v4 environments
-poetry install --with mujoco,dm_control
-python cleanrl/ppo_continuous_action.py --env-id dm_control/cartpole-balance-v0
-# backwards compatibility with mujoco v2 environments
-poetry install --with mujoco_py,mujoco
-python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
-```
+=== "poetry"
+
+    ```bash
+    # mujoco v4 environments
+    poetry install -E mujoco
+    python cleanrl/ppo_continuous_action.py --help
+    python cleanrl/ppo_continuous_action.py --env-id Hopper-v4
+    # dm_control environments
+    poetry install -E "mujoco dm_control"
+    python cleanrl/ppo_continuous_action.py --env-id dm_control/cartpole-balance-v0
+    # backwards compatibility with mujoco v2 environments
+    poetry install -E mujoco_py
+    python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-mujoco.txt
+    python cleanrl/ppo_continuous_action.py --help
+    python cleanrl/ppo_continuous_action.py --env-id Hopper-v4
+    pip install -r requirements/requirements-dm_control.txt
+    python cleanrl/ppo_continuous_action.py --env-id dm_control/cartpole-balance-v0
+    pip install -r requirements/requirements-mujoco_py.txt
+    python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
+    ```
 
 ???+ warning "dm_control installation issue"
 
@@ -411,11 +444,23 @@ The [ppo_atari_lstm.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/p
 
 ### Usage
 
-```bash
-poetry install --with atari
-python cleanrl/ppo_atari_lstm.py --help
-python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
-```
+
+=== "poetry"
+
+    ```bash
+    poetry install -E atari
+    poetry run python cleanrl/ppo_atari_lstm.py --help
+    poetry run python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-atari.txt
+    python cleanrl/ppo_atari_lstm.py --help
+    python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
+    ```
+
 
 ### Explanation of the logged metrics
 
@@ -496,7 +541,7 @@ The [ppo_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanr
 ### Usage
 
 ```bash
-poetry install --with envpool
+poetry install -E envpool
 python cleanrl/ppo_atari_envpool.py --help
 python cleanrl/ppo_atari_envpool.py --env-id Breakout-v5
 ```
@@ -797,7 +842,7 @@ The [ppo_procgen.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_
 ### Usage
 
 ```bash
-poetry install --with procgen
+poetry install -E procgen
 python cleanrl/ppo_procgen.py --help
 python cleanrl/ppo_procgen.py --env-id starpilot
 ```
@@ -876,7 +921,7 @@ The [ppo_atari_multigpu.py](https://github.com/vwxyzjn/cleanrl/blob/master/clean
 ### Usage
 
 ```bash
-poetry install --with atari
+poetry install -E atari
 python cleanrl/ppo_atari_multigpu.py --help
 
 # `--nproc_per_node=2` specifies how many subprocesses we spawn for training with data parallelism
@@ -1126,7 +1171,7 @@ Tracked experiments and game play videos:
 ### Usage
 
 ```bash
-poetry install --with pettingzoo,atari
+poetry install -E "pettingzoo atari"
 poetry run AutoROM --accept-license
 python cleanrl/ppo_pettingzoo_ma_atari.py --help
 python cleanrl/ppo_pettingzoo_ma_atari.py --env-id pong_v3

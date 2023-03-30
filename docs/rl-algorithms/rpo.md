@@ -33,13 +33,13 @@ The [rpo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 
 ```bash
 # mujoco v4 environments
-poetry install --with mujoco
+poetry install -E mujoco
 python cleanrl/rpo_continuous_action.py --help
 python cleanrl/rpo_continuous_action.py --env-id Walker2d-v4
 # NOTE: we recommend using --rpo-alpha 0.01 for Ant Hopper InvertedDoublePendulum Reacher Pusher
 python cleanrl/rpo_continuous_action.py --env-id Ant-v4 --rpo-alpha 0.01
 # dm_control v4 environments
-poetry install --with mujoco,dm_control
+poetry install -E "mujoco dm_control"
 python cleanrl/rpo_continuous_action.py --env-id dm_control/cartpole-balance-v0
 # BipedalWalker-v3 experiment (hack)
 poetry install

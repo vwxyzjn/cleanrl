@@ -47,7 +47,7 @@ The [ppo_rnd_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/
 ### Usage
 
 ```bash
-poetry install --with envpool
+poetry install -E envpool
 python cleanrl/ppo_rnd_envpool.py --help
 python cleanrl/ppo_rnd_envpool.py --env-id MontezumaRevenge-v5
 ```

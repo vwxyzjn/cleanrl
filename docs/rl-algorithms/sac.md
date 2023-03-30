@@ -50,10 +50,10 @@ The [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 
     ```bash
     poetry install
-    poetry install --with pybullet
+    poetry install -E pybullet
     poetry run python cleanrl/sac_continuous_action.py --help
     poetry run python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0
-    poetry install --with mujoco_py # only works in Linux
+    poetry install -E mujoco_py # only works in Linux
     poetry run python cleanrl/sac_continuous_action.py --env-id Hopper-v2
     poetry run python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0 --autotune False --alpha 0.2 ## Without Automatic entropy coef. tuning
     ```
@@ -247,7 +247,7 @@ The [sac_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_at
 
     ```bash
     poetry install
-    poetry install --with atari
+    poetry install -E atari
     poetry run python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4
     poetry run python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4 --autotune False --alpha 0.2
     ```
