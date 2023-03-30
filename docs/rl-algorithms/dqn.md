@@ -40,6 +40,22 @@ python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
 ```
 
+=== "poetry"
+
+    ```bash
+    poetry install --with atari
+    poetry run python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
+    poetry run python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-atari.txt
+    python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
+    python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
+    ```
+
 
 ### Explanation of the logged metrics
 
@@ -130,9 +146,19 @@ The [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py) has 
 
 ### Usage
 
-```bash
-python cleanrl/dqn.py --env-id CartPole-v1
-```
+
+
+=== "poetry"
+
+    ```bash
+    poetry run python cleanrl/dqn.py --env-id CartPole-v1
+    ```
+
+=== "pip"
+
+    ```bash
+    python cleanrl/dqn.py --env-id CartPole-v1
+    ```
 
 
 ### Explanation of the logged metrics
@@ -218,12 +244,26 @@ The [dqn_atari_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dq
 
 ### Usage
 
-```bash
-poetry install --with atari,jax
-poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-python cleanrl/dqn_atari_jax.py --env-id BreakoutNoFrameskip-v4
-python cleanrl/dqn_atari_jax.py --env-id PongNoFrameskip-v4
-```
+
+=== "poetry"
+
+    ```bash
+    poetry install --with atari,jax
+    poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    poetry run python cleanrl/dqn_atari_jax.py --env-id BreakoutNoFrameskip-v4
+    poetry run python cleanrl/dqn_atari_jax.py --env-id PongNoFrameskip-v4
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-atari.txt
+    pip install -r requirements/requirements-jax.txt
+    pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    python cleanrl/dqn_atari_jax.py --env-id BreakoutNoFrameskip-v4
+    python cleanrl/dqn_atari_jax.py --env-id PongNoFrameskip-v4
+    ```
+
 
 ???+ warning
 
@@ -288,6 +328,22 @@ Tracked experiments and game play videos:
 ```bash
 python cleanrl/dqn_jax.py --env-id CartPole-v1
 ```
+
+=== "poetry"
+
+    ```bash
+    poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    poetry run python cleanrl/dqn_jax.py --env-id CartPole-v1
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-jax.txt
+    pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    python cleanrl/dqn_jax.py --env-id CartPole-v1
+    ```
+
 
 ### Explanation of the logged metrics
 
