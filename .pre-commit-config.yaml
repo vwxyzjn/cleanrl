@@ -53,6 +53,14 @@ repos:
         args: ["--without-hashes", "-o", "requirements/requirements-pybullet.txt", "--with", "pybullet"]
         stages: [manual]
       - id: poetry-export
+        name: poetry-export requirements-mujoco.txt
+        args: ["--without-hashes", "-o", "requirements/requirements-mujoco.txt", "--with", "mujoco"]
+        stages: [manual]
+      - id: poetry-export
+        name: poetry-export requirements-dm_control.txt
+        args: ["--without-hashes", "-o", "requirements/requirements-dm_control.txt", "--with", "dm_control"]
+        stages: [manual]
+      - id: poetry-export
         name: poetry-export requirements-mujoco_py.txt
         args: ["--without-hashes", "-o", "requirements/requirements-mujoco_py.txt", "--with", "mujoco_py"]
         stages: [manual]
