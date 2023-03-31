@@ -34,6 +34,7 @@ imageio = {version = "^2.14.1", optional = true}
 free-mujoco-py = {version = "^2.1.6", optional = true}
 mkdocs-material = {version = "^8.4.3", optional = true}
 markdown-include = {version = "^0.7.0", optional = true}
+openrlbenchmark = {version = "^0.1.1b4", optional = true}
 jax = {version = "^0.3.17", optional = true}
 jaxlib = {version = "^0.3.15", optional = true}
 flax = {version = "^0.6.0", optional = true}
@@ -52,77 +53,6 @@ dm-control = {version = "^1.0.8", optional = true}
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.20.0"
 
-[tool.poetry.group.atari]
-optional = true
-[tool.poetry.group.atari.dependencies]
-ale-py = "0.7.4"
-AutoROM = {extras = ["accept-rom-license"], version = "^0.4.2"}
-opencv-python = "^4.6.0.66"
-
-[tool.poetry.group.pybullet]
-optional = true
-[tool.poetry.group.pybullet.dependencies]
-pybullet = "3.1.8"
-
-[tool.poetry.group.procgen]
-optional = true
-[tool.poetry.group.procgen.dependencies]
-procgen = "^0.10.7"
-
-[tool.poetry.group.pytest]
-optional = true
-[tool.poetry.group.pytest.dependencies]
-pytest = "^7.1.3"
-
-[tool.poetry.group.mujoco]
-optional = true
-[tool.poetry.group.mujoco.dependencies]
-mujoco = "^2.2"
-imageio = "^2.14.1"
-
-[tool.poetry.group.mujoco_py]
-optional = true
-[tool.poetry.group.mujoco_py.dependencies]
-free-mujoco-py = "^2.1.6"
-
-[tool.poetry.group.docs]
-optional = true
-[tool.poetry.group.docs.dependencies]
-mkdocs-material = "^8.4.3"
-markdown-include = "^0.7.0"
-openrlbenchmark = "^0.1.1b4"
-
-[tool.poetry.group.jax]
-optional = true
-[tool.poetry.group.jax.dependencies]
-jax = "^0.3.17"
-jaxlib = "^0.3.15"
-flax = "^0.6.0"
-
-[tool.poetry.group.optuna]
-optional = true
-[tool.poetry.group.optuna.dependencies]
-optuna = "^3.0.1"
-optuna-dashboard = "^0.7.2"
-rich = "<12.0"
-
-[tool.poetry.group.envpool]
-optional = true
-[tool.poetry.group.envpool.dependencies]
-envpool = "^0.6.4"
-
-[tool.poetry.group.pettingzoo]
-optional = true
-[tool.poetry.group.pettingzoo.dependencies]
-PettingZoo = "1.18.1"
-SuperSuit = "3.4.0"
-multi-agent-ale-py = "0.1.11"
-
-[tool.poetry.group.cloud]
-optional = true
-[tool.poetry.group.cloud.dependencies]
-boto3 = "^1.24.70"
-awscli = "^1.25.71"
 
 [tool.poetry.group.isaacgym]
 optional = true
@@ -130,12 +60,6 @@ optional = true
 isaacgymenvs = {git = "https://github.com/vwxyzjn/IsaacGymEnvs.git", rev = "poetry"}
 isaacgym = {path = "cleanrl/ppo_continuous_action_isaacgym/isaacgym", develop = true}
 
-[tool.poetry.group.dm_control]
-optional = true
-[tool.poetry.group.dm_control.dependencies]
-shimmy = "^0.1.0"
-dm-control = "^1.0.8"
-mujoco = "^2.2"
 
 [build-system]
 requires = ["poetry-core"]

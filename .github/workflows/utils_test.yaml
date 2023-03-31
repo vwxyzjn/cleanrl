@@ -25,9 +25,9 @@ jobs:
           poetry-version: ${{ matrix.poetry-version }}
 
       - name: Install test dependencies
-        run: poetry install --with pytest
+        run: poetry install -E pytest
       - name: Install cloud dependencies
-        run: poetry install --with cloud
+        run: poetry install -E "pytest cloud"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run utils tests

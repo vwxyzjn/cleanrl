@@ -46,18 +46,28 @@ The [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 
 ### Usage for continuous action spaces
 
-```bash
-poetry install
+=== "poetry"
 
-# Pybullet
-poetry install --with pybullet
+    ```bash
+    poetry install
+    poetry install -E pybullet
+    poetry run python cleanrl/sac_continuous_action.py --help
+    poetry run python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0
+    poetry install -E mujoco_py # only works in Linux
+    poetry run python cleanrl/sac_continuous_action.py --env-id Hopper-v2
+    poetry run python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0 --autotune False --alpha 0.2 ## Without Automatic entropy coef. tuning
+    ```
 
-## Default
-python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0
+=== "pip"
 
-## Without Automatic entropy coef. tuning
-python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0 --autotune False --alpha 0.2
-```
+    ```bash
+    pip install -r requirements/requirements-pybullet.txt
+    python cleanrl/sac_continuous_action.py --help
+    python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0
+    pip install -r requirements/requirements-mujoco_py.txt # only works in Linux, you have to pick either `mujoco` or `mujoco_py`
+    python cleanrl/sac_continuous_action.py --env-id Hopper-v2
+    python cleanrl/sac_continuous_action.py --env-id HopperBulletEnv-v0 --autotune False --alpha 0.2 ## Without Automatic entropy coef. tuning
+    ```
 
 ### Explanation of the logged metrics
 
@@ -233,18 +243,22 @@ The [sac_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_at
 
 ### Usage for discrete action spaces
 
-```bash
-poetry install
+=== "poetry"
 
-# Atari
-poetry install -E atari
+    ```bash
+    poetry install
+    poetry install -E atari
+    poetry run python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4
+    poetry run python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4 --autotune False --alpha 0.2
+    ```
 
-## Default
-python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4
+=== "pip"
 
-## Without Automatic entropy coef. tuning
-python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4 --autotune False --alpha 0.2
-```
+    ```bash
+    pip install -r requirements/requirements-atari.txt
+    python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4
+    python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4 --autotune False --alpha 0.2
+    ```
 
 ### Explanation of the logged metrics
 

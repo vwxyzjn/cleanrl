@@ -9,7 +9,7 @@ Good luck and have fun!
 To setup the development environment, please clone the repository and follow the [installation docs](/get-started/installation/) and [usage docs](/get-started/basic-usage). They should help you set a working poetry environment, so you have the same set up as other contributors. Additionally, you may want to run the following command to install dev-dependencies for documentation:
 
 ```bash
-poetry install --with docs
+poetry install -E docs
 ```
 
 
@@ -77,7 +77,7 @@ Importantly, **regardless of the slight difference in performance-impacting chan
 Given a new feature, we create a PR and then run the benchmark experiments through [`benchmark.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl_utils/benchmark.py), such as the following:
 
 ```bash
-poetry install --with mujoco,pybullet
+poetry install -E "docs pybullet mujoco_py"
 python -c "import mujoco_py"
 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 \
