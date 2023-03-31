@@ -125,6 +125,7 @@ python cleanrl/ppo_procgen.py --env-id starpilot
 python cleanrl/ppg_procgen.py --env-id starpilot
 
 # ppo + lstm
+poetry install -E atari
 python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
 ```
 
