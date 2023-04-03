@@ -8,12 +8,11 @@ from typing import Sequence
 
 import flax
 import flax.linen as nn
-import gym
+import gymnasium as gym
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
-import pybullet_envs  # noqa
 from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
@@ -70,7 +69,6 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env.seed(seed)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -150,11 +148,11 @@ if __name__ == "__main__":
         envs.single_observation_space,
         envs.single_action_space,
         device="cpu",
-        handle_timeout_termination=True,
+        handle_timeout_termination=False,
     )
 
     # TRY NOT TO MODIFY: start the game
-    obs = envs.reset()
+    obs, _ = envs.reset()
     action_scale = np.array((envs.action_space.high - envs.action_space.low) / 2.0)
     action_bias = np.array((envs.action_space.high + envs.action_space.low) / 2.0)
     actor = Actor(
@@ -235,11 +233,11 @@ if __name__ == "__main__":
             )
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards, dones, infos = envs.step(actions)
+        next_obs, rewards, terminateds, truncateds, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        for info in infos:
-            if "episode" in info.keys():
+        if "final_info" in infos:
+            for info in infos["final_info"]:
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
@@ -247,10 +245,10 @@ if __name__ == "__main__":
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
         real_next_obs = next_obs.copy()
-        for idx, d in enumerate(dones):
+        for idx, d in enumerate(truncateds):
             if d:
-                real_next_obs[idx] = infos[idx]["terminal_observation"]
-        rb.add(obs, real_next_obs, actions, rewards, dones, infos)
+                real_next_obs[idx] = infos["final_observation"][idx]
+        rb.add(obs, real_next_obs, actions, rewards, terminateds, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
