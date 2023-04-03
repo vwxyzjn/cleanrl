@@ -64,7 +64,10 @@ def parse_args():
 
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
-        env = gym.make(env_id)
+        if capture_video:
+            env = gym.make(env_id, render_mode="rgb_array")
+        else:
+            env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
@@ -122,7 +125,7 @@ if __name__ == "__main__":
             sync_tensorboard=True,
             config=vars(args),
             name=run_name,
-            monitor_gym=True,
+            monitor_gym=True,  # does not work on gymnasium
             save_code=True,
         )
     writer = SummaryWriter(f"runs/{run_name}")
@@ -153,6 +156,7 @@ if __name__ == "__main__":
 
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset()
+    video_filenames = set()
     action_scale = np.array((envs.action_space.high - envs.action_space.low) / 2.0)
     action_bias = np.array((envs.action_space.high + envs.action_space.low) / 2.0)
     actor = Actor(
@@ -280,4 +284,10 @@ if __name__ == "__main__":
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
     envs.close()
+    if args.track and args.capture_video:
+        for filename in os.listdir(f"videos/{run_name}"):
+            if filename not in video_filenames and filename.endswith(".mp4"):
+                wandb.log({f"videos": wandb.Video(f"videos/{run_name}/{filename}")})
+                video_filenames.add(filename)
+
     writer.close()
