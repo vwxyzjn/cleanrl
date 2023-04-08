@@ -203,7 +203,7 @@ if __name__ == "__main__":
         if "final_info" in infos:
             for info in infos["final_info"]:
                 # Skip the envs that are not done
-                if info is None:
+                if "episode" not in info:
                     continue
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
