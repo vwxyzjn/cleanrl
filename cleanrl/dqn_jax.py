@@ -177,7 +177,7 @@ if __name__ == "__main__":
 
         def mse_loss(params):
             q_pred = q_network.apply(params, observations)  # (batch_size, num_actions)
-            q_pred = q_pred[np.arange(q_pred.shape[0]), actions.squeeze()]  # (batch_size,)
+            q_pred = q_pred[jnp.arange(q_pred.shape[0]), actions.squeeze()]  # (batch_size,)
             return ((q_pred - next_q_value) ** 2).mean(), q_pred
 
         (loss_value, q_pred), grads = jax.value_and_grad(mse_loss, has_aux=True)(q_state.params)
