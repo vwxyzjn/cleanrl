@@ -192,7 +192,7 @@ if __name__ == "__main__":
                 break
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
-        real_next_obs = next_obs.copy()
+        real_next_obs = next_obs.copy() # dummy PR to test CI
         for idx, d in enumerate(dones):
             if d:
                 real_next_obs[idx] = infos[idx]["terminal_observation"]
