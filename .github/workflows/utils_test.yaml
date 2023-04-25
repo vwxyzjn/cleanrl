@@ -5,6 +5,11 @@ on:
       - '**/README.md'
       - 'docs/**/*'
       - 'cloud/**/*'
+  pull_request:
+    paths-ignore:
+      - '**/README.md'
+      - 'docs/**/*'
+      - 'cloud/**/*'
 jobs:
   ci:
     strategy:

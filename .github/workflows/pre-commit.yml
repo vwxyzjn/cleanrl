@@ -1,7 +1,12 @@
 name: pre-commit
 
 on:
-  push
+  push:
+    paths-ignore:
+      - 'docs/blog/*' # dummy ignore
+  pull_request:
+    paths-ignore:
+      - 'docs/blog/*' # dummy ignore
 jobs:
   build:
     runs-on: ubuntu-latest
