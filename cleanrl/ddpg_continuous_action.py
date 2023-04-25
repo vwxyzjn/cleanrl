@@ -119,6 +119,10 @@ class Actor(nn.Module):
 
 if __name__ == "__main__":
     args = parse_args()
+    import stable_baselines3 as sb3
+    if sb3.__version__ < "2.0":
+        raise ValueError("Ongoing migration: run `poetry run pip install sb3==2.0.0a1`")
+    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
