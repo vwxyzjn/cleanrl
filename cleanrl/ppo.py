@@ -4,6 +4,7 @@ import os
 import random
 import time
 from distutils.util import strtobool
+from typing import Callable, Optional, cast
 
 import gym
 import numpy as np
@@ -14,7 +15,7 @@ from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     # fmt: off
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
@@ -76,8 +77,8 @@ def parse_args():
     return args
 
 
-def make_env(env_id, seed, idx, capture_video, run_name):
-    def thunk():
+def make_env(env_id: str, seed: int, idx: int, capture_video: bool, run_name: str) -> Callable[[], gym.Env]:
+    def thunk() -> gym.Env:
         env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
@@ -91,14 +92,18 @@ def make_env(env_id, seed, idx, capture_video, run_name):
     return thunk
 
 
-def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+def layer_init(layer: nn.Linear, std: float = np.sqrt(2), bias_const: float = 0.0) -> nn.Module:
     torch.nn.init.orthogonal_(layer.weight, std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
 
 class Agent(nn.Module):
-    def __init__(self, envs):
+
+    critic: nn.Sequential
+    actor: nn.Sequential
+
+    def __init__(self, envs: gym.vector.SyncVectorEnv):
         super().__init__()
         self.critic = nn.Sequential(
             layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
@@ -115,10 +120,12 @@ class Agent(nn.Module):
             layer_init(nn.Linear(64, envs.single_action_space.n), std=0.01),
         )
 
-    def get_value(self, x):
+    def get_value(self, x: torch.Tensor) -> torch.Tensor:
         return self.critic(x)
 
-    def get_action_and_value(self, x, action=None):
+    def get_action_and_value(
+        self, x: torch.Tensor, action: Optional[torch.Tensor] = None
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         logits = self.actor(x)
         probs = Categorical(logits=logits)
         if action is None:
@@ -158,15 +165,24 @@ if __name__ == "__main__":
     # env setup
     envs = gym.vector.SyncVectorEnv(
         [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
-    )
+    )  # type:ignore[abstract]
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
+    # Handling gym shapes being Optionals (variant 1)
+    # Personally i'd prefer the asserts
+    assert isinstance(envs.single_observation_space.shape, tuple), "shape of observation space must be defined"
+    assert isinstance(envs.single_action_space.shape, tuple), "shape of action space must be defined"
+
+    # Handling gym shapes being Optionals (variant 2)
+    # Once could also cast inside each call but in my eyes that's not conducive to readability
+    obs_space_shape = cast(tuple[int, ...], envs.single_observation_space.shape)
+    action_space_shape = cast(tuple[int, ...], envs.single_action_space.shape)
 
     agent = Agent(envs).to(device)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage setup
-    obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
-    actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
+    obs = torch.zeros((args.num_steps, args.num_envs) + obs_space_shape).to(device)
+    actions = torch.zeros((args.num_steps, args.num_envs) + action_space_shape).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
@@ -227,9 +243,9 @@ if __name__ == "__main__":
             returns = advantages + values
 
         # flatten the batch
-        b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
+        b_obs = obs.reshape((-1,) + obs_space_shape)
         b_logprobs = logprobs.reshape(-1)
-        b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
+        b_actions = actions.reshape((-1,) + action_space_shape)
         b_advantages = advantages.reshape(-1)
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)

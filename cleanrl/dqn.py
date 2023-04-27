@@ -4,6 +4,7 @@ import os
 import random
 import time
 from distutils.util import strtobool
+from typing import Callable
 
 import gym
 import numpy as np
@@ -15,7 +16,7 @@ from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     # fmt: off
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
@@ -73,8 +74,8 @@ def parse_args():
     return args
 
 
-def make_env(env_id, seed, idx, capture_video, run_name):
-    def thunk():
+def make_env(env_id: str, seed: int, idx: int, capture_video: bool, run_name: str) -> Callable[[], gym.Env]:
+    def thunk() -> gym.Env:
         env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
@@ -90,7 +91,10 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
-    def __init__(self, env):
+
+    network: nn.Sequential
+
+    def __init__(self, env: gym.vector.SyncVectorEnv):
         super().__init__()
         self.network = nn.Sequential(
             nn.Linear(np.array(env.single_observation_space.shape).prod(), 120),
@@ -100,11 +104,11 @@ class QNetwork(nn.Module):
             nn.Linear(84, env.single_action_space.n),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.FloatTensor) -> torch.FloatTensor:
         return self.network(x)
 
 
-def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
+def linear_schedule(start_e: float, end_e: float, duration: int, t: int) -> float:
     slope = (end_e - start_e) / duration
     return max(slope * t + start_e, end_e)
 
@@ -139,7 +143,9 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(args.env_id, args.seed, 0, args.capture_video, run_name)]
+    )  # type:ignore[abstract]
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(envs).to(device)
