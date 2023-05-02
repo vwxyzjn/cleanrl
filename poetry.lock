@@ -666,7 +666,7 @@ name = "dm-control"
 version = "1.0.12"
 description = "Continuous control environments and MuJoCo Python bindings."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 files = [
     {file = "dm_control-1.0.12-py3-none-any.whl", hash = "sha256:419f8e16418b55caa4b67280cd89da86f587cd21eedeeafa3b2ee4e2b14cba5d"},
@@ -698,7 +698,7 @@ name = "dm-env"
 version = "1.5"
 description = "A Python interface for Reinforcement Learning environments."
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 files = [
     {file = "dm-env-1.5.tar.gz", hash = "sha256:3efd99b0652563599507c415d48b51896c88be2f01c2b6250af8bab51571e353"},
@@ -715,7 +715,7 @@ name = "dm-tree"
 version = "0.1.7"
 description = "Tree is a library for working with nested data structures."
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 files = [
     {file = "dm-tree-0.1.7.tar.gz", hash = "sha256:30fec8aca5b92823c0e796a2f33b875b4dccd470b57e91e6c542405c5f77fd2a"},
@@ -1062,7 +1062,7 @@ name = "glfw"
 version = "1.12.0"
 description = "A ctypes-based wrapper for GLFW3."
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 files = [
     {file = "glfw-1.12.0-py2.py27.py3.py30.py31.py32.py33.py34.py35.py36.py37.py38-none-macosx_10_6_intel.whl", hash = "sha256:88bd1cd2ace036d275e9af8312993068d94b3ac19248421eedc35a4baf53bb8c"},
@@ -1346,7 +1346,7 @@ name = "h5py"
 version = "3.8.0"
 description = "Read and write HDF5 files from Python"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 files = [
     {file = "h5py-3.8.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:533d7dad466ddb7e3b30af274b630eb7c1a6e4ddf01d1c373a0334dc2152110a"},
@@ -1832,7 +1832,7 @@ name = "labmaze"
 version = "1.0.5"
 description = "LabMaze: DeepMind Lab's text maze generator."
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 files = [
     {file = "labmaze-1.0.5-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:09b297e2cae9e0880298eaedcdee96374f1106eda7eb0873815d01b15c0c5099"},
@@ -1870,7 +1870,7 @@ name = "lxml"
 version = "4.9.1"
 description = "Powerful and Pythonic XML processing library combining libxml2/libxslt with the ElementTree API."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, != 3.4.*"
 files = [
     {file = "lxml-4.9.1-cp27-cp27m-macosx_10_15_x86_64.whl", hash = "sha256:98cafc618614d72b02185ac583c6f7796202062c41d2eeecdf07820bad3295ed"},
@@ -2358,7 +2358,7 @@ name = "mujoco"
 version = "2.3.5"
 description = "MuJoCo Physics Simulator"
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 files = [
     {file = "mujoco-2.3.5-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:51909772a5289b183434ccc74ed26420255f5ff905bb1e030f982dabba2a4afc"},
@@ -3301,7 +3301,7 @@ name = "pyopengl"
 version = "3.1.6"
 description = "Standard OpenGL bindings for Python"
 category = "main"
-optional = true
+optional = false
 python-versions = "*"
 files = [
     {file = "PyOpenGL-3.1.6-py2-none-any.whl", hash = "sha256:57c597d989178e1413002df6b923619f6d29807501dece1c60cc6f12c0c8e8a7"},
@@ -3955,14 +3955,14 @@ toml = ["setuptools (>=42)"]
 
 [[package]]
 name = "shimmy"
-version = "0.2.1"
-description = "API for converting popular non-gymnasium environments to a gymnasium compatible environment."
+version = "1.0.0"
+description = "An API conversion tool providing Gymnasium and PettingZoo bindings for popular external reinforcement learning environments."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "Shimmy-0.2.1-py3-none-any.whl", hash = "sha256:2d7d21c4ca679a64bb452e6a4232c6b0f5dba7589f5420454ddc1f0634334334"},
-    {file = "Shimmy-0.2.1.tar.gz", hash = "sha256:7b96915445ee5488dcb19ccf52ce5581d6f00cc5cf0e0dff36b16cd65bffcb75"},
+    {file = "Shimmy-1.0.0-py3-none-any.whl", hash = "sha256:f26540d595ad56c9d0e99462d6388dc0dbb7976a97095337365ec79668cdf836"},
+    {file = "Shimmy-1.0.0.tar.gz", hash = "sha256:30b9473402e846149137d5d71a0fbe47787d309c7e3a0c1aca97c95375de5f26"},
 ]
 
 [package.dependencies]
@@ -3973,13 +3973,17 @@ imageio = {version = "*", optional = true, markers = "extra == \"dm-control\""}
 numpy = ">=1.18.0"
 
 [package.extras]
-all = ["ale-py (>=0.8.1,<0.9.0)", "dm-control (>=1.0.10)", "gym (>=0.21)", "h5py (>=3.7.0)", "imageio", "open-spiel (>=1.2)", "pettingzoo (>=1.22)"]
+all = ["ale-py (>=0.8.1,<0.9.0)", "bsuite (>=0.3.5)", "dm-control (>=1.0.10)", "dm-env (>=1.6)", "gym (>=0.21.0)", "gym (>=0.26.2)", "h5py (>=3.7.0)", "imageio", "open-spiel (>=1.2)", "pettingzoo (>=1.22.3)", "pyglet (==1.5.11)"]
 atari = ["ale-py (>=0.8.1,<0.9.0)"]
+bsuite = ["bsuite (>=0.3.5)"]
 dm-control = ["dm-control (>=1.0.10)", "h5py (>=3.7.0)", "imageio"]
-dm-control-multi-agent = ["dm-control (>=1.0.10)", "pettingzoo (>=1.22)"]
-gym = ["gym (>=0.21)"]
-openspiel = ["open-spiel (>=1.2)", "pettingzoo (>=1.22)"]
-testing = ["autorom[accept-rom-license] (>=0.4.2,<0.5.0)", "pillow (>=9.3.0)", "pytest (==7.1.3)"]
+dm-control-multi-agent = ["dm-control (>=1.0.10)", "h5py (>=3.7.0)", "imageio", "pettingzoo (>=1.22.3)"]
+dm-lab = ["dm-env (>=1.6)"]
+gym-v21 = ["gym (>=0.21.0)", "pyglet (==1.5.11)"]
+gym-v26 = ["gym (>=0.26.2)"]
+meltingpot = ["pettingzoo (>=1.22.3)"]
+openspiel = ["open-spiel (>=1.2)", "pettingzoo (>=1.22.3)"]
+testing = ["autorom[accept-rom-license] (>=0.6.0,<0.7.0)", "pillow (>=9.3.0)", "pytest (==7.1.3)"]
 
 [[package]]
 name = "six"
@@ -4728,4 +4732,4 @@ pytest = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.10"
-content-hash = "8ea47cdcb2e0f83b1b0c65257852bb08ff320e75f6b3e7f0d935ed2d96a12184"
+content-hash = "a3e4fc8243a69230ec2061ca5249a1d06a22db4c63812ad5dfd75c01efb3e076"
