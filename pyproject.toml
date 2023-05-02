@@ -47,8 +47,7 @@ SuperSuit = {version = "3.4.0", optional = true}
 multi-agent-ale-py = {version = "0.1.11", optional = true}
 boto3 = {version = "^1.24.70", optional = true}
 awscli = {version = "^1.25.71", optional = true}
-shimmy = {version = "^0.1.0", optional = true}
-dm-control = {version = "^1.0.8", optional = true}
+shimmy = {version = "^0.2.1", extras = ["dm-control"], optional = true}
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.20.0"
@@ -79,7 +78,7 @@ envpool = ["envpool"]
 optuna = ["optuna", "optuna-dashboard", "rich"]
 pettingzoo = ["PettingZoo", "SuperSuit", "multi-agent-ale-py"]
 cloud = ["boto3", "awscli"]
-dm_control = ["shimmy", "dm-control", "mujoco"]
+dm_control = ["shimmy", "mujoco"]
 
 # dependencies for algorithm variant (useful when you want to run a specific algorithm)
 dqn = []
