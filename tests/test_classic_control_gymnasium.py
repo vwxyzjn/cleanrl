@@ -7,4 +7,3 @@ def test_dqn():
         shell=True,
         check=True,
     )
-
