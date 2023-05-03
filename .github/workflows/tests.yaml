@@ -39,6 +39,10 @@ jobs:
       - name: Install jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry install -E "pytest jax"
+      - name: Run gymnasium migration dependencies
+        run: poetry run pip install "stable_baselines3==2.0.0a1"
+      - name: Run gymnasium tests
+        run: poetry run pytest tests/test_classic_control_gymnasium.py
       - name: Run core tests with jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry run pytest tests/test_classic_control_jax.py
@@ -78,6 +82,10 @@ jobs:
       - name: Install jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry install -E "pytest atari jax"
+      - name: Run gymnasium migration dependencies
+        run: poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-license]==0.28.1"  "ale-py==0.8.1" 
+      - name: Run gymnasium tests
+        run: poetry run pytest tests/test_atari_gymnasium.py
       - name: Run core tests with jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry run pytest tests/test_atari_jax.py
