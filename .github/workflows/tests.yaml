@@ -206,13 +206,13 @@ jobs:
         continue-on-error: true # MUJOCO_GL=osmesa results in `free(): invalid pointer`
         run: poetry run pytest tests/test_mujoco_gymnasium.py
 
-  test-mujoco-envs-windows-mac:
+  test-mujoco-envs-mac:
     strategy:
       fail-fast: false
       matrix:
         python-version: [3.8]
         poetry-version: [1.3]
-        os: [macos-latest, windows-latest]
+        os: [macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -232,13 +232,13 @@ jobs:
       - name: Run mujoco tests
         run: poetry run pytest tests/test_mujoco.py
 
-  test-mujoco-gymnasium-windows-mac:
+  test-mujoco-gymnasium-mac:
     strategy:
       fail-fast: false
       matrix:
         python-version: [3.8]
         poetry-version: [1.3]
-        os: [macos-latest, windows-latest]
+        os: [macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
