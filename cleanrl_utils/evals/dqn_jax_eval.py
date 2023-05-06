@@ -3,7 +3,7 @@ from typing import Callable
 
 import flax
 import flax.linen as nn
-import gym
+import gymnasium as gym
 import jax
 import numpy as np
 
@@ -20,7 +20,7 @@ def evaluate(
     seed=1,
 ):
     envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
-    obs = envs.reset()
+    obs, _ = envs.reset()
     model = Model(action_dim=envs.single_action_space.n)
     q_key = jax.random.PRNGKey(seed)
     params = model.init(q_key, obs)
@@ -36,9 +36,11 @@ def evaluate(
             q_values = model.apply(params, obs)
             actions = q_values.argmax(axis=-1)
             actions = jax.device_get(actions)
-        next_obs, _, _, infos = envs.step(actions)
-        for info in infos:
-            if "episode" in info.keys():
+        next_obs, _, _, _, infos = envs.step(actions)
+        if "final_info" in infos:
+            for info in infos["final_info"]:
+                if "episode" not in info:
+                    continue
                 print(f"eval_episode={len(episodic_returns)}, episodic_return={info['episode']['r']}")
                 episodic_returns += [info["episode"]["r"]]
         obs = next_obs
