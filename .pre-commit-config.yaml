@@ -6,7 +6,7 @@ repos:
         args: 
           - --py37-plus
   - repo: https://github.com/PyCQA/isort
-    rev: 5.10.1
+    rev: 5.12.0
     hooks:
       - id: isort
         args:
@@ -35,10 +35,10 @@ repos:
     hooks:
       - id: codespell
         args:
-          - --ignore-words-list=nd,reacher,thist,ths,magent
-          - --skip=docs/css/termynal.css,docs/js/termynal.js
+          - --ignore-words-list=nd,reacher,thist,ths,magent,ba
+          - --skip=docs/css/termynal.css,docs/js/termynal.js,docs/get-started/CleanRL_Huggingface_Integration_Demo.ipynb
   - repo: https://github.com/python-poetry/poetry
-    rev: 1.2.1
+    rev: 1.3.2
     hooks:
       - id: poetry-export
         name: poetry-export requirements.txt
@@ -46,37 +46,49 @@ repos:
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-atari.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-atari.txt", "--with", "atari"]
+        args: ["--without-hashes", "-o", "requirements/requirements-atari.txt", "-E", "atari"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-pybullet.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-pybullet.txt", "--with", "pybullet"]
+        args: ["--without-hashes", "-o", "requirements/requirements-pybullet.txt", "-E", "pybullet"]
+        stages: [manual]
+      - id: poetry-export
+        name: poetry-export requirements-mujoco.txt
+        args: ["--without-hashes", "-o", "requirements/requirements-mujoco.txt", "-E", "mujoco"]
+        stages: [manual]
+      - id: poetry-export
+        name: poetry-export requirements-dm_control.txt
+        args: ["--without-hashes", "-o", "requirements/requirements-dm_control.txt", "-E", "dm_control"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-mujoco_py.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-mujoco_py.txt", "--with", "mujoco_py"]
+        args: ["--without-hashes", "-o", "requirements/requirements-mujoco_py.txt", "-E", "mujoco_py"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-procgen.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-procgen.txt", "--with", "procgen"]
+        args: ["--without-hashes", "-o", "requirements/requirements-procgen.txt", "-E", "procgen"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-envpool.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-envpool.txt", "--with", "envpool"]
+        args: ["--without-hashes", "-o", "requirements/requirements-envpool.txt", "-E", "envpool"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-pettingzoo.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-pettingzoo.txt", "--with", "pettingzoo"]
+        args: ["--without-hashes", "-o", "requirements/requirements-pettingzoo.txt", "-E", "pettingzoo"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-jax.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-jax.txt", "--with", "jax"]
+        args: ["--without-hashes", "-o", "requirements/requirements-jax.txt", "-E", "jax"]
+        stages: [manual]
+      - id: poetry-export
+        name: poetry-export requirements-optuna.txt
+        args: ["--without-hashes", "-o", "requirements/requirements-optuna.txt", "-E", "optuna"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-docs.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-docs.txt", "--with", "docs"]
+        args: ["--without-hashes", "-o", "requirements/requirements-docs.txt", "-E", "docs"]
         stages: [manual]
       - id: poetry-export
         name: poetry-export requirements-cloud.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-cloud.txt", "--with", "cloud"]
+        args: ["--without-hashes", "-o", "requirements/requirements-cloud.txt", "-E", "cloud"]
         stages: [manual]

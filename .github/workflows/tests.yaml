@@ -5,13 +5,18 @@ on:
       - '**/README.md'
       - 'docs/**/*'
       - 'cloud/**/*'
+  pull_request:
+    paths-ignore:
+      - '**/README.md'
+      - 'docs/**/*'
+      - 'cloud/**/*'
 jobs:
   test-core-envs:
     strategy:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.2]
+        poetry-version: [1.3]
         os: [ubuntu-22.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -26,14 +31,18 @@ jobs:
 
       # classic control tests
       - name: Install core dependencies
-        run: poetry install --with pytest
+        run: poetry install -E pytest
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run core tests
         run: poetry run pytest tests/test_classic_control.py
       - name: Install jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
-        run: poetry install --with jax
+        run: poetry install -E "pytest jax"
+      - name: Run gymnasium migration dependencies
+        run: poetry run pip install "stable_baselines3==2.0.0a1"
+      - name: Run gymnasium tests
+        run: poetry run pytest tests/test_classic_control_gymnasium.py
       - name: Run core tests with jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry run pytest tests/test_classic_control_jax.py
@@ -41,7 +50,7 @@ jobs:
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry run pytest tests/test_jax_compute_gae.py
       - name: Install tuner dependencies
-        run: poetry install --with optuna
+        run: poetry install -E "pytest optuna"
       - name: Run tuner tests
         run: poetry run pytest tests/test_tuner.py
 
@@ -50,7 +59,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.2]
+        poetry-version: [1.3]
         os: [ubuntu-22.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -65,14 +74,18 @@ jobs:
 
       # atari tests
       - name: Install atari dependencies
-        run: poetry install --with pytest,atari
+        run: poetry install -E "pytest atari"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run atari tests
         run: poetry run pytest tests/test_atari.py
       - name: Install jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
-        run: poetry install --with jax
+        run: poetry install -E "pytest atari jax"
+      - name: Run gymnasium migration dependencies
+        run: poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-license]==0.28.1"  "ale-py==0.8.1" 
+      - name: Run gymnasium tests
+        run: poetry run pytest tests/test_atari_gymnasium.py
       - name: Run core tests with jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry run pytest tests/test_atari_jax.py
@@ -82,7 +95,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.2]
+        poetry-version: [1.3]
         os: [ubuntu-22.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -97,9 +110,9 @@ jobs:
 
       # pybullet tests
       - name: Install core dependencies
-        run: poetry install --with pytest
+        run: poetry install -E pytest
       - name: Install pybullet dependencies
-        run: poetry install --with pybullet
+        run: poetry install -E "pytest pybullet"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run pybullet tests
@@ -110,7 +123,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.2]
+        poetry-version: [1.3]
         os: [ubuntu-22.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -125,7 +138,7 @@ jobs:
 
       # procgen tests
       - name: Install core dependencies
-        run: poetry install --with pytest,procgen
+        run: poetry install -E "pytest procgen"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run pybullet tests
@@ -136,7 +149,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.2]
+        poetry-version: [1.3]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
@@ -151,7 +164,7 @@ jobs:
 
       # mujoco tests
       - name: Install dependencies
-        run: poetry install --with pytest,mujoco,dm_control
+        run: poetry install -E "pytest mujoco dm_control"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: install mujoco dependencies
@@ -161,13 +174,13 @@ jobs:
         continue-on-error: true # MUJOCO_GL=osmesa results in `free(): invalid pointer`
         run: poetry run pytest tests/test_mujoco.py
 
-  test-mujoco-envs-windows-mac:
+  test-mujoco-gymnasium-envs:
     strategy:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.2]
-        os: [macos-latest, windows-latest]
+        poetry-version: [1.3]
+        os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -181,19 +194,78 @@ jobs:
 
       # mujoco tests
       - name: Install dependencies
-        run: poetry install --with pytest,mujoco,dm_control
+        run: poetry install -E "pytest mujoco dm_control"
+      - name: Downgrade setuptools
+        run: poetry run pip install setuptools==59.5.0
+      - name: Run gymnasium migration dependencies
+        run: poetry run pip install "stable_baselines3==2.0.0a1"
+      - name: install mujoco dependencies
+        run: |
+          sudo apt-get update && sudo apt-get -y install libgl1-mesa-glx libosmesa6 libglfw3
+      - name: Run mujoco tests
+        continue-on-error: true # MUJOCO_GL=osmesa results in `free(): invalid pointer`
+        run: poetry run pytest tests/test_mujoco_gymnasium.py
+
+  test-mujoco-envs-mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+        poetry-version: [1.3]
+        os: [macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+
+      # mujoco tests
+      - name: Install dependencies
+        run: poetry install -E "pytest mujoco dm_control jax"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run mujoco tests
         run: poetry run pytest tests/test_mujoco.py
 
+  test-mujoco-gymnasium-mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+        poetry-version: [1.3]
+        os: [macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+
+      # mujoco tests
+      - name: Install dependencies
+        run: poetry install -E "pytest mujoco dm_control jax"
+      - name: Downgrade setuptools
+        run: poetry run pip install setuptools==59.5.0
+      - name: Run gymnasium migration dependencies
+        run: poetry run pip install "stable_baselines3==2.0.0a1"
+      - name: Run mujoco tests
+        run: poetry run pytest tests/test_mujoco_gymnasium.py
 
   test-mujoco_py-envs:
     strategy:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.2]
+        poetry-version: [1.3]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
@@ -208,7 +280,7 @@ jobs:
 
       # mujoco_py tests
       - name: Install dependencies
-        run: poetry install --with pytest,pybullet,mujoco_py,mujoco,jax
+        run: poetry install -E "pytest pybullet mujoco_py mujoco jax"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: install mujoco_py dependencies
@@ -221,12 +293,47 @@ jobs:
       - name: Run mujoco_py tests
         run: poetry run pytest tests/test_mujoco_py.py
 
+  test-mujoco_py-envs-gymnasium:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+        poetry-version: [1.3]
+        os: [ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.0.0
+        with:
+          poetry-version: ${{ matrix.poetry-version }}
+
+      # mujoco_py tests
+      - name: Install dependencies
+        run: poetry install -E "pytest pybullet mujoco_py mujoco jax"
+      - name: Run gymnasium migration dependencies
+        run: poetry run pip install "stable_baselines3==2.0.0a1"
+      - name: Downgrade setuptools
+        run: poetry run pip install setuptools==59.5.0
+      - name: install mujoco_py dependencies
+        run: |
+          sudo apt-get update && sudo apt-get -y install wget unzip software-properties-common \
+            libgl1-mesa-dev \
+            libgl1-mesa-glx \
+            libglew-dev \
+            libosmesa6-dev patchelf
+      - name: Run mujoco_py tests
+        run: poetry run pytest tests/test_mujoco_py_gymnasium.py
+
   test-envpool-envs:
     strategy:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.2]
+        poetry-version: [1.3]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
@@ -241,7 +348,7 @@ jobs:
 
       # envpool tests
       - name: Install envpool dependencies
-        run: poetry install --with pytest,envpool,jax
+        run: poetry install -E "pytest envpool jax"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run envpool tests
@@ -252,7 +359,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.2]
+        poetry-version: [1.3]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
@@ -267,7 +374,7 @@ jobs:
 
       # atari multigpu tests
       - name: Install atari dependencies
-        run: poetry install --with pytest,atari
+        run: poetry install -E "pytest atari"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run atari tests
@@ -278,7 +385,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.2]
+        poetry-version: [1.3]
         os: [ubuntu-22.04, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -293,7 +400,7 @@ jobs:
 
       # pettingzoo tests
       - name: Install pettingzoo dependencies
-        run: poetry install --with pytest,pettingzoo,atari
+        run: poetry install -E "pytest pettingzoo atari"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Install ROMs

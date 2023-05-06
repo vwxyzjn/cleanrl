@@ -45,6 +45,30 @@ poetry install
     default = true
     ```
 
+
+## Install via `pip`
+
+While we recommend using `poetry` to manage environments and dependencies, the traditional `requirements.txt` are available:
+
+```bash
+# core dependencies
+pip install -r requirements/requirements.txt
+
+# optional dependencies
+pip install -r requirements/requirements-atari.txt
+pip install -r requirements/requirements-pybullet.txt
+pip install -r requirements/requirements-mujoco.txt
+pip install -r requirements/requirements-mujoco_py.txt
+pip install -r requirements/requirements/requirements-mujoco.txt
+pip install -r requirements/requirements-procgen.txt
+pip install -r requirements/requirements-envpool.txt
+pip install -r requirements/requirements-pettingzoo.txt
+pip install -r requirements/requirements-jax.txt
+pip install -r requirements/requirements-docs.txt
+pip install -r requirements/requirements-cloud.txt
+```
+
+
 ## Optional Dependencies
 
 CleanRL makes it easy to install optional dependencies for common RL environments
@@ -74,28 +98,16 @@ procgen = "^0.10.7"
 You can install them using the following command
 
 ```bash
-poetry install --with atari
-poetry install --with pybullet
-poetry install --with mujoco_py
-poetry install --with procgen
-poetry install --with envpool
-poetry install --with pettingzoo
-poetry install --with jax
-poetry install --with optuna
-poetry install --with docs
-poetry install --with cloud
-```
-
-## Install via `pip`
-
-While we recommend using `poetry` to manage environments and dependencies, the traditional `requirements.txt` are available:
-
-```bash
-pip install -r requirements/requirements.txt
-pip install -r requirements/requirements-atari.txt
-pip install -r requirements/requirements-pybullet.txt
-pip install -r requirements/requirements-mujoco_py.txt
-pip install -r requirements/requirements-procgen.txt
-pip install -r requirements/requirements-envpool.txt
-pip install -r requirements/requirements-pettingzoo.txt
+poetry install -E atari
+poetry install -E pybullet
+poetry install -E mujoco
+poetry install -E mujoco_py
+poetry install -E dm_control
+poetry install -E procgen
+poetry install -E envpool
+poetry install -E pettingzoo
+poetry install -E jax
+poetry install -E optuna
+poetry install -E docs
+poetry install -E cloud
 ```

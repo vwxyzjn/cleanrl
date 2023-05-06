@@ -12,8 +12,6 @@ RUN pip install poetry --upgrade
 COPY pyproject.toml pyproject.toml
 COPY poetry.lock poetry.lock
 RUN poetry install
-RUN poetry install --with atari
-RUN poetry install --with pybullet
 
 # install mujoco_py
 RUN apt-get -y install wget unzip software-properties-common \
@@ -21,7 +19,7 @@ RUN apt-get -y install wget unzip software-properties-common \
     libgl1-mesa-glx \
     libglew-dev \
     libosmesa6-dev patchelf
-RUN poetry install --with mujoco_py
+RUN poetry install -E "atari mujoco_py pybullet"
 RUN poetry run python -c "import mujoco_py"
 
 COPY entrypoint.sh /usr/local/bin/

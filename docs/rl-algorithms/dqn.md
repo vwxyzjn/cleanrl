@@ -35,10 +35,26 @@ The [dqn_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_at
 ### Usage
 
 ```bash
-poetry install --with atari
+poetry install -E atari
 python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
 ```
+
+=== "poetry"
+
+    ```bash
+    poetry install -E atari
+    poetry run python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
+    poetry run python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-atari.txt
+    python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
+    python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
+    ```
 
 
 ### Explanation of the logged metrics
@@ -81,8 +97,8 @@ with the Bellman update target is $y = r + \gamma \, Q^{'}(s', a')$ and the repl
     - `dqn_atari.py` uses `--end-e=0.01` (the final exploration epsilon) whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--end-e=0.1`.
     - `dqn_atari.py` uses `--exploration-fraction=0.1` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--exploration-fraction=0.02` (all corresponds to 250000 steps or 1M frames being the frame that epsilon is annealed to `--end-e=0.1` ).
     - `dqn_atari.py` handles truncation and termination properly like (Mnih et al., 2015)[^1] by using SB3's replay buffer's `handle_timeout_termination=True`.
-1. `dqn_atari.py` use a self-contained evaluation scheme: `dqn_atari.py` reports the episodic returns obtained throughout training, whereas (Mnih et al., 2015)[^1] is trained with `--end-e=0.1` but reported episodic returns using a separate evaluation process with `--end-e=0.01` (See "Evaluation procedure" under "METHODS" on page 6).
-
+2. `dqn_atari.py` use a self-contained evaluation scheme: `dqn_atari.py` reports the episodic returns obtained throughout training, whereas (Mnih et al., 2015)[^1] is trained with `--end-e=0.1` but reported episodic returns using a separate evaluation process with `--end-e=0.01` (See "Evaluation procedure" under "METHODS" on page 6).
+3. `dqn_atary.py` implements target network updates as Polyak updates. Compared to the original implementation in (Mnih et al., 2015)[^1], this version allows soft updates of the target network weights with `--tau` (update coefficient) values of less than 1 (i.e. `--tau=0.9`). Note that by default `--tau=1.0` is used to be consistent with (Mnih et al., 2015)[^1].
 
 ### Experiment results
 
@@ -130,9 +146,19 @@ The [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py) has 
 
 ### Usage
 
-```bash
-python cleanrl/dqn.py --env-id CartPole-v1
-```
+
+
+=== "poetry"
+
+    ```bash
+    poetry run python cleanrl/dqn.py --env-id CartPole-v1
+    ```
+
+=== "pip"
+
+    ```bash
+    python cleanrl/dqn.py --env-id CartPole-v1
+    ```
 
 
 ### Explanation of the logged metrics
@@ -218,12 +244,26 @@ The [dqn_atari_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dq
 
 ### Usage
 
-```bash
-poetry install --with atari,jax
-poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-python cleanrl/dqn_atari_jax.py --env-id BreakoutNoFrameskip-v4
-python cleanrl/dqn_atari_jax.py --env-id PongNoFrameskip-v4
-```
+
+=== "poetry"
+
+    ```bash
+    poetry install -E "atari jax"
+    poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    poetry run python cleanrl/dqn_atari_jax.py --env-id BreakoutNoFrameskip-v4
+    poetry run python cleanrl/dqn_atari_jax.py --env-id PongNoFrameskip-v4
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-atari.txt
+    pip install -r requirements/requirements-jax.txt
+    pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    python cleanrl/dqn_atari_jax.py --env-id BreakoutNoFrameskip-v4
+    python cleanrl/dqn_atari_jax.py --env-id PongNoFrameskip-v4
+    ```
+
 
 ???+ warning
 
@@ -288,6 +328,22 @@ Tracked experiments and game play videos:
 ```bash
 python cleanrl/dqn_jax.py --env-id CartPole-v1
 ```
+
+=== "poetry"
+
+    ```bash
+    poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    poetry run python cleanrl/dqn_jax.py --env-id CartPole-v1
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-jax.txt
+    pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    python cleanrl/dqn_jax.py --env-id CartPole-v1
+    ```
+
 
 ### Explanation of the logged metrics
 
