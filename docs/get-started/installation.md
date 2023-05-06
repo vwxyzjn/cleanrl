@@ -59,7 +59,7 @@ pip install -r requirements/requirements-atari.txt
 pip install -r requirements/requirements-pybullet.txt
 pip install -r requirements/requirements-mujoco.txt
 pip install -r requirements/requirements-mujoco_py.txt
-pip install -r requirements/requirements/requirements-mujoco.txt
+pip install -r requirements/requirements-mujoco.txt
 pip install -r requirements/requirements-procgen.txt
 pip install -r requirements/requirements-envpool.txt
 pip install -r requirements/requirements-pettingzoo.txt
