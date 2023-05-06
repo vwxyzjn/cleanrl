@@ -351,7 +351,7 @@ jobs:
 
       # envpool tests
       - name: Install envpool dependencies
-        run: poetry install -E "pytest envpool jax"
+        run: poetry install -E "pytest envpool jax ppo_atari_envpool_xla_jax_scan"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run envpool tests
