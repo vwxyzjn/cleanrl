@@ -1,7 +1,7 @@
 import random
 from typing import Callable
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
 
@@ -22,7 +22,7 @@ def evaluate(
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
 
-    obs = envs.reset()
+    obs, _ = envs.reset()
     episodic_returns = []
     while len(episodic_returns) < eval_episodes:
         if random.random() < epsilon:
@@ -30,9 +30,11 @@ def evaluate(
         else:
             q_values = model(torch.Tensor(obs).to(device))
             actions = torch.argmax(q_values, dim=1).cpu().numpy()
-        next_obs, _, _, infos = envs.step(actions)
-        for info in infos:
-            if "episode" in info.keys():
+        next_obs, _, _, _, infos = envs.step(actions)
+        if "final_info" in infos:
+            for info in infos["final_info"]:
+                if "episode" not in info:
+                    continue
                 print(f"eval_episode={len(episodic_returns)}, episodic_return={info['episode']['r']}")
                 episodic_returns += [info["episode"]["r"]]
         obs = next_obs
