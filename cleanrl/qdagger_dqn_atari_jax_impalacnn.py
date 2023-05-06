@@ -13,7 +13,7 @@ os.environ[
 
 import flax
 import flax.linen as nn
-import gym
+import gymnasium as gym
 import jax
 import jax.numpy as jnp
 import numpy as np
@@ -98,11 +98,12 @@ def parse_args():
 
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
-        env = gym.make(env_id)
+        if capture_video and idx == 0:
+            env = gym.make(env_id, render_mode="rgb_array")
+            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+        else:
+            env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
-        if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         env = NoopResetEnv(env, noop_max=30)
         env = MaxAndSkipEnv(env, skip=4)
         env = EpisodicLifeEnv(env)
@@ -112,9 +113,8 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         env = gym.wrappers.ResizeObservation(env, (84, 84))
         env = gym.wrappers.GrayScaleObservation(env)
         env = gym.wrappers.FrameStack(env, 4)
-        env.seed(seed)
         env.action_space.seed(seed)
-        env.observation_space.seed(seed)
+
         return env
 
     return thunk
@@ -180,6 +180,15 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
 
 
 if __name__ == "__main__":
+    import stable_baselines3 as sb3
+
+    if sb3.__version__ < "2.0":
+        raise ValueError(
+            """Ongoing migration: run the following command to install the new dependencies:
+
+poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-license]==0.28.1"  "ale-py==0.8.1" 
+"""
+        )
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
@@ -210,7 +219,7 @@ if __name__ == "__main__":
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
-    obs = envs.reset()
+    obs, _ = envs.reset(seed=args.seed)
 
     q_network = QNetwork(channelss=(16, 32, 32), action_dim=envs.single_action_space.n)
 
@@ -254,10 +263,10 @@ if __name__ == "__main__":
         envs.single_action_space,
         "cpu",
         optimize_memory_usage=True,
-        handle_timeout_termination=True,
+        handle_timeout_termination=False,
     )
     
-    obs = envs.reset()
+    obs, _ = envs.reset(seed=args.seed)
     for global_step in track(range(args.teacher_steps), description="filling teacher's replay buffer"):
         epsilon = linear_schedule(args.start_e, args.end_e, args.teacher_steps, global_step)
         if random.random() < epsilon:
@@ -266,12 +275,13 @@ if __name__ == "__main__":
             q_values = teacher_model.apply(teacher_params, obs)
             actions = q_values.argmax(axis=-1)
             actions = jax.device_get(actions)
-        next_obs, rewards, dones, infos = envs.step(actions)
+        # next_obs, rewards, dones, infos = envs.step(actions)
+        next_obs, rewards, terminated, truncated, infos = envs.step(actions)
         real_next_obs = next_obs.copy()
-        for idx, d in enumerate(dones):
+        for idx, d in enumerate(truncated):
             if d:
                 real_next_obs[idx] = infos[idx]["terminal_observation"]
-        teacher_rb.add(obs, real_next_obs, actions, rewards, dones, infos)
+        teacher_rb.add(obs, real_next_obs, actions, rewards, terminated, infos)
         obs = next_obs
 
 
@@ -344,8 +354,9 @@ if __name__ == "__main__":
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, False, run_name)])
-    obs = envs.reset()
+    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
+
+    obs, _ = envs.reset(seed=args.seed)
     episodic_returns = deque(maxlen=10)
     for global_step in track(range(args.total_timesteps), description="online student training"):
         global_step += args.offline_steps
@@ -360,11 +371,15 @@ if __name__ == "__main__":
             actions = jax.device_get(actions)
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards, dones, infos = envs.step(actions)
+        # next_obs, rewards, dones, infos = envs.step(actions)
+        next_obs, rewards, terminated, truncated, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        for info in infos:
-            if "episode" in info.keys():
+        if "final_info" in infos:
+            for info in infos["final_info"]:
+                # Skip the envs that are not done
+                if "episode" not in info:
+                    continue
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                 episodic_returns.append(info["episode"]["r"])
@@ -374,10 +389,10 @@ if __name__ == "__main__":
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
         real_next_obs = next_obs.copy()
-        for idx, d in enumerate(dones):
+        for idx, d in enumerate(truncated):
             if d:
                 real_next_obs[idx] = infos[idx]["terminal_observation"]
-        rb.add(obs, real_next_obs, actions, rewards, dones, infos)
+        rb.add(obs, real_next_obs, actions, rewards, terminated, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
