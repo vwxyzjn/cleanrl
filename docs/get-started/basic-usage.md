@@ -44,6 +44,15 @@ the CleanRL script under the poetry virtual environments.
     **We will assume to run other commands (e.g. `tensorboard`) in the documentation within the poetry's shell.**
 
 
+!!! note 
+Currently, `ddpg_continuous_action_jax.py`, `ddpg_continuous_action.py` have been ported to gymnasium. 
+
+Please note that, `stable-baselines3` version `1.2` does not support `gymnasium`. To use these scripts, please install the `alpha1` version like, 
+
+```
+poetry run pip install sb3==2.0.0a1
+```
+
 !!! warning
 
     If you are using NVIDIA ampere GPUs (e.g., 3060 TI), you might meet the following error
