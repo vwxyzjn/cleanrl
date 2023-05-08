@@ -1,9 +1,9 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/dqn/#dqn_atari_jaxpy
 import argparse
-from collections import deque
 import os
 import random
 import time
+from collections import deque
 from distutils.util import strtobool
 from typing import Sequence
 
@@ -19,6 +19,10 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 from flax.training.train_state import TrainState
+from huggingface_hub import hf_hub_download
+
+# from tqdm import tqdm
+from rich.progress import track
 from stable_baselines3.common.atari_wrappers import (
     ClipRewardEnv,
     EpisodicLifeEnv,
@@ -28,11 +32,10 @@ from stable_baselines3.common.atari_wrappers import (
 )
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
-# from tqdm import tqdm
-from rich.progress import track
-from huggingface_hub import hf_hub_download
+
 from cleanrl.dqn_atari_jax import QNetwork as TeacherModel
 from cleanrl_utils.evals.dqn_jax_eval import evaluate
+
 
 def parse_args():
     # fmt: off
@@ -123,6 +126,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 # ALGO LOGIC: initialize agent here:
 class ResidualBlock(nn.Module):
     channels: int
+
     @nn.compact
     def __call__(self, x):
         inputs = x
@@ -138,8 +142,10 @@ class ResidualBlock(nn.Module):
         )(x)
         return x + inputs
 
+
 class ConvSequence(nn.Module):
     channels: int
+
     @nn.compact
     def __call__(self, x):
         x = nn.Conv(
@@ -265,7 +271,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         optimize_memory_usage=True,
         handle_timeout_termination=False,
     )
-    
+
     obs, _ = envs.reset(seed=args.seed)
     for global_step in track(range(args.teacher_steps), description="filling teacher's replay buffer"):
         epsilon = linear_schedule(args.start_e, args.end_e, args.teacher_steps, global_step)
@@ -275,7 +281,6 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
             q_values = teacher_model.apply(teacher_params, obs)
             actions = q_values.argmax(axis=-1)
             actions = jax.device_get(actions)
-        # next_obs, rewards, dones, infos = envs.step(actions)
         next_obs, rewards, terminated, truncated, infos = envs.step(actions)
         real_next_obs = next_obs.copy()
         for idx, d in enumerate(truncated):
@@ -284,12 +289,9 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         teacher_rb.add(obs, real_next_obs, actions, rewards, terminated, infos)
         obs = next_obs
 
-
-
     def kl_divergence_with_logits(target_logits, prediction_logits):
         """Implementation of on-policy distillation loss."""
-        out = -nn.softmax(target_logits) * (nn.log_softmax(prediction_logits)
-                                            - nn.log_softmax(target_logits))
+        out = -nn.softmax(target_logits) * (nn.log_softmax(prediction_logits) - nn.log_softmax(target_logits))
         return jnp.sum(out)
 
     @jax.jit
@@ -309,10 +311,11 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
             overall_loss = q_loss + distill_coeff * distill_loss
             return overall_loss, (q_loss, q_pred, distill_loss)
 
-        (loss_value, (q_loss, q_pred, distill_loss)), grads = jax.value_and_grad(loss, has_aux=True)(q_state.params, next_q_value, teacher_q_values, distill_coeff)
+        (loss_value, (q_loss, q_pred, distill_loss)), grads = jax.value_and_grad(loss, has_aux=True)(
+            q_state.params, next_q_value, teacher_q_values, distill_coeff
+        )
         q_state = q_state.apply_gradients(grads=grads)
         return loss_value, q_loss, q_pred, distill_loss, q_state
-
 
     # offline training phase: train the student model using the qdagger loss
     for global_step in track(range(args.offline_steps), description="offline student training"):
@@ -350,7 +353,15 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
             writer.add_scalar("charts/offline/avg_episodic_return", np.mean(episodic_returns), global_step)
 
     # TODO: question: do we need to start the student rb from scratch?
-    rb = teacher_rb
+    # rb = teacher_rb
+    rb = ReplayBuffer(
+        args.buffer_size,
+        envs.single_observation_space,
+        envs.single_action_space,
+        "cpu",
+        optimize_memory_usage=True,
+        handle_timeout_termination=False,
+    )
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
@@ -358,11 +369,11 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
 
     obs, _ = envs.reset(seed=args.seed)
     episodic_returns = deque(maxlen=10)
+    # online training phase
     for global_step in track(range(args.total_timesteps), description="online student training"):
         global_step += args.offline_steps
         # ALGO LOGIC: put action logic here
-        # # TODO: question: do we need to use epsilon greedy here?
-        # epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
+        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
         if random.random() < epsilon:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
         else:
@@ -371,7 +382,6 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
             actions = jax.device_get(actions)
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        # next_obs, rewards, dones, infos = envs.step(actions)
         next_obs, rewards, terminated, truncated, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
@@ -413,7 +423,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
                     data.next_observations.numpy(),
                     data.rewards.flatten().numpy(),
                     data.dones.flatten().numpy(),
-                    distill_coeff
+                    distill_coeff,
                 )
 
                 if global_step % 100 == 0:
