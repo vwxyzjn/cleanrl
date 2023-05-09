@@ -188,7 +188,6 @@ if __name__ == "__main__":
     next_obs = torch.Tensor(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
     num_updates = args.total_timesteps // args.batch_size
-    video_filenames = set()
 
     for update in range(1, num_updates + 1):
         # Annealing the rate if instructed to do so.
@@ -322,11 +321,12 @@ if __name__ == "__main__":
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
-        if args.track and args.capture_video:
-            for filename in os.listdir(f"videos/{run_name}"):
-                if filename not in video_filenames and filename.endswith(".mp4"):
-                    wandb.log({f"videos": wandb.Video(f"videos/{run_name}/{filename}")})
-                    video_filenames.add(filename)
-
     envs.close()
+
+    video_filenames = set()
+    if args.track and args.capture_video:
+        for filename in os.listdir(f"videos/{run_name}"):
+            if filename not in video_filenames and filename.endswith(".mp4"):
+                wandb.log({f"videos": wandb.Video(f"videos/{run_name}/{filename}")})
+                video_filenames.add(filename)
     writer.close()
