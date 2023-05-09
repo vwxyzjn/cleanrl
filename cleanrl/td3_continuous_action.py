@@ -137,7 +137,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             sync_tensorboard=True,
             config=vars(args),
             name=run_name,
-            monitor_gym=True,
+            # monitor_gym=True, # no longer works for gymnasium
             save_code=True,
         )
     writer = SummaryWriter(f"runs/{run_name}")
@@ -145,6 +145,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
+    video_filenames = set()
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -181,7 +182,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
-    obs, info = envs.reset(seed=args.seed)
+    obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
@@ -196,8 +197,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        for info in infos:
-            if "episode" in info.keys():
+        if "final_info" in infos:
+            for info in infos["final_info"]:
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
@@ -222,7 +223,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 ) * target_actor.action_scale
 
                 next_state_actions = (target_actor(data.next_observations) + clipped_noise).clamp(
-                    envs.single_action_space.low[0], envs.single_action_space.high[0]
+                    envs.single_action_space.low, envs.single_action_space.high
                 )
                 qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                 qf2_next_target = qf2_target(data.next_observations, next_state_actions)
@@ -265,4 +266,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
     envs.close()
+
+    if args.track and args.capture_video:
+        for filename in os.listdir(f"videos/{run_name}"):
+            if filename not in video_filenames and filename.endswith(".mp4"):
+                wandb.log({f"videos": wandb.Video(f"videos/{run_name}/{filename}")})
+                video_filenames.add(filename)
     writer.close()
