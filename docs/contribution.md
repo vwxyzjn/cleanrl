@@ -77,7 +77,7 @@ Importantly, **regardless of the slight difference in performance-impacting chan
 Given a new feature, we create a PR and then run the benchmark experiments through [`benchmark.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl_utils/benchmark.py), such as the following:
 
 ```bash
-poetry install -E "docs pybullet mujoco_py"
+poetry install -E "docs mujoco_py"
 python -c "import mujoco_py"
 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 \

@@ -249,7 +249,7 @@ The [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
     poetry install -E "mujoco dm_control"
     python cleanrl/ppo_continuous_action.py --env-id dm_control/cartpole-balance-v0
     # backwards compatibility with mujoco v2 environments
-    poetry install -E mujoco_py
+    poetry install -E mujoco_py  # only works in Linux
     python cleanrl/ppo_continuous_action.py --env-id Hopper-v2
     ```
 
