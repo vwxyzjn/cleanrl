@@ -93,34 +93,6 @@ jobs:
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry run pytest tests/test_atari_jax_gymnasium.py
 
-  test-pybullet-envs:
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [3.8]
-        poetry-version: [1.3]
-        os: [ubuntu-22.04, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Run image
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ matrix.poetry-version }}
-
-      # pybullet tests
-      - name: Install core dependencies
-        run: poetry install -E pytest
-      - name: Install pybullet dependencies
-        run: poetry install -E "pytest pybullet"
-      - name: Downgrade setuptools
-        run: poetry run pip install setuptools==59.5.0
-      - name: Run pybullet tests
-        run: poetry run pytest tests/test_pybullet.py
-
   test-procgen-envs:
     strategy:
       fail-fast: false
@@ -144,7 +116,7 @@ jobs:
         run: poetry install -E "pytest procgen"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
-      - name: Run pybullet tests
+      - name: Run procgen tests
         run: poetry run pytest tests/test_procgen.py
 
   test-mujoco-envs:
@@ -283,7 +255,7 @@ jobs:
 
       # mujoco_py tests
       - name: Install dependencies
-        run: poetry install -E "pytest pybullet mujoco_py mujoco jax"
+        run: poetry install -E "pytest mujoco_py mujoco jax"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: install mujoco_py dependencies
@@ -316,7 +288,7 @@ jobs:
 
       # mujoco_py tests
       - name: Install dependencies
-        run: poetry install -E "pytest pybullet mujoco_py mujoco jax"
+        run: poetry install -E "pytest mujoco_py mujoco jax"
       - name: Run gymnasium migration dependencies
         run: poetry run pip install "stable_baselines3==2.0.0a1"
       - name: Downgrade setuptools
@@ -389,7 +361,7 @@ jobs:
       matrix:
         python-version: [3.8]
         poetry-version: [1.3]
-        os: [ubuntu-22.04, macos-latest]
+        os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
