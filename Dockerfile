@@ -19,7 +19,7 @@ RUN apt-get -y install wget unzip software-properties-common \
     libgl1-mesa-glx \
     libglew-dev \
     libosmesa6-dev patchelf
-RUN poetry install -E "atari mujoco_py pybullet"
+RUN poetry install -E "atari mujoco_py"
 RUN poetry run python -c "import mujoco_py"
 
 COPY entrypoint.sh /usr/local/bin/

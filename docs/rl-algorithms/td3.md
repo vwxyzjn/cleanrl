@@ -39,9 +39,9 @@ The [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 
     ```bash
     poetry install
-    poetry install -E pybullet
+    poetry install -E mujoco
     poetry run python cleanrl/td3_continuous_action.py --help
-    poetry run python cleanrl/td3_continuous_action.py --env-id HopperBulletEnv-v0
+    poetry run python cleanrl/td3_continuous_action.py --env-id Hopper-v4
     poetry install -E mujoco_py # only works in Linux
     poetry run python cleanrl/td3_continuous_action.py --env-id Hopper-v2
     ```
@@ -49,10 +49,10 @@ The [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 === "pip"
 
     ```bash
-    pip install -r requirements/requirements-pybullet.txt
+    pip install -r requirements/requirements-mujoco.txt
     python cleanrl/td3_continuous_action.py --help
-    python cleanrl/td3_continuous_action.py --env-id HopperBulletEnv-v0
-    pip install -r requirements/requirements-mujoco_py.txt # only works in Linux, you have to pick either `mujoco` or `mujoco_py`
+    python cleanrl/td3_continuous_action.py --env-id Hopper-v4
+    pip install -r requirements/requirements-mujoco_py.txt  # only works in Linux,
     python cleanrl/td3_continuous_action.py --env-id Hopper-v2
     ```
 
@@ -191,9 +191,9 @@ The [td3_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/maste
 
     ```bash
     poetry install
-    poetry install -E "pybullet jax"
+    poetry install -E "mujoco jax"
     poetry run python cleanrl/td3_continuous_action_jax.py --help
-    poetry run python cleanrl/td3_continuous_action_jax.py --env-id HopperBulletEnv-v0
+    poetry run python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v4
     poetry install -E mujoco_py # only works in Linux
     poetry run python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v2
     ```
@@ -201,11 +201,11 @@ The [td3_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/maste
 === "pip"
 
     ```bash
-    pip install -r requirements/requirements-pybullet.txt
+    pip install -r requirements/requirements-mujoco.txt  
     pip install -r requirements/requirements-jax.txt
     python cleanrl/td3_continuous_action_jax.py --help
-    python cleanrl/td3_continuous_action_jax.py --env-id HopperBulletEnv-v0
-    pip install -r requirements/requirements-mujoco_py.txt # only works in Linux, you have to pick either `mujoco` or `mujoco_py`
+    python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v4
+    pip install -r requirements/requirements-mujoco_py.txt  # only works in Linux
     python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v2
     ```
 

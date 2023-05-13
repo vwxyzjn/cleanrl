@@ -32,16 +32,6 @@ python cleanrl/ppo.py --env-id CartPole-v1
 python cleanrl/c51.py --env-id CartPole-v1
 ```
 
-## PyBullet
-```
-poetry shell
-
-poetry install -E pybullet
-python cleanrl/td3_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
-python cleanrl/ddpg_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
-python cleanrl/sac_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
-```
-
 ## Procgen 
 ```
 poetry shell
