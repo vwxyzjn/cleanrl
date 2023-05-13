@@ -38,7 +38,7 @@ CleanRL only contains implementations of **online** deep reinforcement learning 
 ## Get started
 
 Prerequisites:
-* Python >=3.7.1,<3.10 (not yet 3.10)
+* Python >=3.7.1,<3.11
 * [Poetry 1.2.1+](https://python-poetry.org)
 
 To run experiments locally, give the following a try:
