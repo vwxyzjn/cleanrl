@@ -170,18 +170,18 @@ tests = ["ale_py", "multi_agent_ale_py"]
 
 [[package]]
 name = "awscli"
-version = "1.27.133"
+version = "1.27.132"
 description = "Universal Command Line Environment for AWS."
 category = "main"
 optional = true
 python-versions = ">= 3.7"
 files = [
-    {file = "awscli-1.27.133-py3-none-any.whl", hash = "sha256:16abef5789ae37b569e367d6f0cd1511c89041e28537bc1d612708ad71d16352"},
-    {file = "awscli-1.27.133.tar.gz", hash = "sha256:17ba1647af4bc63b481b74e4d5a7eba0646d8899c43ba2e93d8d6e897761764d"},
+    {file = "awscli-1.27.132-py3-none-any.whl", hash = "sha256:85e183827e2f89f7de2d3ccea2f4cf10dc48c763fabec1fd11546eca9324fd0e"},
+    {file = "awscli-1.27.132.tar.gz", hash = "sha256:cf1464b9dc1ffdee6c1e5f8e33cb9f5d0c7e1feb1e7638c8b437df3f6f40f186"},
 ]
 
 [package.dependencies]
-botocore = "1.29.133"
+botocore = "1.29.132"
 colorama = ">=0.2.5,<0.4.5"
 docutils = ">=0.10,<0.17"
 PyYAML = ">=3.10,<5.5"
@@ -201,18 +201,18 @@ files = [
 
 [[package]]
 name = "boto3"
-version = "1.26.133"
+version = "1.26.132"
 description = "The AWS SDK for Python"
 category = "main"
 optional = true
 python-versions = ">= 3.7"
 files = [
-    {file = "boto3-1.26.133-py3-none-any.whl", hash = "sha256:62285ecee7629a4388d55ae369536f759622d68d5b9a0ced7c58a0c1a409c0f7"},
-    {file = "boto3-1.26.133.tar.gz", hash = "sha256:8ff0af0b25266a01616396abc19eb34dc3d44bd867fa4158985924128b9034fb"},
+    {file = "boto3-1.26.132-py3-none-any.whl", hash = "sha256:e579b70028cdc4194fe92c745256b04880e7db39259a4c8a61b71117713d3c17"},
+    {file = "boto3-1.26.132.tar.gz", hash = "sha256:d45672571da9bf4ba130d525832013aef95aee83b1711e847ef7cdb54cc5ac41"},
 ]
 
 [package.dependencies]
-botocore = ">=1.29.133,<1.30.0"
+botocore = ">=1.29.132,<1.30.0"
 jmespath = ">=0.7.1,<2.0.0"
 s3transfer = ">=0.6.0,<0.7.0"
 
@@ -221,14 +221,14 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.29.133"
+version = "1.29.132"
 description = "Low-level, data-driven core of boto 3."
 category = "main"
 optional = true
 python-versions = ">= 3.7"
 files = [
-    {file = "botocore-1.29.133-py3-none-any.whl", hash = "sha256:b266185d7414a559952569005009a400de50af91fd3da44f05cf05b00946c4a7"},
-    {file = "botocore-1.29.133.tar.gz", hash = "sha256:7b38e540f73c921d8cb0ac72794072000af9e10758c04ba7f53d5629cc52fa87"},
+    {file = "botocore-1.29.132-py3-none-any.whl", hash = "sha256:422186c13406a2c2668e4b2d9070097b4b024a9290a6af2a8e21eb2bd17322d6"},
+    {file = "botocore-1.29.132.tar.gz", hash = "sha256:9b6d2b60325b815ff9123f172af83b7b866c8813088d969eeb9030fa189417f6"},
 ]
 
 [package.dependencies]
@@ -1910,7 +1910,7 @@ version = "1.0.preview4"
 description = ""
 category = "dev"
 optional = false
-python-versions = ">=3.7.1,<3.11"
+python-versions = ">=3.7.1"
 files = []
 develop = true
 
@@ -2851,14 +2851,14 @@ test = ["codecov (>=2.0.5)", "coverage (>=4.2)", "flake8 (>=3.0.4)", "pytest (>=
 
 [[package]]
 name = "nodeenv"
-version = "1.8.0"
+version = "1.7.0"
 description = "Node.js virtual environment builder"
 category = "dev"
 optional = false
 python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*"
 files = [
-    {file = "nodeenv-1.8.0-py2.py3-none-any.whl", hash = "sha256:df865724bb3c3adc86b3876fa209771517b0cfe596beff01a92700e0e8be4cec"},
-    {file = "nodeenv-1.8.0.tar.gz", hash = "sha256:d51e0c37e64fbf47d017feac3145cdbb58836d7eee8c6f6d3b6880c5456227d2"},
+    {file = "nodeenv-1.7.0-py2.py3-none-any.whl", hash = "sha256:27083a7b96a25f2f5e1d8cb4b6317ee8aeda3bdd121394e5ac54e498028a042e"},
+    {file = "nodeenv-1.7.0.tar.gz", hash = "sha256:e0e7f7dfb85fc5394c6fe1e8fa98131a2473e04311a45afb6508f7cf1836fa2b"},
 ]
 
 [package.dependencies]
@@ -2958,11 +2958,11 @@ files = [
 [package.dependencies]
 numpy = [
     {version = ">=1.21.0", markers = "python_version <= \"3.9\" and platform_system == \"Darwin\" and platform_machine == \"arm64\""},
+    {version = ">=1.21.2", markers = "python_version >= \"3.10\""},
+    {version = ">=1.21.4", markers = "python_version >= \"3.10\" and platform_system == \"Darwin\""},
     {version = ">=1.19.3", markers = "python_version >= \"3.6\" and platform_system == \"Linux\" and platform_machine == \"aarch64\" or python_version >= \"3.9\""},
     {version = ">=1.17.0", markers = "python_version >= \"3.7\""},
     {version = ">=1.17.3", markers = "python_version >= \"3.8\""},
-    {version = ">=1.21.2", markers = "python_version >= \"3.10\""},
-    {version = ">=1.21.4", markers = "python_version >= \"3.10\" and platform_system == \"Darwin\""},
 ]
 
 [[package]]
@@ -3155,9 +3155,9 @@ files = [
 [package.dependencies]
 numpy = [
     {version = ">=1.20.0", markers = "platform_machine == \"arm64\" and python_version < \"3.10\""},
+    {version = ">=1.21.0", markers = "python_version >= \"3.10\""},
     {version = ">=1.19.2", markers = "platform_machine == \"aarch64\" and python_version < \"3.10\""},
     {version = ">=1.17.3", markers = "platform_machine != \"aarch64\" and platform_machine != \"arm64\" and python_version < \"3.10\""},
-    {version = ">=1.21.0", markers = "python_version >= \"3.10\""},
 ]
 python-dateutil = ">=2.7.3"
 pytz = ">=2017.3"
@@ -3309,21 +3309,21 @@ files = [
 
 [[package]]
 name = "platformdirs"
-version = "3.5.1"
+version = "3.5.0"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a \"user data dir\"."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "platformdirs-3.5.1-py3-none-any.whl", hash = "sha256:e2378146f1964972c03c085bb5662ae80b2b8c06226c54b2ff4aa9483e8a13a5"},
-    {file = "platformdirs-3.5.1.tar.gz", hash = "sha256:412dae91f52a6f84830f39a8078cecd0e866cb72294a5c66808e74d5e88d251f"},
+    {file = "platformdirs-3.5.0-py3-none-any.whl", hash = "sha256:47692bc24c1958e8b0f13dd727307cff1db103fca36399f457da8e05f222fdc4"},
+    {file = "platformdirs-3.5.0.tar.gz", hash = "sha256:7954a68d0ba23558d753f73437c55f89027cf8f5108c19844d4b82e5af396335"},
 ]
 
 [package.dependencies]
 typing-extensions = {version = ">=4.5", markers = "python_version < \"3.8\""}
 
 [package.extras]
-docs = ["furo (>=2023.3.27)", "proselint (>=0.13)", "sphinx (>=6.2.1)", "sphinx-autodoc-typehints (>=1.23,!=1.23.4)"]
+docs = ["furo (>=2023.3.27)", "proselint (>=0.13)", "sphinx (>=6.1.3)", "sphinx-autodoc-typehints (>=1.23,!=1.23.4)"]
 test = ["appdirs (==1.4.4)", "covdefaults (>=2.3)", "pytest (>=7.3.1)", "pytest-cov (>=4)", "pytest-mock (>=3.10)"]
 
 [[package]]
@@ -5007,4 +5007,4 @@ pytest = ["pytest"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.11"
-content-hash = "35fa1060eb934e0873608e938cfa5370d24c003c01efe7afe2ee569c492396d1"
+content-hash = "3be9b08629c6409e476b85ce3fe61540842c4228c6073fcb045dee96ecbf70e2"
