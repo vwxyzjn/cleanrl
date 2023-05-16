@@ -223,7 +223,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 ) * target_actor.action_scale
 
                 next_state_actions = (target_actor(data.next_observations) + clipped_noise).clamp(
-                    envs.single_action_space.low, envs.single_action_space.high
+                    envs.single_action_space.low[0], envs.single_action_space.high[0]
                 )
                 qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                 qf2_next_target = qf2_target(data.next_observations, next_state_actions)
