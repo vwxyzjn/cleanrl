@@ -88,6 +88,8 @@ def parse_args():
     # QDagger specific arguments
     parser.add_argument("--teacher-policy-hf-repo", type=str, default="cleanrl/BreakoutNoFrameskip-v4-dqn_atari_jax-seed1",
         help="the huggingface repo of the teacher policy")
+    parser.add_argument("--teacher-eval-episodes", type=int, default=10,
+        help="the number of episodes to run the teacher policy evaluate")
     parser.add_argument("--teacher-steps", type=int, default=500000,
         help="the number of steps to run the teacher policy to generate the replay buffer")
     parser.add_argument("--offline-steps", type=int, default=500000,
@@ -252,7 +254,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         teacher_model_path,
         make_env,
         args.env_id,
-        eval_episodes=10,
+        eval_episodes=args.teacher_eval_episodes,
         run_name=f"{run_name}-teacher-eval",
         Model=TeacherModel,
         epsilon=0.05,
@@ -440,31 +442,31 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
             if global_step % args.target_network_frequency == 0:
                 q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, 1))
 
-    # if args.save_model:
-    #     model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
-    #     with open(model_path, "wb") as f:
-    #         f.write(flax.serialization.to_bytes(q_state.params))
-    #     print(f"model saved to {model_path}")
-    #     from cleanrl_utils.evals.dqn_jax_eval import evaluate
+    if args.save_model:
+        model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
+        with open(model_path, "wb") as f:
+            f.write(flax.serialization.to_bytes(q_state.params))
+        print(f"model saved to {model_path}")
+        from cleanrl_utils.evals.dqn_jax_eval import evaluate
 
-    #     episodic_returns = evaluate(
-    #         model_path,
-    #         make_env,
-    #         args.env_id,
-    #         eval_episodes=10,
-    #         run_name=f"{run_name}-eval",
-    #         Model=QNetwork,
-    #         epsilon=0.05,
-    #     )
-    #     for idx, episodic_return in enumerate(episodic_returns):
-    #         writer.add_scalar("eval/episodic_return", episodic_return, idx)
+        episodic_returns = evaluate(
+            model_path,
+            make_env,
+            args.env_id,
+            eval_episodes=10,
+            run_name=f"{run_name}-eval",
+            Model=QNetwork,
+            epsilon=0.05,
+        )
+        for idx, episodic_return in enumerate(episodic_returns):
+            writer.add_scalar("eval/episodic_return", episodic_return, idx)
 
-    #     if args.upload_model:
-    #         from cleanrl_utils.huggingface import push_to_hub
+        if args.upload_model:
+            from cleanrl_utils.huggingface import push_to_hub
 
-    #         repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
-    #         repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
-    #         push_to_hub(args, episodic_returns, repo_id, "DQN", f"runs/{run_name}", f"videos/{run_name}-eval")
+            repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
+            repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
+            push_to_hub(args, episodic_returns, repo_id, "Qdagger", f"runs/{run_name}", f"videos/{run_name}-eval")
 
     envs.close()
     writer.close()

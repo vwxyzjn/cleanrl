@@ -83,6 +83,8 @@ def parse_args():
     # QDagger specific arguments
     parser.add_argument("--teacher-policy-hf-repo", type=str, default="cleanrl/BreakoutNoFrameskip-v4-dqn_atari-seed1",
         help="the huggingface repo of the teacher policy")
+    parser.add_argument("--teacher-eval-episodes", type=int, default=10,
+        help="the number of episodes to run the teacher policy evaluate")
     parser.add_argument("--teacher-steps", type=int, default=500000,
         help="the number of steps to run the teacher policy to generate the replay buffer")
     parser.add_argument("--offline-steps", type=int, default=500000,
@@ -254,7 +256,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         teacher_model_path,
         make_env,
         args.env_id,
-        eval_episodes=10,
+        eval_episodes=args.teacher_eval_episodes,
         run_name=f"{run_name}-teacher-eval",
         Model=TeacherModel,
         epsilon=0.05,
@@ -452,7 +454,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
 
             repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
             repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
-            push_to_hub(args, episodic_returns, repo_id, "DQN", f"runs/{run_name}", f"videos/{run_name}-eval")
+            push_to_hub(args, episodic_returns, repo_id, "Qdagger", f"runs/{run_name}", f"videos/{run_name}-eval")
 
     envs.close()
     writer.close()
