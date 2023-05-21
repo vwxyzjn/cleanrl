@@ -287,7 +287,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         real_next_obs = next_obs.copy()
         for idx, d in enumerate(truncated):
             if d:
-                real_next_obs[idx] = infos[idx]["terminal_observation"]
+                real_next_obs[idx] = infos["final_observation"][idx]
         teacher_rb.add(obs, real_next_obs, actions, rewards, terminated, infos)
         obs = next_obs
 
@@ -403,7 +403,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         real_next_obs = next_obs.copy()
         for idx, d in enumerate(truncated):
             if d:
-                real_next_obs[idx] = infos[idx]["terminal_observation"]
+                real_next_obs[idx] = infos["final_observation"][idx]
         rb.add(obs, real_next_obs, actions, rewards, terminated, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
