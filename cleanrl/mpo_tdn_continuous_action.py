@@ -2,8 +2,8 @@ import argparse
 import os
 import random
 import time
-from typing import Any, Dict, List, NamedTuple, Optional, Union
 from distutils.util import strtobool
+from typing import Any, Dict, List, NamedTuple, Optional, Union
 
 import gym
 import numpy as np
@@ -168,7 +168,7 @@ class QNetwork(nn.Module):
         super().__init__()
         self.value_linear_1 = nn.Linear(
             env.single_observation_space.shape[0]+env.single_action_space.shape[0], 256
-        ) # 512 in deepmind jax implementation by default, 256 in example
+        )  # 512 in deepmind jax implementation by default, 256 in example
         self.layer_norm = nn.LayerNorm(256)
 
         self.value_linear_2 = nn.Linear(256, 256)  # 512 in deepmind jax implementation by default, 256 in example
@@ -235,10 +235,11 @@ class TDNReplayBuffer(ReplayBuffer):
         super().__init__(
             buffer_size,
             observation_space,
-            action_space, device,
+            action_space,
+            device,
             n_envs=n_envs,
             optimize_memory_usage=optimize_memory_usage,
-            handle_timeout_termination=handle_timeout_termination
+            handle_timeout_termination=handle_timeout_termination,
         )
 
         # Check that the replay buffer can fit into the memory
@@ -300,7 +301,7 @@ if __name__ == "__main__":
     args = parse_args()
     if args.headless_server:
         import pyvirtualdisplay
-        
+
         # Creates a virtual display for OpenAI gym
         pyvirtualdisplay.Display(visible=0, size=(1400, 900)).start()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -346,11 +347,11 @@ if __name__ == "__main__":
     log_eta = torch.tensor([10.0], requires_grad=True, device=device)
 
     # Here we only implement per dimension KL constraint
-    log_alpha_mean = torch.tensor([10.0]*envs.single_action_space.shape[0], requires_grad=True, device=device)
-    log_alpha_stddev = torch.tensor([1000.0]*envs.single_action_space.shape[0], requires_grad=True, device=device)
+    log_alpha_mean = torch.tensor([10.0] * envs.single_action_space.shape[0], requires_grad=True, device=device)
+    log_alpha_stddev = torch.tensor([1000.0] * envs.single_action_space.shape[0], requires_grad=True, device=device)
 
     # From MO-MPO (but it's not clear why): penalizing actions outside the range
-    log_penalty_temperature = torch.tensor([10.], requires_grad=True, device=device)
+    log_penalty_temperature = torch.tensor([10.0], requires_grad=True, device=device)
 
     envs.single_observation_space.dtype = np.float32
     rb = TDNReplayBuffer(
@@ -386,14 +387,14 @@ if __name__ == "__main__":
         else:
             taus = (
                 2 * torch.rand((1, envs.single_action_space.shape[0])) - 1
-            ) # /!\ Not sure if there are random actions in MPO implementation
+            )  # /!\ Not sure if there are random actions in MPO implementation
 
         next_obs, reward, terminated, truncated, infos = envs.step(taus.numpy())
         done = np.logical_or(terminated, truncated)
 
-        n_step_obs_rolling_buffer = np.concatenate([n_step_obs_rolling_buffer[1:], obs],0)
-        n_step_action_rolling_buffer = np.concatenate([n_step_action_rolling_buffer[1:], taus],0)
-        n_step_reward_rolling_buffer = np.concatenate([n_step_reward_rolling_buffer[1:], reward],0)
+        n_step_obs_rolling_buffer = np.concatenate([n_step_obs_rolling_buffer[1:], obs], 0)
+        n_step_action_rolling_buffer = np.concatenate([n_step_action_rolling_buffer[1:], taus], 0)
+        n_step_reward_rolling_buffer = np.concatenate([n_step_reward_rolling_buffer[1:], reward], 0)
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
         # Problems caused by https://github.com/openai/gym/blob/master/gym/vector/sync_vector_env.py
@@ -401,9 +402,9 @@ if __name__ == "__main__":
         for idx, d in enumerate(done):
             if d:
                 real_next_obs[idx] = infos["final_observation"][idx]
-        
+
         if step_since_last_done >= args.n_step - 1:
-            n_step_discounted_reward = (n_step_reward_rolling_buffer*n_step_gammas).sum()
+            n_step_discounted_reward = (n_step_reward_rolling_buffer * n_step_gammas).sum()
             rb.add(
                 n_step_obs_rolling_buffer[0],
                 real_next_obs,
@@ -411,7 +412,7 @@ if __name__ == "__main__":
                 n_step_discounted_reward,
                 done,
                 np.ones((1,)) * args.n_step,
-                [{'TimeLimit.truncated': truncated[0]}]
+                [{'TimeLimit.truncated': truncated[0]}],
             )
 
         step_since_last_done += 1
@@ -443,7 +444,7 @@ if __name__ == "__main__":
                             n_step_discounted_reward,
                             done,
                             np.ones((1,)) * (args.n_step - i),
-                            [{'TimeLimit.truncated': truncated[0]}]
+                            [{'TimeLimit.truncated': truncated[0]}],
                         )
                 else:
                     # Case where env ends before n_step
@@ -457,9 +458,9 @@ if __name__ == "__main__":
                             n_step_discounted_reward,
                             done,
                             np.ones((1,)) * (step_since_last_done - i),
-                            [{'TimeLimit.truncated': truncated[0]}]
+                            [{'TimeLimit.truncated': truncated[0]}],
                         )
-                    
+
                 step_since_last_done = 0
                 n_step_obs_rolling_buffer = np.zeros((args.n_step,) + envs.single_observation_space.shape)
                 n_step_action_rolling_buffer = np.zeros((args.n_step,) + envs.single_action_space.shape)
@@ -491,13 +492,14 @@ if __name__ == "__main__":
 
                     target_qvalue = target_qf(data.next_observations, torch_taus).squeeze(-1)
 
-                    target_qvalue = (1 - data.dones.flatten())*(args.gamma**(data.bootstrapped_discounts.squeeze(-1)))*target_qvalue
+                    target_qvalue = (
+                        (1 - data.dones.flatten()) * (args.gamma ** (data.bootstrapped_discounts.squeeze(-1))) * target_qvalue
+                    )
                     td_qtarget = data.rewards.flatten() + target_qvalue
 
                 old_qval = qf(data.observations, data.actions).squeeze(-1)
 
                 qvalue_loss = F.mse_loss(td_qtarget, old_qval)
-
 
                 # N: number of actions sampled
                 # B: batch size of states
@@ -519,7 +521,7 @@ if __name__ == "__main__":
 
                     target_sampl_actions = target_pred_distribution.sample(
                         torch.Size([args.action_sampling_number])
-                    ) # (N,B,A)
+                    )  # (N,B,A)
 
                 # Compute their Q-values with the online model
                 with torch.no_grad():
@@ -537,20 +539,22 @@ if __name__ == "__main__":
                 # Compute eta loss: optimization of the normalization and KL regularized constraints
                 q_logsumexp = torch.logsumexp(online_q_values_sampl_actions / eta, dim=0)  # (B,)
                 log_num_actions = torch.log(torch.tensor(args.action_sampling_number))
-                loss_eta = args.epsilon_non_parametric+torch.mean(q_logsumexp, dim=0) - log_num_actions
-                loss_eta = eta * loss_eta                
+                loss_eta = args.epsilon_non_parametric + torch.mean(q_logsumexp, dim=0) - log_num_actions
+                loss_eta = eta * loss_eta
 
                 # 2020 MO-MPO action range limit penalization
                 penalty_temperature = F.softplus(log_penalty_temperature) + _MPO_FLOAT_EPSILON
-                diff_out_of_bound = target_sampl_actions-torch.clip(target_sampl_actions, -1, 1)  # (N,B,A)
+                diff_out_of_bound = target_sampl_actions - torch.clip(target_sampl_actions, -1, 1)  # (N,B,A)
                 cost_out_of_bound = -torch.linalg.norm(diff_out_of_bound, dim=-1)  # (N,B)
                 # Compute penalty distribution
                 penalty_impr_distr = F.softmax(cost_out_of_bound / penalty_temperature.detach(), dim=0)  # shape (N,B)
                 # Compute penalization temperature loss: optimization of the normalization and KL regularized constraints
                 panalty_q_logsumexp = torch.logsumexp(cost_out_of_bound / penalty_temperature, dim=0)  # (B,)
                 penalty_log_num_actions = torch.log(torch.tensor(args.action_sampling_number))
-                loss_penalty_temperature = args.epsilon_penalty + torch.mean(panalty_q_logsumexp, dim=0) - penalty_log_num_actions
-                loss_penalty_temperature = penalty_temperature * loss_penalty_temperature            
+                loss_penalty_temperature = (
+                    args.epsilon_penalty + torch.mean(panalty_q_logsumexp, dim=0) - penalty_log_num_actions
+                )
+                loss_penalty_temperature = penalty_temperature * loss_penalty_temperature
 
                 impr_distr += penalty_impr_distr
                 loss_eta += loss_penalty_temperature
@@ -580,11 +584,11 @@ if __name__ == "__main__":
 
                 # Optimization of the KL trust-region constraint
                 kl_mean = torch.distributions.kl.kl_divergence(
-                    target_pred_distribution_per_dim_constraining,online_pred_distribution_per_dim_constraining_mean
+                    target_pred_distribution_per_dim_constraining, online_pred_distribution_per_dim_constraining_mean
                 )  # (B,A)
-                mean_kl_mean = torch.mean(kl_mean,dim=0)  # (B,)
+                mean_kl_mean = torch.mean(kl_mean, dim=0)  # (B,)
                 loss_kl_mean = torch.sum(alpha_mean.detach() * mean_kl_mean)
-                loss_alpha_mean = torch.sum(alpha_mean*(args.epsilon_parametric_mu - mean_kl_mean.detach()))
+                loss_alpha_mean = torch.sum(alpha_mean * (args.epsilon_parametric_mu - mean_kl_mean.detach()))
 
                 # Here finish with std (we optimize the std but fixed the mean)
                 online_pred_distribution_stddev = torch.distributions.MultivariateNormal(
@@ -601,7 +605,7 @@ if __name__ == "__main__":
 
                 # Optimization of the KL trust-region constraint
                 kl_stddev = torch.distributions.kl.kl_divergence(
-                    target_pred_distribution_per_dim_constraining,online_pred_distribution_per_dim_constraining_stddev
+                    target_pred_distribution_per_dim_constraining, online_pred_distribution_per_dim_constraining_stddev
                 )  # (B,A)
                 mean_kl_stddev = torch.mean(kl_stddev, dim=0)  # (B,)
                 loss_kl_stddev = torch.sum(alpha_stddev.detach() * mean_kl_stddev)
@@ -621,19 +625,19 @@ if __name__ == "__main__":
                     [log_eta, log_alpha_mean, log_alpha_stddev, log_penalty_temperature], args.grad_norm_clip
                 )
                 dual_optimizer.step()
-                
+
                 # The following is a try to do exactly what's implemented in the official deepmind's implementation
                 # where they clip the parameters outside the backpropagation algorithm
                 log_eta.data.clamp_(min=_MIN_LOG_TEMPERATURE)
                 log_alpha_mean.data.clamp_(min=_MIN_LOG_ALPHA)
                 log_alpha_stddev.data.clamp_(min=_MIN_LOG_ALPHA)
-                                
+
                 sgd_steps += 1
 
                 if sgd_steps % args.target_network_update_period == 0:
                     target_actor.load_state_dict(actor.state_dict())
                     target_qf.load_state_dict(qf.state_dict())
-                
+
                 # TRY NOT TO MODIFY: record rewards for plotting purposes
                 if sgd_steps % 25 == 0:
                     writer.add_scalar("losses/qf_values", old_qval.mean().item(), global_step)
@@ -642,10 +646,9 @@ if __name__ == "__main__":
                     writer.add_scalar("losses/dual_loss", dual_loss.item(), global_step)
                     writer.add_scalar("losses/log_eta", log_eta.item(), global_step)
                     writer.add_scalar("losses/log_penalty_temperature", log_penalty_temperature.item(), global_step)
-                    
+
                     writer.add_scalar("losses/mean_log_alpha_mean", log_alpha_mean.mean().item(), global_step)
-                    
-                    
+
                     writer.add_scalar("losses/mean_log_alpha_min", log_alpha_mean.min().item(), global_step)
                     writer.add_scalar("losses/mean_log_alpha_stddev", log_alpha_stddev.mean().item(), global_step)
                     print("SPS:", int(global_step / (time.time() - start_time)))
@@ -656,7 +659,7 @@ if __name__ == "__main__":
         eval_obs, _ = eval_envs.reset(seed=args.seed)
         eval_episodic_return = np.zeros((eval_nb,))
         eval_episodic_length = np.zeros((eval_nb,))
-        if (global_step + 1) % eval_every==0:
+        if (global_step + 1) % eval_every == 0:
             for e in range(eval_nb):
                 eval_done = False
                 while not eval_done:
