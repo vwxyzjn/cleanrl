@@ -494,11 +494,12 @@ if __name__ == "__main__":
 
                 with torch.no_grad():
                     torch_target_mus, torch_target_stddevs = target_actor(data.next_observations)
-                    distribution = torch.distributions.MultivariateNormal(loc=torch_target_mus, scale_tril=torch.diag_embed(torch_target_stddevs))
+                    distribution = torch.distributions.MultivariateNormal(
+                        loc=torch_target_mus, scale_tril=torch.diag_embed(torch_target_stddevs)
+                    )
                     torch_taus = distribution.sample()
-                    #torch_taus = torch_taus.clip(-1.,1.)
-                    
-                    target_qvalue_logits = target_qf(data.next_observations, torch_taus) # (B,D)
+
+                    target_qvalue_logits = target_qf(data.next_observations, torch_taus)  # (B,D)
                     # computation of the probability mass functions
                     next_pmfs = torch.softmax(target_qvalue_logits, dim=1)
                     
