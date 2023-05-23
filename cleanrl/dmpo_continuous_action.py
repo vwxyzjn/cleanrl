@@ -502,7 +502,7 @@ if __name__ == "__main__":
                     target_qvalue_logits = target_qf(data.next_observations, torch_taus)  # (B,D)
                     # computation of the probability mass functions
                     next_pmfs = torch.softmax(target_qvalue_logits, dim=1)
-                    
+
                     # real random variable atoms computation
                     next_atoms = data.rewards + (args.gamma**data.bootstrapped_discounts) * rd_var_support * (1 - data.dones)
                     # projection on random variable support
@@ -525,7 +525,7 @@ if __name__ == "__main__":
                     for i in range(target_pmfs.size(0)):
                         target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
                         target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
-                    
+
                 old_qval_logits = qf(data.observations, data.actions)
                 old_pmfs = torch.softmax(old_qval_logits, dim=1)
                 old_qval = (old_pmfs * rd_var_support).sum(1)
