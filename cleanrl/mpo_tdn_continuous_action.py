@@ -167,7 +167,7 @@ class QNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
         self.value_linear_1 = nn.Linear(
-            env.single_observation_space.shape[0]+env.single_action_space.shape[0], 256
+            env.single_observation_space.shape[0] + env.single_action_space.shape[0], 256
         )  # 512 in deepmind jax implementation by default, 256 in example
         self.layer_norm = nn.LayerNorm(256)
 
@@ -412,7 +412,7 @@ if __name__ == "__main__":
                 n_step_discounted_reward,
                 done,
                 np.ones((1,)) * args.n_step,
-                [{'TimeLimit.truncated': truncated[0]}],
+                [{"TimeLimit.truncated": truncated[0]}],
             )
 
         step_since_last_done += 1
@@ -444,7 +444,7 @@ if __name__ == "__main__":
                             n_step_discounted_reward,
                             done,
                             np.ones((1,)) * (args.n_step - i),
-                            [{'TimeLimit.truncated': truncated[0]}],
+                            [{"TimeLimit.truncated": truncated[0]}],
                         )
                 else:
                     # Case where env ends before n_step
@@ -458,7 +458,7 @@ if __name__ == "__main__":
                             n_step_discounted_reward,
                             done,
                             np.ones((1,)) * (step_since_last_done - i),
-                            [{'TimeLimit.truncated': truncated[0]}],
+                            [{"TimeLimit.truncated": truncated[0]}],
                         )
 
                 step_since_last_done = 0
