@@ -2,6 +2,7 @@ import argparse
 import os
 import random
 import time
+from typing import Any, Dict, List, NamedTuple, Optional, Union
 from distutils.util import strtobool
 
 import gym
@@ -9,12 +10,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-from stable_baselines3.common.buffers import ReplayBuffer
-from torch.utils.tensorboard import SummaryWriter
-from typing import NamedTuple, Any, Dict, Generator, List, Optional, Union
 from gym import spaces
+from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.vec_env import VecNormalize
+from torch.utils.tensorboard import SummaryWriter
 
 try:
     # Check memory used by replay buffer when possible
@@ -99,8 +98,8 @@ def parse_args():
     return args
 
 _MPO_FLOAT_EPSILON = 1e-8
-_MIN_LOG_TEMPERATURE = -18.
-_MIN_LOG_ALPHA = -18.
+_MIN_LOG_TEMPERATURE = -18.0
+_MIN_LOG_ALPHA = -18.0
 
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
@@ -126,7 +125,7 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
 # /!\
 class Actor(nn.Module):
     def __init__(self, env):
-        super().__init__()        
+        super().__init__()
         self.linear_1 = nn.Linear(env.single_observation_space.shape[0], 256)
         self.layer_norm = nn.LayerNorm(256)
         self.linear_2 = nn.Linear(256, 256)
@@ -148,15 +147,15 @@ class Actor(nn.Module):
         # /!\ Partial ablation study:
         # /!\ The following scaling seems to be very important for sample efficiency
         # /!\ following very quick experiments.
-        # /!\ Therefore it seems to be a major obstacle for practitionner
+        # /!\ Therefore it seems to be a major obstacle for practitioners
         # /!\ Because it needs a lot of tuning for custom realistic envs
         # /!\ Where the actions have different ranges
-        # /!\ Furthemore the importance of tuning this parameter (and making it several parameters
+        # /!\ Furthermore the importance of tuning this parameter (and making it several parameters
         # /!\ when the actions have different ranges) isn't stated anywhere
         # /!\ Making it a major obstacle for application by unrelated engineers in the robotic field
         # /!\ I suspect it might be the reason as well why roboticists think DDPG "doesn't work" (or any RL 
-        # /!\ algorithms that isn't PPO, because in PPO there is no need for such scaling)
-        # /!\ Litterature research about it needed and technical report for awareness also needed if there isn't any
+        # /!\ algorithms that aren't PPO, because in PPO there is no need for such scaling)
+        # /!\ Litterature research about it is needed and a technical report for awareness is also needed if there isn't any
         # /!\ Also I've noticed in my experiments with APG that this is a major hyperparameter for APG
         scale *= args.policy_init_scale / F.softplus(torch.zeros(1, device=x.device))
         scale += args.policy_min_scale
@@ -464,7 +463,7 @@ if __name__ == "__main__":
                     delta_z = rd_var_support[1] - rd_var_support[0]
                     tz = next_atoms.clamp(v_min, v_max)
                     b = (tz - v_min) / delta_z
-                    # computation on the direct neighboors of the real atoms in
+                    # computation on the direct neighbors of the real atoms in
                     # the random variable support
                     l = b.floor().clamp(0, args.categorical_num_bins - 1)
                     u = b.ceil().clamp(0, args.categorical_num_bins - 1)
