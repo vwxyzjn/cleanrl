@@ -504,7 +504,8 @@ if __name__ == "__main__":
 
                 old_qval = qf(data.observations, data.actions).squeeze(-1)
 
-                qvalue_loss = F.mse_loss(td_qtarget, old_qval)
+                qvalue_loss = 0.5 * torch.square(td_qtarget - old_qval)  # F.mse_loss(td_qtarget, old_qval)
+                qvalue_loss = qvalue_loss.mean()
 
                 # N: number of actions sampled
                 # B: batch size of states
@@ -528,12 +529,12 @@ if __name__ == "__main__":
                         torch.Size([args.action_sampling_number])
                     )  # (N,B,A)
 
-                # Compute their Q-values with the online model
+                # Compute their Q-values with the target model
                 with torch.no_grad():
                     completed_states = data.observations.repeat([args.action_sampling_number, 1, 1])
                     flat_completed_states = completed_states.flatten(0, 1)
                     flat_target_sampl_actions = target_sampl_actions.flatten(0, 1)
-                    online_q_values_sampl_actions = qf(flat_completed_states, flat_target_sampl_actions).squeeze(-1)  # (N*B)
+                    online_q_values_sampl_actions = qf_target(flat_completed_states, flat_target_sampl_actions).squeeze(-1)  # (N*B)
                     online_q_values_sampl_actions = online_q_values_sampl_actions.reshape(
                         (args.action_sampling_number, -1)
                     )  # (N,B)
@@ -591,7 +592,7 @@ if __name__ == "__main__":
                 kl_mean = torch.distributions.kl.kl_divergence(
                     target_pred_distribution_per_dim_constraining, online_pred_distribution_per_dim_constraining_mean
                 )  # (B,A)
-                mean_kl_mean = torch.mean(kl_mean, dim=0)  # (B,)
+                mean_kl_mean = torch.mean(kl_mean, dim=0)  # (A,)
                 loss_kl_mean = torch.sum(alpha_mean.detach() * mean_kl_mean)
                 loss_alpha_mean = torch.sum(alpha_mean * (args.epsilon_parametric_mu - mean_kl_mean.detach()))
 
@@ -612,7 +613,7 @@ if __name__ == "__main__":
                 kl_stddev = torch.distributions.kl.kl_divergence(
                     target_pred_distribution_per_dim_constraining, online_pred_distribution_per_dim_constraining_stddev
                 )  # (B,A)
-                mean_kl_stddev = torch.mean(kl_stddev, dim=0)  # (B,)
+                mean_kl_stddev = torch.mean(kl_stddev, dim=0)  # (A,)
                 loss_kl_stddev = torch.sum(alpha_stddev.detach() * mean_kl_stddev)
                 loss_alpha_stddev = torch.sum(alpha_stddev * (args.epsilon_parametric_sigma - mean_kl_stddev.detach()))
 
