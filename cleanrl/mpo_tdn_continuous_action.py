@@ -669,7 +669,7 @@ if __name__ == "__main__":
                 eval_done = False
                 while not eval_done:
                     with torch.no_grad():
-                        taus, _ = actor(torch.Tensor(obs).to(device))
+                        taus, _ = actor(torch.Tensor(eval_obs).to(device))
                         taus = taus.cpu()
 
                     eval_obs, _, eval_terminated, eval_truncated, eval_infos = eval_envs.step(taus.numpy())
