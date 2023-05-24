@@ -682,7 +682,7 @@ if __name__ == "__main__":
                                 continue
 
                             print(f"eval={e}, episodic_return={eval_info['episode']['r']}")
-                            eval_episodic_return[e] = info["episode"]["r"]
-                            eval_episodic_length[e] = info["episode"]["l"]
+                            eval_episodic_return[e] = eval_info["episode"]["r"]
+                            eval_episodic_length[e] = eval_info["episode"]["l"]
             writer.add_scalar("evaluation/episodic_return", eval_episodic_return.mean(), global_step)
             writer.add_scalar("evaluation/episodic_length", eval_episodic_length.mean(), global_step)
