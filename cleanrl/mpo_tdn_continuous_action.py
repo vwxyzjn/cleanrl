@@ -534,7 +534,9 @@ if __name__ == "__main__":
                     completed_states = data.observations.repeat([args.action_sampling_number, 1, 1])
                     flat_completed_states = completed_states.flatten(0, 1)
                     flat_target_sampl_actions = target_sampl_actions.flatten(0, 1)
-                    online_q_values_sampl_actions = qf_target(flat_completed_states, flat_target_sampl_actions).squeeze(-1)  # (N*B)
+                    online_q_values_sampl_actions = target_qf(flat_completed_states, flat_target_sampl_actions).squeeze(
+                        -1
+                    )  # (N*B)
                     online_q_values_sampl_actions = online_q_values_sampl_actions.reshape(
                         (args.action_sampling_number, -1)
                     )  # (N,B)
