@@ -497,14 +497,9 @@ if __name__ == "__main__":
                     distribution = torch.distributions.MultivariateNormal(
                         loc=torch_target_mus, scale_tril=torch.diag_embed(torch_target_stddevs)
                     )
-                    torch_taus = distribution.sample(
-                        torch.Size([args.action_sampling_number])
-                    )  # (N, B, A)
-                    completed_target_states = data.next_observations.repeat([args.action_sampling_number, 1, 1])
-                    flat_completed_target_states = completed_target_states.flatten(0, 1)
-                    flat_torch_taus = torch_taus.flatten(0, 1)
+                    torch_taus = distribution.sample()
 
-                    target_qvalue_logits = target_qf(flat_completed_target_states, flat_torch_taus)  # (N*B,D)
+                    target_qvalue_logits = target_qf(data.next_observations, torch_taus)  # (B,D)
                     # computation of the probability mass functions
                     next_pmfs = torch.softmax(target_qvalue_logits, dim=1)
 
