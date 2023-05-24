@@ -493,7 +493,7 @@ if __name__ == "__main__":
                     flat_completed_target_states = completed_target_states.flatten(0, 1)
                     flat_torch_taus = torch_taus.flatten(0, 1)
 
-                    target_qvalue = target_qf(completed_target_states, flat_torch_taus).squeeze(-1)  # (N*B,)
+                    target_qvalue = target_qf(flat_completed_target_states, flat_torch_taus).squeeze(-1)  # (N*B,)
                     target_qvalue = target_qvalue.reshape((args.action_sampling_number, -1))  # (N,B)
                     target_qvalue = target_qvalue.mean(0)
 
