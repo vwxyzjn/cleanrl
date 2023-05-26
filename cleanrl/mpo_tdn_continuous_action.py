@@ -408,8 +408,8 @@ if __name__ == "__main__":
             )
         else:
             n_step_discounted_reward = (
-                n_step_reward_rolling_buffer[args.n_step - 1 - step_since_last_done:]
-                * n_step_gammas[:step_since_last_done + 1]
+                n_step_reward_rolling_buffer[args.n_step - 1 - step_since_last_done :]
+                * n_step_gammas[: step_since_last_done + 1]
             ).sum()
             rb.add(
                 n_step_obs_rolling_buffer[args.n_step - 1 - step_since_last_done],
@@ -505,7 +505,7 @@ if __name__ == "__main__":
                 eta = F.softplus(log_eta) + _MPO_FLOAT_EPSILON
 
                 stacked_observations = torch.cat([data.observations, data.next_observations], dim=0)
-                
+
                 with torch.no_grad():
                     target_mean, target_std = target_actor(stacked_observations)
                     target_pred_distribution = torch.distributions.MultivariateNormal(
