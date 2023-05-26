@@ -115,18 +115,20 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0, variance_scaling=False):
     if variance_scaling:
         std = torch.sqrt(std / torch.tensor(layer.weight.shape[1]))
-        distribution_stddev = torch.tensor(.87962566103423978)
+        distribution_stddev = torch.tensor(0.87962566103423978)
         std /= distribution_stddev
-        
+
     torch.nn.init.trunc_normal_(layer.weight, std=std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
+
 
 def uniform_scaling_layer_init(layer, bias_const=0.0, scale=0.333):
     max_val = torch.sqrt(torch.tensor(3.0) / torch.tensor(layer.weight.shape[1])) * scale
     torch.nn.init.uniform_(layer.weight, a=-max_val, b=max_val)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
+
 
 class Actor(nn.Module):
     def __init__(self, env):
@@ -158,12 +160,14 @@ class Actor(nn.Module):
 class QNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
-        self.value_linear_1 = uniform_scaling_layer_init(nn.Linear(
-            env.single_observation_space.shape[0] + env.single_action_space.shape[0], 256
-        ))  # 512 in deepmind jax implementation by default, 256 in example
+        self.value_linear_1 = uniform_scaling_layer_init(
+            nn.Linear(env.single_observation_space.shape[0] + env.single_action_space.shape[0], 256)
+        )  # 512 in deepmind jax implementation by default, 256 in example
         self.layer_norm = nn.LayerNorm(256)
 
-        self.value_linear_2 = uniform_scaling_layer_init(nn.Linear(256, 256))  # 512 in deepmind jax implementation by default, 256 in example
+        self.value_linear_2 = uniform_scaling_layer_init(
+            nn.Linear(256, 256)
+        )  # 512 in deepmind jax implementation by default, 256 in example
         self.value_linear_3 = uniform_scaling_layer_init(nn.Linear(256, 256))
         self.value_linear_4 = layer_init(nn.Linear(256, 1), std=0.01)
 
@@ -373,7 +377,7 @@ if __name__ == "__main__":
             )
             taus = distribution.sample().cpu()
 
-        next_obs, reward, terminated, truncated, infos = envs.step(taus.numpy().clip(-1,1))
+        next_obs, reward, terminated, truncated, infos = envs.step(taus.numpy().clip(-1, 1))
         done = np.logical_or(terminated, truncated)
 
         n_step_obs_rolling_buffer = np.concatenate([n_step_obs_rolling_buffer[1:], obs], 0)
@@ -403,7 +407,10 @@ if __name__ == "__main__":
                 [{"TimeLimit.truncated": truncated[0]}],
             )
         else:
-            n_step_discounted_reward = (n_step_reward_rolling_buffer[args.n_step - 1 - step_since_last_done:] * n_step_gammas[:step_since_last_done + 1]).sum()
+            n_step_discounted_reward = (
+                n_step_reward_rolling_buffer[args.n_step - 1 - step_since_last_done:]
+                * n_step_gammas[:step_since_last_done + 1]
+            ).sum()
             rb.add(
                 n_step_obs_rolling_buffer[args.n_step - 1 - step_since_last_done],
                 real_next_obs,
@@ -497,7 +504,7 @@ if __name__ == "__main__":
                 # Sample impr_distr_action_nb actions for each state from target actor
                 eta = F.softplus(log_eta) + _MPO_FLOAT_EPSILON
 
-                stacked_observations = torch.cat([data.observations, data.next_observations],dim=0)
+                stacked_observations = torch.cat([data.observations, data.next_observations], dim=0)
                 
                 with torch.no_grad():
                     target_mean, target_std = target_actor(stacked_observations)
@@ -516,9 +523,7 @@ if __name__ == "__main__":
                 # Compute their Q-values with the target model
                 with torch.no_grad():
                     completed_states = stacked_observations.repeat([args.action_sampling_number, 1, 1])
-                    online_q_values_sampl_actions = target_qf(completed_states, target_sampl_actions).squeeze(
-                        -1
-                    )  # (N, B)
+                    online_q_values_sampl_actions = target_qf(completed_states, target_sampl_actions).squeeze(-1)  # (N, B)
 
                 # Compute new distribution
                 impr_distr = F.softmax(online_q_values_sampl_actions / eta.detach(), dim=0)  # shape (N,B)
@@ -551,7 +556,9 @@ if __name__ == "__main__":
                 # to the non-parametric improved distributions
                 # Sample from online actor
                 alpha_mean = F.softplus(log_alpha_mean) + _MPO_FLOAT_EPSILON
-                alpha_stddev = torch.logaddexp(log_alpha_stddev, torch.tensor(0, device=device)) + _MPO_FLOAT_EPSILON  # F.softplus(log_alpha_stddev) + _MPO_FLOAT_EPSILON
+                alpha_stddev = (
+                    torch.logaddexp(log_alpha_stddev, torch.tensor(0, device=device)) + _MPO_FLOAT_EPSILON
+                )  # F.softplus(log_alpha_stddev) + _MPO_FLOAT_EPSILON
 
                 online_mean, online_std = actor(stacked_observations)
 
@@ -576,7 +583,7 @@ if __name__ == "__main__":
 
                 # Here finish with std (we optimize the std but fixed the mean)
                 online_pred_distribution_stddev = torch.distributions.Independent(
-                    torch.distributions.Normal(loc=target_mean, scale=online_std), reinterpreted_batch_ndims=1 
+                    torch.distributions.Normal(loc=target_mean, scale=online_std), reinterpreted_batch_ndims=1
                 )
                 # Compute cross entropy loss
                 online_log_probs_stddev = online_pred_distribution_stddev.log_prob(target_sampl_actions)  # (N,B)
@@ -638,8 +645,12 @@ if __name__ == "__main__":
                     writer.add_scalar("losses/loss_eta", loss_eta.item(), global_step)
 
                     # kl values
-                    writer.add_scalar("losses/kl_mean_rel", (mean_kl_mean / args.epsilon_parametric_mu).mean().item(), global_step)
-                    writer.add_scalar("losses/kl_stddev_rel", (mean_kl_stddev / args.epsilon_parametric_sigma).mean().item(), global_step)
+                    writer.add_scalar(
+                        "losses/kl_mean_rel", (mean_kl_mean / args.epsilon_parametric_mu).mean().item(), global_step
+                    )
+                    writer.add_scalar(
+                        "losses/kl_stddev_rel", (mean_kl_stddev / args.epsilon_parametric_sigma).mean().item(), global_step
+                    )
 
                     # stddev of online policy
                     writer.add_scalar("policy/pi_stddev_min", online_std.min(dim=1).values.mean().item(), global_step)
