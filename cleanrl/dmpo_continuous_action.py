@@ -21,8 +21,7 @@ try:
 except ImportError:
     psutil = None
 
-# MPO with C51 style critic loss (critic outputs categorical distribution of the q function,
-# instead of just mean of this distribution, this is called "distributional RL")
+# MPO with TD(n) as critic loss
 
 
 def parse_args():
@@ -85,15 +84,15 @@ def parse_args():
     
     parser.add_argument("--policy-init-scale", type=int, default=0.5,
         help="scaling coefficient of the policy std (not specified in 2018b paper, 0.7 in deepmind jax implementation, 0.5 in deepmind example for reproducibility)")
-    parser.add_argument("--policy_min_scale", type=int, default=1e-6,
+    parser.add_argument("--policy-min-scale", type=int, default=1e-6,
         help="scalar to add to the scaled std of the policy (not specified in 2018b paper, 1e-6 in jax deepmind implementation and in deepmind example for reproducibility)")
     parser.add_argument("--n_step", type=float, default=4,
         help="horizon for bootstrapping the target q-value (5 in 2018a paper, 5 in jax deepmind implementation, 4 in deepmind example for reproducibility)")
-    parser.add_argument("--vmax-values", type=float, default=1600.,
+    parser.add_argument("--vmax-values", type=float, default=1600.0,
         help="max support of the random variable of which the q function will predict the distribution (support will be [-vmax_values,vmax_values], for mujoco gym environments 1600., dm control 150.)")
     parser.add_argument("--categorical-num-bins", type=float, default=51,
         help="number elements in the support of the random variable")
-    
+
     args = parser.parse_args()
     # fmt: on
     return args
@@ -117,27 +116,34 @@ def make_env(env_id, seed, idx, capture_video, run_name):
     return thunk
 
 
-def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+def layer_init(layer, std=np.sqrt(2), bias_const=0.0, variance_scaling=False):
+    if variance_scaling:
+        std = torch.sqrt(std / torch.tensor(layer.weight.shape[1]))
+        distribution_stddev = torch.tensor(0.87962566103423978)
+        std /= distribution_stddev
+
     torch.nn.init.trunc_normal_(layer.weight, std=std)
     torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
 
-# /!\
-# Initializer should be hk.initializers.UniformScaling(scale=0.333)
-# Initializer for both actor head should be hk_init.VarianceScaling(1e-4)
-# Not Implemented for now
-# /!\
+def uniform_scaling_layer_init(layer, bias_const=0.0, scale=0.333):
+    max_val = torch.sqrt(torch.tensor(3.0) / torch.tensor(layer.weight.shape[1])) * scale
+    torch.nn.init.uniform_(layer.weight, a=-max_val, b=max_val)
+    torch.nn.init.constant_(layer.bias, bias_const)
+    return layer
+
+
 class Actor(nn.Module):
     def __init__(self, env):
         super().__init__()
-        self.linear_1 = nn.Linear(env.single_observation_space.shape[0], 256)
+        self.linear_1 = uniform_scaling_layer_init(nn.Linear(env.single_observation_space.shape[0], 256))
         self.layer_norm = nn.LayerNorm(256)
-        self.linear_2 = nn.Linear(256, 256)
-        self.linear_3 = nn.Linear(256, 256)
+        self.linear_2 = uniform_scaling_layer_init(nn.Linear(256, 256))
+        self.linear_3 = uniform_scaling_layer_init(nn.Linear(256, 256))
 
-        self._loc_layer = nn.Linear(256, env.single_action_space.shape[0])
-        self._scale_layer = nn.Linear(256, env.single_action_space.shape[0])
+        self._loc_layer = layer_init(nn.Linear(256, env.single_action_space.shape[0]), std=1e-4, variance_scaling=True)
+        self._scale_layer = layer_init(nn.Linear(256, env.single_action_space.shape[0]), std=1e-4, variance_scaling=True)
 
     def forward(self, x):
         h = self.linear_1(x)
@@ -149,19 +155,6 @@ class Actor(nn.Module):
         loc = self._loc_layer(h)
         scale = F.softplus(self._scale_layer(h))
 
-        # /!\ Partial ablation study:
-        # /!\ The following scaling seems to be very important for sample efficiency
-        # /!\ following very quick experiments.
-        # /!\ Therefore it seems to be a major obstacle for practitioners
-        # /!\ Because it needs a lot of tuning for custom realistic envs
-        # /!\ Where the actions have different ranges
-        # /!\ Furthermore the importance of tuning this parameter (and making it several parameters
-        # /!\ when the actions have different ranges) isn't stated anywhere
-        # /!\ Making it a major obstacle for application by unrelated engineers in the robotic field
-        # /!\ I suspect it might be the reason as well why roboticists think DDPG "doesn't work" (or any RL
-        # /!\ algorithms that aren't PPO, because in PPO there is no need for such scaling)
-        # /!\ Literature research about it is needed and a technical report for awareness is also needed if there isn't any
-        # /!\ Also I've noticed in my experiments with APG that this is a major hyperparameter for APG
         scale *= args.policy_init_scale / F.softplus(torch.zeros(1, device=x.device))
         scale += args.policy_min_scale
 
@@ -171,23 +164,20 @@ class Actor(nn.Module):
 class QNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
-        self.value_linear_1 = nn.Linear(
-            env.single_observation_space.shape[0] + env.single_action_space.shape[0], 256
+        self.value_linear_1 = uniform_scaling_layer_init(
+            nn.Linear(env.single_observation_space.shape[0] + env.single_action_space.shape[0], 256)
         )  # 512 in deepmind jax implementation by default, 256 in example
         self.layer_norm = nn.LayerNorm(256)
 
-        self.value_linear_2 = nn.Linear(256, 256)  # 512 in deepmind jax implementation by default, 256 in example
-        self.value_linear_3 = nn.Linear(256, 256)
-        self.value_linear_4 = nn.Linear(256, args.categorical_num_bins)
+        self.value_linear_2 = uniform_scaling_layer_init(
+            nn.Linear(256, 256)
+        )  # 512 in deepmind jax implementation by default, 256 in example
+        self.value_linear_3 = uniform_scaling_layer_init(nn.Linear(256, 256))
+        self.value_linear_4 = layer_init(nn.Linear(256, args.categorical_num_bins), std=1e-5, variance_scaling=True)
 
     def forward(self, x, a):
         a = torch.clip(a, -1, 1)
-        x = torch.cat([x, a], 1)
-
-        # /!\
-        # In deepmind implementation, actions are clipped here
-        # We don't do that for now
-        # /!\
+        x = torch.cat([x, a], -1)
 
         h = self.value_linear_1(x)
         h = torch.tanh(self.layer_norm(h))
@@ -367,7 +357,8 @@ if __name__ == "__main__":
         handle_timeout_termination=True,
     )
 
-    actor_critic_optimizer = torch.optim.Adam(list(actor.parameters()) + list(qf.parameters()), lr=args.policy_q_lr)
+    actor_optimizer = torch.optim.Adam(actor.parameters(), lr=args.policy_q_lr)
+    critic_optimizer = torch.optim.Adam(qf.parameters(), lr=args.policy_q_lr)
     dual_optimizer = torch.optim.Adam([log_eta, log_alpha_mean, log_alpha_stddev, log_penalty_temperature], lr=args.dual_lr)
 
     obs, _ = envs.reset(seed=args.seed)
@@ -386,19 +377,14 @@ if __name__ == "__main__":
 
     start_time = time.time()
     for global_step in range(args.total_timesteps):
-        if global_step > args.learning_starts:
-            with torch.no_grad():
-                taus_mean, taus_stddev = actor(torch.Tensor(obs).to(device))
-                distribution = torch.distributions.multivariate_normal.MultivariateNormal(
-                    loc=taus_mean, scale_tril=torch.diag_embed(taus_stddev)
-                )
-                taus = distribution.sample().cpu()
-        else:
-            taus = (
-                2 * torch.rand((1, envs.single_action_space.shape[0])) - 1
-            )  # /!\ Not sure if there are random actions in MPO implementation
+        with torch.no_grad():
+            taus_mean, taus_stddev = actor(torch.Tensor(obs).to(device))
+            distribution = torch.distributions.multivariate_normal.MultivariateNormal(
+                loc=taus_mean, scale_tril=torch.diag_embed(taus_stddev)
+            )
+            taus = distribution.sample().cpu()
 
-        next_obs, reward, terminated, truncated, infos = envs.step(taus.numpy())
+        next_obs, reward, terminated, truncated, infos = envs.step(taus.numpy().clip(-1, 1))
         done = np.logical_or(terminated, truncated)
 
         n_step_obs_rolling_buffer = np.concatenate([n_step_obs_rolling_buffer[1:], obs], 0)
@@ -408,6 +394,10 @@ if __name__ == "__main__":
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
         # Problems caused by https://github.com/openai/gym/blob/master/gym/vector/sync_vector_env.py
         real_next_obs = next_obs.copy()
+
+        # It seems that deepmind's acme doesn't use the real last observation
+        # when episode is done, but the first observation of the next episode?
+        # Here we take another path and do it correctly.
         for idx, d in enumerate(done):
             if d:
                 real_next_obs[idx] = infos["final_observation"][idx]
@@ -423,6 +413,20 @@ if __name__ == "__main__":
                 np.ones((1,)) * args.n_step,
                 [{"TimeLimit.truncated": truncated[0]}],
             )
+        else:
+            n_step_discounted_reward = (
+                n_step_reward_rolling_buffer[args.n_step - 1 - step_since_last_done :]
+                * n_step_gammas[: step_since_last_done + 1]
+            ).sum()
+            rb.add(
+                n_step_obs_rolling_buffer[args.n_step - 1 - step_since_last_done],
+                real_next_obs,
+                n_step_action_rolling_buffer[args.n_step - 1 - step_since_last_done],
+                n_step_discounted_reward,
+                done,
+                np.ones((1,)) * (step_since_last_done + 1),
+                [{"TimeLimit.truncated": truncated[0]}],
+            )
 
         step_since_last_done += 1
         obs = next_obs
@@ -433,14 +437,6 @@ if __name__ == "__main__":
                 if info is None:
                     continue
 
-                # /!\ Handling of the limit cases where env ends before n_step may not be working correctly
-                # /!\ Must be double checked
-                # /!\ Important note: getting the TD(n_step) exactly exactly right even to what might appear
-                # /!\ as detail, like adding the remaining elements of the rolling buffer to the replay buffer,
-                # /!\ or using for these remaining elements the correct discount factor for the value bootstrapped
-                # /!\ with the qfunction (which isn't lambda**n_step, because the horizon decreases for these elements)
-                # /!\ IS ACTUALLY CRUCIAL (I wasn't getting that right in my first attempts, and on Hopper-v2 I went from 1000
-                # /!\ reward to 2000 reward)
                 if step_since_last_done >= args.n_step - 1:
                     # Case where rolling_buffer was filled (env ends after n_step)
                     # and therefore we've already dealt with the first entry of the rolling buffer
@@ -479,13 +475,6 @@ if __name__ == "__main__":
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
 
-        # /!\ Regarding replay insert vs. learning sampling ratio:
-        # /!\ Not clear if in the deepmind jax implementation
-        # /!\ It's synchronous training or asynchronous training (waiting for all the inserts
-        # /!\ to proceed one training step (therefore waiting 64 inserts to train on 20*256 samples)
-        # /!\ Or if asynchronous waiting 8 steps to train on 256 samples
-        # /!\ Maybe doesn't change results at all?
-        # /!\ Maybe compare to deepmind ddpg jax implementation for which we know the training procedure.
         if global_step > args.learning_starts:
             if global_step % 4 == 0:
                 # PHASE 1
@@ -497,39 +486,39 @@ if __name__ == "__main__":
                     distribution = torch.distributions.MultivariateNormal(
                         loc=torch_target_mus, scale_tril=torch.diag_embed(torch_target_stddevs)
                     )
-                    torch_taus = distribution.sample()
+                    torch_taus = distribution.sample(torch.Size([args.action_sampling_number]))  # (N, B, A)
+                    completed_target_states = data.next_observations.repeat([args.action_sampling_number, 1, 1])
 
-                    target_qvalue_logits = target_qf(data.next_observations, torch_taus)  # (B,D)
+                    target_qvalue_logits = target_qf(completed_target_states, torch_taus)  # (N,B,D)
                     # computation of the probability mass functions
-                    next_pmfs = torch.softmax(target_qvalue_logits, dim=1)
+                    next_pmfs = F.softmax(target_qvalue_logits, dim=-1).unsqueeze(-2)  # (N,B,1,D)
 
                     # real random variable atoms computation
-                    next_atoms = data.rewards + (args.gamma**data.bootstrapped_discounts) * rd_var_support * (1 - data.dones)
+                    tz_hat = (
+                        data.rewards + (args.gamma ** data.bootstrapped_discounts)
+                        * rd_var_support * (1 - data.dones)
+                    )  # (B,D)
                     # projection on random variable support
                     delta_z = rd_var_support[1] - rd_var_support[0]
-                    tz = next_atoms.clamp(v_min, v_max)
-                    b = (tz - v_min) / delta_z
-                    # computation on the direct neighbors of the real atoms in
-                    # the random variable support
-                    l = b.floor().clamp(0, args.categorical_num_bins - 1)
-                    u = b.ceil().clamp(0, args.categorical_num_bins - 1)
+                    tz_hat_clipped = tz_hat.clamp(v_min, v_max).unsqueeze(-2)  # (B,1,D)
 
-                    # linear interpolation of the target distributions
-                    # (l == u).float() handles the case where bj is exactly an integer
-                    # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
-                    d_m_l = (u + (l == u).float() - b) * next_pmfs
-                    d_m_u = (b - l) * next_pmfs
+                    # tz_hat_clipped: (B, 1, D)
+                    # rd_var_support: (1, D, 1)
+                    # next_pmfs: (N,B,1,D)
+                    abs_delta_tzhatclipped_z = torch.abs(
+                        tz_hat_clipped - rd_var_support.unsqueeze(0).unsqueeze(-1)  # rd_var_support.unsqueeze(0).unsqueeze(-1) : (1,D,1)
+                    ).unsqueeze(0)  # (1,B,D,D)
 
-                    # now we have to update the right probabilities
-                    target_pmfs = torch.zeros_like(next_pmfs)
-                    for i in range(target_pmfs.size(0)):
-                        target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
-                        target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
+                    target_pmfs = torch.clip(1 - abs_delta_tzhatclipped_z / delta_z, 0, 1) * next_pmfs  # (N,B,D,D)
+                    target_pmfs = torch.sum(target_pmfs, dim=-1)  # (N,B,D)
+                    target_pmfs = target_pmfs.mean(0)  # (B,D)
 
-                old_qval_logits = qf(data.observations, data.actions)
-                old_pmfs = torch.softmax(old_qval_logits, dim=1)
-                old_qval = (old_pmfs * rd_var_support).sum(1)
-                qvalue_loss = (-(target_pmfs * old_pmfs.clamp(min=1e-5, max=1 - 1e-5).log()).sum(-1)).mean()
+                #target_pmfs = target_pmfs.mean(0)
+                old_qval_logits = qf(data.observations, data.actions)  # (B,D)
+                old_pmfs = F.softmax(old_qval_logits, dim=1)  # (B,D)
+                old_pmfs_log = F.log_softmax(old_qval_logits, dim=1)  # (B,D)
+                old_qval = (old_pmfs * rd_var_support).sum(1)  # (B,)
+                qvalue_loss = (-(target_pmfs * old_pmfs_log).sum(-1)).mean()
 
                 # N: number of actions sampled
                 # B: batch size of states
@@ -539,31 +528,28 @@ if __name__ == "__main__":
                 # Sample impr_distr_action_nb actions for each state from target actor
                 eta = F.softplus(log_eta) + _MPO_FLOAT_EPSILON
 
+                stacked_observations = torch.cat([data.observations, data.next_observations], dim=0)
+
                 with torch.no_grad():
-                    target_mean, target_std = target_actor(data.observations)
+                    target_mean, target_std = target_actor(stacked_observations)
                     target_pred_distribution = torch.distributions.MultivariateNormal(
                         loc=target_mean, scale_tril=torch.diag_embed(target_std)
                     )
 
-                    target_pred_distribution_per_dim_constraining = torch.distributions.Normal(
-                        loc=target_mean, scale=target_std
+                    target_pred_distribution_per_dim_constraining = torch.distributions.Independent(
+                        torch.distributions.Normal(loc=target_mean, scale=target_std), reinterpreted_batch_ndims=1
                     )
 
                     target_sampl_actions = target_pred_distribution.sample(
                         torch.Size([args.action_sampling_number])
                     )  # (N,B,A)
 
-                # Compute their Q-values with the online model
+                # Compute their Q-values with the target model
                 with torch.no_grad():
-                    completed_states = data.observations.repeat([args.action_sampling_number, 1, 1])
-                    flat_completed_states = completed_states.flatten(0, 1)
-                    flat_target_sampl_actions = target_sampl_actions.flatten(0, 1)
-                    online_q_values_sampl_actions_logits = qf(flat_completed_states, flat_target_sampl_actions)  # (N*B,D)
-                    online_q_values_sampl_actions_pmfs = torch.softmax(online_q_values_sampl_actions_logits, dim=1)  # (N*B,D)
-                    online_q_values_sampl_actions = (online_q_values_sampl_actions_pmfs * rd_var_support).sum(1)  # (N*B,)
-                    online_q_values_sampl_actions = online_q_values_sampl_actions.reshape(
-                        (args.action_sampling_number, -1)
-                    )  # (N,B)
+                    completed_states = stacked_observations.repeat([args.action_sampling_number, 1, 1])
+                    online_q_values_sampl_actions_logits = target_qf(completed_states, target_sampl_actions)  # (N,B,D)
+                    online_q_values_sampl_actions_pmfs = torch.softmax(online_q_values_sampl_actions_logits, dim=-1)  # (N,B,D)
+                    online_q_values_sampl_actions = (online_q_values_sampl_actions_pmfs * rd_var_support).sum(-1)  # (N,B)
 
                 # Compute new distribution
                 impr_distr = F.softmax(online_q_values_sampl_actions / eta.detach(), dim=0)  # shape (N,B)
@@ -596,17 +582,16 @@ if __name__ == "__main__":
                 # to the non-parametric improved distributions
                 # Sample from online actor
                 alpha_mean = F.softplus(log_alpha_mean) + _MPO_FLOAT_EPSILON
-                alpha_stddev = F.softplus(log_alpha_stddev) + _MPO_FLOAT_EPSILON
+                alpha_stddev = (
+                    torch.logaddexp(log_alpha_stddev, torch.tensor(0, device=device)) + _MPO_FLOAT_EPSILON
+                )  # F.softplus(log_alpha_stddev) + _MPO_FLOAT_EPSILON
 
-                online_mean, online_std = actor(data.observations)
+                online_mean, online_std = actor(stacked_observations)
 
                 # Decouple optimization between mean and std
                 # Here we begin with mean (we optimize the mean but fixed the std)
-                online_pred_distribution_mean = torch.distributions.MultivariateNormal(
-                    loc=online_mean, scale_tril=torch.diag_embed(target_std)
-                )
-                online_pred_distribution_per_dim_constraining_mean = torch.distributions.Normal(
-                    loc=online_mean, scale=target_std
+                online_pred_distribution_mean = torch.distributions.Independent(
+                    torch.distributions.Normal(loc=online_mean, scale=target_std), reinterpreted_batch_ndims=1
                 )
                 # Compute cross entropy loss
                 online_log_probs_mean = online_pred_distribution_mean.log_prob(target_sampl_actions)  # (N,B)
@@ -616,18 +601,15 @@ if __name__ == "__main__":
 
                 # Optimization of the KL trust-region constraint
                 kl_mean = torch.distributions.kl.kl_divergence(
-                    target_pred_distribution_per_dim_constraining, online_pred_distribution_per_dim_constraining_mean
+                    target_pred_distribution_per_dim_constraining.base_dist, online_pred_distribution_mean.base_dist
                 )  # (B,A)
-                mean_kl_mean = torch.mean(kl_mean, dim=0)  # (B,)
-                loss_kl_mean = torch.sum(alpha_mean.detach() * mean_kl_mean)
-                loss_alpha_mean = torch.sum(alpha_mean * (args.epsilon_parametric_mu - mean_kl_mean.detach()))
+                mean_kl_mean = torch.mean(kl_mean, dim=0)  # (A,)
+                loss_kl_mean = torch.sum(alpha_mean.detach() * kl_mean, 1).mean()
+                loss_alpha_mean = torch.sum(alpha_mean * (args.epsilon_parametric_mu - kl_mean.detach()), 1).mean()
 
                 # Here finish with std (we optimize the std but fixed the mean)
-                online_pred_distribution_stddev = torch.distributions.MultivariateNormal(
-                    loc=target_mean, scale_tril=torch.diag_embed(online_std)
-                )
-                online_pred_distribution_per_dim_constraining_stddev = torch.distributions.Normal(
-                    loc=target_mean, scale=online_std
+                online_pred_distribution_stddev = torch.distributions.Independent(
+                    torch.distributions.Normal(loc=target_mean, scale=online_std), reinterpreted_batch_ndims=1
                 )
                 # Compute cross entropy loss
                 online_log_probs_stddev = online_pred_distribution_stddev.log_prob(target_sampl_actions)  # (N,B)
@@ -637,25 +619,24 @@ if __name__ == "__main__":
 
                 # Optimization of the KL trust-region constraint
                 kl_stddev = torch.distributions.kl.kl_divergence(
-                    target_pred_distribution_per_dim_constraining, online_pred_distribution_per_dim_constraining_stddev
+                    target_pred_distribution_per_dim_constraining.base_dist, online_pred_distribution_stddev.base_dist
                 )  # (B,A)
-                mean_kl_stddev = torch.mean(kl_stddev, dim=0)  # (B,)
-                loss_kl_stddev = torch.sum(alpha_stddev.detach() * mean_kl_stddev)
-                loss_alpha_stddev = torch.sum(alpha_stddev * (args.epsilon_parametric_sigma - mean_kl_stddev.detach()))
+                mean_kl_stddev = torch.mean(kl_stddev, dim=0)  # (A,)
+                loss_kl_stddev = torch.sum(alpha_stddev.detach() * kl_stddev, 1).mean()
+                loss_alpha_stddev = torch.sum(alpha_stddev * (args.epsilon_parametric_sigma - kl_stddev.detach()), 1).mean()
 
                 actor_loss = loss_policy_gradient_mean + loss_policy_gradient_stddev + loss_kl_mean + loss_kl_stddev
-                actor_critic_loss = actor_loss + qvalue_loss
-                actor_critic_optimizer.zero_grad()
-                actor_critic_loss.backward()
-                nn.utils.clip_grad_norm_(list(actor.parameters()) + list(qf.parameters()), args.grad_norm_clip)
-                actor_critic_optimizer.step()
+                actor_optimizer.zero_grad()
+                actor_loss.backward()
+                actor_optimizer.step()
+
+                critic_optimizer.zero_grad()
+                qvalue_loss.backward()
+                critic_optimizer.step()
 
                 dual_loss = loss_alpha_mean + loss_alpha_stddev + loss_eta
                 dual_optimizer.zero_grad()
                 dual_loss.backward()
-                nn.utils.clip_grad_norm_(
-                    [log_eta, log_alpha_mean, log_alpha_stddev, log_penalty_temperature], args.grad_norm_clip
-                )
                 dual_optimizer.step()
 
                 # The following is a try to do exactly what's implemented in the official deepmind's implementation
@@ -672,17 +653,34 @@ if __name__ == "__main__":
 
                 # TRY NOT TO MODIFY: record rewards for plotting purposes
                 if sgd_steps % 25 == 0:
+                    # global losses and qf values
                     writer.add_scalar("losses/qf_values", old_qval.mean().item(), global_step)
                     writer.add_scalar("losses/qf_loss", qvalue_loss.item(), global_step)
                     writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                     writer.add_scalar("losses/dual_loss", dual_loss.item(), global_step)
+
+                    # dual values
                     writer.add_scalar("losses/log_eta", log_eta.item(), global_step)
                     writer.add_scalar("losses/log_penalty_temperature", log_penalty_temperature.item(), global_step)
-
                     writer.add_scalar("losses/mean_log_alpha_mean", log_alpha_mean.mean().item(), global_step)
-
-                    writer.add_scalar("losses/mean_log_alpha_min", log_alpha_mean.min().item(), global_step)
                     writer.add_scalar("losses/mean_log_alpha_stddev", log_alpha_stddev.mean().item(), global_step)
+
+                    # dual losses
+                    writer.add_scalar("losses/loss_alpha", (loss_alpha_mean + loss_alpha_stddev).item(), global_step)
+                    writer.add_scalar("losses/loss_eta", loss_eta.item(), global_step)
+
+                    # kl values
+                    writer.add_scalar(
+                        "losses/kl_mean_rel", (mean_kl_mean / args.epsilon_parametric_mu).mean().item(), global_step
+                    )
+                    writer.add_scalar(
+                        "losses/kl_stddev_rel", (mean_kl_stddev / args.epsilon_parametric_sigma).mean().item(), global_step
+                    )
+
+                    # stddev of online policy
+                    writer.add_scalar("policy/pi_stddev_min", online_std.min(dim=1).values.mean().item(), global_step)
+                    writer.add_scalar("policy/pi_stddev_max", online_std.max(dim=1).values.mean().item(), global_step)
+
                     print("SPS:", int(global_step / (time.time() - start_time)))
                     writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
@@ -696,7 +694,7 @@ if __name__ == "__main__":
                 eval_done = False
                 while not eval_done:
                     with torch.no_grad():
-                        taus, _ = actor(torch.Tensor(obs).to(device))
+                        taus, _ = actor(torch.Tensor(eval_obs).to(device))
                         taus = taus.cpu()
 
                     eval_obs, _, eval_terminated, eval_truncated, eval_infos = eval_envs.step(taus.numpy())

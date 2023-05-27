@@ -319,8 +319,6 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
-    if args.torch_deterministic:
-        torch.use_deterministic_algorithms(True)
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
@@ -603,15 +601,15 @@ if __name__ == "__main__":
                 actor_critic_loss = actor_loss + qvalue_loss
                 actor_critic_optimizer.zero_grad()
                 actor_critic_loss.backward()
-                nn.utils.clip_grad_norm_(list(actor.parameters()) + list(qf.parameters()), args.grad_norm_clip)
+                #nn.utils.clip_grad_norm_(list(actor.parameters()) + list(qf.parameters()), args.grad_norm_clip)
                 actor_critic_optimizer.step()
 
                 dual_loss = loss_alpha_mean + loss_alpha_stddev + loss_eta
                 dual_optimizer.zero_grad()
                 dual_loss.backward()
-                nn.utils.clip_grad_norm_(
-                    [log_eta, log_alpha_mean, log_alpha_stddev, log_penalty_temperature], args.grad_norm_clip
-                )
+                #nn.utils.clip_grad_norm_(
+                #    [log_eta, log_alpha_mean, log_alpha_stddev, log_penalty_temperature], args.grad_norm_clip
+                #)
                 dual_optimizer.step()
 
                 # The following is a try to do exactly what's implemented in the official deepmind's implementation
