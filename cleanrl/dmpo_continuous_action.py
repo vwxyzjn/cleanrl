@@ -494,7 +494,7 @@ if __name__ == "__main__":
                     next_pmfs = F.softmax(target_qvalue_logits, dim=-1).unsqueeze(-2)  # (N,B,1,D)
 
                     # real random variable atoms computation
-                    tz_hat = data.rewards + (args.gamma ** data.bootstrapped_discounts) * rd_var_support * (
+                    tz_hat = data.rewards + (args.gamma**data.bootstrapped_discounts) * rd_var_support * (
                         1 - data.dones
                     )  # (B,D)
                     # projection on random variable support
