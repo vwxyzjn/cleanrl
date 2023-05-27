@@ -353,7 +353,8 @@ if __name__ == "__main__":
         handle_timeout_termination=True,
     )
 
-    actor_critic_optimizer = torch.optim.Adam(list(actor.parameters()) + list(qf.parameters()), lr=args.policy_q_lr)
+    actor_optimizer = torch.optim.Adam(actor.parameters(), lr=args.policy_q_lr)
+    critic_optimizer = torch.optim.Adam(qf.parameters(), lr=args.policy_q_lr)
     dual_optimizer = torch.optim.Adam([log_eta, log_alpha_mean, log_alpha_stddev, log_penalty_temperature], lr=args.dual_lr)
 
     obs, _ = envs.reset(seed=args.seed)
@@ -598,18 +599,17 @@ if __name__ == "__main__":
                 loss_alpha_stddev = torch.sum(alpha_stddev * (args.epsilon_parametric_sigma - kl_stddev.detach()), 1).mean()
 
                 actor_loss = loss_policy_gradient_mean + loss_policy_gradient_stddev + loss_kl_mean + loss_kl_stddev
-                actor_critic_loss = actor_loss + qvalue_loss
-                actor_critic_optimizer.zero_grad()
-                actor_critic_loss.backward()
-                #nn.utils.clip_grad_norm_(list(actor.parameters()) + list(qf.parameters()), args.grad_norm_clip)
-                actor_critic_optimizer.step()
+                actor_optimizer.zero_grad()
+                actor_loss.backward()
+                actor_optimizer.step()
+
+                critic_optimizer.zero_grad()
+                qvalue_loss.backward()
+                critic_optimizer.step()
 
                 dual_loss = loss_alpha_mean + loss_alpha_stddev + loss_eta
                 dual_optimizer.zero_grad()
                 dual_loss.backward()
-                #nn.utils.clip_grad_norm_(
-                #    [log_eta, log_alpha_mean, log_alpha_stddev, log_penalty_temperature], args.grad_norm_clip
-                #)
                 dual_optimizer.step()
 
                 # The following is a try to do exactly what's implemented in the official deepmind's implementation

@@ -494,9 +494,8 @@ if __name__ == "__main__":
                     next_pmfs = F.softmax(target_qvalue_logits, dim=-1).unsqueeze(-2)  # (N,B,1,D)
 
                     # real random variable atoms computation
-                    tz_hat = (
-                        data.rewards + (args.gamma ** data.bootstrapped_discounts)
-                        * rd_var_support * (1 - data.dones)
+                    tz_hat = data.rewards + (args.gamma ** data.bootstrapped_discounts) * rd_var_support * (
+                        1 - data.dones
                     )  # (B,D)
                     # projection on random variable support
                     delta_z = rd_var_support[1] - rd_var_support[0]
@@ -506,14 +505,16 @@ if __name__ == "__main__":
                     # rd_var_support: (1, D, 1)
                     # next_pmfs: (N,B,1,D)
                     abs_delta_tzhatclipped_z = torch.abs(
-                        tz_hat_clipped - rd_var_support.unsqueeze(0).unsqueeze(-1)  # rd_var_support.unsqueeze(0).unsqueeze(-1) : (1,D,1)
-                    ).unsqueeze(0)  # (1,B,D,D)
+                        tz_hat_clipped
+                        - rd_var_support.unsqueeze(0).unsqueeze(-1)  # rd_var_support.unsqueeze(0).unsqueeze(-1) : (1,D,1)
+                    ).unsqueeze(
+                        0
+                    )  # (1,B,D,D)
 
                     target_pmfs = torch.clip(1 - abs_delta_tzhatclipped_z / delta_z, 0, 1) * next_pmfs  # (N,B,D,D)
                     target_pmfs = torch.sum(target_pmfs, dim=-1)  # (N,B,D)
                     target_pmfs = target_pmfs.mean(0)  # (B,D)
 
-                #target_pmfs = target_pmfs.mean(0)
                 old_qval_logits = qf(data.observations, data.actions)  # (B,D)
                 old_pmfs = F.softmax(old_qval_logits, dim=1)  # (B,D)
                 old_pmfs_log = F.log_softmax(old_qval_logits, dim=1)  # (B,D)
