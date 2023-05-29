@@ -605,8 +605,8 @@ if __name__ == "__main__":
                     target_pred_distribution_per_dim_constraining.base_dist, online_pred_distribution_mean.base_dist
                 )  # (B,A)
                 mean_kl_mean = torch.mean(kl_mean, dim=0)  # (A,)
-                loss_kl_mean = torch.sum(alpha_mean.detach() * kl_mean, 1).mean()
-                loss_alpha_mean = torch.sum(alpha_mean * (args.epsilon_parametric_mu - kl_mean.detach()), 1).mean()
+                loss_kl_mean = torch.sum(alpha_mean.detach() * mean_kl_mean)
+                loss_alpha_mean = torch.sum(alpha_mean * (args.epsilon_parametric_mu - mean_kl_mean.detach()))
 
                 # Here finish with std (we optimize the std but fixed the mean)
                 online_pred_distribution_stddev = torch.distributions.Independent(
@@ -623,8 +623,8 @@ if __name__ == "__main__":
                     target_pred_distribution_per_dim_constraining.base_dist, online_pred_distribution_stddev.base_dist
                 )  # (B,A)
                 mean_kl_stddev = torch.mean(kl_stddev, dim=0)  # (A,)
-                loss_kl_stddev = torch.sum(alpha_stddev.detach() * kl_stddev, 1).mean()
-                loss_alpha_stddev = torch.sum(alpha_stddev * (args.epsilon_parametric_sigma - kl_stddev.detach()), 1).mean()
+                loss_kl_stddev = torch.sum(alpha_stddev.detach() * mean_kl_stddev)
+                loss_alpha_stddev = torch.sum(alpha_stddev * (args.epsilon_parametric_sigma - mean_kl_stddev.detach()))
 
                 actor_loss = loss_policy_gradient_mean + loss_policy_gradient_stddev + loss_kl_mean + loss_kl_stddev
                 actor_optimizer.zero_grad()
@@ -698,7 +698,9 @@ if __name__ == "__main__":
                         taus, _ = actor(torch.Tensor(eval_obs).to(device))
                         taus = taus.cpu()
 
-                    eval_obs, _, eval_terminated, eval_truncated, eval_infos = eval_envs.step(taus.numpy())
+                    eval_obs, _, eval_terminated, eval_truncated, eval_infos = eval_envs.step(
+                        taus.numpy().clip(-1, 1)
+                    )
                     eval_done = np.logical_or(eval_terminated, eval_truncated)
 
                     if "final_info" in eval_infos:

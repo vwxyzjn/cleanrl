@@ -670,7 +670,9 @@ if __name__ == "__main__":
                         taus, _ = actor(torch.Tensor(eval_obs).to(device))
                         taus = taus.cpu()
 
-                    eval_obs, _, eval_terminated, eval_truncated, eval_infos = eval_envs.step(taus.numpy())
+                    eval_obs, _, eval_terminated, eval_truncated, eval_infos = eval_envs.step(
+                        taus.numpy().clip(-1, 1)
+                    )
                     eval_done = np.logical_or(eval_terminated, eval_truncated)
 
                     if "final_info" in eval_infos:
