@@ -329,6 +329,10 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
             1.0,
         )
 
+        # update the target network
+        if global_step % args.target_network_frequency == 0:
+            q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, 1))
+
         if global_step % 100 == 0:
             writer.add_scalar("charts/offline/loss", jax.device_get(loss), global_step)
             writer.add_scalar("charts/offline/q_loss", jax.device_get(q_loss), global_step)
