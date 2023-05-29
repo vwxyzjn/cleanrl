@@ -337,7 +337,7 @@ if __name__ == "__main__":
     target_actor = Actor(envs).to(device)
     target_actor.load_state_dict(actor.state_dict())
     env_actor = Actor(envs).to(device)
-    env_actor.load_state_dict(actor.state_dict())
+    env_actor.load_state_dict(target_actor.state_dict())
 
     qf = QNetwork(envs).to(device)
     target_qf = QNetwork(envs).to(device)
@@ -481,7 +481,7 @@ if __name__ == "__main__":
 
         if global_step > args.learning_starts:
             if global_step % args.variable_update_period == 0:
-                env_actor.load_state_dict(actor.state_dict())
+                env_actor.load_state_dict(target_actor.state_dict())
 
             if global_step % 4 == 0:
                 # PHASE 1
