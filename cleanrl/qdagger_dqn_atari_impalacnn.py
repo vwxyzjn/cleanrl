@@ -141,7 +141,6 @@ class ConvSequence(nn.Module):
         super().__init__()
         self._input_shape = input_shape
         self._out_channels = out_channels
-        print("input channels", self._input_shape[0])
         self.conv = nn.Conv2d(in_channels=self._input_shape[0], out_channels=self._out_channels, kernel_size=3, padding=1)
         self.res_block0 = ResidualBlock(self._out_channels)
         self.res_block1 = ResidualBlock(self._out_channels)
@@ -165,7 +164,6 @@ class QNetwork(nn.Module):
         super().__init__()
         c, h, w = envs.single_observation_space.shape
         shape = (c, h, w)
-        print(shape)
         conv_seqs = []
         for out_channels in [16, 32, 32]:
             conv_seq = ConvSequence(shape, out_channels)
@@ -238,8 +236,6 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(envs).to(device)
-    # from torchsummary import summary
-    # summary(q_network, (4, 84, 84))
 
     optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
     target_network = QNetwork(envs).to(device)
@@ -262,9 +258,12 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         epsilon=0.05,
         capture_video=False,
     )
+    print(np.mean(teacher_episodic_returns))
     writer.add_scalar("charts/teacher/avg_episodic_return", np.mean(teacher_episodic_returns), 0)
 
     # collect teacher data for args.teacher_steps
+    # we assume we don't have access to the teacher's replay buffer
+    # see Fig. A.19 in Agarwal et al. 2022 for more detail
     teacher_rb = ReplayBuffer(
         args.buffer_size,
         envs.single_observation_space,
@@ -293,18 +292,18 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     # offline training phase: train the student model using the qdagger loss
     for global_step in track(range(args.offline_steps), description="offline student training"):
         data = teacher_rb.sample(args.batch_size)
+        # perform a gradient-descent step
         with torch.no_grad():
             target_max, _ = target_network(data.next_observations).max(dim=1)
             td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
-            teacher_q_val = teacher_model(data.next_observations)
-            teacher_q_val = teacher_q_val / args.temperature
+            teacher_q_values = teacher_model(data.next_observations) / args.temperature
 
-        old_val = q_network(data.observations).gather(1, data.actions).squeeze()
+        student_q_values = q_network(data.observations)
+        old_val = student_q_values.gather(1, data.actions).squeeze()
         q_loss = F.mse_loss(td_target, old_val)
 
-        student_q_val = q_network(data.next_observations)
-        student_q_val = student_q_val / args.temperature
-        distill_loss = torch.mean(kl_divergence_with_logits(teacher_q_val, student_q_val))
+        student_q_values = student_q_values / args.temperature
+        distill_loss = torch.mean(kl_divergence_with_logits(teacher_q_values, student_q_values))
 
         loss = q_loss + 1.0 * distill_loss
 
@@ -312,10 +311,15 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         loss.backward()
         optimizer.step()
 
+        # update the target network
+        if global_step % args.target_network_frequency == 0:
+            target_network.load_state_dict(q_network.state_dict())
+
         if global_step % 100 == 0:
             writer.add_scalar("charts/offline/loss", loss, global_step)
             writer.add_scalar("charts/offline/q_loss", q_loss, global_step)
             writer.add_scalar("charts/offline/distill_loss", distill_loss, global_step)
+
         if global_step % 100000 == 0:
             # evaluate the student model
             model_path = f"runs/{run_name}/{args.exp_name}-offline-{global_step}.cleanrl_model"
@@ -391,23 +395,21 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         if global_step > args.learning_starts:
             if global_step % args.train_frequency == 0:
                 data = rb.sample(args.batch_size)
-                with torch.no_grad():
-                    target_max, _ = target_network(data.next_observations).max(dim=1)
-                    td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
-                    teacher_q_val = teacher_model(data.next_observations)
-                    teacher_q_val = teacher_q_val / args.temperature
-
-                old_val = q_network(data.observations).gather(1, data.actions).squeeze()
-                q_loss = F.mse_loss(td_target, old_val)
-
-                student_q_val = q_network(data.next_observations)
-                student_q_val = student_q_val / args.temperature
-                distill_loss = torch.mean(kl_divergence_with_logits(teacher_q_val, student_q_val))
-
+                # perform a gradient-descent step
                 if len(episodic_returns) < 10:
                     distill_coeff = 1.0
                 else:
                     distill_coeff = max(1 - np.mean(episodic_returns) / np.mean(teacher_episodic_returns), 0)
+                with torch.no_grad():
+                    target_max, _ = target_network(data.next_observations).max(dim=1)
+                    td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
+                    teacher_q_val = teacher_model(data.next_observations) / args.temperature
+
+                old_val = q_network(data.observations).gather(1, data.actions).squeeze()
+                q_loss = F.mse_loss(td_target, old_val)
+
+                student_q_val = q_network(data.next_observations) / args.temperature
+                distill_loss = torch.mean(kl_divergence_with_logits(teacher_q_val, student_q_val))
 
                 loss = q_loss + distill_coeff * distill_loss
 

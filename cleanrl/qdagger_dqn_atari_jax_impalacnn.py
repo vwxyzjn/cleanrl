@@ -20,8 +20,6 @@ import numpy as np
 import optax
 from flax.training.train_state import TrainState
 from huggingface_hub import hf_hub_download
-
-# from tqdm import tqdm
 from rich.progress import track
 from stable_baselines3.common.atari_wrappers import (
     ClipRewardEnv,
@@ -125,7 +123,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
     return thunk
 
 
-# ALGO LOGIC: initialize agent here:
+# taken from https://github.com/AIcrowd/neurips2020-procgen-starter-kit/blob/142d09586d2272a17f44481a115c4bd817cf6a94/models/impala_cnn_torch.py
 class ResidualBlock(nn.Module):
     channels: int
 
@@ -160,6 +158,7 @@ class ConvSequence(nn.Module):
         return x
 
 
+# ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
     action_dim: int
     channelss: Sequence[int] = (16, 32, 32)
@@ -227,24 +226,21 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
-    obs, _ = envs.reset(seed=args.seed)
-
     q_network = QNetwork(channelss=(16, 32, 32), action_dim=envs.single_action_space.n)
 
     q_state = TrainState.create(
         apply_fn=q_network.apply,
-        params=q_network.init(q_key, obs),
-        target_params=q_network.init(q_key, obs),
+        params=q_network.init(q_key, envs.observation_space.sample()),
+        target_params=q_network.init(q_key, envs.observation_space.sample()),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
-
     q_network.apply = jax.jit(q_network.apply)
 
     # QDAGGER LOGIC:
     teacher_model_path = hf_hub_download(repo_id=args.teacher_policy_hf_repo, filename="dqn_atari_jax.cleanrl_model")
     teacher_model = TeacherModel(action_dim=envs.single_action_space.n)
     teacher_model_key = jax.random.PRNGKey(args.seed)
-    teacher_params = teacher_model.init(teacher_model_key, obs)
+    teacher_params = teacher_model.init(teacher_model_key, envs.observation_space.sample())
     with open(teacher_model_path, "rb") as f:
         teacher_params = flax.serialization.from_bytes(teacher_params, f.read())
     teacher_model.apply = jax.jit(teacher_model.apply)
@@ -300,13 +296,13 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     def update(q_state, observations, actions, next_observations, rewards, dones, distill_coeff):
         q_next_target = q_network.apply(q_state.target_params, next_observations)  # (batch_size, num_actions)
         q_next_target = jnp.max(q_next_target, axis=-1)  # (batch_size,)
-        next_q_value = rewards + (1 - dones) * args.gamma * q_next_target
+        td_target = rewards + (1 - dones) * args.gamma * q_next_target
         teacher_q_values = teacher_model.apply(teacher_params, observations)
 
-        def loss(params, next_q_value, teacher_q_values, distill_coeff):
+        def loss(params, td_target, teacher_q_values, distill_coeff):
             student_q_values = q_network.apply(params, observations)  # (batch_size, num_actions)
             q_pred = student_q_values[np.arange(student_q_values.shape[0]), actions.squeeze()]  # (batch_size,)
-            q_loss = ((q_pred - next_q_value) ** 2).mean()
+            q_loss = ((q_pred - td_target) ** 2).mean()
             teacher_q_values = teacher_q_values / args.temperature
             student_q_values = student_q_values / args.temperature
             distill_loss = jnp.mean(jax.vmap(kl_divergence_with_logits)(teacher_q_values, student_q_values))
@@ -314,7 +310,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
             return overall_loss, (q_loss, q_pred, distill_loss)
 
         (loss_value, (q_loss, q_pred, distill_loss)), grads = jax.value_and_grad(loss, has_aux=True)(
-            q_state.params, next_q_value, teacher_q_values, distill_coeff
+            q_state.params, td_target, teacher_q_values, distill_coeff
         )
         q_state = q_state.apply_gradients(grads=grads)
         return loss_value, q_loss, q_pred, distill_loss, q_state
@@ -332,16 +328,19 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
             data.dones.flatten().numpy(),
             1.0,
         )
+
         if global_step % 100 == 0:
             writer.add_scalar("charts/offline/loss", jax.device_get(loss), global_step)
             writer.add_scalar("charts/offline/q_loss", jax.device_get(q_loss), global_step)
             writer.add_scalar("charts/offline/distill_loss", jax.device_get(distill_loss), global_step)
+
         if global_step % 100000 == 0:
             # evaluate the student model
             model_path = f"runs/{run_name}/{args.exp_name}-offline-{global_step}.cleanrl_model"
             with open(model_path, "wb") as f:
                 f.write(flax.serialization.to_bytes(q_state.params))
             print(f"model saved to {model_path}")
+
             episodic_returns = evaluate(
                 model_path,
                 make_env,
@@ -354,8 +353,6 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
             print(episodic_returns)
             writer.add_scalar("charts/offline/avg_episodic_return", np.mean(episodic_returns), global_step)
 
-    # TODO: question: do we need to start the student rb from scratch?
-    # rb = teacher_rb
     rb = ReplayBuffer(
         args.buffer_size,
         envs.single_observation_space,
