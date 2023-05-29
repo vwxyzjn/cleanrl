@@ -67,6 +67,8 @@ def parse_args():
         help="KL regularization coefficient for the action limit penalty")
     parser.add_argument("--target-network-update-period", type=float, default=100,
         help="number of steps before updating the target networks (250 in 2018b paper, 100 in jax deepmind implementation and in deepmind example for reproducibility)")
+    parser.add_argument("--variable-update-period", type=float, default=1000,
+        help="number of steps before updating the environment interaction actor network")
     parser.add_argument("--action-sampling-number", type=float, default=20,
         help="number of actions to sample for each state sampled, to compute an approximated non parametric better policy distribution")
     parser.add_argument("--grad-norm-clip", type=float, default=40.,
@@ -334,6 +336,8 @@ if __name__ == "__main__":
     actor = Actor(envs).to(device)
     target_actor = Actor(envs).to(device)
     target_actor.load_state_dict(actor.state_dict())
+    env_actor = Actor(envs).to(device)
+    env_actor.load_state_dict(actor.state_dict())
 
     qf = QNetwork(envs).to(device)
     target_qf = QNetwork(envs).to(device)
@@ -378,7 +382,7 @@ if __name__ == "__main__":
     start_time = time.time()
     for global_step in range(args.total_timesteps):
         with torch.no_grad():
-            taus_mean, taus_stddev = actor(torch.Tensor(obs).to(device))
+            taus_mean, taus_stddev = env_actor(torch.Tensor(obs).to(device))
             distribution = torch.distributions.multivariate_normal.MultivariateNormal(
                 loc=taus_mean, scale_tril=torch.diag_embed(taus_stddev)
             )
@@ -476,6 +480,9 @@ if __name__ == "__main__":
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
 
         if global_step > args.learning_starts:
+            if global_step % args.variable_update_period == 0:
+                env_actor.load_state_dict(actor.state_dict())
+
             if global_step % 4 == 0:
                 # PHASE 1
                 # QValue learning
