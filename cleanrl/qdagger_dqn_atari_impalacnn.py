@@ -61,10 +61,14 @@ def parse_args():
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=1e-4,
         help="the learning rate of the optimizer")
+    parser.add_argument("--num-envs", type=int, default=1,
+        help="the number of parallel game environments")
     parser.add_argument("--buffer-size", type=int, default=1000000,
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
+    parser.add_argument("--tau", type=float, default=1.,
+        help="the target network update rate")
     parser.add_argument("--target-network-frequency", type=int, default=1000,
         help="the timesteps it takes to update the target network")
     parser.add_argument("--batch-size", type=int, default=32,
@@ -93,6 +97,8 @@ def parse_args():
         help="the temperature parameter for qdagger")
     args = parser.parse_args()
     # fmt: on
+    assert args.num_envs == 1, "vectorized envs are not supported at the moment"
+
     return args
 
 
@@ -232,11 +238,12 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
+    )
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(envs).to(device)
-
     optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
     target_network = QNetwork(envs).to(device)
     target_network.load_state_dict(q_network.state_dict())
@@ -258,7 +265,6 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         epsilon=0.05,
         capture_video=False,
     )
-    print(np.mean(teacher_episodic_returns))
     writer.add_scalar("charts/teacher/avg_episodic_return", np.mean(teacher_episodic_returns), 0)
 
     # collect teacher data for args.teacher_steps
@@ -296,7 +302,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         with torch.no_grad():
             target_max, _ = target_network(data.next_observations).max(dim=1)
             td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
-            teacher_q_values = teacher_model(data.next_observations) / args.temperature
+            teacher_q_values = teacher_model(data.observations) / args.temperature
 
         student_q_values = q_network(data.observations)
         old_val = student_q_values.gather(1, data.actions).squeeze()
@@ -313,7 +319,8 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
 
         # update the target network
         if global_step % args.target_network_frequency == 0:
-            target_network.load_state_dict(q_network.state_dict())
+            for target_network_param, q_network_param in zip(target_network.parameters(), q_network.parameters()):
+                target_network_param.data.copy_(args.tau * q_network_param.data + (1.0 - args.tau) * target_network_param.data)
 
         if global_step % 100 == 0:
             writer.add_scalar("charts/offline/loss", loss, global_step)
@@ -350,8 +357,9 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
-
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
+    )
     obs, _ = envs.reset(seed=args.seed)
     episodic_returns = deque(maxlen=10)
     # online training phase
@@ -376,12 +384,12 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
                     continue
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                episodic_returns.append(info["episode"]["r"])
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 writer.add_scalar("charts/epsilon", epsilon, global_step)
+                episodic_returns.append(info["episode"]["r"])
                 break
 
-        # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
+        # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
         for idx, d in enumerate(truncated):
             if d:
@@ -403,13 +411,14 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
                 with torch.no_grad():
                     target_max, _ = target_network(data.next_observations).max(dim=1)
                     td_target = data.rewards.flatten() + args.gamma * target_max * (1 - data.dones.flatten())
-                    teacher_q_val = teacher_model(data.next_observations) / args.temperature
+                    teacher_q_values = teacher_model(data.observations) / args.temperature
 
-                old_val = q_network(data.observations).gather(1, data.actions).squeeze()
+                student_q_values = q_network(data.observations)
+                old_val = student_q_values.gather(1, data.actions).squeeze()
                 q_loss = F.mse_loss(td_target, old_val)
 
-                student_q_val = q_network(data.next_observations) / args.temperature
-                distill_loss = torch.mean(kl_divergence_with_logits(teacher_q_val, student_q_val))
+                student_q_values = student_q_values / args.temperature
+                distill_loss = torch.mean(kl_divergence_with_logits(teacher_q_values, student_q_values))
 
                 loss = q_loss + distill_coeff * distill_loss
 
@@ -419,8 +428,8 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
                     writer.add_scalar("losses/distill_loss", distill_loss, global_step)
                     writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
                     writer.add_scalar("charts/distill_coeff", distill_coeff, global_step)
-                    print(distill_coeff)
                     print("SPS:", int(global_step / (time.time() - start_time)))
+                    print(distill_coeff)
                     writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
                 # optimize the model
@@ -430,7 +439,10 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
 
             # update the target network
             if global_step % args.target_network_frequency == 0:
-                target_network.load_state_dict(q_network.state_dict())
+                for target_network_param, q_network_param in zip(target_network.parameters(), q_network.parameters()):
+                    target_network_param.data.copy_(
+                        args.tau * q_network_param.data + (1.0 - args.tau) * target_network_param.data
+                    )
 
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"

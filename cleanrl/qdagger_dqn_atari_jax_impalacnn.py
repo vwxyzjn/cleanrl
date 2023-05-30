@@ -64,10 +64,14 @@ def parse_args():
         help="total timesteps of the experiments")
     parser.add_argument("--learning-rate", type=float, default=1e-4,
         help="the learning rate of the optimizer")
+    parser.add_argument("--num-envs", type=int, default=1,
+        help="the number of parallel game environments")
     parser.add_argument("--buffer-size", type=int, default=1000000,
         help="the replay memory buffer size")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
+    parser.add_argument("--tau", type=float, default=1.,
+        help="the target network update rate")
     parser.add_argument("--target-network-frequency", type=int, default=1000,
         help="the timesteps it takes to update the target network")
     parser.add_argument("--batch-size", type=int, default=32,
@@ -96,6 +100,8 @@ def parse_args():
         help="the temperature parameter for qdagger")
     args = parser.parse_args()
     # fmt: on
+    assert args.num_envs == 1, "vectorized envs are not supported at the moment"
+
     return args
 
 
@@ -223,7 +229,9 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     key, q_key = jax.random.split(key, 2)
 
     # env setup
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
+    )
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(channelss=(16, 32, 32), action_dim=envs.single_action_space.n)
@@ -331,7 +339,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
 
         # update the target network
         if global_step % args.target_network_frequency == 0:
-            q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, 1))
+            q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, args.tau))
 
         if global_step % 100 == 0:
             writer.add_scalar("charts/offline/loss", jax.device_get(loss), global_step)
@@ -368,8 +376,9 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
-
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
+    )
     obs, _ = envs.reset(seed=args.seed)
     episodic_returns = deque(maxlen=10)
     # online training phase
@@ -395,12 +404,12 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
                     continue
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                episodic_returns.append(info["episode"]["r"])
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 writer.add_scalar("charts/epsilon", epsilon, global_step)
+                episodic_returns.append(info["episode"]["r"])
                 break
 
-        # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
+        # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
         for idx, d in enumerate(truncated):
             if d:
@@ -435,13 +444,15 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
                     writer.add_scalar("losses/distill_loss", jax.device_get(distill_loss), global_step)
                     writer.add_scalar("losses/q_values", jax.device_get(old_val).mean(), global_step)
                     writer.add_scalar("charts/distill_coeff", distill_coeff, global_step)
-                    print(distill_coeff)
                     print("SPS:", int(global_step / (time.time() - start_time)))
+                    print(distill_coeff)
                     writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
             # update the target network
             if global_step % args.target_network_frequency == 0:
-                q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, 1))
+                q_state = q_state.replace(
+                    target_params=optax.incremental_update(q_state.params, q_state.target_params, args.tau)
+                )
 
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
