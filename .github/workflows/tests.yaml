@@ -16,7 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.5.1]
+        poetry-version: [1.4]
         os: [ubuntu-22.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -59,7 +59,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.3]
+        poetry-version: [1.4]
         os: [ubuntu-22.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -98,7 +98,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.3]
+        poetry-version: [1.4]
         os: [ubuntu-22.04, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -124,7 +124,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.3]
+        poetry-version: [1.4]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
@@ -154,7 +154,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.3]
+        poetry-version: [1.4]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
@@ -186,7 +186,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.3]
+        poetry-version: [1.4]
         os: [macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -212,7 +212,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.3]
+        poetry-version: [1.4]
         os: [macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
@@ -240,7 +240,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.3]
+        poetry-version: [1.4]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
@@ -273,7 +273,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.3]
+        poetry-version: [1.4]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
@@ -308,7 +308,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.3]
+        poetry-version: [1.4]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
@@ -334,7 +334,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.3]
+        poetry-version: [1.4]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
@@ -360,7 +360,7 @@ jobs:
       fail-fast: false
       matrix:
         python-version: [3.8]
-        poetry-version: [1.3]
+        poetry-version: [1.4]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
