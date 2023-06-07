@@ -65,6 +65,16 @@ $$
 $$
 with the Bellman update target is $y = r + \gamma \, Q^{'}(s', a')$ and the replay buffer is $\mathcal{D}$.
 * `losses/q_values`: implemented as `qf1(data.observations, data.actions).view(-1)`, it is the average Q values of the sampled data in the replay buffer; useful when gauging if under or over estimation happens.
+* `losses/distill_loss`:
+* `losses/loss`:
+* 
+* `charts/teacher/avg_episodic_return`:
+* 
+* `charts/offline/avg_episodic_return`:
+* `charts/offline/q_loss`:
+* `charts/offline/distill_loss`:
+* `charts/offline/loss`:
+* `Charts/distill_coeff`:
 
 
 ### Implementation details
@@ -76,14 +86,11 @@ WIP
 Below are the average episodic returns for `qdagger_dqn_atari_impalacnn.py`. 
 
 
-| Environment      | `qdagger_dqn_atari_impalacnn.py` 10M steps | (Agarwal et al., 2022)[^1] 50M steps |
+| Environment      | `qdagger_dqn_atari_impalacnn.py` 40M frames | (Agarwal et al., 2022)[^1] 10M frames |
 | ----------- | ----------- | ----------- |
-| BreakoutNoFrameskip-v4 | 295.55 ± 12.30 | x |
-| PongNoFrameskip-v4  | 19.72 ± 0.20 | x |
-| BeamRiderNoFrameskip-v4 | 9284.99 ± 242.28 | x |
-
-
-Note that we save computational time by reducing timesteps from 50M to 10M, but our `qdagger_dqn_atari_impalacnn.py` scores the same or higher than (Agarwal et al., 2022)[^1] in 10M steps.
+| BreakoutNoFrameskip-v4 | 295.55 ± 12.30 | 275.15 ± 20.65 |
+| PongNoFrameskip-v4  | 19.72 ± 0.20 | - |
+| BeamRiderNoFrameskip-v4 | 9284.99 ± 242.28 | 6514.25 ± 411.1 |
 
 
 Learning curves:
@@ -152,11 +159,11 @@ See [related docs](/rl-algorithms/qdagger/#implementation-details) for `qdagger_
 Below are the average episodic returns for `qdagger_dqn_atari_jax_impalacnn.py`.
 
 
-| Environment      | `qdagger_dqn_atari_jax_impalacnn.py` 10M steps | (Agarwal et al., 2022)[^1] 50M steps |
+| Environment      | `qdagger_dqn_atari_jax_impalacnn.py` 40M frames | (Agarwal et al., 2022)[^1] 10M frames |
 | ----------- | ----------- | ----------- |
-| BreakoutNoFrameskip-v4 | 335.08 ± 19.12 | x |
-| PongNoFrameskip-v4  | 18.75 ± 0.19 | x |
-| BeamRiderNoFrameskip-v4 | 8024.75 ± 579.02 | x |
+| BreakoutNoFrameskip-v4 | 335.08 ± 19.12 | 275.15 ± 20.65 |
+| PongNoFrameskip-v4  | 18.75 ± 0.19 | - |
+| BeamRiderNoFrameskip-v4 | 8024.75 ± 579.02 | 6514.25 ± 411.1 |
 
 
 Learning curves:
