@@ -73,7 +73,34 @@ WIP
 
 ### Experiment results
 
-WIP
+Below are the average episodic returns for `qdagger_dqn_atari_impalacnn.py`. 
+
+
+| Environment      | `qdagger_dqn_atari_impalacnn.py` 10M steps | (Agarwal et al., 2022)[^1] 50M steps |
+| ----------- | ----------- | ----------- |
+| BreakoutNoFrameskip-v4 | 295.55 ± 12.30 | x |
+| PongNoFrameskip-v4  | 19.72 ± 0.20 | x |
+| BeamRiderNoFrameskip-v4 | 9284.99 ± 242.28 | x |
+
+
+Note that we save computational time by reducing timesteps from 50M to 10M, but our `qdagger_dqn_atari_impalacnn.py` scores the same or higher than (Agarwal et al., 2022)[^1] in 10M steps.
+
+
+Learning curves:
+
+<div class="grid-container">
+<img src="../qdagger/BreakoutNoFrameskip-v4.png">
+
+<img src="../qdagger/PongNoFrameskip-v4.png">
+
+<img src="../qdagger/BeamRiderNoFrameskip-v4.png">
+</div>
+
+
+Tracked experiments and game play videos:
+
+<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/Atari-CleanRL-s-Qdagger--Vmlldzo0NTg1ODY5" style="width:100%; height:500px" title="CleanRL DQN + Atari Tracked Experiments"></iframe>
+
 
 ## `qdagger_dqn_atari_jax_impalacnn.py`
 
@@ -122,4 +149,26 @@ See [related docs](/rl-algorithms/qdagger/#implementation-details) for `qdagger_
 
 ### Experiment results
 
-WIP
+Below are the average episodic returns for `qdagger_dqn_atari_jax_impalacnn.py`.
+
+
+| Environment      | `qdagger_dqn_atari_jax_impalacnn.py` 10M steps | (Agarwal et al., 2022)[^1] 50M steps |
+| ----------- | ----------- | ----------- |
+| BreakoutNoFrameskip-v4 | 335.08 ± 19.12 | x |
+| PongNoFrameskip-v4  | 18.75 ± 0.19 | x |
+| BeamRiderNoFrameskip-v4 | 8024.75 ± 579.02 | x |
+
+
+Learning curves:
+
+<div class="grid-container">
+<img src="../qdagger-jax/BreakoutNoFrameskip-v4.png">
+
+<img src="../qdagger-jax/PongNoFrameskip-v4.png">
+
+<img src="../qdagger-jax/BeamRiderNoFrameskip-v4.png">
+</div>
+
+
+
+[^1]:Agarwal, Rishabh, Max Schwarzer, Pablo Samuel Castro, Aaron Courville, and Marc G. Bellemare. “Reincarnating Reinforcement Learning: Reusing Prior Computation to Accelerate Progress.” arXiv, October 4, 2022. http://arxiv.org/abs/2206.01626.
