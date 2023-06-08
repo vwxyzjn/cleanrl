@@ -7,7 +7,10 @@ QDagger is an extension of the DQN algorithm that uses previously computed resul
 Original papers:
 
 * [Reincarnating Reinforcement Learning: Reusing Prior Computation to Accelerate Progress](https://arxiv.org/abs/2206.01626)
-* Code repository: [google-research/reincarnating_rl](https://github.com/google-research/reincarnating_rl)
+
+Reference resources:
+
+* :material-github: [google-research/reincarnating_rl](https://github.com/google-research/reincarnating_rl)
 
 ## Implemented Variants
 
@@ -66,20 +69,20 @@ $$
 $$
 with the Bellman update target is $y = r + \gamma \, Q^{'}(s', a')$ and the replay buffer is $\mathcal{D}$.
 * `losses/q_values`: implemented as `qf1(data.observations, data.actions).view(-1)`, it is the average Q values of the sampled data in the replay buffer; useful when gauging if under or over estimation happens.
-* `losses/distill_loss`:
+* `losses/distill_loss`: the distillation loss, which is the KL divergence between the teacher policy $\pi_T$ and the student policy $\pi$. Formally, it can be expressed by the equation below.
 $$
     L_{\text{distill}} = \lambda_t \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \sum_a \pi_T(a|s)\log\pi(a|s)\right],
 $$
-* `losses/loss`:
+* `Charts/distill_coeff`: the coefficient $\lambda_t$ for the distillation loss, which is a function of the ratio between the teacher policy and the student policy. Formally, it can be expressed by the equation below.
+$$
+\lambda_t = 1_{t<t_0}\max(1 - G^\pi/G^{\pi_T}, 0).
+$$
+* `losses/loss`: the total loss, which is the sum of the TD loss and the distillation loss.
 $$
     L_{\text{qdagger}} = J(\theta^{Q}) + L_{\text{distill}}.
 $$
-* `Charts/distill_coeff`:
-$$
-\lambda_t = 1_{t<t_0}\max(1 - G^\pi/G^{\pi_T}, 0),
-$$
-* `charts/teacher/avg_episodic_return`: episodic return of teacher policy evaluation
-* `charts/offline/avg_episodic_return`: episodic return of policy evaluation in offline training phase
+* `charts/teacher/avg_episodic_return`: average episodic return of teacher policy evaluation
+* `charts/offline/avg_episodic_return`: average episodic return of policy evaluation in offline training phase
 
 
 ### Implementation details
@@ -179,11 +182,11 @@ Below are the average episodic returns for `qdagger_dqn_atari_jax_impalacnn.py`.
 Learning curves:
 
 <div class="grid-container">
-<img src="../qdagger-jax/BreakoutNoFrameskip-v4.png">
+<img src="../qdagger/jax/BreakoutNoFrameskip-v4.png">
 
-<img src="../qdagger-jax/PongNoFrameskip-v4.png">
+<img src="../qdagger/jax/PongNoFrameskip-v4.png">
 
-<img src="../qdagger-jax/BeamRiderNoFrameskip-v4.png">
+<img src="../qdagger/jax/BeamRiderNoFrameskip-v4.png">
 </div>
 
 
