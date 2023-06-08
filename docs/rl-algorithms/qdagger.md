@@ -1,30 +1,31 @@
-# Qdagger
+# QDagger
 
 ## Overview
 
-As an extension of the Q-learning, DQN's main technical contribution is the use of replay buffer and target network, both of which would help improve the stability of the algorithm.
+QDagger is an extension of the DQN algorithm that uses previously computed results, like teacher policy and teacher replay buffer, to help train student policies. This method eliminates the need for learning from scratch, improving sample efficiency and reducing computational effort in training new policies.
 
-
-Original papers: 
+Original papers:
 
 * [Reincarnating Reinforcement Learning: Reusing Prior Computation to Accelerate Progress](https://arxiv.org/abs/2206.01626)
+* Code repository: [google-research/reincarnating_rl](https://github.com/google-research/reincarnating_rl)
 
 ## Implemented Variants
 
 | Variants Implemented      | Description |
 | ----------- | ----------- |
-| :material-github: [`qdagger_dqn_atari_impalacnn.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/qdagger_dqn_atari_impalacnn.py), :material-file-document: [docs](/rl-algorithms/qdagger/#qdagger_dqn_atari_impalacnnpy) |  For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques. |
-| :material-github: [`qdagger_dqn_atari_jax_impalacnn.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/qdagger_dqn_atari_jax_impalacnn.py), :material-file-document: [docs](/rl-algorithms/qdagger/#qdagger_dqn_atari_jax_impalacnnpy) |  For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques. |
+| :material-github: [`qdagger_dqn_atari_impalacnn.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/qdagger_dqn_atari_impalacnn.py), :material-file-document: [docs](/rl-algorithms/qdagger/#qdagger_dqn_atari_impalacnnpy) | For playing Atari games. It uses Impala-CNN from RainbowDQN and common atari-based pre-processing techniques. |
+| :material-github: [`qdagger_dqn_atari_jax_impalacnn.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/qdagger_dqn_atari_jax_impalacnn.py), :material-file-document: [docs](/rl-algorithms/qdagger/#qdagger_dqn_atari_jax_impalacnnpy) | For playing Atari games. It uses Impala-CNN from RainbowDQN and common atari-based pre-processing techniques. |
 
 
-Below are our single-file implementations of Qdagger:
+Below are our single-file implementations of QDagger:
 
 
 ## `qdagger_dqn_atari_impalacnn.py`
 
 The [qdagger_dqn_atari_impalacnn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/qdagger_dqn_atari_impalacnn.py) has the following features:
 
-* For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+* For playing Atari games. It uses Impala-CNN from RainbowDQN and common atari-based pre-processing techniques.
+* Its teacher policy uses CleanRL's `dqn_atari` policy from the [huggingface/cleanrl](https://huggingface.co/cleanrl) repository.
 * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
 * Works with the `Discrete` action space
 
@@ -66,31 +67,39 @@ $$
 with the Bellman update target is $y = r + \gamma \, Q^{'}(s', a')$ and the replay buffer is $\mathcal{D}$.
 * `losses/q_values`: implemented as `qf1(data.observations, data.actions).view(-1)`, it is the average Q values of the sampled data in the replay buffer; useful when gauging if under or over estimation happens.
 * `losses/distill_loss`:
+$$
+    L_{\text{distill}} = \lambda_t \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \sum_a \pi_T(a|s)\log\pi(a|s)\right],
+$$
 * `losses/loss`:
-* 
-* `charts/teacher/avg_episodic_return`:
-* 
-* `charts/offline/avg_episodic_return`:
-* `charts/offline/q_loss`:
-* `charts/offline/distill_loss`:
-* `charts/offline/loss`:
+$$
+    L_{\text{qdagger}} = J(\theta^{Q}) + L_{\text{distill}}.
+$$
 * `Charts/distill_coeff`:
+$$
+\lambda_t = 1_{t<t_0}\max(1 - G^\pi/G^{\pi_T}, 0),
+$$
+* `charts/teacher/avg_episodic_return`: episodic return of teacher policy evaluation
+* `charts/offline/avg_episodic_return`: episodic return of policy evaluation in offline training phase
 
 
 ### Implementation details
 
-WIP
+`qdagger_dqn_atari_impalacnn.py` is based on (Agarwal et al., 2022)[^1] but presents a few implementation differences:
+
+* (Agarwal et al., 2022)[^1] uses the teacher replay buffer data saved during the training of the teacher policy, but our teacher policy, which uses CleanRL's `dqn_atari` from the [huggingface/cleanrl](https://huggingface.co/cleanrl), does not contain replay buffer data, so we populate the teacher replay buffer with the teacher policy before training. For more details, see section A.5 "Additional ablations for QDagger" in the original paper.
+* (Agarwal et al., 2022)[^1] uses DQN (Adam) @ 400M frames, but we use CleanRL's `dqn_atari`, which is DQN (Adam) @ 10M steps(40M frames).
+* We have used an old set of Atari preprocessing techniques that doesn't use sticky action, but the original paper does.
 
 ### Experiment results
 
 Below are the average episodic returns for `qdagger_dqn_atari_impalacnn.py`. 
 
 
-| Environment      | `qdagger_dqn_atari_impalacnn.py` 40M frames | (Agarwal et al., 2022)[^1] 10M frames |
+| Environment      | `qdagger_dqn_atari_impalacnn.py` 10M steps(40M frames) | (Agarwal et al., 2022)[^1] 10M frames |
 | ----------- | ----------- | ----------- |
 | BreakoutNoFrameskip-v4 | 295.55 ± 12.30 | 275.15 ± 20.65 |
 | PongNoFrameskip-v4  | 19.72 ± 0.20 | - |
-| BeamRiderNoFrameskip-v4 | 9284.99 ± 242.28 | 6514.25 ± 411.1 |
+| BeamRiderNoFrameskip-v4 | 9284.99 ± 242.28 | 6514.25 ± 411.10 |
 
 
 Learning curves:
@@ -115,7 +124,8 @@ Tracked experiments and game play videos:
 The [qdagger_dqn_atari_jax_impalacnn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/qdagger_dqn_atari_jax_impalacnn.py) has the following features:
 
 * Uses [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of `torch`.  [qdagger_dqn_atari_jax_impalacnn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/qdagger_dqn_atari_jax_impalacnn.py) is roughly 25%-50% faster than  [qdagger_dqn_atari_impalacnn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/qdagger_dqn_atari_impalacnn.py)
-* For playing Atari games. It uses convolutional layers and common atari-based pre-processing techniques.
+* For playing Atari games. It uses Impala-CNN from RainbowDQN and common atari-based pre-processing techniques.
+* Its teacher policy uses CleanRL's `dqn_atari_jax` policy from the [huggingface/cleanrl](https://huggingface.co/cleanrl) repository.
 * Works with the Atari's pixel `Box` observation space of shape `(210, 160, 3)`
 * Works with the `Discrete` action space
 
@@ -159,11 +169,11 @@ See [related docs](/rl-algorithms/qdagger/#implementation-details) for `qdagger_
 Below are the average episodic returns for `qdagger_dqn_atari_jax_impalacnn.py`.
 
 
-| Environment      | `qdagger_dqn_atari_jax_impalacnn.py` 40M frames | (Agarwal et al., 2022)[^1] 10M frames |
+| Environment      | `qdagger_dqn_atari_jax_impalacnn.py` 10M steps(40M frames) | (Agarwal et al., 2022)[^1] 10M frames |
 | ----------- | ----------- | ----------- |
 | BreakoutNoFrameskip-v4 | 335.08 ± 19.12 | 275.15 ± 20.65 |
 | PongNoFrameskip-v4  | 18.75 ± 0.19 | - |
-| BeamRiderNoFrameskip-v4 | 8024.75 ± 579.02 | 6514.25 ± 411.1 |
+| BeamRiderNoFrameskip-v4 | 8024.75 ± 579.02 | 6514.25 ± 411.10 |
 
 
 Learning curves:
