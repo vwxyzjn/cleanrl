@@ -2,15 +2,16 @@
 
 ## Overview
 
-QDagger is an extension of the DQN algorithm that uses previously computed results, like teacher policy and teacher replay buffer, to help train student policies. This method eliminates the need for learning from scratch, improving sample efficiency and reducing computational effort in training new policies.
+QDagger is an extension of the DQN algorithm that uses previously computed results, like teacher policy and teacher replay buffer, to help train student policy. This method eliminates the need for learning from scratch, improving sample efficiency and reducing computational effort in training new policy.
 
-Original papers:
+Original paper:
 
 * [Reincarnating Reinforcement Learning: Reusing Prior Computation to Accelerate Progress](https://arxiv.org/abs/2206.01626)
 
 Reference resources:
 
 * :material-github: [google-research/reincarnating_rl](https://github.com/google-research/reincarnating_rl)
+* [Original Paper's Website](https://agarwl.github.io/reincarnating_rl/)
 
 ## Implemented Variants
 
@@ -59,7 +60,7 @@ python cleanrl/qdagger_dqn_atari_impalacnn.py --env-id PongNoFrameskip-v4 --teac
 
 ### Explanation of the logged metrics
 
-Running `python cleanrl/qdagger_dqn_atari_impalacnn.py` will automatically record various metrics such as actor or value losses in Tensorboard. Below is the documentation for these metrics:
+Running `python cleanrl/qdagger_dqn_atari_impalacnn.py` will automatically record various metrics such as value or distillation losses in Tensorboard. Below is the documentation for these metrics:
 
 * `charts/episodic_return`: episodic return of the game
 * `charts/SPS`: number of steps per second
@@ -98,7 +99,7 @@ $$
 Below are the average episodic returns for `qdagger_dqn_atari_impalacnn.py`. 
 
 
-| Environment      | `qdagger_dqn_atari_impalacnn.py` 10M steps(40M frames) | (Agarwal et al., 2022)[^1] 10M frames |
+| Environment | `qdagger_dqn_atari_impalacnn.py` 10M steps(40M frames) | (Agarwal et al., 2022)[^1] 10M frames |
 | ----------- | ----------- | ----------- |
 | BreakoutNoFrameskip-v4 | 295.55 ± 12.30 | 275.15 ± 20.65 |
 | PongNoFrameskip-v4  | 19.72 ± 0.20 | - |
@@ -172,7 +173,7 @@ See [related docs](/rl-algorithms/qdagger/#implementation-details) for `qdagger_
 Below are the average episodic returns for `qdagger_dqn_atari_jax_impalacnn.py`.
 
 
-| Environment      | `qdagger_dqn_atari_jax_impalacnn.py` 10M steps(40M frames) | (Agarwal et al., 2022)[^1] 10M frames |
+| Environment | `qdagger_dqn_atari_jax_impalacnn.py` 10M steps(40M frames) | (Agarwal et al., 2022)[^1] 10M frames |
 | ----------- | ----------- | ----------- |
 | BreakoutNoFrameskip-v4 | 335.08 ± 19.12 | 275.15 ± 20.65 |
 | PongNoFrameskip-v4  | 18.75 ± 0.19 | - |
