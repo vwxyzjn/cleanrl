@@ -98,7 +98,7 @@ def parse_args():
     args = parser.parse_args()
     # fmt: on
     assert args.num_envs == 1, "vectorized envs are not supported at the moment"
-    
+
     if args.teacher_policy_hf_repo is None:
         args.teacher_policy_hf_repo = f"cleanrl/{args.env_id}-dqn_atari-seed1"
 
