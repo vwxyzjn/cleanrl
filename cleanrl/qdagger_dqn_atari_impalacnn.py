@@ -85,7 +85,7 @@ def parse_args():
         help="the frequency of training")
 
     # QDagger specific arguments
-    parser.add_argument("--teacher-policy-hf-repo", type=str, default="cleanrl/BreakoutNoFrameskip-v4-dqn_atari-seed1",
+    parser.add_argument("--teacher-policy-hf-repo", type=str, default=None,
         help="the huggingface repo of the teacher policy")
     parser.add_argument("--teacher-eval-episodes", type=int, default=10,
         help="the number of episodes to run the teacher policy evaluate")
@@ -98,6 +98,9 @@ def parse_args():
     args = parser.parse_args()
     # fmt: on
     assert args.num_envs == 1, "vectorized envs are not supported at the moment"
+    
+    if args.teacher_policy_hf_repo is None:
+        args.teacher_policy_hf_repo = f"cleanrl/{args.env_id}-dqn_atari-seed1"
 
     return args
 
