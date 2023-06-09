@@ -1,9 +1,10 @@
-# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpoolpy
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo_dna/#ppo_dna_atari_envpoolpy
 import argparse
 import os
 import random
 import time
 from collections import deque
+from copy import deepcopy
 from distutils.util import strtobool
 
 import envpool
@@ -12,7 +13,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.distributions.categorical import Categorical
+from torch.distributions import Categorical, kl_divergence
 from torch.utils.tensorboard import SummaryWriter
 
 
@@ -39,9 +40,7 @@ def parse_args():
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=10000000,
         help="total timesteps of the experiments")
-    parser.add_argument("--learning-rate", type=float, default=2.5e-4,
-        help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=8,
+    parser.add_argument("--num-envs", type=int, default=128,
         help="the number of parallel game environments")
     parser.add_argument("--num-steps", type=int, default=128,
         help="the number of steps to run in each environment per policy rollout")
@@ -49,29 +48,49 @@ def parse_args():
         help="Toggle learning rate annealing for policy and value networks")
     parser.add_argument("--gamma", type=float, default=0.99,
         help="the discount factor gamma")
-    parser.add_argument("--gae-lambda", type=float, default=0.95,
-        help="the lambda for the general advantage estimation")
-    parser.add_argument("--num-minibatches", type=int, default=4,
-        help="the number of mini-batches")
-    parser.add_argument("--update-epochs", type=int, default=4,
+
+    # DNA policy network optimization hyperparams
+    parser.add_argument("--policy-learning-rate", type=float, default=2.5e-4,
+        help="the learning rate of the policy optimizer")
+    parser.add_argument("--policy-batch-size", type=int, default=2048,
+        help="the batch size of the policy optimizer")
+    parser.add_argument("--policy-gae-lambda", type=float, default=0.8,
+        help="the lambda for the general advantage estimation of policy (zero to disable GAE)")
+    parser.add_argument("--policy-update-epochs", type=int, default=2,
         help="the K epochs to update the policy")
+
+    # DNA value network optimization hyperparams
+    parser.add_argument("--value-learning-rate", type=float, default=2.5e-4,
+        help="the learning rate of the value function optimizer")
+    parser.add_argument("--value-batch-size", type=int, default=512,
+        help="the batch size of the value function optimizer")
+    parser.add_argument("--value-gae-lambda", type=float, default=0.95,
+        help="the lambda for the general advantage estimation of value function (zero to disable GAE)")
+    parser.add_argument("--value-update-epochs", type=int, default=1,
+        help="the K epochs to update the value function")
+
+    # DNA value network to policy network distillation hyperparams
+    parser.add_argument("--distill-learning-rate", type=float, default=2.5e-4,
+        help="the learning rate of the distillation optimizer")
+    parser.add_argument("--distill-batch-size", type=int, default=512,
+        help="the batch size of the distillation optimizer")
+    parser.add_argument("--distill-update-epochs", type=int, default=2,
+        help="the K epochs to update the distillation")
+    parser.add_argument("--distill-beta", type=float, default=1.0,
+        help="distillation policy KL divergence regularization strength")
+
     parser.add_argument("--norm-adv", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.1,
         help="the surrogate clipping coefficient")
-    parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
     parser.add_argument("--ent-coef", type=float, default=0.01,
         help="coefficient of the entropy")
-    parser.add_argument("--vf-coef", type=float, default=0.5,
-        help="coefficient of the value function")
     parser.add_argument("--max-grad-norm", type=float, default=0.5,
         help="the maximum norm for the gradient clipping")
     parser.add_argument("--target-kl", type=float, default=None,
         help="the target KL divergence threshold")
     args = parser.parse_args()
     args.batch_size = int(args.num_envs * args.num_steps)
-    args.minibatch_size = int(args.batch_size // args.num_minibatches)
     # fmt: on
     return args
 
@@ -82,6 +101,13 @@ class RecordEpisodeStatistics(gym.Wrapper):
         self.num_envs = getattr(env, "num_envs", 1)
         self.episode_returns = None
         self.episode_lengths = None
+        # get if the env has lives
+        self.has_lives = False
+        env.reset()
+        info = env.step(np.zeros(self.num_envs, dtype=int))[-1]
+        if info["lives"].sum() > 0:
+            self.has_lives = True
+            print("env has lives")
 
     def reset(self, **kwargs):
         observations = super().reset(**kwargs)
@@ -98,8 +124,13 @@ class RecordEpisodeStatistics(gym.Wrapper):
         self.episode_lengths += 1
         self.returned_episode_returns[:] = self.episode_returns
         self.returned_episode_lengths[:] = self.episode_lengths
-        self.episode_returns *= 1 - infos["terminated"]
-        self.episode_lengths *= 1 - infos["terminated"]
+        all_lives_exhausted = infos["lives"] == 0
+        if self.has_lives:
+            self.episode_returns *= 1 - all_lives_exhausted
+            self.episode_lengths *= 1 - all_lives_exhausted
+        else:
+            self.episode_returns *= 1 - dones
+            self.episode_lengths *= 1 - dones
         infos["r"] = self.returned_episode_returns
         infos["l"] = self.returned_episode_lengths
         return (
@@ -108,6 +139,23 @@ class RecordEpisodeStatistics(gym.Wrapper):
             dones,
             infos,
         )
+
+
+def compute_advantages(rewards, dones, values, next_done, next_value, gamma, gae_lambda):
+    total_steps = len(rewards)
+    advantages = torch.zeros_like(rewards)
+    lastgaelam = 0
+    for t in reversed(range(total_steps)):
+        if t == total_steps - 1:
+            nextnonterminal = 1.0 - next_done
+            nextvalues = next_value
+        else:
+            nextnonterminal = 1.0 - dones[t + 1]
+            nextvalues = values[t + 1]
+        delta = rewards[t] + gamma * nextvalues * nextnonterminal - values[t]
+        advantages[t] = lastgaelam = delta + gamma * gae_lambda * nextnonterminal * lastgaelam
+    returns = advantages + values
+    return advantages, returns
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
@@ -134,15 +182,15 @@ class Agent(nn.Module):
         self.critic = layer_init(nn.Linear(512, 1), std=1)
 
     def get_value(self, x):
-        return self.critic(self.network(x / 255.0))
+        return self.critic(self.network(x))
 
     def get_action_and_value(self, x, action=None):
-        hidden = self.network(x / 255.0)
+        hidden = self.network(x)
         logits = self.actor(hidden)
         probs = Categorical(logits=logits)
         if action is None:
             action = probs.sample()
-        return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
+        return action, probs.log_prob(action), probs.entropy(), probs, self.critic(hidden)
 
 
 if __name__ == "__main__":
@@ -180,17 +228,24 @@ if __name__ == "__main__":
         env_type="gym",
         num_envs=args.num_envs,
         episodic_life=True,
-        reward_clip=True,
         seed=args.seed,
     )
+    envs.is_vector_env = True
     envs.num_envs = args.num_envs
     envs.single_action_space = envs.action_space
     envs.single_observation_space = envs.observation_space
     envs = RecordEpisodeStatistics(envs)
+    envs = gym.wrappers.NormalizeObservation(envs)
+    envs = gym.wrappers.TransformObservation(envs, lambda obs: np.clip(obs, -3, 3))
+    envs = gym.wrappers.NormalizeReward(envs, gamma=args.gamma)
+    envs = gym.wrappers.TransformReward(envs, lambda reward: np.clip(reward, -5, 5))
     assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
-    agent = Agent(envs).to(device)
-    optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
+    agent_policy = Agent(envs).to(device)
+    agent_value = Agent(envs).to(device)
+    policy_optimizer = optim.Adam(agent_policy.parameters(), lr=args.policy_learning_rate, eps=1e-5)
+    value_optimizer = optim.Adam(agent_value.parameters(), lr=args.value_learning_rate, eps=1e-5)
+    distill_optimizer = optim.Adam(agent_policy.parameters(), lr=args.distill_learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -212,9 +267,12 @@ if __name__ == "__main__":
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (update - 1.0) / num_updates
-            lrnow = frac * args.learning_rate
-            optimizer.param_groups[0]["lr"] = lrnow
+            policy_optimizer.param_groups[0]["lr"] = frac * args.policy_learning_rate
+            value_optimizer.param_groups[0]["lr"] = frac * args.value_learning_rate
+            distill_optimizer.param_groups[0]["lr"] = frac * args.distill_learning_rate
 
+        # agent_policy.eval()
+        # agent_value.eval()
         for step in range(0, args.num_steps):
             global_step += 1 * args.num_envs
             obs[step] = next_obs
@@ -222,7 +280,8 @@ if __name__ == "__main__":
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                action, logprob, _, value = agent.get_action_and_value(next_obs)
+                action, logprob, _, _, _ = agent_policy.get_action_and_value(next_obs)
+                value = agent_value.get_value(next_obs)
                 values[step] = value.flatten()
             actions[step] = action
             logprobs[step] = logprob
@@ -242,19 +301,11 @@ if __name__ == "__main__":
 
         # bootstrap value if not done
         with torch.no_grad():
-            next_value = agent.get_value(next_obs).reshape(1, -1)
-            advantages = torch.zeros_like(rewards).to(device)
-            lastgaelam = 0
-            for t in reversed(range(args.num_steps)):
-                if t == args.num_steps - 1:
-                    nextnonterminal = 1.0 - next_done
-                    nextvalues = next_value
-                else:
-                    nextnonterminal = 1.0 - dones[t + 1]
-                    nextvalues = values[t + 1]
-                delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
-                advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
-            returns = advantages + values
+            next_value = agent_value.get_value(next_obs).reshape(1, -1)
+            advantages, _ = compute_advantages(
+                rewards, dones, values, next_done, next_value, args.gamma, args.policy_gae_lambda
+            )
+            _, returns = compute_advantages(rewards, dones, values, next_done, next_value, args.gamma, args.value_gae_lambda)
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
@@ -264,16 +315,16 @@ if __name__ == "__main__":
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
 
-        # Optimizing the policy and value network
+        # Policy network optimization
         b_inds = np.arange(args.batch_size)
         clipfracs = []
-        for epoch in range(args.update_epochs):
+        for epoch in range(args.policy_update_epochs):
             np.random.shuffle(b_inds)
-            for start in range(0, args.batch_size, args.minibatch_size):
-                end = start + args.minibatch_size
+            for start in range(0, args.batch_size, args.policy_batch_size):
+                end = start + args.policy_batch_size
                 mb_inds = b_inds[start:end]
 
-                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                _, newlogprob, entropy, _, _ = agent_policy.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 
@@ -292,41 +343,74 @@ if __name__ == "__main__":
                 pg_loss2 = -mb_advantages * torch.clamp(ratio, 1 - args.clip_coef, 1 + args.clip_coef)
                 pg_loss = torch.max(pg_loss1, pg_loss2).mean()
 
-                # Value loss
-                newvalue = newvalue.view(-1)
-                if args.clip_vloss:
-                    v_loss_unclipped = (newvalue - b_returns[mb_inds]) ** 2
-                    v_clipped = b_values[mb_inds] + torch.clamp(
-                        newvalue - b_values[mb_inds],
-                        -args.clip_coef,
-                        args.clip_coef,
-                    )
-                    v_loss_clipped = (v_clipped - b_returns[mb_inds]) ** 2
-                    v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
-                    v_loss = 0.5 * v_loss_max.mean()
-                else:
-                    v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
-
                 entropy_loss = entropy.mean()
-                loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
+                policy_loss = pg_loss - args.ent_coef * entropy_loss
 
-                optimizer.zero_grad()
-                loss.backward()
-                nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
-                optimizer.step()
+                policy_optimizer.zero_grad()
+                policy_loss.backward()
+                nn.utils.clip_grad_norm_(agent_policy.parameters(), args.max_grad_norm)
+                policy_optimizer.step()
 
             if args.target_kl is not None:
                 if approx_kl > args.target_kl:
                     break
+
+        # Value network optimization
+        for epoch in range(args.value_update_epochs):
+            np.random.shuffle(b_inds)
+            for start in range(0, args.batch_size, args.value_batch_size):
+                end = start + args.value_batch_size
+                mb_inds = b_inds[start:end]
+
+                newvalue = agent_value.get_value(b_obs[mb_inds])
+                newvalue = newvalue.view(-1)
+
+                # Value loss
+                v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
+
+                value_optimizer.zero_grad()
+                v_loss.backward()
+                nn.utils.clip_grad_norm_(agent_value.parameters(), args.max_grad_norm)
+                value_optimizer.step()
+
+        # Value network to policy network distillation
+        agent_policy.zero_grad(True)  # don't clone gradients
+        old_agent_policy = deepcopy(agent_policy)
+        old_agent_policy.eval()
+        for epoch in range(args.distill_update_epochs):
+            np.random.shuffle(b_inds)
+            for start in range(0, args.batch_size, args.distill_batch_size):
+                end = start + args.distill_batch_size
+                mb_inds = b_inds[start:end]
+
+                # Compute policy and value targets
+                with torch.no_grad():
+                    _, _, _, old_action_dist, _ = old_agent_policy.get_action_and_value(b_obs[mb_inds])
+                    value_target = agent_value.get_value(b_obs[mb_inds])
+
+                _, _, _, new_action_dist, new_value = agent_policy.get_action_and_value(b_obs[mb_inds])
+
+                # Distillation loss
+                policy_kl_loss = kl_divergence(old_action_dist, new_action_dist).mean()
+                value_loss = 0.5 * (new_value.view(-1) - value_target).square().mean()
+                distill_loss = value_loss + args.distill_beta * policy_kl_loss
+
+                distill_optimizer.zero_grad()
+                distill_loss.backward()
+                nn.utils.clip_grad_norm_(agent_policy.parameters(), args.max_grad_norm)
+                distill_optimizer.step()
 
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
+        writer.add_scalar("charts/policy_learning_rate", policy_optimizer.param_groups[0]["lr"], global_step)
+        writer.add_scalar("charts/value_learning_rate", value_optimizer.param_groups[0]["lr"], global_step)
+        writer.add_scalar("charts/distill_learning_rate", distill_optimizer.param_groups[0]["lr"], global_step)
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
+        writer.add_scalar("losses/distill_loss", distill_loss.item(), global_step)
         writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
         writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
