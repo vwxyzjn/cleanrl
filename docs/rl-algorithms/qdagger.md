@@ -74,7 +74,7 @@ with the Bellman update target is $y = r + \gamma \, Q^{'}(s', a')$ and the repl
 $$
     L_{\text{distill}} = \lambda_t \mathbb{E}_{(s,a,r,s') \sim \mathcal{D}} \left[ \sum_a \pi_T(a|s)\log\pi(a|s)\right]
 $$
-* `Charts/distill_coeff`: the coefficient $\lambda_t$ for the distillation loss, which is a function of the ratio between the teacher policy $\pi_T$ and the student policy $\pi$. Formally, it can be expressed by the equation below.
+* `charts/distill_coeff`: the coefficient $\lambda_t$ for the distillation loss, which is a function of the ratio between the teacher policy $\pi_T$ and the student policy $\pi$. Formally, it can be expressed by the equation below.
 $$
 \lambda_t = 1_{t<t_0}\max(1 - G^\pi/G^{\pi_T}, 0)
 $$
