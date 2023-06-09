@@ -22,6 +22,7 @@ gymnasium = ">=0.28.1"
 moviepy = "^1.0.3"
 pygame = "2.1.0"
 huggingface-hub = "^0.11.1"
+rich = "<12.0"
 
 ale-py = {version = "0.7.4", optional = true}
 AutoROM = {extras = ["accept-rom-license"], version = "^0.4.2", optional = true}
@@ -39,7 +40,6 @@ jaxlib = {version = "^0.3.15", optional = true}
 flax = {version = "^0.6.0", optional = true}
 optuna = {version = "^3.0.1", optional = true}
 optuna-dashboard = {version = "^0.7.2", optional = true}
-rich = {version = "<12.0", optional = true}
 envpool = {version = "^0.6.4", optional = true}
 PettingZoo = {version = "1.18.1", optional = true}
 SuperSuit = {version = "3.4.0", optional = true}
@@ -73,7 +73,7 @@ mujoco_py = ["free-mujoco-py"]
 jax = ["jax", "jaxlib", "flax"]
 docs = ["mkdocs-material", "markdown-include", "openrlbenchmark"]
 envpool = ["envpool"]
-optuna = ["optuna", "optuna-dashboard", "rich"]
+optuna = ["optuna", "optuna-dashboard"]
 pettingzoo = ["PettingZoo", "SuperSuit", "multi-agent-ale-py"]
 cloud = ["boto3", "awscli"]
 dm_control = ["shimmy", "mujoco"]
@@ -97,4 +97,11 @@ ppo_atari_envpool_xla_jax_scan = [
     "ale-py", "AutoROM", "opencv-python", # atari
     "jax", "jaxlib", "flax", # jax
     "envpool", # envpool
+]
+qdagger_dqn_atari_impalacnn = [
+    "ale-py", "AutoROM", "opencv-python"
+]
+qdagger_dqn_atari_jax_impalacnn = [
+    "ale-py", "AutoROM", "opencv-python", # atari
+    "jax", "jaxlib", "flax", # jax
 ]
