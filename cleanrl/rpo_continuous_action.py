@@ -137,7 +137,7 @@ class Agent(nn.Module):
             action = probs.sample()
         else:  # new to RPO
             # sample again to add stochasticity to the policy
-            z = torch.FloatTensor(action_mean.shape).uniform_(-self.rpo_alpha, self.rpo_alpha)
+            z = torch.FloatTensor(action_mean.shape).uniform_(-self.rpo_alpha, self.rpo_alpha).to(device)
             action_mean = action_mean + z
             probs = Normal(action_mean, action_std)
 
