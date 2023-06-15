@@ -997,6 +997,7 @@ optax = "*"
 orbax = "*"
 PyYAML = ">=5.4.1"
 rich = ">=11.1"
+tensorstore = "*"
 typing-extensions = ">=4.1.1"
 
 [package.extras]
@@ -4541,27 +4542,6 @@ files = [
 
 [package.dependencies]
 numpy = ">=1.16.0"
-
-[[package]]
-name = "tensorflow-probability"
-version = "0.18.0"
-description = "Probabilistic modeling and statistical inference in TensorFlow"
-category = "dev"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-absl-py = "*"
-cloudpickle = ">=1.3"
-decorator = "*"
-dm-tree = "*"
-gast = ">=0.3.2"
-numpy = ">=1.13.3"
-six = ">=1.10.0"
-
-[package.extras]
-jax = ["jax", "jaxlib"]
-tfds = ["tensorflow-datasets (>=2.2.0)"]
 
 [[package]]
 name = "termcolor"
