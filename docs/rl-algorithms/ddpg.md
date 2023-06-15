@@ -22,7 +22,7 @@ Reference resources:
 | Variants Implemented      | Description |
 | ----------- | ----------- |
 | :material-github: [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py), :material-file-document: [docs](/rl-algorithms/ddpg/#ddpg_continuous_actionpy) | For continuous action space |
-
+| :material-github: [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py), :material-file-document: [docs](/rl-algorithms/ddpg/#ddpg_continuous_action_jaxpy) | For continuous action space |
 
 Below is our single-file implementation of DDPG:
 
@@ -36,14 +36,26 @@ The [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/c
 
 ### Usage
 
-```bash
-poetry install
-poetry install --with pybullet
-python cleanrl/ddpg_continuous_action.py --help
-python cleanrl/ddpg_continuous_action.py --env-id HopperBulletEnv-v0
-poetry install --with mujoco # only works in Linux
-python cleanrl/ddpg_continuous_action.py --env-id Hopper-v3
-```
+=== "poetry"
+
+    ```bash
+    poetry install
+    poetry run python cleanrl/ddpg_continuous_action.py --help
+    poetry install -E mujoco_py # only works in Linux
+    poetry run python cleanrl/ddpg_continuous_action.py --env-id Hopper-v2
+    poetry install -E mujoco
+    poetry run python cleanrl/ddpg_continuous_action.py --env-id Hopper-v4
+    ```
+
+=== "pip"
+
+    ```bash
+    python cleanrl/ddpg_continuous_action.py --help
+    pip install -r requirements/requirements-mujoco_py.txt # only works in Linux, you have to pick either `mujoco` or `mujoco_py`
+    python cleanrl/ddpg_continuous_action.py --env-id Hopper-v2
+    pip install -r requirements/requirements-mujoco.txt
+    python cleanrl/ddpg_continuous_actions.py --env-id Hopper-v4
+    ```
 
 ### Explanation of the logged metrics
 
@@ -261,14 +273,28 @@ The [ddpg_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/mast
 
 ### Usage
 
-```bash
-poetry install --with mujoco,jax
-poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-poetry run python -c "import mujoco_py"
-python cleanrl/ddpg_continuous_action_jax.py --help
-poetry install --with mujoco # only works in Linux
-python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v3
-```
+=== "poetry"
+
+    ```bash
+    poetry install
+    poetry install -E "mujoco jax"
+    poetry run python cleanrl/ddpg_continuous_action_jax.py --help
+    poetry run python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v4
+    poetry install -E mujoco_py # only works in Linux
+    poetry run python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v2
+    ```
+
+=== "pip"
+
+    ```bash
+    pip install -r requirements/requirements-mujoco.txt
+    pip install -r requirements/requirements-jax.txt
+    python cleanrl/ddpg_continuous_action_jax.py --help
+    python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v4
+    pip install -r requirements/requirements-mujoco_py.txt # only works in Linux
+    python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v2
+    ```
+
 
 ???+ warning
 

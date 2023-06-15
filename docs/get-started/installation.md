@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-* Python >=3.7.1,<3.10 (not yet 3.10)
+* Python >=3.7.1,<3.11
 * [Poetry 1.2.1+](https://python-poetry.org)
 
 Simply run the following command for a quick start
@@ -45,6 +45,28 @@ poetry install
     default = true
     ```
 
+
+## Install via `pip`
+
+While we recommend using `poetry` to manage environments and dependencies, the traditional `requirements.txt` are available:
+
+```bash
+# core dependencies
+pip install -r requirements/requirements.txt
+
+# optional dependencies
+pip install -r requirements/requirements-atari.txt
+pip install -r requirements/requirements-mujoco.txt
+pip install -r requirements/requirements-mujoco_py.txt
+pip install -r requirements/requirements-procgen.txt
+pip install -r requirements/requirements-envpool.txt
+pip install -r requirements/requirements-pettingzoo.txt
+pip install -r requirements/requirements-jax.txt
+pip install -r requirements/requirements-docs.txt
+pip install -r requirements/requirements-cloud.txt
+```
+
+
 ## Optional Dependencies
 
 CleanRL makes it easy to install optional dependencies for common RL environments
@@ -60,11 +82,6 @@ ale-py = "0.7.4"
 AutoROM = {extras = ["accept-rom-license"], version = "^0.4.2"}
 opencv-python = "^4.6.0.66"
 
-[tool.poetry.group.pybullet]
-optional = true
-[tool.poetry.group.pybullet.dependencies]
-pybullet = "3.1.8"
-
 [tool.poetry.group.procgen]
 optional = true
 [tool.poetry.group.procgen.dependencies]
@@ -74,28 +91,15 @@ procgen = "^0.10.7"
 You can install them using the following command
 
 ```bash
-poetry install --with atari
-poetry install --with pybullet
-poetry install --with mujoco
-poetry install --with procgen
-poetry install --with envpool
-poetry install --with pettingzoo
-poetry install --with jax
-poetry install --with optuna
-poetry install --with docs
-poetry install --with cloud
-```
-
-## Install via `pip`
-
-While we recommend using `poetry` to manage environments and dependencies, the traditional `requirements.txt` are available:
-
-```bash
-pip install -r requirements/requirements.txt
-pip install -r requirements/requirements-atari.txt
-pip install -r requirements/requirements-pybullet.txt
-pip install -r requirements/requirements-mujoco.txt
-pip install -r requirements/requirements-procgen.txt
-pip install -r requirements/requirements-envpool.txt
-pip install -r requirements/requirements-pettingzoo.txt
+poetry install -E atari
+poetry install -E mujoco
+poetry install -E mujoco_py
+poetry install -E dm_control
+poetry install -E procgen
+poetry install -E envpool
+poetry install -E pettingzoo
+poetry install -E jax
+poetry install -E optuna
+poetry install -E docs
+poetry install -E cloud
 ```

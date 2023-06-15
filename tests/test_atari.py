@@ -17,17 +17,17 @@ def test_ppo_lstm():
     )
 
 
-def test_dqn():
+def test_c51():
     subprocess.run(
-        "python cleanrl/dqn_atari.py --learning-starts 10 --total-timesteps 16 --buffer-size 10 --batch-size 4",
+        "python cleanrl/c51_atari.py --learning-starts 10 --total-timesteps 16 --buffer-size 10 --batch-size 4",
         shell=True,
         check=True,
     )
 
 
-def test_c51():
+def test_sac():
     subprocess.run(
-        "python cleanrl/c51_atari.py --learning-starts 10 --total-timesteps 16 --buffer-size 10 --batch-size 4",
+        "python cleanrl/sac_atari.py --learning-starts 10 --total-timesteps 16 --buffer-size 10 --batch-size 4",
         shell=True,
         check=True,
     )
