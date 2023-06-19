@@ -365,7 +365,7 @@ if __name__ == "__main__":
     critic_optimizer = torch.optim.Adam(qf.parameters(), lr=args.policy_q_lr)
     dual_optimizer = torch.optim.Adam([log_eta, log_alpha_mean, log_alpha_stddev, log_penalty_temperature], lr=args.dual_lr)
 
-    obs, _ = envs.reset(seed=args.seed)
+    obs = envs.reset(seed=args.seed)
 
     n_step_obs_rolling_buffer = np.zeros((args.n_step,) + envs.single_observation_space.shape)
     n_step_action_rolling_buffer = np.zeros((args.n_step,) + envs.single_action_space.shape)
@@ -690,7 +690,7 @@ if __name__ == "__main__":
 
         eval_every = 5000
         eval_nb = 10
-        eval_obs, _ = eval_envs.reset(seed=args.seed)
+        eval_obs = eval_envs.reset(seed=args.seed)
         eval_episodic_return = np.zeros((eval_nb,))
         eval_episodic_length = np.zeros((eval_nb,))
         if (global_step + 1) % eval_every == 0:
