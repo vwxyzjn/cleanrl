@@ -388,7 +388,7 @@ if __name__ == "__main__":
             )
             taus = distribution.sample().cpu()
 
-        next_obs, reward, terminated, truncated, infos = envs.step(taus.numpy().clip(-1, 1))
+        next_obs, reward, terminated, infos = envs.step(taus.numpy().clip(-1, 1))
         done = np.logical_or(terminated, truncated)
 
         n_step_obs_rolling_buffer = np.concatenate([n_step_obs_rolling_buffer[1:], obs], 0)
@@ -404,7 +404,7 @@ if __name__ == "__main__":
         # Here we take another path and do it correctly.
         for idx, d in enumerate(done):
             if d:
-                real_next_obs[idx] = infos["final_observation"][idx]
+                real_next_obs[idx] = infos[idx]["terminal_observation"]
 
         if step_since_last_done >= args.n_step - 1:
             n_step_discounted_reward = (n_step_reward_rolling_buffer * n_step_gammas).sum()
@@ -415,7 +415,7 @@ if __name__ == "__main__":
                 n_step_discounted_reward,
                 done,
                 np.ones((1,)) * args.n_step,
-                [{"TimeLimit.truncated": truncated[0]}],
+                infos,
             )
         else:
             n_step_discounted_reward = (
@@ -429,18 +429,14 @@ if __name__ == "__main__":
                 n_step_discounted_reward,
                 done,
                 np.ones((1,)) * (step_since_last_done + 1),
-                [{"TimeLimit.truncated": truncated[0]}],
+                infos,
             )
 
         step_since_last_done += 1
         obs = next_obs
 
-        if "final_info" in infos:
-            for info in infos["final_info"]:
-                # Skip the envs that are not done
-                if info is None:
-                    continue
-
+        for info in infos:
+            if "episode" in info.keys():
                 if step_since_last_done >= args.n_step - 1:
                     # Case where rolling_buffer was filled (env ends after n_step)
                     # and therefore we've already dealt with the first entry of the rolling buffer
@@ -453,7 +449,7 @@ if __name__ == "__main__":
                             n_step_discounted_reward,
                             done,
                             np.ones((1,)) * (args.n_step - i),
-                            [{"TimeLimit.truncated": truncated[0]}],
+                            infos,
                         )
                 else:
                     # Case where env ends before n_step
@@ -467,7 +463,7 @@ if __name__ == "__main__":
                             n_step_discounted_reward,
                             done,
                             np.ones((1,)) * (step_since_last_done - i),
-                            [{"TimeLimit.truncated": truncated[0]}],
+                            infos,
                         )
 
                 step_since_last_done = 0
