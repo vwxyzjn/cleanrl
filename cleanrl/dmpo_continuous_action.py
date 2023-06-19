@@ -702,14 +702,10 @@ if __name__ == "__main__":
 
                     eval_obs, _, eval_done, eval_infos = eval_envs.step(taus.numpy().clip(-1, 1))
 
-                    if "final_info" in eval_infos:
-                        for eval_info in eval_infos["final_info"]:
-                            # Skip the envs that are not done
-                            if eval_info is None:
-                                continue
-
+                    for eval_info in eval_infos:
+                        if "episode" in eval_info.keys():
                             print(f"eval={e}, episodic_return={eval_info['episode']['r']}")
                             eval_episodic_return[e] = eval_info["episode"]["r"]
                             eval_episodic_length[e] = eval_info["episode"]["l"]
-            writer.add_scalar("evaluation/episodic_return", eval_episodic_return.mean(), global_step)
-            writer.add_scalar("evaluation/episodic_length", eval_episodic_length.mean(), global_step)
+            writer.add_scalar("eval/episodic_return", eval_episodic_return.mean(), global_step)
+            writer.add_scalar("eval/episodic_length", eval_episodic_length.mean(), global_step)
