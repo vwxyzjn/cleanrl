@@ -388,8 +388,7 @@ if __name__ == "__main__":
             )
             taus = distribution.sample().cpu()
 
-        next_obs, reward, terminated, infos = envs.step(taus.numpy().clip(-1, 1))
-        done = np.logical_or(terminated, truncated)
+        next_obs, reward, done, infos = envs.step(taus.numpy().clip(-1, 1))
 
         n_step_obs_rolling_buffer = np.concatenate([n_step_obs_rolling_buffer[1:], obs], 0)
         n_step_action_rolling_buffer = np.concatenate([n_step_action_rolling_buffer[1:], taus], 0)
@@ -701,8 +700,7 @@ if __name__ == "__main__":
                         taus, _ = actor(torch.Tensor(eval_obs).to(device))
                         taus = taus.cpu()
 
-                    eval_obs, _, eval_terminated, eval_truncated, eval_infos = eval_envs.step(taus.numpy().clip(-1, 1))
-                    eval_done = np.logical_or(eval_terminated, eval_truncated)
+                    eval_obs, _, eval_done, eval_infos = eval_envs.step(taus.numpy().clip(-1, 1))
 
                     if "final_info" in eval_infos:
                         for eval_info in eval_infos["final_info"]:
