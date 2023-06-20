@@ -285,7 +285,11 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
 
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
-        torch.save(q_network.state_dict(), model_path)
+        model_data = {
+            "model_weights": q_network.state_dict(),
+            "args": vars(args),
+        }
+        torch.save(model_data, model_path)
         print(f"model saved to {model_path}")
         from cleanrl_utils.evals.c51_eval import evaluate
 

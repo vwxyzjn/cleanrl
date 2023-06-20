@@ -325,8 +325,12 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
 
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
+        model_data = {
+            "model_weights": q_state.params,
+            "args": vars(args),
+        }
         with open(model_path, "wb") as f:
-            f.write(flax.serialization.to_bytes(q_state.params))
+            f.write(flax.serialization.to_bytes(model_data))
         print(f"model saved to {model_path}")
         from cleanrl_utils.evals.c51_jax_eval import evaluate
 
