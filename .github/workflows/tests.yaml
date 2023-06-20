@@ -45,7 +45,7 @@ jobs:
         run: poetry run pytest tests/test_classic_control_gymnasium.py
       - name: Run core tests with jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
-        run: poetry run pytest tests/test_classic_control_jax.py
+        run: poetry run pytest tests/test_classic_control_jax_gymnasium.py
       - name: Run gae tests with jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: poetry run pytest tests/test_jax_compute_gae.py
