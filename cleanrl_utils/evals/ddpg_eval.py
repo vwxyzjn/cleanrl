@@ -2,6 +2,7 @@ from typing import Callable
 
 import gymnasium as gym
 import torch
+import torch.nn as nn
 
 
 def evaluate(
@@ -10,15 +11,20 @@ def evaluate(
     env_id: str,
     eval_episodes: int,
     run_name: str,
-    Model: tuple[torch.nn.Module, torch.nn.Module],
+    Model: tuple[nn.Module, nn.Module],
     device: torch.device = torch.device("cpu"),
     capture_video: bool = True,
     exploration_noise: float = 0.1,
 ):
     envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
     actor = Model[0](envs).to(device)
-    actor.load_state_dict(torch.load(model_path, map_location=device)[0])
+    qf = Model[1](envs).to(device)
+    actor_params, qf_params = torch.load(model_path, map_location=device)
+    actor.load_state_dict(actor_params)
     actor.eval()
+    qf.load_state_dict(qf_params)
+    qf.eval()
+    # note: qf is not used in this script
 
     obs, _ = envs.reset()
     episodic_returns = []
