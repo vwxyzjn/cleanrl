@@ -229,7 +229,7 @@ jobs:
       - name: Install dependencies
         run: poetry install -E "pytest mujoco dm_control jax"
       - name: Install OpenGL backend
-        run: brew install glfw
+        run: brew install mesa
       - name: Install OpenGL
         run: poetry run pip install PyOpenGL PyOpenGL_accelerate
       - name: Downgrade setuptools
