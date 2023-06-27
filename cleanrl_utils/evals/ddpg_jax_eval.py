@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Callable
 
 import flax
@@ -15,7 +13,7 @@ def evaluate(
     env_id: str,
     eval_episodes: int,
     run_name: str,
-    Model: tuple[nn.Module, nn.Module],
+    Model: nn.Module,
     capture_video: bool = True,
     exploration_noise: float = 0.1,
     seed=1,
