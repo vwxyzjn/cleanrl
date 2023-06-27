@@ -228,6 +228,8 @@ jobs:
       # mujoco tests
       - name: Install dependencies
         run: poetry install -E "pytest mujoco dm_control jax"
+      - name: Install OpenGL
+        run: poetry run pip install PyOpenGL PyOpenGL_accelerate
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
       - name: Run gymnasium migration dependencies
