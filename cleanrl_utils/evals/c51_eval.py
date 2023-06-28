@@ -2,7 +2,7 @@ import random
 from argparse import Namespace
 from typing import Callable
 
-import gym
+import gymnasium as gym
 import numpy as np
 import torch
 
@@ -26,7 +26,7 @@ def evaluate(
     model = model.to(device)
     model.eval()
 
-    obs = envs.reset()
+    obs, _ = envs.reset()
     episodic_returns = []
     while len(episodic_returns) < eval_episodes:
         if random.random() < epsilon:
@@ -34,9 +34,11 @@ def evaluate(
         else:
             actions, _ = model.get_action(torch.Tensor(obs).to(device))
             actions = actions.cpu().numpy()
-        next_obs, _, _, infos = envs.step(actions)
-        for info in infos:
-            if "episode" in info.keys():
+        next_obs, _, _, _, infos = envs.step(actions)
+        if "final_info" in infos:
+            for info in infos["final_info"]:
+                if "episode" not in info:
+                    continue
                 print(f"eval_episode={len(episodic_returns)}, episodic_return={info['episode']['r']}")
                 episodic_returns += [info["episode"]["r"]]
         obs = next_obs
@@ -47,9 +49,9 @@ def evaluate(
 if __name__ == "__main__":
     from huggingface_hub import hf_hub_download
 
-    from cleanrl.dqn import QNetwork, make_env
+    from cleanrl.c51 import QNetwork, make_env
 
-    model_path = hf_hub_download(repo_id="cleanrl/C51-v1-dqn-seed1", filename="q_network.pth")
+    model_path = hf_hub_download(repo_id="cleanrl/CartPole-v1-c51-seed1", filename="c51.cleanrl_model")
     evaluate(
         model_path,
         make_env,

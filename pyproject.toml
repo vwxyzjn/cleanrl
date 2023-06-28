@@ -23,6 +23,7 @@ moviepy = "^1.0.3"
 pygame = "2.1.0"
 huggingface-hub = "^0.11.1"
 rich = "<12.0"
+tenacity = "^8.2.2"
 
 ale-py = {version = "0.7.4", optional = true}
 AutoROM = {extras = ["accept-rom-license"], version = "^0.4.2", optional = true}
