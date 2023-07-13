@@ -208,7 +208,11 @@ if __name__ == "__main__":
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, termination, truncation, info = envs.step(action.cpu().numpy())
             rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_termination, next_truncation = torch.Tensor(next_obs).to(device), torch.Tensor(termination).to(device), torch.Tensor(truncation).to(device)
+            next_obs, next_termination, next_truncation = (
+                torch.Tensor(next_obs).to(device),
+                torch.Tensor(termination).to(device),
+                torch.Tensor(truncation).to(device),
+            )
 
             # TODO: fix this
             for idx, item in enumerate(info):
