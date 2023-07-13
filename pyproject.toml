@@ -43,11 +43,11 @@ optuna = {version = "^3.0.1", optional = true}
 optuna-dashboard = {version = "^0.7.2", optional = true}
 envpool = {version = "^0.6.4", optional = true}
 PettingZoo = {version = "^1.23.0", optional = true}
-SuperSuit = {version = "3.4.0", optional = true}
+SuperSuit = {version = "^3.8.1", optional = true}
 multi-agent-ale-py = {version = "0.1.11", optional = true}
 boto3 = {version = "^1.24.70", optional = true}
 awscli = {version = "^1.25.71", optional = true}
-shimmy = {version = ">=1.0.0", extras = ["dm-control"], optional = true}
+shimmy = {version = ">=1.1.0", extras = ["dm-control"], optional = true}
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.20.0"
