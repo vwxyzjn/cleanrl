@@ -227,8 +227,8 @@ if __name__ == "__main__":
             next_value = agent.get_value(next_obs).reshape(1, -1)
             advantages = torch.zeros_like(rewards).to(device)
             lastgaelam = 0
-            next_done = torch.logical_or(next_termination, next_truncation)
-            dones = torch.logical_or(terminations, truncations)
+            next_done = np.logical_or(next_termination, next_truncation)
+            dones = np.logical_or(terminations, truncations)
             for t in reversed(range(args.num_steps)):
                 if t == args.num_steps - 1:
                     nextnonterminal = 1.0 - next_done
