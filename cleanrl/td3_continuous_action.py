@@ -5,6 +5,7 @@ import random
 import time
 from distutils.util import strtobool
 
+import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn
@@ -12,7 +13,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
-import gymnasium as gym
 
 def parse_args():
     # fmt: off
