@@ -266,7 +266,7 @@ if __name__ == "__main__":
                     pi, log_pi, _ = actor.get_action(data.observations)
                     qf1_pi = qf1(data.observations, pi)
                     qf2_pi = qf2(data.observations, pi)
-                    min_qf_pi = torch.min(qf1_pi, qf2_pi).view(-1)
+                    min_qf_pi = torch.min(qf1_pi, qf2_pi)
                     actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
 
                     actor_optimizer.zero_grad()
