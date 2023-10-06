@@ -115,8 +115,8 @@ class Actor(nn.Module):
         return x
 
 
-class TrainState(TrainState):
-    target_params: flax.core.FrozenDict
+class RLTrainState(TrainState):
+    target_params: flax.core.FrozenDict = None
 
 
 if __name__ == "__main__":
@@ -180,13 +180,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         action_bias=action_bias,
     )
     qf1 = QNetwork()
-    actor_state = TrainState.create(
+    actor_state = RLTrainState.create(
         apply_fn=actor.apply,
         params=actor.init(actor_key, obs),
         target_params=actor.init(actor_key, obs),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
-    qf1_state = TrainState.create(
+    qf1_state = RLTrainState.create(
         apply_fn=qf1.apply,
         params=qf1.init(qf1_key, obs, envs.action_space.sample()),
         target_params=qf1.init(qf1_key, obs, envs.action_space.sample()),
@@ -197,8 +197,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
     @jax.jit
     def update_critic(
-        actor_state: TrainState,
-        qf1_state: TrainState,
+        actor_state: RLTrainState,
+        qf1_state: RLTrainState,
         observations: np.ndarray,
         actions: np.ndarray,
         next_observations: np.ndarray,
@@ -219,8 +219,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
     @jax.jit
     def update_actor(
-        actor_state: TrainState,
-        qf1_state: TrainState,
+        actor_state: RLTrainState,
+        qf1_state: RLTrainState,
         observations: np.ndarray,
     ):
         def actor_loss(params):

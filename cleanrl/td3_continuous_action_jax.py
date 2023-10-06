@@ -109,8 +109,8 @@ class Actor(nn.Module):
         return x
 
 
-class TrainState(TrainState):
-    target_params: flax.core.FrozenDict
+class RLTrainState(TrainState):
+    target_params: flax.core.FrozenDict = None
 
 
 if __name__ == "__main__":
@@ -161,20 +161,20 @@ if __name__ == "__main__":
         action_scale=jnp.array((envs.action_space.high - envs.action_space.low) / 2.0),
         action_bias=jnp.array((envs.action_space.high + envs.action_space.low) / 2.0),
     )
-    actor_state = TrainState.create(
+    actor_state = RLTrainState.create(
         apply_fn=actor.apply,
         params=actor.init(actor_key, obs),
         target_params=actor.init(actor_key, obs),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
     qf = QNetwork()
-    qf1_state = TrainState.create(
+    qf1_state = RLTrainState.create(
         apply_fn=qf.apply,
         params=qf.init(qf1_key, obs, envs.action_space.sample()),
         target_params=qf.init(qf1_key, obs, envs.action_space.sample()),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
-    qf2_state = TrainState.create(
+    qf2_state = RLTrainState.create(
         apply_fn=qf.apply,
         params=qf.init(qf2_key, obs, envs.action_space.sample()),
         target_params=qf.init(qf2_key, obs, envs.action_space.sample()),
@@ -185,9 +185,9 @@ if __name__ == "__main__":
 
     @jax.jit
     def update_critic(
-        actor_state: TrainState,
-        qf1_state: TrainState,
-        qf2_state: TrainState,
+        actor_state: RLTrainState,
+        qf1_state: RLTrainState,
+        qf2_state: RLTrainState,
         observations: np.ndarray,
         actions: np.ndarray,
         next_observations: np.ndarray,
@@ -229,9 +229,9 @@ if __name__ == "__main__":
 
     @jax.jit
     def update_actor(
-        actor_state: TrainState,
-        qf1_state: TrainState,
-        qf2_state: TrainState,
+        actor_state: RLTrainState,
+        qf1_state: RLTrainState,
+        qf2_state: RLTrainState,
         observations: np.ndarray,
     ):
         def actor_loss(params):

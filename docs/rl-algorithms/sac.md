@@ -24,6 +24,11 @@ Reference resources:
 * :material-github: [denisyarats/pytorch_sac](https://github.com/denisyarats/pytorch_sac)
 * :material-github: [haarnoja/softqlearning](https://github.com/haarnoja/softqlearning)
 * :material-github: [rail-berkeley/softlearning](https://github.com/rail-berkeley/softlearning)
+* :material-github: [araffin/sbx](https://github.com/araffin/sbx) (for `sac_continuous_actions_jax.py`)
+* :material-github: [perrin-isir/xpag](https://github.com/perrin-isir/xpag) (for `sac_continuous_actions_jax.py`)
+* :material-github: [tinkoff-ai/CORL](https://github.com/tinkoff-ai/CORL) (for `sac_continuous_actions_jax.py`)
+* :material-github: [ikostrikov/walk_in_the_park](https://github.com/ikostrikov/walk_in_the_park) (for `sac_continuous_actions_jax.py`)
+* :material-github: [DLR-RM/stable-baselines3, stable_baselines3/common/distributions.py#L539-L552](https://github.com/DLR-RM/stable-baselines3/blob/c4f54fcf047d7bf425fb6b88a3c8ed23fe375f9b/stable_baselines3/common/distributions.py#L539-L552) (for log probability calculation)
 * :material-github: [p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch](https://github.com/p-christ/Deep-Reinforcement-Learning-Algorithms-with-PyTorch)
 * :material-github: [toshikwa/sac-discrete.pytorch](https://github.com/toshikwa/sac-discrete.pytorch)
 
@@ -103,6 +108,10 @@ $$
 $$
 
 where the action is sampled using the reparameterization trick[^1]: $a = \mu_{\phi}(s) + \epsilon \, \sigma_{\phi}(s)$ with $\epsilon \sim \mathcal{N}(0, 1)$, $\text{log} \pi_{\phi}( \cdot \vert s')$ approximates the entropy of the policy, and $\mathcal{D}$ is the replay buffer storing samples of the agent during training.
+
+???+ info
+
+    [^1]: The reparameterization trick allow us to make the sampled action differentiable. https://stackoverflow.com/a/70818755/6611317 has a good explanation of the trick. Also see https://pytorch.org/docs/stable/distributions.html#pathwise-derivative
 
 * `losses/alpha`: $\alpha$ coefficient for *entropy regularization* of the policy.
 
