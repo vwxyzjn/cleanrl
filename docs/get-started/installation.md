@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-* Python >=3.7.1,<3.10 (not yet 3.10)
+* Python >=3.7.1,<3.11
 * [Poetry 1.2.1+](https://python-poetry.org)
 
 Simply run the following command for a quick start
@@ -58,7 +58,6 @@ pip install -r requirements/requirements.txt
 pip install -r requirements/requirements-atari.txt
 pip install -r requirements/requirements-mujoco.txt
 pip install -r requirements/requirements-mujoco_py.txt
-pip install -r requirements/requirements-mujoco.txt
 pip install -r requirements/requirements-procgen.txt
 pip install -r requirements/requirements-envpool.txt
 pip install -r requirements/requirements-pettingzoo.txt

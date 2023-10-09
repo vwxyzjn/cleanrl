@@ -1,10 +1,8 @@
-import random
-from argparse import Namespace
 from typing import Callable
 
 import gymnasium as gym
-import numpy as np
 import torch
+import torch.nn as nn
 
 
 def evaluate(
@@ -13,27 +11,29 @@ def evaluate(
     env_id: str,
     eval_episodes: int,
     run_name: str,
-    Model: torch.nn.Module,
+    Model: nn.Module,
     device: torch.device = torch.device("cpu"),
-    epsilon: float = 0.05,
     capture_video: bool = True,
+    exploration_noise: float = 0.1,
 ):
     envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
-    model_data = torch.load(model_path, map_location="cpu")
-    args = Namespace(**model_data["args"])
-    model = Model(envs, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max)
-    model.load_state_dict(model_data["model_weights"])
-    model = model.to(device)
-    model.eval()
+    actor = Model[0](envs).to(device)
+    qf = Model[1](envs).to(device)
+    actor_params, qf_params = torch.load(model_path, map_location=device)
+    actor.load_state_dict(actor_params)
+    actor.eval()
+    qf.load_state_dict(qf_params)
+    qf.eval()
+    # note: qf is not used in this script
 
     obs, _ = envs.reset()
     episodic_returns = []
     while len(episodic_returns) < eval_episodes:
-        if random.random() < epsilon:
-            actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
-        else:
-            actions, _ = model.get_action(torch.Tensor(obs).to(device))
-            actions = actions.cpu().numpy()
+        with torch.no_grad():
+            actions = actor(torch.Tensor(obs).to(device))
+            actions += torch.normal(0, actor.action_scale * exploration_noise)
+            actions = actions.cpu().numpy().clip(envs.single_action_space.low, envs.single_action_space.high)
+
         next_obs, _, _, _, infos = envs.step(actions)
         if "final_info" in infos:
             for info in infos["final_info"]:
@@ -49,16 +49,18 @@ def evaluate(
 if __name__ == "__main__":
     from huggingface_hub import hf_hub_download
 
-    from cleanrl.c51 import QNetwork, make_env
+    from cleanrl.ddpg_continuous_action import Actor, QNetwork, make_env
 
-    model_path = hf_hub_download(repo_id="cleanrl/CartPole-v1-c51-seed1", filename="c51.cleanrl_model")
+    model_path = hf_hub_download(
+        repo_id="cleanrl/HalfCheetah-v4-ddpg_continuous_action-seed1", filename="ddpg_continuous_action.cleanrl_model"
+    )
     evaluate(
         model_path,
         make_env,
-        "CartPole-v1",
+        "HalfCheetah-v4",
         eval_episodes=10,
         run_name=f"eval",
-        Model=QNetwork,
+        Model=(Actor, QNetwork),
         device="cpu",
         capture_video=False,
     )

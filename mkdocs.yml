@@ -48,6 +48,7 @@ nav:
     - rl-algorithms/ppg.md
     - rl-algorithms/ppo-rnd.md
     - rl-algorithms/rpo.md
+    - rl-algorithms/qdagger.md
   - Advanced:
     - advanced/hyperparameter-tuning.md
     - advanced/resume-training.md
