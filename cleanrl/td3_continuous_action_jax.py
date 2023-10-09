@@ -131,7 +131,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             sync_tensorboard=True,
             config=vars(args),
             name=run_name,
-            # monitor_gym=True,  # does not work on gymnasium
+            monitor_gym=True,
             save_code=True,
         )
     writer = SummaryWriter(f"runs/{run_name}")
@@ -330,10 +330,4 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
     envs.close()
-    if args.track and args.capture_video:
-        for filename in os.listdir(f"videos/{run_name}"):
-            if filename not in video_filenames and filename.endswith(".mp4"):
-                wandb.log({f"videos": wandb.Video(f"videos/{run_name}/{filename}")})
-                video_filenames.add(filename)
-
     writer.close()
