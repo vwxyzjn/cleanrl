@@ -4,7 +4,6 @@ import os
 import random
 import time
 from distutils.util import strtobool
-from typing import Sequence
 
 import flax
 import flax.linen as nn
@@ -70,16 +69,13 @@ def parse_args():
 
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
-        if capture_video:
+        if capture_video and idx == 0:
             env = gym.make(env_id, render_mode="rgb_array")
+            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         else:
             env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
-        if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         env.action_space.seed(seed)
-        env.observation_space.seed(seed)
         return env
 
     return thunk
@@ -99,9 +95,9 @@ class QNetwork(nn.Module):
 
 
 class Actor(nn.Module):
-    action_dim: Sequence[int]
-    action_scale: Sequence[int]
-    action_bias: Sequence[int]
+    action_dim: int
+    action_scale: jnp.ndarray
+    action_bias: jnp.ndarray
 
     @nn.compact
     def __call__(self, x):
@@ -125,7 +121,6 @@ if __name__ == "__main__":
     if sb3.__version__ < "2.0":
         raise ValueError(
             """Ongoing migration: run the following command to install the new dependencies:
-
 poetry run pip install "stable_baselines3==2.0.0a1"
 """
         )
@@ -148,6 +143,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
+    video_filenames = set()
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -170,30 +166,28 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     )
 
     # TRY NOT TO MODIFY: start the game
-    obs, _ = envs.reset()
+    obs, _ = envs.reset(seed=args.seed)
 
-    action_scale = np.array((envs.action_space.high - envs.action_space.low) / 2.0)
-    action_bias = np.array((envs.action_space.high + envs.action_space.low) / 2.0)
     actor = Actor(
         action_dim=np.prod(envs.single_action_space.shape),
-        action_scale=action_scale,
-        action_bias=action_bias,
+        action_scale=jnp.array((envs.action_space.high - envs.action_space.low) / 2.0),
+        action_bias=jnp.array((envs.action_space.high + envs.action_space.low) / 2.0),
     )
-    qf1 = QNetwork()
     actor_state = TrainState.create(
         apply_fn=actor.apply,
         params=actor.init(actor_key, obs),
         target_params=actor.init(actor_key, obs),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
+    qf = QNetwork()
     qf1_state = TrainState.create(
-        apply_fn=qf1.apply,
-        params=qf1.init(qf1_key, obs, envs.action_space.sample()),
-        target_params=qf1.init(qf1_key, obs, envs.action_space.sample()),
+        apply_fn=qf.apply,
+        params=qf.init(qf1_key, obs, envs.action_space.sample()),
+        target_params=qf.init(qf1_key, obs, envs.action_space.sample()),
         tx=optax.adam(learning_rate=args.learning_rate),
     )
     actor.apply = jax.jit(actor.apply)
-    qf1.apply = jax.jit(qf1.apply)
+    qf.apply = jax.jit(qf.apply)
 
     @jax.jit
     def update_critic(
@@ -203,18 +197,19 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         actions: np.ndarray,
         next_observations: np.ndarray,
         rewards: np.ndarray,
-        dones: np.ndarray,
+        terminations: np.ndarray,
     ):
         next_state_actions = (actor.apply(actor_state.target_params, next_observations)).clip(-1, 1)  # TODO: proper clip
-        qf1_next_target = qf1.apply(qf1_state.target_params, next_observations, next_state_actions).reshape(-1)
-        next_q_value = (rewards + (1 - dones) * args.gamma * (qf1_next_target)).reshape(-1)
+        qf1_next_target = qf.apply(qf1_state.target_params, next_observations, next_state_actions).reshape(-1)
+        next_q_value = (rewards + (1 - terminations) * args.gamma * (qf1_next_target)).reshape(-1)
 
         def mse_loss(params):
-            qf1_a_values = qf1.apply(params, observations, actions).squeeze()
-            return ((qf1_a_values - next_q_value) ** 2).mean(), qf1_a_values.mean()
+            qf_a_values = qf.apply(params, observations, actions).squeeze()
+            return ((qf_a_values - next_q_value) ** 2).mean(), qf_a_values.mean()
 
-        (qf1_loss_value, qf1_a_values), grads = jax.value_and_grad(mse_loss, has_aux=True)(qf1_state.params)
-        qf1_state = qf1_state.apply_gradients(grads=grads)
+        (qf1_loss_value, qf1_a_values), grads1 = jax.value_and_grad(mse_loss, has_aux=True)(qf1_state.params)
+        qf1_state = qf1_state.apply_gradients(grads=grads1)
+
         return qf1_state, qf1_loss_value, qf1_a_values
 
     @jax.jit
@@ -224,13 +219,14 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         observations: np.ndarray,
     ):
         def actor_loss(params):
-            return -qf1.apply(qf1_state.params, observations, actor.apply(params, observations)).mean()
+            return -qf.apply(qf1_state.params, observations, actor.apply(params, observations)).mean()
 
         actor_loss_value, grads = jax.value_and_grad(actor_loss)(actor_state.params)
         actor_state = actor_state.apply_gradients(grads=grads)
         actor_state = actor_state.replace(
             target_params=optax.incremental_update(actor_state.params, actor_state.target_params, args.tau)
         )
+
         qf1_state = qf1_state.replace(
             target_params=optax.incremental_update(qf1_state.params, qf1_state.target_params, args.tau)
         )
@@ -245,14 +241,14 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             actions = actor.apply(actor_state.params, obs)
             actions = np.array(
                 [
-                    (jax.device_get(actions)[0] + np.random.normal(0, action_scale * args.exploration_noise)[0]).clip(
+                    (jax.device_get(actions)[0] + np.random.normal(0, actor.action_scale * args.exploration_noise)[0]).clip(
                         envs.single_action_space.low, envs.single_action_space.high
                     )
                 ]
             )
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards, terminateds, truncateds, infos = envs.step(actions)
+        next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
@@ -262,12 +258,12 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 break
 
-        # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
+        # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
         real_next_obs = next_obs.copy()
-        for idx, d in enumerate(truncateds):
-            if d:
+        for idx, trunc in enumerate(truncations):
+            if trunc:
                 real_next_obs[idx] = infos["final_observation"][idx]
-        rb.add(obs, real_next_obs, actions, rewards, terminateds, infos)
+        rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -275,6 +271,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             data = rb.sample(args.batch_size)
+
             qf1_state, qf1_loss_value, qf1_a_values = update_critic(
                 actor_state,
                 qf1_state,
@@ -293,8 +290,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
             if global_step % 100 == 0:
                 writer.add_scalar("losses/qf1_loss", qf1_loss_value.item(), global_step)
-                writer.add_scalar("losses/actor_loss", actor_loss_value.item(), global_step)
                 writer.add_scalar("losses/qf1_values", qf1_a_values.item(), global_step)
+                writer.add_scalar("losses/actor_loss", actor_loss_value.item(), global_step)
                 print("SPS:", int(global_step / (time.time() - start_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
