@@ -41,3 +41,13 @@ def test_mujoco_py_eval():
         shell=True,
         check=True,
     )
+    subprocess.run(
+        "python cleanrl/td3_continuous_action.py --save-model True --env-id Hopper-v2 --learning-starts 100 --batch-size 32 --total-timesteps 105",
+        shell=True,
+        check=True,
+    )
+    subprocess.run(
+        "python cleanrl/td3_continuous_action_jax.py --save-model True --env-id Hopper-v2 --learning-starts 100 --batch-size 32 --total-timesteps 105",
+        shell=True,
+        check=True,
+    )
