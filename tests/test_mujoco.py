@@ -16,12 +16,12 @@ def test_mujoco():
         check=True,
     )
     subprocess.run(
-        "python cleanrl/td3_continuous_action.py ---env-id Hopper-v4 -learning-starts 100 --batch-size 32 --total-timesteps 105",
+        "python cleanrl/td3_continuous_action.py --env-id Hopper-v4 --learning-starts 100 --batch-size 32 --total-timesteps 105",
         shell=True,
         check=True,
     )
     subprocess.run(
-        "python cleanrl/td3_continuous_action_jax.py ---env-id Hopper-v4 -learning-starts 100 --batch-size 32 --total-timesteps 105",
+        "python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v4 --learning-starts 100 --batch-size 32 --total-timesteps 105",
         shell=True,
         check=True,
     )
