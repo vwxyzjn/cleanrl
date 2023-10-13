@@ -139,36 +139,6 @@ jobs:
         run: poetry install -E "pytest mujoco dm_control jax"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
-      - name: install mujoco dependencies
-        run: |
-          sudo apt-get update && sudo apt-get -y install libgl1-mesa-glx libosmesa6 libglfw3
-      - name: Run mujoco tests
-        continue-on-error: true # MUJOCO_GL=osmesa results in `free(): invalid pointer`
-        run: poetry run pytest tests/test_mujoco.py
-
-  test-mujoco-gymnasium-envs:
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [3.8]
-        poetry-version: [1.3.1]
-        os: [ubuntu-22.04]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Run image
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ matrix.poetry-version }}
-
-      # mujoco tests
-      - name: Install dependencies
-        run: poetry install -E "pytest mujoco dm_control jax"
-      - name: Downgrade setuptools
-        run: poetry run pip install setuptools==59.5.0
       - name: Run gymnasium migration dependencies
         run: poetry run pip install "stable_baselines3==2.0.0a1"
       - name: install mujoco dependencies
@@ -176,7 +146,7 @@ jobs:
           sudo apt-get update && sudo apt-get -y install libgl1-mesa-glx libosmesa6 libglfw3
       - name: Run mujoco tests
         continue-on-error: true # MUJOCO_GL=osmesa results in `free(): invalid pointer`
-        run: poetry run pytest tests/test_mujoco_gymnasium.py
+        run: poetry run pytest tests/test_mujoco.py
 
   test-mujoco-envs-mac:
     strategy:
@@ -201,43 +171,12 @@ jobs:
         run: poetry install -E "pytest mujoco dm_control jax"
       - name: Downgrade setuptools
         run: poetry run pip install setuptools==59.5.0
+      - name: Run gymnasium migration dependencies
+        run: poetry run pip install "stable_baselines3==2.0.0a1"
       - name: Run mujoco tests
         run: poetry run pytest tests/test_mujoco.py
 
   test-mujoco_py-envs:
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [3.8]
-        poetry-version: [1.3.1]
-        os: [ubuntu-22.04]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Run image
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ matrix.poetry-version }}
-
-      # mujoco_py tests
-      - name: Install dependencies
-        run: poetry install -E "pytest mujoco_py mujoco jax"
-      - name: Downgrade setuptools
-        run: poetry run pip install setuptools==59.5.0
-      - name: install mujoco_py dependencies
-        run: |
-          sudo apt-get update && sudo apt-get -y install wget unzip software-properties-common \
-            libgl1-mesa-dev \
-            libgl1-mesa-glx \
-            libglew-dev \
-            libosmesa6-dev patchelf
-      - name: Run mujoco_py tests
-        run: poetry run pytest tests/test_mujoco_py.py
-
-  test-mujoco_py-envs-gymnasium:
     strategy:
       fail-fast: false
       matrix:
@@ -270,7 +209,7 @@ jobs:
             libglew-dev \
             libosmesa6-dev patchelf
       - name: Run mujoco_py tests
-        run: poetry run pytest tests/test_mujoco_py_gymnasium.py
+        run: poetry run pytest tests/test_mujoco_py.py
 
   test-envpool-envs:
     strategy:
