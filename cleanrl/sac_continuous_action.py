@@ -284,7 +284,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     if args.autotune:
                         with torch.no_grad():
                             _, log_pi, _ = actor.get_action(data.observations)
-                        alpha_loss = (-log_alpha * (log_pi + target_entropy)).mean()
+                        alpha_loss = (-log_alpha.exp() * (log_pi + target_entropy)).mean()
 
                         a_optimizer.zero_grad()
                         alpha_loss.backward()

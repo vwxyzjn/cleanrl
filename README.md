@@ -28,7 +28,7 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 
 You can read more about CleanRL in our [JMLR paper](https://www.jmlr.org/papers/volume23/21-1342/21-1342.pdf) and [documentation](https://docs.cleanrl.dev/).
 
-CleanRL only contains implementations of **online** deep reinforcement learning algorithms. If you are looking for **offline** algorithms, please check out [tinkoff-ai/CORL](https://github.com/tinkoff-ai/CORL), which shares a similar design philosophy as CleanRL.
+CleanRL only contains implementations of **online** deep reinforcement learning algorithms. If you are looking for **offline** algorithms, please check out [corl-team/CORL](https://github.com/corl-team/CORL), which shares a similar design philosophy as CleanRL.
 
 > ℹ️ **Support for Gymnasium**: [Farama-Foundation/Gymnasium](https://github.com/Farama-Foundation/Gymnasium) is the next generation of [`openai/gym`](https://github.com/openai/gym) that will continue to be maintained and introduce new features. Please see their [announcement](https://farama.org/Announcing-The-Farama-Foundation) for further detail. We are migrating to `gymnasium` and the progress can be tracked in [vwxyzjn/cleanrl#277](https://github.com/vwxyzjn/cleanrl/pull/277). 
 
@@ -38,7 +38,7 @@ CleanRL only contains implementations of **online** deep reinforcement learning 
 ## Get started
 
 Prerequisites:
-* Python >=3.7.1,<3.10 (not yet 3.10)
+* Python >=3.7.1,<3.11
 * [Poetry 1.2.1+](https://python-poetry.org)
 
 To run experiments locally, give the following a try:
@@ -77,10 +77,8 @@ pip install -r requirements/requirements.txt
 
 # optional dependencies
 pip install -r requirements/requirements-atari.txt
-pip install -r requirements/requirements-pybullet.txt
 pip install -r requirements/requirements-mujoco.txt
 pip install -r requirements/requirements-mujoco_py.txt
-pip install -r requirements/requirements-mujoco.txt
 pip install -r requirements/requirements-procgen.txt
 pip install -r requirements/requirements-envpool.txt
 pip install -r requirements/requirements-pettingzoo.txt
@@ -111,12 +109,6 @@ python cleanrl/ppo_atari_envpool.py --env-id BreakoutNoFrameskip-v4
 # Learn Pong-v5 in ~5-10 mins
 # Side effects such as lower sample efficiency might occur
 poetry run python ppo_atari_envpool.py --clip-coef=0.2 --num-envs=16 --num-minibatches=8 --num-steps=128 --update-epochs=3
-
-# pybullet
-poetry install -E pybullet
-python cleanrl/td3_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
-python cleanrl/ddpg_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
-python cleanrl/sac_continuous_action.py --env-id MinitaurBulletDuckEnv-v0
 
 # procgen
 poetry install -E procgen
@@ -164,6 +156,8 @@ You may also use a prebuilt development environment hosted in Gitpod:
 |  | [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py),  [docs](https://docs.cleanrl.dev/rl-algorithms/td3/#td3_continuous_action_jaxpy) |
 | ✅ [Phasic Policy Gradient (PPG)](https://arxiv.org/abs/2009.04416) |  [`ppg_procgen.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppg_procgen.py),  [docs](https://docs.cleanrl.dev/rl-algorithms/ppg/#ppg_procgenpy) |
 | ✅ [Random Network Distillation (RND)](https://arxiv.org/abs/1810.12894) |  [`ppo_rnd_envpool.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_rnd_envpool.py),  [docs](/rl-algorithms/ppo-rnd/#ppo_rnd_envpoolpy) |
+| ✅ [Qdagger](https://arxiv.org/abs/2206.01626)  |  [`qdagger_dqn_atari_impalacnn.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/qdagger_dqn_atari_impalacnn.py),  [docs](https://docs.cleanrl.dev/rl-algorithms/qdagger/#qdagger_dqn_atari_impalacnnpy) |
+|  | [`qdagger_dqn_atari_jax_impalacnn.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/qdagger_dqn_atari_jax_impalacnn.py), [docs](https://docs.cleanrl.dev/rl-algorithms/qdagger/#qdagger_dqn_atari_jax_impalacnnpy) |
 
 
 ## Open RL Benchmark

@@ -34,9 +34,15 @@ def parse_args():
         help="the entity (team) of wandb's project")
     parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
         help="whether to capture videos of the agent performances (check out `videos` folder)")
+    parser.add_argument("--save-model", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="whether to save model into the `runs/{run_name}` folder")
+    parser.add_argument("--upload-model", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
+        help="whether to upload the saved model to huggingface")
+    parser.add_argument("--hf-entity", type=str, default="",
+        help="the user or org name of the model repository from the Hugging Face Hub")
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="HalfCheetah-v4",
+    parser.add_argument("--env-id", type=str, default="Hopper-v4",
         help="the id of the environment")
     parser.add_argument("--total-timesteps", type=int, default=1000000,
         help="total timesteps of the experiments")
@@ -65,16 +71,13 @@ def parse_args():
 
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
-        if capture_video:
+        if capture_video and idx == 0:
             env = gym.make(env_id, render_mode="rgb_array")
+            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         else:
             env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
-        if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         env.action_space.seed(seed)
-        env.observation_space.seed(seed)
         return env
 
     return thunk
@@ -123,10 +126,10 @@ if __name__ == "__main__":
     if sb3.__version__ < "2.0":
         raise ValueError(
             """Ongoing migration: run the following command to install the new dependencies:
-
 poetry run pip install "stable_baselines3==2.0.0a1"
 """
         )
+
     args = parse_args()
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
@@ -138,7 +141,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             sync_tensorboard=True,
             config=vars(args),
             name=run_name,
-            # monitor_gym=True, # no longer works for gymnasium
+            monitor_gym=True,
             save_code=True,
         )
     writer = SummaryWriter(f"runs/{run_name}")
@@ -146,6 +149,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
+    video_filenames = set()
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -180,8 +184,6 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
-    video_filenames = set()
-
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
@@ -193,10 +195,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 actions = actions.cpu().numpy().clip(envs.single_action_space.low, envs.single_action_space.high)
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards, terminateds, truncateds, infos = envs.step(actions)
+        next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-
         if "final_info" in infos:
             for info in infos["final_info"]:
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
@@ -206,10 +207,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
         real_next_obs = next_obs.copy()
-        for idx, d in enumerate(truncateds):
-            if d:
+        for idx, trunc in enumerate(truncations):
+            if trunc:
                 real_next_obs[idx] = infos["final_observation"][idx]
-        rb.add(obs, real_next_obs, actions, rewards, terminateds, infos)
+        rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -243,17 +244,37 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
             if global_step % 100 == 0:
+                writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
                 writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
-                writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
                 print("SPS:", int(global_step / (time.time() - start_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
-    envs.close()
+    if args.save_model:
+        model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
+        torch.save((actor.state_dict(), qf1.state_dict()), model_path)
+        print(f"model saved to {model_path}")
+        from cleanrl_utils.evals.ddpg_eval import evaluate
 
-    if args.track and args.capture_video:
-        for filename in os.listdir(f"videos/{run_name}"):
-            if filename not in video_filenames and filename.endswith(".mp4"):
-                wandb.log({f"videos": wandb.Video(f"videos/{run_name}/{filename}")})
-                video_filenames.add(filename)
+        episodic_returns = evaluate(
+            model_path,
+            make_env,
+            args.env_id,
+            eval_episodes=10,
+            run_name=f"{run_name}-eval",
+            Model=(Actor, QNetwork),
+            device=device,
+            exploration_noise=args.exploration_noise,
+        )
+        for idx, episodic_return in enumerate(episodic_returns):
+            writer.add_scalar("eval/episodic_return", episodic_return, idx)
+
+        if args.upload_model:
+            from cleanrl_utils.huggingface import push_to_hub
+
+            repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
+            repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
+            push_to_hub(args, episodic_returns, repo_id, "DDPG", f"runs/{run_name}", f"videos/{run_name}-eval")
+
+    envs.close()
     writer.close()

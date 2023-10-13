@@ -321,7 +321,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
                 if args.autotune:
                     # re-use action probabilities for temperature loss
-                    alpha_loss = (action_probs.detach() * (-log_alpha * (log_pi + target_entropy).detach())).mean()
+                    alpha_loss = (action_probs.detach() * (-log_alpha.exp() * (log_pi + target_entropy).detach())).mean()
 
                     a_optimizer.zero_grad()
                     alpha_loss.backward()

@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-* Python >=3.7.1,<3.10 (not yet 3.10)
+* Python >=3.7.1,<3.11
 * [Poetry 1.2.1+](https://python-poetry.org)
 
 Simply run the following command for a quick start
@@ -56,10 +56,8 @@ pip install -r requirements/requirements.txt
 
 # optional dependencies
 pip install -r requirements/requirements-atari.txt
-pip install -r requirements/requirements-pybullet.txt
 pip install -r requirements/requirements-mujoco.txt
 pip install -r requirements/requirements-mujoco_py.txt
-pip install -r requirements/requirements-mujoco.txt
 pip install -r requirements/requirements-procgen.txt
 pip install -r requirements/requirements-envpool.txt
 pip install -r requirements/requirements-pettingzoo.txt
@@ -84,11 +82,6 @@ ale-py = "0.7.4"
 AutoROM = {extras = ["accept-rom-license"], version = "^0.4.2"}
 opencv-python = "^4.6.0.66"
 
-[tool.poetry.group.pybullet]
-optional = true
-[tool.poetry.group.pybullet.dependencies]
-pybullet = "3.1.8"
-
 [tool.poetry.group.procgen]
 optional = true
 [tool.poetry.group.procgen.dependencies]
@@ -99,7 +92,6 @@ You can install them using the following command
 
 ```bash
 poetry install -E atari
-poetry install -E pybullet
 poetry install -E mujoco
 poetry install -E mujoco_py
 poetry install -E dm_control

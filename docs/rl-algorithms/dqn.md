@@ -98,7 +98,8 @@ with the Bellman update target is $y = r + \gamma \, Q^{'}(s', a')$ and the repl
     - `dqn_atari.py` uses `--exploration-fraction=0.1` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--exploration-fraction=0.02` (all corresponds to 250000 steps or 1M frames being the frame that epsilon is annealed to `--end-e=0.1` ).
     - `dqn_atari.py` handles truncation and termination properly like (Mnih et al., 2015)[^1] by using SB3's replay buffer's `handle_timeout_termination=True`.
 2. `dqn_atari.py` use a self-contained evaluation scheme: `dqn_atari.py` reports the episodic returns obtained throughout training, whereas (Mnih et al., 2015)[^1] is trained with `--end-e=0.1` but reported episodic returns using a separate evaluation process with `--end-e=0.01` (See "Evaluation procedure" under "METHODS" on page 6).
-3. `dqn_atary.py` implements target network updates as Polyak updates. Compared to the original implementation in (Mnih et al., 2015)[^1], this version allows soft updates of the target network weights with `--tau` (update coefficient) values of less than 1 (i.e. `--tau=0.9`). Note that by default `--tau=1.0` is used to be consistent with (Mnih et al., 2015)[^1].
+3. `dqn_atari.py` implements target network updates as Polyak updates. Compared to the original implementation in (Mnih et al., 2015)[^1], this version allows soft updates of the target network weights with `--tau` (update coefficient) values of less than 1 (i.e. `--tau=0.9`). Note that by default `--tau=1.0` is used to be consistent with (Mnih et al., 2015)[^1].
+4. `dqn_atari.py` uses the standard MSE loss function, whereas (Mnih et al., 2015)[^1] "...found it helpful to clip the error term from the update $r + \gamma \max_{a'}Q(s', a'; \theta^{-}_{i}) - Q(s, a; \theta_{i})$ to be between -1 and 1" (See "Training algorithm for deep Q-networks" under "METHODS" on page 7).
 
 ### Experiment results
 

@@ -5,11 +5,13 @@ from pprint import pformat
 from typing import List
 
 import numpy as np
+from tenacity import retry, stop_after_attempt, wait_fixed
 
 HUGGINGFACE_VIDEO_PREVIEW_FILE_NAME = "replay.mp4"
 HUGGINGFACE_README_FILE_NAME = "README.md"
 
 
+@retry(stop=stop_after_attempt(10), wait=wait_fixed(3))
 def push_to_hub(
     args: argparse.Namespace,
     episodic_returns: List,
