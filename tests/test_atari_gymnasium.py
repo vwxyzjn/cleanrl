@@ -47,3 +47,11 @@ def test_c51_atari_eval():
         shell=True,
         check=True,
     )
+
+
+def test_sac():
+    subprocess.run(
+        "python cleanrl/sac_atari.py --learning-starts 10 --total-timesteps 16 --buffer-size 10 --batch-size 4",
+        shell=True,
+        check=True,
+    )

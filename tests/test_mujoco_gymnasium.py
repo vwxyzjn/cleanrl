@@ -25,6 +25,11 @@ def test_mujoco():
         shell=True,
         check=True,
     )
+    subprocess.run(
+        "python cleanrl/sac_continuous_action.py --env-id Hopper-v4 --batch-size 128 --total-timesteps 135",
+        shell=True,
+        check=True,
+    )
 
 
 def test_mujoco_eval():
