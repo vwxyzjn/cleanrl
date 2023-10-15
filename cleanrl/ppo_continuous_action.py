@@ -339,6 +339,7 @@ if __name__ == "__main__":
             run_name=f"{run_name}-eval",
             Model=Agent,
             device=device,
+            gamma=args.gamma,
         )
         for idx, episodic_return in enumerate(episodic_returns):
             writer.add_scalar("eval/episodic_return", episodic_return, idx)
