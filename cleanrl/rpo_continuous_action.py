@@ -216,8 +216,8 @@ if __name__ == "__main__":
             logprobs[step] = logprob
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, terminated, truncated, infos = envs.step(action.cpu().numpy())
-            done = np.logical_or(terminated, truncated)
+            next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
+            done = np.logical_or(terminations, truncations)
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(done).to(device)
 

@@ -183,7 +183,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             actions = torch.argmax(q_values, dim=1).cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards, terminated, truncated, infos = envs.step(actions)
+        next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
@@ -195,13 +195,14 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 writer.add_scalar("charts/epsilon", epsilon, global_step)
+                break
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
-        for idx, d in enumerate(truncated):
-            if d:
+        for idx, trunc in enumerate(truncations):
+            if trunc:
                 real_next_obs[idx] = infos["final_observation"][idx]
-        rb.add(obs, real_next_obs, actions, rewards, terminated, infos)
+        rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
