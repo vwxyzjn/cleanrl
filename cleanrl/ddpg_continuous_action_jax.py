@@ -143,7 +143,6 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
-    video_filenames = set()
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -258,7 +257,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 break
 
-        # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
+        # TRY NOT TO MODIFY: save data to replay buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
         for idx, trunc in enumerate(truncations):
             if trunc:

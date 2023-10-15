@@ -217,7 +217,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
-    obs, info = envs.reset(seed=args.seed)
+    obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
@@ -263,6 +263,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
             qf_loss = qf1_loss + qf2_loss
 
+            # optimize the model
             q_optimizer.zero_grad()
             qf_loss.backward()
             q_optimizer.step()
