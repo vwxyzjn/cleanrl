@@ -256,7 +256,7 @@ if __name__ == "__main__":
     def linear_schedule(count):
         # anneal learning rate linearly after one training iteration which contains
         # (args.num_minibatches * args.update_epochs) gradient updates
-        frac = 1.0 - (count // (args.num_minibatches * args.update_epochs)) / args.num_updates
+        frac = 1.0 - (count // (args.num_minibatches * args.update_epochs)) / args.num_iterations
         return args.learning_rate * frac
 
     network = Network()
