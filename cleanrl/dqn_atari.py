@@ -206,14 +206,10 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
             for info in infos["final_info"]:
-                # Skip the envs that are not done
-                if "episode" not in info:
-                    continue
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                writer.add_scalar("charts/epsilon", epsilon, global_step)
-                break
+                if info and "episode" in info:
+                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
