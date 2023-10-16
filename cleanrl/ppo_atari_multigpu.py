@@ -1,12 +1,10 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_multigpupy
-import argparse
 import os
 import random
 import time
-from typing import List, Literal
 import warnings
 from dataclasses import dataclass, field
-from distutils.util import strtobool
+from typing import List, Literal
 
 import gymnasium as gym
 import numpy as np
@@ -287,7 +285,6 @@ E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-
 
         print(
             f"local_rank: {local_rank}, action.sum(): {action.sum()}, iteration: {iteration}, agent.actor.weight.sum(): {agent.actor.weight.sum()}"

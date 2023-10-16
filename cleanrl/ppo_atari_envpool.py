@@ -2,9 +2,8 @@
 import os
 import random
 import time
-from dataclasses import dataclass
 from collections import deque
-from distutils.util import strtobool
+from dataclasses import dataclass
 
 import envpool
 import gym

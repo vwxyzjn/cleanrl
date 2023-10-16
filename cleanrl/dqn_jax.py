@@ -15,6 +15,7 @@ from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
+
 @dataclass
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
@@ -47,7 +48,7 @@ class Args:
     """the replay memory buffer size"""
     gamma: float = 0.99
     """the discount factor gamma"""
-    tau: float = 1.
+    tau: float = 1.0
     """the target network update rate"""
     target_network_frequency: int = 500
     """the timesteps it takes to update the target network"""

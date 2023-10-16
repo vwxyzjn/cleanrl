@@ -16,7 +16,6 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 import tyro
-
 from flax.training.train_state import TrainState
 from stable_baselines3.common.atari_wrappers import (
     ClipRewardEnv,

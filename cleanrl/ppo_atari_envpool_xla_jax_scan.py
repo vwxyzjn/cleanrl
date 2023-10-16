@@ -13,8 +13,8 @@ import gym
 import jax
 import jax.numpy as jnp
 import numpy as np
-import tyro
 import optax
+import tyro
 from flax.linen.initializers import constant, orthogonal
 from flax.training.train_state import TrainState
 from torch.utils.tensorboard import SummaryWriter
@@ -24,6 +24,7 @@ os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.6"
 # Fix CUDNN non-determinisim; https://github.com/google/jax/issues/4823#issuecomment-952835771
 os.environ["TF_XLA_FLAGS"] = "--xla_gpu_autotune_level=2 --xla_gpu_deterministic_reductions"
 os.environ["TF_CUDNN DETERMINISTIC"] = "1"
+
 
 @dataclass
 class Args:
