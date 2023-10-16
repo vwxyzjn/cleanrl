@@ -22,7 +22,7 @@
 If you need to run benchmark experiments for a performance-impacting changes:
 
 - [ ] I have contacted @vwxyzjn to obtain access to the [openrlbenchmark W&B team](https://wandb.ai/openrlbenchmark).
-- [ ] I have used the [benchmark utility](/get-started/benchmark-utility/) to submit the tracked experiments to the [openrlbenchmark/cleanrl](https://wandb.ai/openrlbenchmark/cleanrl) W&B project, optionally with `--capture-video`.
+- [ ] I have used the [benchmark utility](/get-started/benchmark-utility/) to submit the tracked experiments to the [openrlbenchmark/cleanrl](https://wandb.ai/openrlbenchmark/cleanrl) W&B project, optionally with `--capture_video`.
 - [ ] I have performed RLops with `python -m openrlbenchmark.rlops`.
     - For new feature or bug fix:
         - [ ] I have used the RLops utility to understand the performance impact of the changes and confirmed there is no regression.

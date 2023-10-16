@@ -42,12 +42,12 @@ def test_mujoco_py_eval():
     Test mujoco_py_eval
     """
     subprocess.run(
-        "python cleanrl/ddpg_continuous_action.py --save-model True --env-id Hopper-v2 --learning-starts 100 --batch-size 32 --total-timesteps 105",
+        "python cleanrl/ddpg_continuous_action.py --save-model --env-id Hopper-v2 --learning-starts 100 --batch-size 32 --total-timesteps 105",
         shell=True,
         check=True,
     )
     subprocess.run(
-        "python cleanrl/ddpg_continuous_action_jax.py --save-model True --env-id Hopper-v2 --learning-starts 100 --batch-size 32 --total-timesteps 105",
+        "python cleanrl/ddpg_continuous_action_jax.py --save-model --env-id Hopper-v2 --learning-starts 100 --batch-size 32 --total-timesteps 105",
         shell=True,
         check=True,
     )

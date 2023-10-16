@@ -158,12 +158,12 @@ We also added a new tool for running benchmark experiments. The tool is designed
 ```bash
 OMP_NUM_THREADS=1 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids CartPole-v1 Acrobot-v1 MountainCar-v0 \
-    --command "poetry run python cleanrl/ppo.py --cuda False --track --capture-video" \
+    --command "poetry run python cleanrl/ppo.py --no_cuda --track --capture_video" \
     --num-seeds 3 \
     --workers 5
 ```
 
-which will run the `ppo.py` script with `--cuda False --track --capture-video` arguments across 3 random seeds for 3 environments. It uses `multiprocessing` to create a pool of 5 workers run the experiments in parallel.
+which will run the `ppo.py` script with `--no_cuda --track --capture_video` arguments across 3 random seeds for 3 environments. It uses `multiprocessing` to create a pool of 5 workers run the experiments in parallel.
 
 
 

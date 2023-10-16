@@ -1,11 +1,11 @@
 # Experiment tracking
 
 To use experiment tracking with wandb, run with the `--track` flag, which will also
-upload the videos recorded by the `--capture-video` flag.
+upload the videos recorded by the `--capture_video` flag.
 ```bash
 poetry shell
 wandb login # only required for the first time
-python cleanrl/ppo.py --track --capture-video
+python cleanrl/ppo.py --track --capture_video
 ```
 
 

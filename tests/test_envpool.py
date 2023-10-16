@@ -35,7 +35,7 @@ def test_ppo_atari_envpool_xla_jax_scan():
 
 def test_ppo_atari_envpool_xla_jax_scan_eval():
     subprocess.run(
-        "python cleanrl/ppo_atari_envpool_xla_jax_scan.py --save-model True --num-envs 8 --num-steps 6 --update-epochs 1 --num-minibatches 1 --total-timesteps 256",
+        "python cleanrl/ppo_atari_envpool_xla_jax_scan.py --save-model --num-envs 8 --num-steps 6 --update-epochs 1 --num-minibatches 1 --total-timesteps 256",
         shell=True,
         check=True,
     )
