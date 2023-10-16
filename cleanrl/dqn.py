@@ -53,7 +53,7 @@ class Args:
     """the replay memory buffer size"""
     gamma: float = 0.99
     """the discount factor gamma"""
-    tau: float = 1.
+    tau: float = 1.0
     """the target network update rate"""
     target_network_frequency: int = 500
     """the timesteps it takes to update the target network"""

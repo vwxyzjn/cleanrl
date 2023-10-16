@@ -1,10 +1,8 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/qdagger/#qdagger_dqn_atari_jax_impalacnnpy
-import argparse
 import os
 import random
 import time
 from collections import deque
-from distutils.util import strtobool
 from typing import Sequence
 
 os.environ[

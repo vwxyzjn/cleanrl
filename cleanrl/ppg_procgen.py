@@ -85,8 +85,6 @@ class Args:
     n_aux_grad_accum: int = 1
     """the number of gradient accumulation in mini batch"""
 
-
-
     # to be filled in runtime
     batch_size: int = 0
     """the batch size (computed in runtime)"""
@@ -283,7 +281,6 @@ if __name__ == "__main__":
     start_time = time.time()
     next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
-    
 
     for phase in range(1, args.num_phases + 1):
 
@@ -397,7 +394,7 @@ if __name__ == "__main__":
                     optimizer.step()
 
                 if args.target_kl is not None and approx_kl > args.target_kl:
-                        break
+                    break
 
             y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
             var_y = np.var(y_true)
