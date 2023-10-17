@@ -38,9 +38,9 @@ class Args:
     # Algorithm specific arguments
     env_id: str = "starpilot"
     """the id of the environment"""
-    total_timesteps: int = 5e-4
+    total_timesteps: int = int(25e6)
     """total timesteps of the experiments"""
-    learning_rate: float = 25e6
+    learning_rate: float = 5e-4
     """the learning rate of the optimizer"""
     num_envs: int = 64
     """the number of parallel game environments"""
@@ -218,6 +218,8 @@ if __name__ == "__main__":
     args.num_iterations = args.total_timesteps // args.batch_size
     args.num_phases = int(args.num_iterations // args.n_iteration)
     args.aux_batch_rollouts = int(args.num_envs * args.n_iteration)
+    from rich.pretty import pprint
+    pprint(args)
     assert args.v_value == 1, "Multiple value epoch (v_value != 1) is not supported yet"
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
