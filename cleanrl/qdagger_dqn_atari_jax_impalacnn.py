@@ -89,6 +89,8 @@ class Args:
     # QDagger specific arguments
     teacher_policy_hf_repo: str = None
     """the huggingface repo of the teacher policy"""
+    teacher_model_exp_name: str = "dqn_atari_jax"
+    """the experiment name of the teacher model"""
     teacher_eval_episodes: int = 10
     """the number of episodes to run the teacher policy evaluate"""
     teacher_steps: int = 500000
@@ -199,7 +201,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     args = tyro.cli(Args)
     assert args.num_envs == 1, "vectorized envs are not supported at the moment"
     if args.teacher_policy_hf_repo is None:
-        args.teacher_policy_hf_repo = f"cleanrl/{args.env_id}-dqn_atari-seed1"
+        args.teacher_policy_hf_repo = f"cleanrl/{args.env_id}-{args.teacher_model_exp_name}-seed1"
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
@@ -242,7 +244,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     q_network.apply = jax.jit(q_network.apply)
 
     # QDAGGER LOGIC:
-    teacher_model_path = hf_hub_download(repo_id=args.teacher_policy_hf_repo, filename="dqn_atari_jax.cleanrl_model")
+    teacher_model_path = hf_hub_download(repo_id=args.teacher_policy_hf_repo, filename=f"{args.teacher_model_exp_name}.cleanrl_model")
     teacher_model = TeacherModel(action_dim=envs.single_action_space.n)
     teacher_model_key = jax.random.PRNGKey(args.seed)
     teacher_params = teacher_model.init(teacher_model_key, envs.observation_space.sample())
