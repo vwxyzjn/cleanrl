@@ -32,4 +32,3 @@ def test_tuner():
         num_seeds=1,
     )
 
-test_tuner()
