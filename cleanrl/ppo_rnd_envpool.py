@@ -1,9 +1,9 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo-rnd/#ppo_rnd_envpoolpy
-from dataclasses import dataclass
 import os
 import random
 import time
 from collections import deque
+from dataclasses import dataclass
 
 import envpool
 import gym
