@@ -244,7 +244,9 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     q_network.apply = jax.jit(q_network.apply)
 
     # QDAGGER LOGIC:
-    teacher_model_path = hf_hub_download(repo_id=args.teacher_policy_hf_repo, filename=f"{args.teacher_model_exp_name}.cleanrl_model")
+    teacher_model_path = hf_hub_download(
+        repo_id=args.teacher_policy_hf_repo, filename=f"{args.teacher_model_exp_name}.cleanrl_model"
+    )
     teacher_model = TeacherModel(action_dim=envs.single_action_space.n)
     teacher_model_key = jax.random.PRNGKey(args.seed)
     teacher_params = teacher_model.init(teacher_model_key, envs.observation_space.sample())

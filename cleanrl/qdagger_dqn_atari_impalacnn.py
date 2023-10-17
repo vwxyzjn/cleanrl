@@ -248,7 +248,9 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     target_network.load_state_dict(q_network.state_dict())
 
     # QDAGGER LOGIC:
-    teacher_model_path = hf_hub_download(repo_id=args.teacher_policy_hf_repo, filename=f"{args.teacher_model_exp_name}.cleanrl_model")
+    teacher_model_path = hf_hub_download(
+        repo_id=args.teacher_policy_hf_repo, filename=f"{args.teacher_model_exp_name}.cleanrl_model"
+    )
     teacher_model = TeacherModel(envs).to(device)
     teacher_model.load_state_dict(torch.load(teacher_model_path, map_location=device))
     teacher_model.eval()
