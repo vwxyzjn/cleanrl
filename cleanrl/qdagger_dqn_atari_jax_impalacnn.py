@@ -17,6 +17,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+import tyro
 from flax.training.train_state import TrainState
 from huggingface_hub import hf_hub_download
 from rich.progress import track
