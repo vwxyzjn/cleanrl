@@ -515,13 +515,13 @@ files = [
 
 [[package]]
 name = "cmaes"
-version = "0.9.1"
+version = "0.10.0"
 description = "Lightweight Covariance Matrix Adaptation Evolution Strategy (CMA-ES) implementation for Python 3."
 optional = true
 python-versions = ">=3.7"
 files = [
-    {file = "cmaes-0.9.1-py3-none-any.whl", hash = "sha256:6e2930b6a99dd94621bf62966c13d29e6a7f90a909b4e4266010d5f3a7fb74b8"},
-    {file = "cmaes-0.9.1.tar.gz", hash = "sha256:d122f8d46377f643a150c85ffc81c4e33909a34cfdcb522ee7a6fb17ea4f232c"},
+    {file = "cmaes-0.10.0-py3-none-any.whl", hash = "sha256:72cea747ad37b1780b0eb6f3c098cee33907fafbf6690c0c02db1e010cab72f6"},
+    {file = "cmaes-0.10.0.tar.gz", hash = "sha256:48afc70df027114739872b50489ae6b32461c307b92d084a63c7090a9742faf9"},
 ]
 
 [package.dependencies]
@@ -2627,18 +2627,18 @@ typing-extensions = ">=3.10.0"
 
 [[package]]
 name = "optuna"
-version = "3.1.1"
+version = "3.3.0"
 description = "A hyperparameter optimization framework"
 optional = true
 python-versions = ">=3.7"
 files = [
-    {file = "optuna-3.1.1-py3-none-any.whl", hash = "sha256:4d641b4bdd896f48a766803a5b64286281fa3e5dbbeedc549f8e1ee6c6e3eea8"},
-    {file = "optuna-3.1.1.tar.gz", hash = "sha256:f3c8fcdb7ed4dd473485f6f61de2f2ceb9d4ad56afbae42e663e15c3f00a4c10"},
+    {file = "optuna-3.3.0-py3-none-any.whl", hash = "sha256:3eefaed56a5fabf442036d51ef2001dbabfbe1a8ce33bc0c6b61ff5d15b30c82"},
+    {file = "optuna-3.3.0.tar.gz", hash = "sha256:76126c6e52354892488e75fc7743eaddcd397c5aba8fa1f964a1c5b5f942eaf6"},
 ]
 
 [package.dependencies]
 alembic = ">=1.5.0"
-cmaes = ">=0.9.1"
+cmaes = ">=0.10.0"
 colorlog = "*"
 numpy = "*"
 packaging = ">=20.0"
@@ -2648,11 +2648,11 @@ tqdm = "*"
 
 [package.extras]
 benchmark = ["asv (>=0.5.0)", "botorch", "cma", "scikit-optimize", "virtualenv"]
-checking = ["black", "blackdoc", "hacking", "isort", "mypy", "types-PyYAML", "types-redis", "types-setuptools", "typing-extensions (>=3.10.0.0)"]
-document = ["cma", "distributed", "fvcore", "lightgbm", "matplotlib (!=3.6.0)", "mlflow", "pandas", "pillow", "plotly (>=4.9.0)", "scikit-learn", "scikit-optimize", "sphinx (<6)", "sphinx-copybutton", "sphinx-gallery", "sphinx-plotly-directive", "sphinx-rtd-theme", "torch (==1.11.0)", "torchaudio (==0.11.0)", "torchvision (==0.12.0)"]
-integration = ["allennlp (>=2.2.0)", "botorch (>=0.4.0,<0.8.0)", "cached-path (<=1.1.2)", "catalyst (>=21.3)", "catboost (>=0.26)", "chainer (>=5.0.0)", "cma", "distributed", "fastai", "lightgbm", "mlflow", "mpi4py", "mxnet", "pandas", "pytorch-ignite", "pytorch-lightning (>=1.5.0)", "scikit-learn (>=0.24.2)", "scikit-optimize", "shap", "skorch", "tensorflow", "tensorflow-datasets", "torch (==1.11.0)", "torchaudio (==0.11.0)", "torchvision (==0.12.0)", "wandb", "xgboost"]
-optional = ["matplotlib (!=3.6.0)", "pandas", "plotly (>=4.9.0)", "redis", "scikit-learn (>=0.24.2)"]
-test = ["codecov", "fakeredis[lua]", "kaleido", "pytest", "scipy (>=1.9.2)"]
+checking = ["black", "blackdoc", "flake8", "isort", "mypy", "mypy-boto3-s3", "types-PyYAML", "types-redis", "types-setuptools", "types-tqdm", "typing-extensions (>=3.10.0.0)"]
+document = ["botorch", "cma", "distributed", "fvcore", "lightgbm", "matplotlib (!=3.6.0)", "mlflow", "pandas", "pillow", "plotly (>=4.9.0)", "scikit-learn", "scikit-optimize", "sphinx", "sphinx-copybutton", "sphinx-gallery", "sphinx-plotly-directive", "sphinx-rtd-theme (>=1.2.0)", "torch", "torchaudio", "torchvision"]
+integration = ["botorch (>=0.4.0)", "catboost (>=0.26)", "catboost (>=0.26,<1.2)", "cma", "distributed", "fastai", "lightgbm", "mlflow", "pandas", "pytorch-ignite", "pytorch-lightning (>=1.6.0)", "scikit-learn (>=0.24.2)", "scikit-optimize", "shap", "tensorflow", "torch", "torchaudio", "torchvision", "wandb", "xgboost"]
+optional = ["boto3", "botorch", "matplotlib (!=3.6.0)", "pandas", "plotly (>=4.9.0)", "redis", "scikit-learn (>=0.24.2)"]
+test = ["coverage", "fakeredis[lua]", "kaleido", "moto", "pytest", "scipy (>=1.9.2)"]
 
 [[package]]
 name = "optuna-dashboard"

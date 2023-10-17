@@ -31,3 +31,5 @@ def test_tuner():
         num_trials=1,
         num_seeds=1,
     )
+
+test_tuner()
