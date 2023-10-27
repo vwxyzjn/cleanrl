@@ -75,6 +75,8 @@ def parse_args():
         help="Toggles advantages normalization")
     parser.add_argument("--clip-coef", type=float, default=0.1,
         help="the surrogate clipping coefficient")
+    parser.add_argument("--clip-vloss", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
+        help="Toggles whether or not to use a clipped loss for the value function, as per the paper.")
     parser.add_argument("--ent-coef", type=float, default=0.01,
         help="coefficient of the entropy")
     parser.add_argument("--vf-coef", type=float, default=0.5,
@@ -343,7 +345,7 @@ if __name__ == "__main__":
         )
         return storage
 
-    def ppo_loss(params, x, a, logp, mb_advantages, mb_returns):
+    def ppo_loss(params, x, a, logp, mb_advantages, mb_returns, mb_values):
         newlogprob, entropy, newvalue = get_action_and_value2(params, x, a)
         logratio = newlogprob - logp
         ratio = jnp.exp(logratio)
@@ -358,7 +360,18 @@ if __name__ == "__main__":
         pg_loss = jnp.maximum(pg_loss1, pg_loss2).mean()
 
         # Value loss
-        v_loss = 0.5 * ((newvalue - mb_returns) ** 2).mean()
+        if args.clip_vloss:
+            v_loss_unclipped = (newvalue - mb_returns) ** 2
+            v_clipped = mb_values + jnp.clip(
+                newvalue - mb_values,
+                -args.clip_coef,
+                args.clip_coef,
+            )
+            v_loss_clipped = (v_clipped - mb_returns) ** 2
+            v_loss_max = jnp.maximum(v_loss_unclipped, v_loss_clipped)
+            v_loss = 0.5 * v_loss_max.mean()
+        else:
+            v_loss = 0.5 * ((newvalue - mb_returns) ** 2).mean()
 
         entropy_loss = entropy.mean()
         loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
@@ -396,6 +409,7 @@ if __name__ == "__main__":
                     minibatch.logprobs,
                     minibatch.advantages,
                     minibatch.returns,
+                    minibatch.values,
                 )
                 agent_state = agent_state.apply_gradients(grads=grads)
                 return agent_state, (loss, pg_loss, v_loss, entropy_loss, approx_kl, grads)
