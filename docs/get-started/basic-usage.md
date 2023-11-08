@@ -75,7 +75,7 @@ poetry run pip install sb3==2.0.0a1
 
     This is because the `torch` wheel on PyPi is built with cuda 10.2. You would need to manually install the cuda 11.3 wheel like this:
     ```bash
-    poetry run pip install torch --upgrade --extra-index-url https://download.pytorch.org/whl/cu113
+    poetry run pip install torch==1.12.1 --upgrade --extra-index-url https://download.pytorch.org/whl/cu113
     ```
     Then, you can run the script again.
 
