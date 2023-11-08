@@ -184,7 +184,6 @@ If you want to use distributed mode, please execute this script with 'torchrun'.
 E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py`
         """
         )
-    pprint(args)
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     writer = None
     if local_rank == 0:
@@ -205,6 +204,7 @@ E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py
             "hyperparameters",
             "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
         )
+        pprint(args)
 
     # TRY NOT TO MODIFY: seeding
     # CRUCIAL: note that we needed to pass a different seed for each data parallelism worker
@@ -274,6 +274,9 @@ E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
 
+            if not writer:
+                continue
+
             if "final_info" in infos:
                 for info in infos["final_info"]:
                     if info and "episode" in info:
@@ -309,12 +312,12 @@ E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py
         b_values = values.reshape(-1)
 
         # Optimizing the policy and value network
-        b_inds = np.arange(args.batch_size)
+        b_inds = np.arange(args.local_batch_size)
         clipfracs = []
         for epoch in range(args.update_epochs):
             np.random.shuffle(b_inds)
-            for start in range(0, args.batch_size, args.minibatch_size):
-                end = start + args.minibatch_size
+            for start in range(0, args.local_batch_size, args.local_minibatch_size):
+                end = start + args.local_minibatch_size
                 mb_inds = b_inds[start:end]
 
                 _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
@@ -369,7 +372,7 @@ E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py
                     for param in agent.parameters():
                         if param.grad is not None:
                             param.grad.data.copy_(
-                                all_grads[offset : offset + param.numel()].view_as(param.grad.data) / world_size
+                                all_grads[offset : offset + param.numel()].view_as(param.grad.data) / args.world_size
                             )
                             offset += param.numel()
 
