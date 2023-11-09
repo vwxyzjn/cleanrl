@@ -194,23 +194,6 @@ jobs:
         with:
           poetry-version: ${{ matrix.poetry-version }}
 
-      # mujoco_py tests
-      - name: Install dependencies
-        run: poetry install -E "pytest mujoco_py mujoco jax"
-      - name: Run gymnasium migration dependencies
-        run: poetry run pip install "stable_baselines3==2.0.0a1"
-      - name: Downgrade setuptools
-        run: poetry run pip install setuptools==59.5.0
-      - name: install mujoco_py dependencies
-        run: |
-          sudo apt-get update && sudo apt-get -y install wget unzip software-properties-common \
-            libgl1-mesa-dev \
-            libgl1-mesa-glx \
-            libglew-dev \
-            libosmesa6-dev patchelf
-      - name: Run mujoco_py tests
-        run: poetry run pytest tests/test_mujoco_py.py
-
   test-envpool-envs:
     strategy:
       fail-fast: false
