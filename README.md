@@ -191,3 +191,8 @@ If you use CleanRL in your work, please cite our technical [paper](https://www.j
   url     = {http://jmlr.org/papers/v23/21-1342.html}
 }
 ```
+
+
+## Acknowledgement
+
+We thank [Hugging Face](https://huggingface.co/)'s cluster for providing GPU computational resources to this project.

@@ -1,13 +1,14 @@
-from dataclasses import dataclass
 import math
 import os
 import shlex
 import subprocess
-from typing import List, Optional
 import uuid
+from dataclasses import dataclass
+from typing import List, Optional
 
 import requests
 import tyro
+
 
 @dataclass
 class Args:
@@ -33,7 +34,6 @@ class Args:
     """the number of tasks to use for slurm jobs"""
     slurm_nodes: Optional[int] = None
     """the number of nodes to use for slurm jobs"""
-
 
 
 def run_experiment(command: str):
@@ -73,9 +73,7 @@ def autotag() -> str:
     git_commit = subprocess.check_output(["git", "rev-parse", "--verify", "HEAD"]).decode("ascii").strip()
     try:
         # try finding the pull request number on github
-        prs = requests.get(
-            f"https://api.github.com/search/issues?q=repo:vwxyzjn/cleanrl+is:pr+{git_commit}"
-        )
+        prs = requests.get(f"https://api.github.com/search/issues?q=repo:vwxyzjn/cleanrl+is:pr+{git_commit}")
         if prs.status_code == 200:
             prs = prs.json()
             if len(prs["items"]) > 0:
