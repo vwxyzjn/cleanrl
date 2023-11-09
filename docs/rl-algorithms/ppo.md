@@ -637,7 +637,7 @@ The [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/maste
 
     ```bash
     poetry install -E "envpool jax"
-    poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    poetry run pip install --upgrade "jax[cuda11_cudnn82]==0.4.8" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
     poetry run python cleanrl/ppo_atari_envpool_xla_jax.py --help
     poetry run python cleanrl/ppo_atari_envpool_xla_jax.py --env-id Breakout-v5
     ```
@@ -812,7 +812,7 @@ The [ppo_atari_envpool_xla_jax_scan.py](https://github.com/vwxyzjn/cleanrl/blob/
 
     ```bash
     poetry install -E "envpool jax"
-    poetry run pip install --upgrade "jax[cuda]==0.3.17" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    poetry run pip install --upgrade "jax[cuda11_cudnn82]==0.4.8" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
     poetry run python cleanrl/ppo_atari_envpool_xla_jax_scan.py --help
     poetry run python cleanrl/ppo_atari_envpool_xla_jax_scan.py --env-id Breakout-v5
     ```
