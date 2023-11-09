@@ -257,7 +257,6 @@ Below are the average episodic returns for [`ddpg_continuous_action.py`](https:/
 
 Learning curves:
 
-
 ``` title="benchmark/ddpg_plot.sh" linenums="1"
 --8<-- "benchmark/ddpg_plot.sh::9"
 ```
@@ -343,7 +342,7 @@ Learning curves:
 
 
 ???+ info
-    
+
     These are some previous experiments with TPUs. Note the results are very similar to the ones above, but the runtime can be different due to different hardware used.
 
 
