@@ -258,6 +258,9 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
                         args.tau * q_network_param.data + (1.0 - args.tau) * target_network_param.data
                     )
 
+        if terminations or truncations:
+            obs, _ = envs.reset(seed=args.seed)
+
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
         torch.save(q_network.state_dict(), model_path)

@@ -262,6 +262,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             if global_step % args.target_network_frequency == 0:
                 target_network.load_state_dict(q_network.state_dict())
 
+        if terminations or truncations:
+            obs, _ = envs.reset(seed=args.seed)
+
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
         model_data = {

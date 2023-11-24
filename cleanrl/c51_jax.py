@@ -229,7 +229,6 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
-    obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
@@ -287,6 +286,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             # update target network
             if global_step % args.target_network_frequency == 0:
                 q_state = q_state.replace(target_params=optax.incremental_update(q_state.params, q_state.target_params, 1))
+
+        if terminations or truncations:
+            obs, _ = envs.reset(seed=args.seed)
 
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"

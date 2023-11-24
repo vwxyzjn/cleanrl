@@ -312,5 +312,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 if args.autotune:
                     writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
 
+        if terminations or truncations:
+            obs, _ = envs.reset(seed=args.seed)
+
     envs.close()
     writer.close()

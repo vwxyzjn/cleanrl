@@ -334,6 +334,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 print("SPS:", int(global_step / (time.time() - start_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
+        if terminations or truncations:
+            obs, _ = envs.reset(seed=args.seed)
+
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
         with open(model_path, "wb") as f:
