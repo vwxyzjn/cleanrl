@@ -25,6 +25,7 @@ huggingface-hub = "^0.11.1"
 rich = "<12.0"
 tenacity = "^8.2.2"
 tyro = "^0.5.10"
+pyyaml = "^6.0.1"
 
 ale-py = {version = "0.8.1", optional = true}
 AutoROM = {extras = ["accept-rom-license"], version = "~0.4.2", optional = true}
@@ -46,7 +47,7 @@ PettingZoo = {version = "1.18.1", optional = true}
 SuperSuit = {version = "3.4.0", optional = true}
 multi-agent-ale-py = {version = "0.1.11", optional = true}
 boto3 = {version = "^1.24.70", optional = true}
-awscli = {version = "^1.25.71", optional = true}
+awscli = {version = "^1.31.0", optional = true}
 shimmy = {version = ">=1.1.0", optional = true}
 dm-control = {version = ">=1.0.10", optional = true}
 h5py = {version = ">=3.7.0", optional = true}
