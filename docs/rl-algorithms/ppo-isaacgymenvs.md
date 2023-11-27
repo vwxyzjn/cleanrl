@@ -23,7 +23,11 @@
 
 ## `ppo_continuous_action_isaacgym.py`
 
-:octicons-beaker-24: Experimental
+
+???+ warning
+
+    `ppo_continuous_action_isaacgym.py` is temporarily deprecated. Please checkout the code in [https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0](https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0)
+
 
 The [ppo_continuous_action_isaacgym.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action_isaacgym/ppo_continuous_action_isaacgym.py) has the following features:
 

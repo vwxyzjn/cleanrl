@@ -909,13 +909,13 @@ See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `p
 
 [ppo_atari_multigpu.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_multigpu.py) is based on `ppo_atari.py` (see its [related docs](/rl-algorithms/ppo/#implementation-details_1)).
 
-We use [Pytorch's distributed API](https://pytorch.org/tutorials/intermediate/dist_tuto.html) to implement the data parallelism paradigm. The basic idea is that the user can spawn $N$ processes each holding a copy of the model, step the environments, and averages their gradients together for the backward pass. Here are a few note-worthy implementation details.
+We use [Pytorch's distributed API](https://pytorch.org/tutorials/intermediate/dist_tuto.html) to implement the data parallelism paradigm. The basic idea is that the user can spawn $N$ processes each running a copy of `ppo_atari.py`,  holding a copy of the model, stepping the environments, and averaging their gradients together for the backward pass. Here are a few note-worthy implementation details.
 
-1. **Shard the environments**: by default, `ppo_atari_multigpu.py` uses `--num-envs=8`. When calling `torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4`, it spawns $N=2$ (by `--nproc_per_node=2`) subprocesses and shard the environments across these 2 subprocesses. In particular, each subprocess will have `8/2=4` environments. Implementation wise, we do `args.num_envs = int(args.num_envs / world_size)`. Here `world_size=2` refers to the size of the **world**, which means the group of subprocesses. We also need to adjust various variables as follows:
-    * **batch size**: by default it is `(num_envs * num_steps) = 8 * 128 = 1024` and we adjust it to `(num_envs / world_size * num_steps) = (4 * 128) = 512`. 
-    * **minibatch size**: by default it is `(num_envs * num_steps) / num_minibatches = (8 * 128) / 4 = 256` and we adjust it to `(num_envs / world_size * num_steps) / num_minibatches = (4 * 128) / 4 = 128`. 
-    * **number of updates**: by default it is `total_timesteps // batch_size = 10000000 // (8 * 128) = 9765` and we adjust it to   `total_timesteps // (batch_size * world_size) = 10000000 // (8 * 128 * 2) = 4882`.
-    * **global step increment**: by default it is `num_envs`  and we adjust it to `num_envs * world_size`.
+1. **Local versus global parameters**: All of the parameters in `ppo_atari.py` are global (such as batch size), but in `ppo_atari_multigpu.py` we have local parameters as well. Say we run `torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --local-num-envs=4`; here are how all multi-gpu related parameters are adjusted:
+    * **number of environments**: `num_envs = local_num_envs * world_size = 4 * 2 = 8`
+    * **batch size**: `local_batch_size = local_num_envs * num_steps = 4 * 128 = 512`, `batch_size = num_envs * num_steps) = 8 * 128 = 1024`
+    * **minibatch size**:  `local_minibatch_size = int(args.local_batch_size // args.num_minibatches) = 512 // 4 = 128`, `minibatch_size = int(args.batch_size // args.num_minibatches) = 1024 // 4 = 256`
+    * **number of updates**: `num_iterations = args.total_timesteps // args.batch_size = 10000000 // 1024 = 9765`
 1. **Adjust seed per process**: we need be very careful with seeding: we could have used the exact same seed for each subprocess. To ensure this does not happen, we do the following
 
     ```python hl_lines="2 5 16"
@@ -969,8 +969,6 @@ We use [Pytorch's distributed API](https://pytorch.org/tutorials/intermediate/di
 
 
 
-We can see how `ppo_atari_multigpu.py` can result in no loss of sample efficiency. In this example, the `ppo_atari.py`'s minibatch size is `256` and the `ppo_atari_multigpu.py`'s minibatch size is `128` with world size 2. Because we average gradient across the world, the gradient under  `ppo_atari_multigpu.py` should be virtually the same as the gradient under `ppo_atari.py`.
-
 
 ### Experiment results
 
@@ -1002,6 +1000,11 @@ Learning curves:
 
 
 Under the same hardware, we see that `ppo_atari_multigpu.py` is about **30% faster** than `ppo_atari.py` with no loss of sample efficiency. 
+
+
+???+ info
+
+    The experiments above is to show correctness -- we show that by aligning the same hyperparameters of `ppo_atari.py` and `ppo_atari_multigpu.py`, we can achieve the same sample efficiency. However, we can train even faster by simply running a much larger batch size. For example, we can run `torchrun --standalone --nnodes=1 --nproc_per_node=8 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --local-num-envs=8`, which will run 8 x 8 = 64 environments in parallel and achieve a batch size of 64 x 128 = 8192. This will likely result in a sample efficiency but should increase the wall time efficiency.
 
 
 ???+ info
