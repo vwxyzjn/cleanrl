@@ -6,13 +6,13 @@ Dry run to inspect the generated docker command
 ```
 poetry run python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
-    --command "poetry run python cleanrl/ppo.py --env-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
+    --command "poetry run python cleanrl/ppo.py --env-id CartPole-v1 --total-timesteps 100000 --track --capture_video" \
     --num-seed 1
 ```
 
 The generated docker command should look like
 ```
-docker run -d --cpuset-cpus="0" -e WANDB_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx vwxyzjn/cleanrl:latest /bin/bash -c "poetry run python cleanrl/ppo.py --env-id CartPole-v1 --total-timesteps 100000 --track --capture-video --seed 1"
+docker run -d --cpuset-cpus="0" -e WANDB_API_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx vwxyzjn/cleanrl:latest /bin/bash -c "poetry run python cleanrl/ppo.py --env-id CartPole-v1 --total-timesteps 100000 --track --capture_video --seed 1"
 ```
 
 ### Run on AWS
@@ -21,7 +21,7 @@ Submit a job using AWS's compute-optimized spot instances
 ```
 poetry run python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
-    --command "poetry run python cleanrl/ppo.py --env-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
+    --command "poetry run python cleanrl/ppo.py --env-id CartPole-v1 --total-timesteps 100000 --track --capture_video" \
     --job-queue c5a-large-spot \
     --num-seed 1 \
     --num-vcpu 1 \
@@ -34,7 +34,7 @@ Submit a job using AWS's accelerated-computing spot instances
 ```
 poetry run python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
-    --command "poetry run python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4 --track --capture-video" \
+    --command "poetry run python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4 --track --capture_video" \
     --job-queue g4dn-xlarge-spot \
     --num-seed 1 \
     --num-vcpu 1 \
@@ -48,7 +48,7 @@ Submit a job using AWS's compute-optimized on-demand instances
 ```
 poetry run python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
-    --command "poetry run python cleanrl/ppo.py --env-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
+    --command "poetry run python cleanrl/ppo.py --env-id CartPole-v1 --total-timesteps 100000 --track --capture_video" \
     --job-queue c5a-large \
     --num-seed 1 \
     --num-vcpu 1 \
@@ -61,7 +61,7 @@ Submit a job using AWS's accelerated-computing on-demand instances
 ```
 poetry run python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
-    --command "poetry run python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4 --track --capture-video" \
+    --command "poetry run python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4 --track --capture_video" \
     --job-queue g4dn-xlarge \
     --num-seed 1 \
     --num-vcpu 1 \
@@ -94,7 +94,7 @@ Then you could build a container using the `--build` flag based on the `Dockerfi
 ```
 poetry run python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
-    --command "poetry run python cleanrl/ppo.py --env-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
+    --command "poetry run python cleanrl/ppo.py --env-id CartPole-v1 --total-timesteps 100000 --track --capture_video" \
     --build --push
 ```
 
@@ -103,7 +103,7 @@ To build a multi-arch image using `--archs linux/arm64,linux/amd64`:
 ```
 poetry run python -m cleanrl_utils.submit_exp \
     --docker-tag vwxyzjn/cleanrl:latest \
-    --command "poetry run python cleanrl/ppo.py --env-id CartPole-v1 --total-timesteps 100000 --track --capture-video" \
+    --command "poetry run python cleanrl/ppo.py --env-id CartPole-v1 --total-timesteps 100000 --track --capture_video" \
     --archs linux/arm64,linux/amd64
     --build --push
 ```

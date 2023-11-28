@@ -57,10 +57,6 @@ repos:
         args: ["--without-hashes", "-o", "requirements/requirements-dm_control.txt", "-E", "dm_control"]
         stages: [manual]
       - id: poetry-export
-        name: poetry-export requirements-mujoco_py.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-mujoco_py.txt", "-E", "mujoco_py"]
-        stages: [manual]
-      - id: poetry-export
         name: poetry-export requirements-procgen.txt
         args: ["--without-hashes", "-o", "requirements/requirements-procgen.txt", "-E", "procgen"]
         stages: [manual]

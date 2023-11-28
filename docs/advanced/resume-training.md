@@ -27,7 +27,7 @@ for update in range(starting_update, num_updates + 1):
 Then we could run the following to train our agents
 
 ```
-python ppo_gridnet.py --prod-mode --capture-video
+python ppo_gridnet.py --prod-mode --capture_video
 ```
 
 If the training was terminated early, we can still see the last updated model `agent.pt` in W&B like in this URL [https://wandb.ai/costa-huang/cleanRL/runs/21421tda/files](https://wandb.ai/costa-huang/cleanRL/runs/21421tda/files) or as follows
@@ -72,5 +72,5 @@ for update in range(starting_update, num_updates + 1):
 To resume training, note the ID of the experiment is `21421tda` as in the URL [https://wandb.ai/costa-huang/cleanRL/runs/21421tda](https://wandb.ai/costa-huang/cleanRL/runs/21421tda), so we need to pass in the ID via environment variable to trigger the resume mode of W&B:
 
 ```
-WANDB_RUN_ID=21421tda WANDB_RESUME=must python ppo_gridnet.py --prod-mode --capture-video
+WANDB_RUN_ID=21421tda WANDB_RESUME=must python ppo_gridnet.py --prod-mode --capture_video
 ``` 

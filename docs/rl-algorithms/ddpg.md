@@ -41,8 +41,6 @@ The [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/c
     ```bash
     poetry install
     poetry run python cleanrl/ddpg_continuous_action.py --help
-    poetry install -E mujoco_py # only works in Linux
-    poetry run python cleanrl/ddpg_continuous_action.py --env-id Hopper-v2
     poetry install -E mujoco
     poetry run python cleanrl/ddpg_continuous_action.py --env-id Hopper-v4
     ```
@@ -51,8 +49,6 @@ The [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/c
 
     ```bash
     python cleanrl/ddpg_continuous_action.py --help
-    pip install -r requirements/requirements-mujoco_py.txt # only works in Linux, you have to pick either `mujoco` or `mujoco_py`
-    python cleanrl/ddpg_continuous_action.py --env-id Hopper-v2
     pip install -r requirements/requirements-mujoco.txt
     python cleanrl/ddpg_continuous_actions.py --env-id Hopper-v4
     ```
@@ -232,23 +228,28 @@ Additionally, when drawing exploration noise that is added to the actions produc
 
 To run benchmark experiments, see :material-github: [benchmark/ddpg.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ddpg.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fddpg.sh%23L1-L7&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+
+``` title="benchmark/ddpg.sh" linenums="1"
+--8<-- "benchmark/ddpg.sh::7"
+```
+
 
 Below are the average episodic returns for [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
 
 | Environment      | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) | [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018, Table 1)[^2]  | [`DDPG.py`](https://github.com/sfujim/TD3/blob/master/DDPG.py) using settings from (Lillicrap et al., 2016)[^1] in (Fujimoto et al., 2018, Table 1)[^2]    |
 | ----------- | ----------- | ----------- | ----------- |
-| HalfCheetah      | 10210.57 ± 196.22      |8577.29  | 3305.60|
-| Walker2d   | 1661.14 ± 250.01     |  3098.11 | 1843.85 |
-| Hopper   | 1007.44 ± 148.29         |  1860.02 | 2020.46 |
-| Humanoid |  910.61 ± 97.58      |  not available | 
-| Pusher |  -39.39 ± 9.54      |  not available | 
-| InvertedPendulum |    684.61 ± 94.41    | 1000.00 ± 0.00  | 
+| HalfCheetah-v4       | 10374.07 ± 157.37      |8577.29  | 3305.60|
+| Walker2d-v4    | 1240.16 ± 390.10     |  3098.11 | 1843.85 |
+| Hopper-v4    | 1576.78 ± 818.98         |  1860.02 | 2020.46 |
+| InvertedPendulum-v4  |    642.68 ± 69.56    | 1000.00 ± 0.00  | 
+| Humanoid-v4  |  1699.56 ± 694.22      |  not available | 
+| Pusher-v4  |  -77.30 ± 38.78      |  not available | 
+
 
 
 ???+ info
 
-    Note that [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses gym MuJoCo v2 environments while [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018)[^2] uses the gym MuJoCo v1 environments. According to the :material-github: [openai/gym#834](https://github.com/openai/gym/pull/834), gym MuJoCo v2 environments should be equivalent to the gym MuJoCo v1 environments.
+    Note that [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) uses gym MuJoCo v4 environments while [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018)[^2] uses the gym MuJoCo v1 environments.
 
     Also note the performance of our `ddpg_continuous_action.py` seems to be worse than the reference implementation on Walker2d and Hopper. This is likely due to :material-github: [openai/gym#938](https://github.com/openai/baselines/issues/938). We would have a hard time reproducing gym MuJoCo v1 environments because they have been long deprecated.
 
@@ -256,7 +257,12 @@ Below are the average episodic returns for [`ddpg_continuous_action.py`](https:/
 
 Learning curves:
 
-<img loading="lazy" src="../ddpg/ddpg.png">
+``` title="benchmark/ddpg_plot.sh" linenums="1"
+--8<-- "benchmark/ddpg_plot.sh::9"
+```
+
+<img loading="lazy" src="https://huggingface.co/datasets/cleanrl/benchmark/resolve/main/benchmark/pr-424/ddpg.png">
+<img loading="lazy" src="https://huggingface.co/datasets/cleanrl/benchmark/resolve/main/benchmark/pr-424/ddpg-time.png">
 
 <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-DDPG--VmlldzoxNjkyMjc1" style="width:100%; height:500px" title="MuJoCo: CleanRL's DDPG"></iframe>
 
@@ -314,41 +320,59 @@ See [related docs](/rl-algorithms/ddpg/#implementation-details) for `ddpg_contin
 
 To run benchmark experiments, see :material-github: [benchmark/ddpg.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ddpg.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fddpg.sh%23L9-L16&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
 
-Below are the average episodic returns for [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
+``` title="benchmark/ddpg.sh" linenums="1"
+--8<-- "benchmark/ddpg.sh:12:19"
+```
 
-| Environment      | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (RTX 3060 TI) | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (VM w/ TPU) | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) (RTX 3060 TI) | [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018, Table 1)[^2]    |
-| ----------- | ----------- | ----------- | ----------- | ----------- |
-| HalfCheetah |  9592.25 ± 135.10 | 9125.06 ± 1477.58  | 10210.57 ± 196.22      |8577.29  |
-| Walker2d |  1083.15 ± 567.65  | 1303.82 ± 448.41 | 1661.14 ± 250.01     |  3098.11 | 
-| Hopper |  1275.28 ± 209.60  | 1145.05 ± 41.95 | 1007.44 ± 148.29         |  1860.02 |     
+Below are the average episodic returns for [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (3 random seeds).
 
-???+ info
 
-    Note that the experiments were conducted on different hardwares, so your mileage might vary. This inconsistency is because 1) re-running expeirments on the same hardware is computationally expensive and 2) requiring the same hardware is not inclusive nor feasible to other contributors who might have different hardwares.
-
-    That said, we roughly expect to see a 2-4x speed improvement from using [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) under the same hardware. And if you disable the `--capture-video` overhead, the speed improvement will be even higher.
-
+{!benchmark/ddpg.md!}
 
 Learning curves:
 
-<div class="grid-container">
-<img src="../ddpg-jax/HalfCheetah-v2.png">
-<img src="../ddpg-jax/HalfCheetah-v2-time.png">
 
-<img src="../ddpg-jax/Walker2d-v2.png">
-<img src="../ddpg-jax/Walker2d-v2-time.png">
+``` title="benchmark/ddpg_plot.sh" linenums="1"
+--8<-- "benchmark/ddpg_plot.sh:11:20"
+```
 
-<img src="../ddpg-jax/Hopper-v2.png">
-<img src="../ddpg-jax/Hopper-v2-time.png">
-</div>
+<img loading="lazy" src="https://huggingface.co/datasets/cleanrl/benchmark/resolve/main/benchmark/pr-424/ddpg_jax.png">
+<img loading="lazy" src="https://huggingface.co/datasets/cleanrl/benchmark/resolve/main/benchmark/pr-424/ddpg_jax-time.png">
 
 
+???+ info
 
-Tracked experiments and game play videos:
+    These are some previous experiments with TPUs. Note the results are very similar to the ones above, but the runtime can be different due to different hardware used.
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-DDPG-JAX--VmlldzoyMjQxMjE2" style="width:100%; height:500px" title="MuJoCo: CleanRL's DDPG + JAX"></iframe>
+
+    Note that the experiments were conducted on different hardwares, so your mileage might vary. This inconsistency is because 1) re-running expeirments on the same hardware is computationally expensive and 2) requiring the same hardware is not inclusive nor feasible to other contributors who might have different hardwares.
+
+    That said, we roughly expect to see a 2-4x speed improvement from using [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) under the same hardware. And if you disable the `--capture_video` overhead, the speed improvement will be even higher.
+
+
+    | Environment      | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (RTX 3060 TI) | [`ddpg_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action_jax.py) (VM w/ TPU) | [`ddpg_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ddpg_continuous_action.py) (RTX 3060 TI) | [`OurDDPG.py`](https://github.com/sfujim/TD3/blob/master/OurDDPG.py) (Fujimoto et al., 2018, Table 1)[^2]    |
+    | ----------- | ----------- | ----------- | ----------- | ----------- |
+    | HalfCheetah |  9592.25 ± 135.10 | 9125.06 ± 1477.58  | 10210.57 ± 196.22      |8577.29  |
+    | Walker2d |  1083.15 ± 567.65  | 1303.82 ± 448.41 | 1661.14 ± 250.01     |  3098.11 | 
+    | Hopper |  1275.28 ± 209.60  | 1145.05 ± 41.95 | 1007.44 ± 148.29         |  1860.02 |    
+
+    Learning curves:
+
+    <div class="grid-container">
+    <img loading="lazy" src="../ddpg-jax/HalfCheetah-v2.png">
+    <img loading="lazy" src="../ddpg-jax/HalfCheetah-v2-time.png">
+
+    <img loading="lazy" src="../ddpg-jax/Walker2d-v2.png">
+    <img loading="lazy" src="../ddpg-jax/Walker2d-v2-time.png">
+
+    <img loading="lazy" src="../ddpg-jax/Hopper-v2.png">
+    <img loading="lazy" src="../ddpg-jax/Hopper-v2-time.png">
+    </div> 
+
+    Tracked experiments and game play videos:
+
+    <iframe loading="lazy" src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-DDPG-JAX--VmlldzoyMjQxMjE2" style="width:100%; height:500px" title="MuJoCo: CleanRL's DDPG + JAX"></iframe>
 
 
 [^1]:Lillicrap, T.P., Hunt, J.J., Pritzel, A., Heess, N.M., Erez, T., Tassa, Y., Silver, D., & Wierstra, D. (2016). Continuous control with deep reinforcement learning. CoRR, abs/1509.02971. https://arxiv.org/abs/1509.02971
