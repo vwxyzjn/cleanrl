@@ -1,7 +1,10 @@
-poetry install -E mujoco_py
-poetry run python -c "import mujoco_py"
-OMP_NUM_THREADS=1 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
-    --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 \
-    --command "poetry run python cleanrl/sac_continuous_action.py --track --capture-video" \
+poetry install -E mujoco
+poetry run python -m cleanrl_utils.benchmark \
+    --env-ids HalfCheetah-v4 Walker2d-v4 Hopper-v4 InvertedPendulum-v4 Humanoid-v4 Pusher-v4 \
+    --command "poetry run python cleanrl/sac_continuous_action.py --track" \
     --num-seeds 3 \
-    --workers 3
+    --workers 18 \
+    --slurm-gpus-per-task 1 \
+    --slurm-ntasks 1 \
+    --slurm-total-cpus 10 \
+    --slurm-template-path benchmark/cleanrl_1gpu.slurm_template

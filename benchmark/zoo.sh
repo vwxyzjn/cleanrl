@@ -3,25 +3,25 @@ poetry run python cleanrl/dqn_atari_jax.py --env-id SeaquestNoFrameskip-v4  --sa
 
 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --env-ids CartPole-v1 Acrobot-v1 MountainCar-v0 \
-    --command "poetry run python cleanrl/dqn.py --cuda False --track --capture-video --save-model --upload-model --hf-entity cleanrl" \
+    --command "poetry run python cleanrl/dqn.py --no_cuda --track --capture_video --save-model --upload-model --hf-entity cleanrl" \
     --num-seeds 1 \
     --workers 1
 
 CUDA_VISIBLE_DEVICES="-1" xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
     --env-ids CartPole-v1 Acrobot-v1 MountainCar-v0 \
-    --command "poetry run python cleanrl/dqn_jax.py --track --capture-video --save-model --upload-model --hf-entity cleanrl" \
+    --command "poetry run python cleanrl/dqn_jax.py --track --capture_video --save-model --upload-model --hf-entity cleanrl" \
     --num-seeds 1 \
     --workers 1
 
 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids PongNoFrameskip-v4 BeamRiderNoFrameskip-v4 BreakoutNoFrameskip-v4 \
-    --command "poetry run python cleanrl/dqn_atari_jax.py --track --capture-video --save-model --upload-model --hf-entity cleanrl" \
+    --command "poetry run python cleanrl/dqn_atari_jax.py --track --capture_video --save-model --upload-model --hf-entity cleanrl" \
     --num-seeds 1 \
     --workers 1
 
 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids PongNoFrameskip-v4 BeamRiderNoFrameskip-v4 BreakoutNoFrameskip-v4 \
-    --command "poetry run python cleanrl/dqn_atari.py --track --capture-video --save-model --upload-model --hf-entity cleanrl" \
+    --command "poetry run python cleanrl/dqn_atari.py --track --capture_video --save-model --upload-model --hf-entity cleanrl" \
     --num-seeds 1 \
     --workers 1
 

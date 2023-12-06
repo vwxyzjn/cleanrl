@@ -42,8 +42,6 @@ The [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
     poetry install -E mujoco
     poetry run python cleanrl/td3_continuous_action.py --help
     poetry run python cleanrl/td3_continuous_action.py --env-id Hopper-v4
-    poetry install -E mujoco_py # only works in Linux
-    poetry run python cleanrl/td3_continuous_action.py --env-id Hopper-v2
     ```
 
 === "pip"
@@ -52,8 +50,6 @@ The [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
     pip install -r requirements/requirements-mujoco.txt
     python cleanrl/td3_continuous_action.py --help
     python cleanrl/td3_continuous_action.py --env-id Hopper-v4
-    pip install -r requirements/requirements-mujoco_py.txt  # only works in Linux,
-    python cleanrl/td3_continuous_action.py --env-id Hopper-v2
     ```
 
 ### Explanation of the logged metrics
@@ -128,25 +124,27 @@ Additionally, when drawing exploration noise that is added to the actions produc
 
 To run benchmark experiments, see :material-github: [benchmark/td3.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/td3.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Ftd3.sh%23L1-L7&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
+``` title="benchmark/td3.sh" linenums="1"
+--8<-- "benchmark/td3.sh::7"
+```
 
 
 Below are the average episodic returns for [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
 
 | Environment      | [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) | [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py) (Fujimoto et al., 2018, Table 1)[^2]  |
 | ----------- | ----------- | ----------- | 
-| HalfCheetah      | 9449.94 ± 1586.49      |9636.95 ± 859.065  |
-| Walker2d   | 3851.55 ± 335.29     |  4682.82 ± 539.64 | 
-| Hopper   | 3162.21 ± 261.08        |  3564.07 ± 114.74 | 
-| Humanoid |  5011.05 ± 254.89      |  not available | 
-| Pusher |  -37.49 ± 10.22      |  not available | 
-| InvertedPendulum |    996.81 ± 4.50    | 1000.00 ± 0.00  | 
+| HalfCheetah-v4      |   9583.22 ± 126.09      |9636.95 ± 859.065  |
+| Walker2d-v4   |         4057.59 ± 658.78     |  4682.82 ± 539.64 | 
+| Hopper-v4   |           3134.61 ± 360.18        |  3564.07 ± 114.74 | 
+| InvertedPendulum-v4 |   968.99 ± 25.80    | 1000.00 ± 0.00  | 
+| Humanoid-v4 |           5035.36 ± 21.67      |  not available | 
+| Pusher-v4 |             -30.92 ± 1.05      |  not available | 
 
 
 
 ???+ info
 
-    Note that [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) uses gym MuJoCo v2 environments while [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py) (Fujimoto et al., 2018)[^2] uses the gym MuJoCo v1 environments. According to the :material-github: [openai/gym#834](https://github.com/openai/gym/pull/834), gym MuJoCo v2 environments should be equivalent to the gym MuJoCo v1 environments.
+    Note that [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) uses gym MuJoCo v4 environments while [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py) (Fujimoto et al., 2018)[^2] uses the gym MuJoCo v1 environments.
 
     Also note the performance of our `td3_continuous_action.py` seems to be worse than the reference implementation on Walker2d. This is likely due to :material-github: [openai/gym#938](https://github.com/openai/baselines/issues/938). We would have a hard time reproducing gym MuJoCo v1 environments because they have been long deprecated.
 
@@ -154,20 +152,12 @@ Below are the average episodic returns for [`td3_continuous_action.py`](https://
 
 Learning curves:
 
-<div class="grid-container">
-<img src="../td3/HalfCheetah-v2.png">
+``` title="benchmark/td3_plot.sh" linenums="1"
+--8<-- "benchmark/td3_plot.sh::9"
+```
 
-<img src="../td3/Walker2d-v2.png">
-
-<img src="../td3/Hopper-v2.png">
-
-<img src="../td3/Humanoid-v2.png">
-
-<img src="../td3/Pusher-v2.png">
-
-<img src="../td3/InvertedPendulum-v2.png">
-</div>
-
+<img loading="lazy" src="https://huggingface.co/datasets/cleanrl/benchmark/resolve/main/benchmark/pr-424/td3.png">
+<img loading="lazy" src="https://huggingface.co/datasets/cleanrl/benchmark/resolve/main/benchmark/pr-424/td3-time.png">
 
 Tracked experiments and game play videos:
 
@@ -194,8 +184,6 @@ The [td3_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/maste
     poetry install -E "mujoco jax"
     poetry run python cleanrl/td3_continuous_action_jax.py --help
     poetry run python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v4
-    poetry install -E mujoco_py # only works in Linux
-    poetry run python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v2
     ```
 
 === "pip"
@@ -205,8 +193,6 @@ The [td3_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/maste
     pip install -r requirements/requirements-jax.txt
     python cleanrl/td3_continuous_action_jax.py --help
     python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v4
-    pip install -r requirements/requirements-mujoco_py.txt  # only works in Linux
-    python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v2
     ```
 
 ### Explanation of the logged metrics
@@ -223,42 +209,53 @@ See [related docs](/rl-algorithms/td3/#implementation-details) for `td3_continuo
 
 To run benchmark experiments, see :material-github: [benchmark/td3.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/td3.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Ftd3.sh%23L9-L16&style=github&type=code&showBorder=on&showLineNumbers=on&showFileMeta=on&showFullPath=on&showCopy=on"></script>
+``` title="benchmark/td3.sh" linenums="1"
+--8<-- "benchmark/td3.sh:12:19"
+```
 
-Below are the average episodic returns for [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) (3 random seeds). To ensure the quality of the implementation, we compared the results against (Fujimoto et al., 2018)[^2].
+Below are the average episodic returns for [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) (3 random seeds).
 
-| Environment      | [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) (RTX 3060 TI) | [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) (VM w/ TPU) | [`td3_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action.py) (RTX 3060 TI) | [`TD3.py`](https://github.com/sfujim/TD3/blob/master/TD3.py) (Fujimoto et al., 2018, Table 1)[^2]  |
-| ----------- | ----------- | ----------- | ----------- |  ----------- | 
-| HalfCheetah |  9408.62 ± 473.23  | 8948.33 ± 1196.87  | 9449.94 ± 1586.49      |9636.95 ± 859.065  |
-| Walker2d |  3512.14 ± 1576.59 | 4107.63 ± 173.93  | 3851.55 ± 335.29     |  4682.82 ± 539.64 | 
-| Hopper |   2898.62 ± 485.18 | 3151.80 ± 458.68 | 3162.21 ± 261.08        |  3564.07 ± 114.74 | 
-
-
-???+ info
-
-    Note that the experiments were conducted on different hardwares, so your mileage might vary. This inconsistency is because 1) re-running expeirments on the same hardware is computationally expensive and 2) requiring the same hardware is not inclusive nor feasible to other contributors who might have different hardwares.
-
-    That said, we roughly expect to see a 2-4x speed improvement from using [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) under the same hardware. And if you disable the `--capture-video` overhead, the speed improvement will be even higher.
-
+{!benchmark/td3.md!}
 
 Learning curves:
 
-<div class="grid-container">
-<img src="../td3-jax/HalfCheetah-v2.png">
-<img src="../td3-jax/HalfCheetah-v2-time.png">
 
-<img src="../td3-jax/Walker2d-v2.png">
-<img src="../td3-jax/Walker2d-v2-time.png">
+``` title="benchmark/td3_plot.sh" linenums="1"
+--8<-- "benchmark/td3_plot.sh:11:20"
+```
 
-<img src="../td3-jax/Hopper-v2.png">
-<img src="../td3-jax/Hopper-v2-time.png">
-</div>
+<img loading="lazy" src="https://huggingface.co/datasets/cleanrl/benchmark/resolve/main/benchmark/pr-424/td3.png">
+<img loading="lazy" src="https://huggingface.co/datasets/cleanrl/benchmark/resolve/main/benchmark/pr-424/td3-time.png">
+
+???+ info
+
+    These are some previous experiments with TPUs. Note the results are very similar to the ones above, but the runtime can be different due to different hardware used.
+
+    Note that the experiments were conducted on different hardwares, so your mileage might vary. This inconsistency is because 1) re-running expeirments on the same hardware is computationally expensive and 2) requiring the same hardware is not inclusive nor feasible to other contributors who might have different hardwares.
+
+    That said, we roughly expect to see a 2-4x speed improvement from using [`td3_continuous_action_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/td3_continuous_action_jax.py) under the same hardware. And if you disable the `--capture_video` overhead, the speed improvement will be even higher.
+
+    Learning curves:
+
+
+    <div class="grid-container">
+    <img loading="lazy" src="../td3-jax/HalfCheetah-v2.png">
+    <img loading="lazy" src="../td3-jax/HalfCheetah-v2-time.png">
+
+    <img loading="lazy" src="../td3-jax/Walker2d-v2.png">
+    <img loading="lazy" src="../td3-jax/Walker2d-v2-time.png">
+
+    <img loading="lazy" src="../td3-jax/Hopper-v2.png">
+    <img loading="lazy" src="../td3-jax/Hopper-v2-time.png">
+    </div>
 
 
 
-Tracked experiments and game play videos:
+    Tracked experiments and game play videos:
 
-<iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-TD3-JAX--VmlldzoyMzU1OTA4" style="width:100%; height:500px" title="MuJoCo: CleanRL's TD3 + JAX"></iframe>
+    <iframe src="https://wandb.ai/openrlbenchmark/openrlbenchmark/reports/MuJoCo-CleanRL-s-TD3-JAX--VmlldzoyMzU1OTA4" style="width:100%; height:500px" title="MuJoCo: CleanRL's TD3 + JAX"></iframe>
+
+
 
 [^1]:Lillicrap, T.P., Hunt, J.J., Pritzel, A., Heess, N.M., Erez, T., Tassa, Y., Silver, D., & Wierstra, D. (2016). Continuous control with deep reinforcement learning. CoRR, abs/1509.02971. https://arxiv.org/abs/1509.02971
 

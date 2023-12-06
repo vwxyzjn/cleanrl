@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cleanrl"
-version = "1.1.0"
+version = "2.0.0b1"
 description = "High-quality single file implementation of Deep Reinforcement Learning algorithms with research-friendly features"
 authors = ["Costa Huang <costa.huang@outlook.com>"]
 packages = [
@@ -12,33 +12,34 @@ license="MIT"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.7.1,<3.11"
+python = ">=3.8,<3.11"
 tensorboard = "^2.10.0"
 wandb = "^0.13.11"
 gym = "0.23.1"
 torch = ">=1.12.1"
-stable-baselines3 = "1.2.0"
+stable-baselines3 = "2.0.0"
 gymnasium = ">=0.28.1"
 moviepy = "^1.0.3"
 pygame = "2.1.0"
 huggingface-hub = "^0.11.1"
 rich = "<12.0"
 tenacity = "^8.2.2"
+tyro = "^0.5.10"
+pyyaml = "^6.0.1"
 
-ale-py = {version = "0.7.4", optional = true}
-AutoROM = {extras = ["accept-rom-license"], version = "^0.4.2", optional = true}
+ale-py = {version = "0.8.1", optional = true}
+AutoROM = {extras = ["accept-rom-license"], version = "~0.4.2", optional = true}
 opencv-python = {version = "^4.6.0.66", optional = true}
 procgen = {version = "^0.10.7", optional = true}
 pytest = {version = "^7.1.3", optional = true}
 mujoco = {version = "<=2.3.3", optional = true}
 imageio = {version = "^2.14.1", optional = true}
-free-mujoco-py = {version = "^2.1.6", optional = true}
 mkdocs-material = {version = "^8.4.3", optional = true}
 markdown-include = {version = "^0.7.0", optional = true}
 openrlbenchmark = {version = "^0.1.1b4", optional = true}
-jax = {version = "^0.3.17", optional = true}
-jaxlib = {version = "^0.3.15", optional = true}
-flax = {version = "^0.6.0", optional = true}
+jax = {version = "0.4.8", optional = true}
+jaxlib = {version = "0.4.7", optional = true}
+flax = {version = "0.6.8", optional = true}
 optuna = {version = "^3.0.1", optional = true}
 optuna-dashboard = {version = "^0.7.2", optional = true}
 envpool = {version = "^0.6.4", optional = true}
@@ -46,38 +47,34 @@ PettingZoo = {version = "1.18.1", optional = true}
 SuperSuit = {version = "3.4.0", optional = true}
 multi-agent-ale-py = {version = "0.1.11", optional = true}
 boto3 = {version = "^1.24.70", optional = true}
-awscli = {version = "^1.25.71", optional = true}
-shimmy = {version = ">=1.0.0", extras = ["dm-control"], optional = true}
+awscli = {version = "^1.31.0", optional = true}
+shimmy = {version = ">=1.1.0", optional = true}
+dm-control = {version = ">=1.0.10", optional = true}
+h5py = {version = ">=3.7.0", optional = true}
+optax = {version = "0.1.4", optional = true}
+chex = {version = "0.1.5", optional = true}
+numpy = ">=1.21.6"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^2.20.0"
-
-
-[tool.poetry.group.isaacgym]
-optional = true
-[tool.poetry.group.isaacgym.dependencies]
-isaacgymenvs = {git = "https://github.com/vwxyzjn/IsaacGymEnvs.git", rev = "poetry", python = ">=3.7.1,<3.10"}
-isaacgym = {path = "cleanrl/ppo_continuous_action_isaacgym/isaacgym", develop = true}
-
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.extras]
-atari = ["ale-py", "AutoROM", "opencv-python"]
+atari = ["ale-py", "AutoROM", "opencv-python", "shimmy"]
 procgen = ["procgen"]
 plot = ["pandas", "seaborn"]
 pytest = ["pytest"]
 mujoco = ["mujoco", "imageio"]
-mujoco_py = ["free-mujoco-py"]
 jax = ["jax", "jaxlib", "flax"]
 docs = ["mkdocs-material", "markdown-include", "openrlbenchmark"]
 envpool = ["envpool"]
 optuna = ["optuna", "optuna-dashboard"]
 pettingzoo = ["PettingZoo", "SuperSuit", "multi-agent-ale-py"]
 cloud = ["boto3", "awscli"]
-dm_control = ["shimmy", "mujoco"]
+dm_control = ["shimmy", "mujoco", "dm-control", "h5py"]
 
 # dependencies for algorithm variant (useful when you want to run a specific algorithm)
 dqn = []

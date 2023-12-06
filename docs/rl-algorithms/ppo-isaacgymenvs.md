@@ -23,7 +23,11 @@
 
 ## `ppo_continuous_action_isaacgym.py`
 
-:octicons-beaker-24: Experimental
+
+???+ warning
+
+    `ppo_continuous_action_isaacgym.py` is temporarily deprecated. Please checkout the code in [https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0](https://github.com/vwxyzjn/cleanrl/releases/tag/v1.0.0)
+
 
 The [ppo_continuous_action_isaacgym.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action_isaacgym/ppo_continuous_action_isaacgym.py) has the following features:
 
@@ -250,6 +254,6 @@ Old Learning curves w/ Isaac Gym Preview 3 (no longer available in Nvidia's webs
 
 ???+ info
 
-    Note the `AllegroHand` and `ShadowHand` experiments used the following command `ppo_continuous_action_isaacgym.py --track --capture-video --num-envs 16384 --num-steps 8 --update-epochs 5 --reward-scaler 0.01 --total-timesteps 600000000 --record-video-step-frequency 3660`. Costa: I was able to run this during my internship at NVIDIA, but in my home setup, the computer has less GPU memory which makes it hard to replicate the results w/ `--num-envs 16384`.
+    Note the `AllegroHand` and `ShadowHand` experiments used the following command `ppo_continuous_action_isaacgym.py --track --capture_video --num-envs 16384 --num-steps 8 --update-epochs 5 --reward-scaler 0.01 --total-timesteps 600000000 --record-video-step-frequency 3660`. Costa: I was able to run this during my internship at NVIDIA, but in my home setup, the computer has less GPU memory which makes it hard to replicate the results w/ `--num-envs 16384`.
 
 

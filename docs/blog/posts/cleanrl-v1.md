@@ -133,12 +133,12 @@ tuner = Tuner(
         "Acrobot-v1": [-500, 0],
     },
     params_fn=lambda trial: {
-        "learning-rate": trial.suggest_loguniform("learning-rate", 0.0003, 0.003),
+        "learning-rate": trial.suggest_float("learning-rate", 0.0003, 0.003, log=True),
         "num-minibatches": trial.suggest_categorical("num-minibatches", [1, 2, 4]),
         "update-epochs": trial.suggest_categorical("update-epochs", [1, 2, 4, 8]),
         "num-steps": trial.suggest_categorical("num-steps", [5, 16, 32, 64, 128]),
-        "vf-coef": trial.suggest_uniform("vf-coef", 0, 5),
-        "max-grad-norm": trial.suggest_uniform("max-grad-norm", 0, 5),
+        "vf-coef": trial.suggest_float("vf-coef", 0, 5),
+        "max-grad-norm": trial.suggest_float("max-grad-norm", 0, 5),
         "total-timesteps": 100000,
         "num-envs": 16,
     },
@@ -158,12 +158,12 @@ We also added a new tool for running benchmark experiments. The tool is designed
 ```bash
 OMP_NUM_THREADS=1 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids CartPole-v1 Acrobot-v1 MountainCar-v0 \
-    --command "poetry run python cleanrl/ppo.py --cuda False --track --capture-video" \
+    --command "poetry run python cleanrl/ppo.py --no_cuda --track --capture_video" \
     --num-seeds 3 \
     --workers 5
 ```
 
-which will run the `ppo.py` script with `--cuda False --track --capture-video` arguments across 3 random seeds for 3 environments. It uses `multiprocessing` to create a pool of 5 workers run the experiments in parallel.
+which will run the `ppo.py` script with `--no_cuda --track --capture_video` arguments across 3 random seeds for 3 environments. It uses `multiprocessing` to create a pool of 5 workers run the experiments in parallel.
 
 
 
