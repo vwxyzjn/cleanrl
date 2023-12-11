@@ -195,4 +195,8 @@ If you use CleanRL in your work, please cite our technical [paper](https://www.j
 
 ## Acknowledgement
 
-We thank [Hugging Face](https://huggingface.co/)'s cluster for providing GPU computational resources to this project.
+CleanRL is a community-powered by project and our contributors run experiments on a variety of hardware.
+
+* We thank many contributors for using their own computers to run experiments
+* We thank Google's [TPU research could](https://sites.research.google/trc/about/) for providing TPU resources.
+* We thank [Hugging Face](https://huggingface.co/)'s cluster for providing GPU resources. 
