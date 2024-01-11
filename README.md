@@ -54,7 +54,7 @@ poetry run python cleanrl/ppo.py \
     --env-id CartPole-v0 \
     --total-timesteps 50000
 
-# open another temrminal and enter `cd cleanrl/cleanrl`
+# open another terminal and enter `cd cleanrl/cleanrl`
 tensorboard --logdir runs
 ```
 
@@ -198,5 +198,5 @@ If you use CleanRL in your work, please cite our technical [paper](https://www.j
 CleanRL is a community-powered by project and our contributors run experiments on a variety of hardware.
 
 * We thank many contributors for using their own computers to run experiments
-* We thank Google's [TPU research could](https://sites.research.google/trc/about/) for providing TPU resources.
+* We thank Google's [TPU research cloud](https://sites.research.google/trc/about/) for providing TPU resources.
 * We thank [Hugging Face](https://huggingface.co/)'s cluster for providing GPU resources. 
