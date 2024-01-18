@@ -2646,13 +2646,13 @@ files = [
 
 [[package]]
 name = "pettingzoo"
-version = "1.24.2"
+version = "1.24.3"
 description = "Gymnasium for multi-agent reinforcement learning."
 optional = true
 python-versions = ">=3.8"
 files = [
-    {file = "pettingzoo-1.24.2-py3-none-any.whl", hash = "sha256:00268cf990d243654c2bbbbf8c88322c12b041dc0a879b74747f14ee8aa93dd6"},
-    {file = "pettingzoo-1.24.2.tar.gz", hash = "sha256:0a5856d47de78ab20feddfdac4940959dc892f6becc92107247b1c3a210c0984"},
+    {file = "pettingzoo-1.24.3-py3-none-any.whl", hash = "sha256:23ed90517d2e8a7098bdaf5e31234b3a7f7b73ca578d70d1ca7b9d0cb0e37982"},
+    {file = "pettingzoo-1.24.3.tar.gz", hash = "sha256:91f9094f18e06fb74b98f4099cd22e8ae4396125e51719d50b30c9f1c7ab07e6"},
 ]
 
 [package.dependencies]
@@ -4259,4 +4259,4 @@ qdagger-dqn-atari-jax-impalacnn = ["AutoROM", "ale-py", "flax", "jax", "jaxlib",
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.11"
-content-hash = "9300d30d6b5fa37bd0f2f5604f78c758c988830bc7df8f75df7b903e63921952"
+content-hash = "453c8d2c113d81cb529f771d450301c0a4fa6d5ab0bfc3964a110d650ee7db39"
