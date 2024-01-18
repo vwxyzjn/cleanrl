@@ -200,11 +200,13 @@ CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/m
 
 3. [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) uses `--batch-size=256` while :material-github: [openai/spinningup](https://github.com/openai/spinningup/blob/038665d62d569055401d91856abb287263096178/spinup/algos/tf1/sac/sac.py#L44)'s uses `--batch-size=100` by default.
 
-### Pybullet experiment results for SAC
+### Experiment results
 
 To run benchmark experiments, see :material-github: [benchmark/sac.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/sac.sh). Specifically, execute the following command:
 
-<script src="https://emgithub.com/embed.js?target=https%3A%2F%2Fgithub.com%2Fvwxyzjn%2Fcleanrl%2Fblob%2Fmaster%2Fbenchmark%2Fsac.sh%23L1-L7&style=github&showBorder=on&showLineNumbers=on&showFileMeta=on&showCopy=on"></script>
+``` title="benchmark/sac.sh" linenums="1"
+--8<-- "benchmark/sac.sh::7"
+```
 
 The table below compares the results of CleanRL's [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) with the [latest published results](https://arxiv.org/abs/1812.05905) by the original authors of the SAC algorithm.
 
@@ -213,19 +215,22 @@ The table below compares the results of CleanRL's [`sac_continuous_action.py`](h
 
 | Environment      | [`sac_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_continuous_action.py) |[SAC: Algorithms and Applications](https://arxiv.org/abs/1812.05905) @ 1M steps|
 | --------------- | ------------------ | ---------------- |
-| HalfCheetah-v2  | 10310.37 ± 1873.21       | ~11,250          |
-| Walker2d-v2     | 4418.15 ± 592.82         | ~4,800           |
-| Hopper-v2       | 2685.76 ± 762.16         | ~3,250           |
+| HalfCheetah-v2  | 9634.89 ± 1423.73       | ~11,250          |
+| Walker2d-v2     | 3591.45 ± 911.33         | ~4,800           |
+| Hopper-v2       | 2310.46 ± 342.82         | ~3,250           |
+| InvertedPendulum-v4 | 909.37 ± 55.66                                                        | N/A |
+| Humanoid-v4         | 4996.29 ± 686.40                                                      | ~4500
+| Pusher-v4           | -22.45 ± 0.51                                                         | N/A |
 
 Learning curves:
 
-<div class="grid-container">
-    <img src="../sac/HalfCheetah-v2.png">
-    <img src="../sac/Walker2d-v2.png">
-    <img src="../sac/Hopper-v2.png">
-</div>
+``` title="benchmark/sac_plot.sh" linenums="1"
+--8<-- "benchmark/sac_plot.sh::9"
+```
 
-<div></div>
+
+<img loading="lazy" src="https://huggingface.co/datasets/cleanrl/benchmark/resolve/main/benchmark/pr-424/sac.png">
+<img loading="lazy" src="https://huggingface.co/datasets/cleanrl/benchmark/resolve/main/benchmark/pr-424/sac-time.png">
 
 Tracked experiments and game play videos:
 
@@ -359,7 +364,7 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
     ```python hl_lines="3"
     if args.autotune:
         # re-use action probabilities for temperature loss
-        alpha_loss = (action_probs.detach() * (-log_alpha * (log_pi + target_entropy).detach())).mean()
+        alpha_loss = (action_probs.detach() * (-log_alpha.exp() * (log_pi + target_entropy).detach())).mean()
 
         a_optimizer.zero_grad()
         alpha_loss.backward()

@@ -19,7 +19,7 @@ def test_c51_jax():
 
 def test_c51_jax_eval():
     subprocess.run(
-        "python cleanrl/c51_jax.py --save-model True --learning-starts 200 --total-timesteps 205",
+        "python cleanrl/c51_jax.py --save-model --learning-starts 200 --total-timesteps 205",
         shell=True,
         check=True,
     )

@@ -1,79 +1,79 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/td3/#td3_continuous_action_jaxpy
-import argparse
 import os
 import random
 import time
-from distutils.util import strtobool
-from typing import Sequence
+from dataclasses import dataclass
 
 import flax
 import flax.linen as nn
-import gym
+import gymnasium as gym
 import jax
 import jax.numpy as jnp
 import numpy as np
 import optax
+import tyro
 from flax.training.train_state import TrainState
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
 
-def parse_args():
-    # fmt: off
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
-        help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=1,
-        help="seed of the experiment")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="if toggled, this experiment will be tracked with Weights and Biases")
-    parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
-        help="the wandb's project name")
-    parser.add_argument("--wandb-entity", type=str, default=None,
-        help="the entity (team) of wandb's project")
-    parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="whether to capture videos of the agent performances (check out `videos` folder)")
+@dataclass
+class Args:
+    exp_name: str = os.path.basename(__file__)[: -len(".py")]
+    """the name of this experiment"""
+    seed: int = 1
+    """seed of the experiment"""
+    track: bool = False
+    """if toggled, this experiment will be tracked with Weights and Biases"""
+    wandb_project_name: str = "cleanRL"
+    """the wandb's project name"""
+    wandb_entity: str = None
+    """the entity (team) of wandb's project"""
+    capture_video: bool = False
+    """whether to capture videos of the agent performances (check out `videos` folder)"""
+    save_model: bool = False
+    """whether to save model into the `runs/{run_name}` folder"""
+    upload_model: bool = False
+    """whether to upload the saved model to huggingface"""
+    hf_entity: str = ""
+    """the user or org name of the model repository from the Hugging Face Hub"""
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="HalfCheetah-v2",
-        help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=1000000,
-        help="total timesteps of the experiments")
-    parser.add_argument("--learning-rate", type=float, default=3e-4,
-        help="the learning rate of the optimizer")
-    parser.add_argument("--buffer-size", type=int, default=int(1e6),
-        help="the replay memory buffer size")
-    parser.add_argument("--gamma", type=float, default=0.99,
-        help="the discount factor gamma")
-    parser.add_argument("--tau", type=float, default=0.005,
-        help="target smoothing coefficient (default: 0.005)")
-    parser.add_argument("--policy-noise", type=float, default=0.2,
-        help="the scale of policy noise")
-    parser.add_argument("--batch-size", type=int, default=256,
-        help="the batch size of sample from the reply memory")
-    parser.add_argument("--exploration-noise", type=float, default=0.1,
-        help="the scale of exploration noise")
-    parser.add_argument("--learning-starts", type=int, default=25e3,
-        help="timestep to start learning")
-    parser.add_argument("--policy-frequency", type=int, default=2,
-        help="the frequency of training policy (delayed)")
-    parser.add_argument("--noise-clip", type=float, default=0.5,
-        help="noise clip parameter of the Target Policy Smoothing Regularization")
-    args = parser.parse_args()
-    # fmt: on
-    return args
+    env_id: str = "Hopper-v4"
+    """the id of the environment"""
+    total_timesteps: int = 1000000
+    """total timesteps of the experiments"""
+    learning_rate: float = 3e-4
+    """the learning rate of the optimizer"""
+    buffer_size: int = int(1e6)
+    """the replay memory buffer size"""
+    gamma: float = 0.99
+    """the discount factor gamma"""
+    tau: float = 0.005
+    """target smoothing coefficient (default: 0.005)"""
+    batch_size: int = 256
+    """the batch size of sample from the reply memory"""
+    policy_noise: float = 0.2
+    """the scale of policy noise"""
+    exploration_noise: float = 0.1
+    """the scale of exploration noise"""
+    learning_starts: int = 25e3
+    """timestep to start learning"""
+    policy_frequency: int = 2
+    """the frequency of training policy (delayed)"""
+    noise_clip: float = 0.5
+    """noise clip parameter of the Target Policy Smoothing Regularization"""
 
 
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
-        env = gym.make(env_id)
+        if capture_video and idx == 0:
+            env = gym.make(env_id, render_mode="rgb_array")
+            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+        else:
+            env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
-        if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env.seed(seed)
         env.action_space.seed(seed)
-        env.observation_space.seed(seed)
         return env
 
     return thunk
@@ -93,9 +93,9 @@ class QNetwork(nn.Module):
 
 
 class Actor(nn.Module):
-    action_dim: Sequence[int]
-    action_scale: Sequence[int]
-    action_bias: Sequence[int]
+    action_dim: int
+    action_scale: jnp.ndarray
+    action_bias: jnp.ndarray
 
     @nn.compact
     def __call__(self, x):
@@ -114,7 +114,15 @@ class TrainState(TrainState):
 
 
 if __name__ == "__main__":
-    args = parse_args()
+    import stable_baselines3 as sb3
+
+    if sb3.__version__ < "2.0":
+        raise ValueError(
+            """Ongoing migration: run the following command to install the new dependencies:
+poetry run pip install "stable_baselines3==2.0.0a1"
+"""
+        )
+    args = tyro.cli(Args)
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
@@ -151,11 +159,12 @@ if __name__ == "__main__":
         envs.single_observation_space,
         envs.single_action_space,
         device="cpu",
-        handle_timeout_termination=True,
+        handle_timeout_termination=False,
     )
 
     # TRY NOT TO MODIFY: start the game
-    obs = envs.reset()
+    obs, _ = envs.reset(seed=args.seed)
+
     actor = Actor(
         action_dim=np.prod(envs.single_action_space.shape),
         action_scale=jnp.array((envs.action_space.high - envs.action_space.low) / 2.0),
@@ -192,7 +201,7 @@ if __name__ == "__main__":
         actions: np.ndarray,
         next_observations: np.ndarray,
         rewards: np.ndarray,
-        dones: np.ndarray,
+        terminations: np.ndarray,
         key: jnp.ndarray,
     ):
         # TODO Maybe pre-generate a lot of random keys
@@ -208,13 +217,13 @@ if __name__ == "__main__":
         )
         next_state_actions = jnp.clip(
             actor.apply(actor_state.target_params, next_observations) + clipped_noise,
-            envs.single_action_space.low[0],
-            envs.single_action_space.high[0],
+            envs.single_action_space.low,
+            envs.single_action_space.high,
         )
         qf1_next_target = qf.apply(qf1_state.target_params, next_observations, next_state_actions).reshape(-1)
         qf2_next_target = qf.apply(qf2_state.target_params, next_observations, next_state_actions).reshape(-1)
         min_qf_next_target = jnp.minimum(qf1_next_target, qf2_next_target)
-        next_q_value = (rewards + (1 - dones) * args.gamma * (min_qf_next_target)).reshape(-1)
+        next_q_value = (rewards + (1 - terminations) * args.gamma * (min_qf_next_target)).reshape(-1)
 
         def mse_loss(params):
             qf_a_values = qf.apply(params, observations, actions).squeeze()
@@ -262,28 +271,28 @@ if __name__ == "__main__":
                 [
                     (
                         jax.device_get(actions)[0]
-                        + np.random.normal(0, max_action * args.exploration_noise, size=envs.single_action_space.shape[0])
+                        + np.random.normal(0, max_action * args.exploration_noise, size=envs.single_action_space.shape)
                     ).clip(envs.single_action_space.low, envs.single_action_space.high)
                 ]
             )
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards, dones, infos = envs.step(actions)
+        next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        for info in infos:
-            if "episode" in info.keys():
+        if "final_info" in infos:
+            for info in infos["final_info"]:
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                 writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                 writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                 break
 
-        # TRY NOT TO MODIFY: save data to replay buffer; handle `terminal_observation`
+        # TRY NOT TO MODIFY: save data to replay buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
-        for idx, d in enumerate(dones):
-            if d:
-                real_next_obs[idx] = infos[idx]["terminal_observation"]
-        rb.add(obs, real_next_obs, actions, rewards, dones, infos)
+        for idx, trunc in enumerate(truncations):
+            if trunc:
+                real_next_obs[idx] = infos["final_observation"][idx]
+        rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -311,6 +320,7 @@ if __name__ == "__main__":
                     qf2_state,
                     data.observations.numpy(),
                 )
+
             if global_step % 100 == 0:
                 writer.add_scalar("losses/qf1_loss", qf1_loss_value.item(), global_step)
                 writer.add_scalar("losses/qf2_loss", qf2_loss_value.item(), global_step)
@@ -319,6 +329,40 @@ if __name__ == "__main__":
                 writer.add_scalar("losses/actor_loss", actor_loss_value.item(), global_step)
                 print("SPS:", int(global_step / (time.time() - start_time)))
                 writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+
+    if args.save_model:
+        model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
+        with open(model_path, "wb") as f:
+            f.write(
+                flax.serialization.to_bytes(
+                    [
+                        actor_state.params,
+                        qf1_state.params,
+                        qf2_state.params,
+                    ]
+                )
+            )
+        print(f"model saved to {model_path}")
+        from cleanrl_utils.evals.td3_jax_eval import evaluate
+
+        episodic_returns = evaluate(
+            model_path,
+            make_env,
+            args.env_id,
+            eval_episodes=10,
+            run_name=f"{run_name}-eval",
+            Model=(Actor, QNetwork),
+            exploration_noise=args.exploration_noise,
+        )
+        for idx, episodic_return in enumerate(episodic_returns):
+            writer.add_scalar("eval/episodic_return", episodic_return, idx)
+
+        if args.upload_model:
+            from cleanrl_utils.huggingface import push_to_hub
+
+            repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
+            repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
+            push_to_hub(args, episodic_returns, repo_id, "TD3", f"runs/{run_name}", f"videos/{run_name}-eval")
 
     envs.close()
     writer.close()

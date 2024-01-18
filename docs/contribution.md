@@ -81,7 +81,7 @@ poetry install -E "docs mujoco_py"
 python -c "import mujoco_py"
 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 \
-    --command "poetry run python cleanrl/ddpg_continuous_action.py --track --capture-video" \
+    --command "poetry run python cleanrl/ddpg_continuous_action.py --track --capture_video" \
     --num-seeds 3 \
     --workers 1
 ```
@@ -209,7 +209,7 @@ Here is a checklist of the contribution process. See [:material-github: #331](ht
 If you need to run benchmark experiments for a performance-impacting changes:
 
 - [ ] I have contacted @vwxyzjn to obtain access to the [openrlbenchmark W&B team](https://wandb.ai/openrlbenchmark).
-- [ ] I have used the [benchmark utility](/get-started/benchmark-utility/) to submit the tracked experiments to the [openrlbenchmark/cleanrl](https://wandb.ai/openrlbenchmark/cleanrl) W&B project, optionally with `--capture-video`.
+- [ ] I have used the [benchmark utility](/get-started/benchmark-utility/) to submit the tracked experiments to the [openrlbenchmark/cleanrl](https://wandb.ai/openrlbenchmark/cleanrl) W&B project, optionally with `--capture_video`.
 - [ ] I have performed RLops with `python -m openrlbenchmark.rlops`.
     - For new feature or bug fix:
         - [ ] I have used the RLops utility to understand the performance impact of the changes and confirmed there is no regression.

@@ -1,9 +1,6 @@
 name: pre-commit
 
 on:
-  push:
-    paths-ignore:
-      - 'docs/blog/*' # dummy ignore
   pull_request:
     paths-ignore:
       - 'docs/blog/*' # dummy ignore

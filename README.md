@@ -28,7 +28,7 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 
 You can read more about CleanRL in our [JMLR paper](https://www.jmlr.org/papers/volume23/21-1342/21-1342.pdf) and [documentation](https://docs.cleanrl.dev/).
 
-CleanRL only contains implementations of **online** deep reinforcement learning algorithms. If you are looking for **offline** algorithms, please check out [tinkoff-ai/CORL](https://github.com/tinkoff-ai/CORL), which shares a similar design philosophy as CleanRL.
+CleanRL only contains implementations of **online** deep reinforcement learning algorithms. If you are looking for **offline** algorithms, please check out [corl-team/CORL](https://github.com/corl-team/CORL), which shares a similar design philosophy as CleanRL.
 
 > ℹ️ **Support for Gymnasium**: [Farama-Foundation/Gymnasium](https://github.com/Farama-Foundation/Gymnasium) is the next generation of [`openai/gym`](https://github.com/openai/gym) that will continue to be maintained and introduce new features. Please see their [announcement](https://farama.org/Announcing-The-Farama-Foundation) for further detail. We are migrating to `gymnasium` and the progress can be tracked in [vwxyzjn/cleanrl#277](https://github.com/vwxyzjn/cleanrl/pull/277). 
 
@@ -54,7 +54,7 @@ poetry run python cleanrl/ppo.py \
     --env-id CartPole-v0 \
     --total-timesteps 50000
 
-# open another temrminal and enter `cd cleanrl/cleanrl`
+# open another terminal and enter `cd cleanrl/cleanrl`
 tensorboard --logdir runs
 ```
 
@@ -191,3 +191,12 @@ If you use CleanRL in your work, please cite our technical [paper](https://www.j
   url     = {http://jmlr.org/papers/v23/21-1342.html}
 }
 ```
+
+
+## Acknowledgement
+
+CleanRL is a community-powered by project and our contributors run experiments on a variety of hardware.
+
+* We thank many contributors for using their own computers to run experiments
+* We thank Google's [TPU research cloud](https://sites.research.google/trc/about/) for providing TPU resources.
+* We thank [Hugging Face](https://huggingface.co/)'s cluster for providing GPU resources. 

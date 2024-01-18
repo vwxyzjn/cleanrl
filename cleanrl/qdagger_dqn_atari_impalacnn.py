@@ -1,10 +1,9 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/qdagger/#qdagger_dqn_atari_jax_impalacnnpy
-import argparse
 import os
 import random
 import time
 from collections import deque
-from distutils.util import strtobool
+from dataclasses import dataclass
 
 import gymnasium as gym
 import numpy as np
@@ -12,6 +11,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import tyro
 from huggingface_hub import hf_hub_download
 from rich.progress import track
 from stable_baselines3.common.atari_wrappers import (
@@ -28,81 +28,74 @@ from cleanrl.dqn_atari import QNetwork as TeacherModel
 from cleanrl_utils.evals.dqn_eval import evaluate
 
 
-def parse_args():
-    # fmt: off
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--exp-name", type=str, default=os.path.basename(__file__).rstrip(".py"),
-        help="the name of this experiment")
-    parser.add_argument("--seed", type=int, default=1,
-        help="seed of the experiment")
-    parser.add_argument("--torch-deterministic", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, `torch.backends.cudnn.deterministic=False`")
-    parser.add_argument("--cuda", type=lambda x: bool(strtobool(x)), default=True, nargs="?", const=True,
-        help="if toggled, cuda will be enabled by default")
-    parser.add_argument("--track", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="if toggled, this experiment will be tracked with Weights and Biases")
-    parser.add_argument("--wandb-project-name", type=str, default="cleanRL",
-        help="the wandb's project name")
-    parser.add_argument("--wandb-entity", type=str, default=None,
-        help="the entity (team) of wandb's project")
-    parser.add_argument("--capture-video", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="whether to capture videos of the agent performances (check out `videos` folder)")
-    parser.add_argument("--save-model", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="whether to save model into the `runs/{run_name}` folder")
-    parser.add_argument("--upload-model", type=lambda x: bool(strtobool(x)), default=False, nargs="?", const=True,
-        help="whether to upload the saved model to huggingface")
-    parser.add_argument("--hf-entity", type=str, default="",
-        help="the user or org name of the model repository from the Hugging Face Hub")
+@dataclass
+class Args:
+    exp_name: str = os.path.basename(__file__)[: -len(".py")]
+    """the name of this experiment"""
+    seed: int = 1
+    """seed of the experiment"""
+    torch_deterministic: bool = True
+    """if toggled, `torch.backends.cudnn.deterministic=False`"""
+    cuda: bool = True
+    """if toggled, cuda will be enabled by default"""
+    track: bool = False
+    """if toggled, this experiment will be tracked with Weights and Biases"""
+    wandb_project_name: str = "cleanRL"
+    """the wandb's project name"""
+    wandb_entity: str = None
+    """the entity (team) of wandb's project"""
+    capture_video: bool = False
+    """whether to capture videos of the agent performances (check out `videos` folder)"""
+    save_model: bool = False
+    """whether to save model into the `runs/{run_name}` folder"""
+    upload_model: bool = False
+    """whether to upload the saved model to huggingface"""
+    hf_entity: str = ""
+    """the user or org name of the model repository from the Hugging Face Hub"""
 
     # Algorithm specific arguments
-    parser.add_argument("--env-id", type=str, default="BreakoutNoFrameskip-v4",
-        help="the id of the environment")
-    parser.add_argument("--total-timesteps", type=int, default=10000000,
-        help="total timesteps of the experiments")
-    parser.add_argument("--learning-rate", type=float, default=1e-4,
-        help="the learning rate of the optimizer")
-    parser.add_argument("--num-envs", type=int, default=1,
-        help="the number of parallel game environments")
-    parser.add_argument("--buffer-size", type=int, default=1000000,
-        help="the replay memory buffer size")
-    parser.add_argument("--gamma", type=float, default=0.99,
-        help="the discount factor gamma")
-    parser.add_argument("--tau", type=float, default=1.,
-        help="the target network update rate")
-    parser.add_argument("--target-network-frequency", type=int, default=1000,
-        help="the timesteps it takes to update the target network")
-    parser.add_argument("--batch-size", type=int, default=32,
-        help="the batch size of sample from the reply memory")
-    parser.add_argument("--start-e", type=float, default=1,
-        help="the starting epsilon for exploration")
-    parser.add_argument("--end-e", type=float, default=0.01,
-        help="the ending epsilon for exploration")
-    parser.add_argument("--exploration-fraction", type=float, default=0.10,
-        help="the fraction of `total-timesteps` it takes from start-e to go end-e")
-    parser.add_argument("--learning-starts", type=int, default=80000,
-        help="timestep to start learning")
-    parser.add_argument("--train-frequency", type=int, default=4,
-        help="the frequency of training")
+    env_id: str = "BreakoutNoFrameskip-v4"
+    """the id of the environment"""
+    total_timesteps: int = 10000000
+    """total timesteps of the experiments"""
+    learning_rate: float = 1e-4
+    """the learning rate of the optimizer"""
+    num_envs: int = 1
+    """the number of parallel game environments"""
+    buffer_size: int = 1000000
+    """the replay memory buffer size"""
+    gamma: float = 0.99
+    """the discount factor gamma"""
+    tau: float = 1.0
+    """the target network update rate"""
+    target_network_frequency: int = 1000
+    """the timesteps it takes to update the target network"""
+    batch_size: int = 32
+    """the batch size of sample from the reply memory"""
+    start_e: float = 1.0
+    """the starting epsilon for exploration"""
+    end_e: float = 0.01
+    """the ending epsilon for exploration"""
+    exploration_fraction: float = 0.10
+    """the fraction of `total-timesteps` it takes from start-e to go end-e"""
+    learning_starts: int = 80000
+    """timestep to start learning"""
+    train_frequency: int = 4
+    """the frequency of training"""
 
     # QDagger specific arguments
-    parser.add_argument("--teacher-policy-hf-repo", type=str, default=None,
-        help="the huggingface repo of the teacher policy")
-    parser.add_argument("--teacher-eval-episodes", type=int, default=10,
-        help="the number of episodes to run the teacher policy evaluate")
-    parser.add_argument("--teacher-steps", type=int, default=500000,
-        help="the number of steps to run the teacher policy to generate the replay buffer")
-    parser.add_argument("--offline-steps", type=int, default=500000,
-        help="the number of steps to run the student policy with the teacher's replay buffer")
-    parser.add_argument("--temperature", type=float, default=1.0,
-        help="the temperature parameter for qdagger")
-    args = parser.parse_args()
-    # fmt: on
-    assert args.num_envs == 1, "vectorized envs are not supported at the moment"
-
-    if args.teacher_policy_hf_repo is None:
-        args.teacher_policy_hf_repo = f"cleanrl/{args.env_id}-dqn_atari-seed1"
-
-    return args
+    teacher_policy_hf_repo: str = None
+    """the huggingface repo of the teacher policy"""
+    teacher_model_exp_name: str = "dqn_atari"
+    """the experiment name of the teacher model"""
+    teacher_eval_episodes: int = 10
+    """the number of episodes to run the teacher policy evaluate"""
+    teacher_steps: int = 500000
+    """the number of steps to run the teacher policy to generate the replay buffer"""
+    offline_steps: int = 500000
+    """the number of steps to run the student policy with the teacher's replay buffer"""
+    temperature: float = 1.0
+    """the temperature parameter for qdagger"""
 
 
 def make_env(env_id, seed, idx, capture_video, run_name):
@@ -212,7 +205,10 @@ if __name__ == "__main__":
 poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-license]==0.28.1"  "ale-py==0.8.1" 
 """
         )
-    args = parse_args()
+    args = tyro.cli(Args)
+    assert args.num_envs == 1, "vectorized envs are not supported at the moment"
+    if args.teacher_policy_hf_repo is None:
+        args.teacher_policy_hf_repo = f"cleanrl/{args.env_id}-{args.teacher_model_exp_name}-seed1"
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
@@ -252,7 +248,9 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     target_network.load_state_dict(q_network.state_dict())
 
     # QDAGGER LOGIC:
-    teacher_model_path = hf_hub_download(repo_id=args.teacher_policy_hf_repo, filename="dqn_atari.cleanrl_model")
+    teacher_model_path = hf_hub_download(
+        repo_id=args.teacher_policy_hf_repo, filename=f"{args.teacher_model_exp_name}.cleanrl_model"
+    )
     teacher_model = TeacherModel(envs).to(device)
     teacher_model.load_state_dict(torch.load(teacher_model_path, map_location=device))
     teacher_model.eval()
@@ -290,12 +288,12 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         else:
             q_values = teacher_model(torch.Tensor(obs).to(device))
             actions = torch.argmax(q_values, dim=1).cpu().numpy()
-        next_obs, rewards, terminated, truncated, infos = envs.step(actions)
+        next_obs, rewards, terminations, truncations, infos = envs.step(actions)
         real_next_obs = next_obs.copy()
-        for idx, d in enumerate(truncated):
-            if d:
+        for idx, trunc in enumerate(truncations):
+            if trunc:
                 real_next_obs[idx] = infos["final_observation"][idx]
-        teacher_rb.add(obs, real_next_obs, actions, rewards, terminated, infos)
+        teacher_rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
         obs = next_obs
 
     # offline training phase: train the student model using the qdagger loss
@@ -377,7 +375,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
             actions = torch.argmax(q_values, dim=1).cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
-        next_obs, rewards, terminated, truncated, infos = envs.step(actions)
+        next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
@@ -394,10 +392,10 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
-        for idx, d in enumerate(truncated):
-            if d:
+        for idx, trunc in enumerate(truncations):
+            if trunc:
                 real_next_obs[idx] = infos["final_observation"][idx]
-        rb.add(obs, real_next_obs, actions, rewards, terminated, infos)
+        rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
