@@ -353,3 +353,5 @@ if __name__ == "__main__":
     
     if accelerator.is_main_process:
         writer.close()
+        if args.track:
+            wandb.finish()
