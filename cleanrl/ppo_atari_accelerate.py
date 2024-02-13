@@ -184,9 +184,11 @@ if __name__ == "__main__":
         )
 
     # TRY NOT TO MODIFY: seeding
+    # CRUCIAL: note that we needed to pass a different seed for each data parallelism worker
+    args.seed += accelerator.process_index * 100003  # Prime
     random.seed(args.seed)
     np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
+    torch.manual_seed(args.seed - local_rank)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     # env setup
