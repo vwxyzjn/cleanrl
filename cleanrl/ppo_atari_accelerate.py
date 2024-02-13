@@ -80,6 +80,12 @@ class Args:
     """the target KL divergence threshold"""
 
     # to be filled in runtime
+    local_batch_size: int = 0
+    """the local batch size in the local rank (computed in runtime)"""
+    local_minibatch_size: int = 0
+    """the local mini-batch size in the local rank (computed in runtime)"""
+    num_envs: int = 0
+    """the number of parallel game environments (computed in runtime)"""
     batch_size: int = 0
     """the batch size (computed in runtime)"""
     minibatch_size: int = 0
