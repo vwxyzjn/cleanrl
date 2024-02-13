@@ -158,6 +158,12 @@ class Agent(nn.Module):
 
 if __name__ == "__main__":
     args = tyro.cli(Args)
+    accelerator = Accelerator()
+    local_rank = accelerator.process_index
+    args.world_size = accelerator.num_processes
+    args.local_batch_size = int(args.local_num_envs * args.num_steps)
+    args.local_minibatch_size = int(args.local_batch_size // args.num_minibatches)
+    args.num_envs = args.local_num_envs * args.world_size
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
