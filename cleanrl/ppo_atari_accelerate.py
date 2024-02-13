@@ -169,7 +169,6 @@ if __name__ == "__main__":
     args.num_iterations = args.total_timesteps // args.batch_size
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     
-    accelerator = Accelerator()
     
     if args.track and accelerator.is_main_process:
         import wandb
