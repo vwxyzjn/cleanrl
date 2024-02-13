@@ -221,7 +221,7 @@ if __name__ == "__main__":
     start_time = time.time()
     next_obs, _ = envs.reset(seed=args.seed)
     next_obs = torch.Tensor(next_obs).to(device)
-    next_done = torch.zeros(args.num_envs).to(device)
+    next_done = torch.zeros(args.local_num_envs).to(device)
 
     for iteration in range(1, args.num_iterations + 1):
         # Annealing the rate if instructed to do so.
