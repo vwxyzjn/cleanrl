@@ -92,6 +92,8 @@ class Args:
     """the mini-batch size (computed in runtime)"""
     num_iterations: int = 0
     """the number of iterations (computed in runtime)"""
+    world_size: int = 0
+    """the number of processes (computed in runtime)"""
 
 
 def make_env(env_id, idx, capture_video, run_name):
