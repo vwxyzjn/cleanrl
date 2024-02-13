@@ -326,7 +326,7 @@ if __name__ == "__main__":
 
                 optimizer.zero_grad()
                 accelerator.backward(loss)
-                nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
+                accelerator.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
 
             if args.target_kl is not None and approx_kl > args.target_kl:
