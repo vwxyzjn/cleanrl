@@ -203,11 +203,11 @@ if __name__ == "__main__":
     )
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
-    agent = Agent(envs)
-    agent = accelerator.prepare(agent)
-    
-    device = accelerator.device
+    agent = Agent(envs).to(device)
+    torch.manual_seed(args.seed)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
+    agent, optimizer = accelerator.prepare(agent, optimizer)
+    device = accelerator.device
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
