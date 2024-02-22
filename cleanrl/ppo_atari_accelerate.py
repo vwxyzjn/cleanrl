@@ -155,8 +155,11 @@ class Agent(nn.Module):
             action = probs.sample()
         return action, probs.log_prob(action), probs.entropy(), self.critic(hidden)
 
+    # required due to how DistributedDataParallel wraps the model
+    def forward(self, x, action):
+        return self.get_action_and_value(x, action)
 
-if __name__ == "__main__":
+def main():
     args = tyro.cli(Args)
     accelerator = Accelerator()
     local_rank = accelerator.process_index
@@ -202,11 +205,12 @@ if __name__ == "__main__":
     )
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
+    device = accelerator.device
     agent = Agent(envs).to(device)
     torch.manual_seed(args.seed)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
     agent, optimizer = accelerator.prepare(agent, optimizer)
-    device = accelerator.device
+    
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.local_num_envs) + envs.single_observation_space.shape).to(device)
@@ -237,7 +241,7 @@ if __name__ == "__main__":
 
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                action, logprob, _, value = agent.get_action_and_value(next_obs)
+                action, logprob, _, value = accelerator.unwrap_model(agent).get_action_and_value(next_obs)
                 values[step] = value.flatten()
             actions[step] = action
             logprobs[step] = logprob
@@ -248,7 +252,7 @@ if __name__ == "__main__":
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
 
-            if not writer:
+            if not (args.track and accelerator.is_main_process):
                 continue
 
             if "final_info" in infos:
@@ -259,11 +263,11 @@ if __name__ == "__main__":
                         writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
 
         print(
-            f"local_rank: {local_rank}, action.sum(): {action.sum()}, iteration: {iteration}, agent.actor.weight.sum(): {agent.actor.weight.sum()}"
+            f"local_rank: {local_rank}, action.sum(): {action.sum()}, iteration: {iteration}, agent.actor.weight.sum(): {accelerator.unwrap_model(agent).actor.weight.sum()}"
         )
         # bootstrap value if not done
         with torch.no_grad():
-            next_value = agent.get_value(next_obs).reshape(1, -1)
+            next_value = accelerator.unwrap_model(agent).get_value(next_obs).reshape(1, -1)
             advantages = torch.zeros_like(rewards).to(device)
             lastgaelam = 0
             for t in reversed(range(args.num_steps)):
@@ -293,9 +297,8 @@ if __name__ == "__main__":
             for start in range(0, args.local_batch_size, args.local_minibatch_size):
                 end = start + args.local_minibatch_size
                 mb_inds = b_inds[start:end]
-                mb_inds = b_inds[start:end]
 
-                _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                _, newlogprob, entropy, newvalue = agent(b_obs[mb_inds], b_actions.long()[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 
@@ -332,10 +335,11 @@ if __name__ == "__main__":
                 entropy_loss = entropy.mean()
                 loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
-                optimizer.zero_grad()
+                
                 accelerator.backward(loss)
-                accelerator.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
+                #accelerator.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
+                optimizer.zero_grad()
 
             if args.target_kl is not None and approx_kl > args.target_kl:
                 break
@@ -346,16 +350,18 @@ if __name__ == "__main__":
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if accelerator.is_main_process:
-            writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
-            writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
-            writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
-            writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
-            writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
-            writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
-            writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
-            writer.add_scalar("losses/explained_variance", explained_var, global_step)
             print("SPS:", int(global_step / (time.time() - start_time)))
-            writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+
+            if args.track:
+                writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
+                writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
+                writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
+                writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
+                writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
+                writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
+                writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
+                writer.add_scalar("losses/explained_variance", explained_var, global_step)
+                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
     envs.close()
     
@@ -363,3 +369,7 @@ if __name__ == "__main__":
         writer.close()
         if args.track:
             wandb.finish()
+
+if __name__ == "__main__":
+    main()
+    
