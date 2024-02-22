@@ -337,7 +337,7 @@ def main():
 
                 
                 accelerator.backward(loss)
-                #accelerator.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
+                accelerator.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
                 optimizer.zero_grad()
 
