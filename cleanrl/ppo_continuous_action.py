@@ -209,7 +209,7 @@ if __name__ == "__main__":
 
         for step in range(0, args.num_steps):
             global_step += args.num_envs
-            
+
             ob = next_ob
             # ALGO LOGIC: action logic
             with torch.no_grad():
@@ -217,14 +217,14 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_ob, reward, next_termination, next_truncation, info = envs.step(action.cpu().numpy())
-            
+
             # Correct next obervation (for vec gym)
             real_next_ob = next_ob.copy()
             for idx, trunc in enumerate(next_truncation):
                 if trunc:
                     real_next_ob[idx] = info["final_observation"][idx]
             next_ob = torch.Tensor(next_ob).to(device)
-            
+
             # Collect trajectory
             obs[step] = torch.Tensor(ob).to(device)
             next_obs[step] = torch.Tensor(real_next_ob).to(device)
@@ -234,7 +234,7 @@ if __name__ == "__main__":
             next_terminations[step] = torch.Tensor(next_termination).to(device)
             next_dones[step] = torch.Tensor(np.logical_or(next_termination, next_truncation)).to(device)
             rewards[step] = torch.tensor(reward).to(device).view(-1)
-            
+
             if "final_info" in info:
                 for info in info["final_info"]:
                     if info and "episode" in info:
@@ -253,7 +253,7 @@ if __name__ == "__main__":
                 else:
                     value_mask = next_dones[t].bool()
                     next_values[value_mask] = agent.get_value(next_obs[t][value_mask]).flatten()
-                    next_values[~value_mask] = values[t+1][~value_mask]
+                    next_values[~value_mask] = values[t + 1][~value_mask]
                 delta = rewards[t] + args.gamma * next_values * (1 - next_terminations[t]) - values[t]
                 advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * (1 - next_dones[t]) * lastgaelam
             returns = advantages + values
