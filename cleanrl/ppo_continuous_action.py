@@ -184,18 +184,21 @@ if __name__ == "__main__":
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
+    next_obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
-    dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    next_dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    next_terminations = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
-    next_obs, _ = envs.reset(seed=args.seed)
-    next_obs = torch.Tensor(next_obs).to(device)
+    next_ob, _ = envs.reset(seed=args.seed)
+    next_ob = torch.Tensor(next_ob).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
+    next_termination = torch.zeros(args.num_envs).to(device)
 
     for iteration in range(1, args.num_iterations + 1):
         # Annealing the rate if instructed to do so.
@@ -206,24 +209,34 @@ if __name__ == "__main__":
 
         for step in range(0, args.num_steps):
             global_step += args.num_envs
-            obs[step] = next_obs
-            dones[step] = next_done
-
+            
+            ob = next_ob
             # ALGO LOGIC: action logic
             with torch.no_grad():
-                action, logprob, _, value = agent.get_action_and_value(next_obs)
-                values[step] = value.flatten()
-            actions[step] = action
-            logprobs[step] = logprob
+                action, logprob, _, value = agent.get_action_and_value(ob)
 
             # TRY NOT TO MODIFY: execute the game and log data.
-            next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
-            next_done = np.logical_or(terminations, truncations)
+            next_ob, reward, next_termination, next_truncation, info = envs.step(action.cpu().numpy())
+            
+            # Correct next obervation (for vec gym)
+            real_next_ob = next_ob.copy()
+            for idx, trunc in enumerate(next_truncation):
+                if trunc:
+                    real_next_ob[idx] = info["final_observation"][idx]
+            next_ob = torch.Tensor(next_ob).to(device)
+            
+            # Collect trajectory
+            obs[step] = torch.Tensor(ob).to(device)
+            next_obs[step] = torch.Tensor(real_next_ob).to(device)
+            actions[step] = torch.Tensor(action).to(device)
+            logprobs[step] = torch.Tensor(logprob).to(device)
+            values[step] = torch.Tensor(value.flatten()).to(device)
+            next_terminations[step] = torch.Tensor(next_termination).to(device)
+            next_dones[step] = torch.Tensor(np.logical_or(next_termination, next_truncation)).to(device)
             rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
-
-            if "final_info" in infos:
-                for info in infos["final_info"]:
+            
+            if "final_info" in info:
+                for info in info["final_info"]:
                     if info and "episode" in info:
                         print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
@@ -231,18 +244,18 @@ if __name__ == "__main__":
 
         # bootstrap value if not done
         with torch.no_grad():
-            next_value = agent.get_value(next_obs).reshape(1, -1)
+            next_values = torch.zeros_like(values[0]).to(device)
             advantages = torch.zeros_like(rewards).to(device)
             lastgaelam = 0
             for t in reversed(range(args.num_steps)):
                 if t == args.num_steps - 1:
-                    nextnonterminal = 1.0 - next_done
-                    nextvalues = next_value
+                    next_values = agent.get_value(next_obs[t]).flatten()
                 else:
-                    nextnonterminal = 1.0 - dones[t + 1]
-                    nextvalues = values[t + 1]
-                delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
-                advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
+                    value_mask = next_dones[t].bool()
+                    next_values[value_mask] = agent.get_value(next_obs[t][value_mask]).flatten()
+                    next_values[~value_mask] = values[t+1][~value_mask]
+                delta = rewards[t] + args.gamma * next_values * (1 - next_terminations[t]) - values[t]
+                advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * (1 - next_dones[t]) * lastgaelam
             returns = advantages + values
 
         # flatten the batch
