@@ -334,7 +334,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
             eval_episodes=10,
             run_name=f"{run_name}-eval",
             Model=QNetwork,
-            epsilon=0.05,
+            epsilon=args.end_e,
         )
         for idx, episodic_return in enumerate(episodic_returns):
             writer.add_scalar("eval/episodic_return", episodic_return, idx)
