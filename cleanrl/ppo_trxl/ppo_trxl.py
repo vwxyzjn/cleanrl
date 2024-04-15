@@ -368,6 +368,8 @@ if __name__ == "__main__":
     if not max_episode_steps:
         envs.envs[0].reset()  # Memory Gym envs need to be reset before accessing max_episode_steps
         max_episode_steps = envs.envs[0].max_episode_steps
+    # Set transformer memory length to max episode steps if greather than max episode steps
+    args.trxl_memory_length = min(args.trxl_memory_length, max_episode_steps)
 
     agent = Agent(args, observation_space, action_space_shape, max_episode_steps).to(device)
     optimizer = optim.AdamW(agent.parameters(), lr=args.learning_rate)
