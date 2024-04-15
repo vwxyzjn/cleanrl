@@ -280,7 +280,7 @@ class Agent(nn.Module):
                 nn.ReLU(),
                 layer_init(nn.ConvTranspose2d(64, 32, 4, stride=2)),
                 nn.ReLU(),
-                layer_init(nn.ConvTranspose2d(32, 1, 8, stride=4)),
+                layer_init(nn.ConvTranspose2d(32, 3, 8, stride=4)),
                 nn.Sigmoid(),
             )
 
@@ -310,7 +310,7 @@ class Agent(nn.Module):
 
     def reconstruct_observation(self):
         x = self.transposed_cnn(self.x)
-        return x
+        return x.permute((0, 2, 3, 1))
 
 
 if __name__ == "__main__":
