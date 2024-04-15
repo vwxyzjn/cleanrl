@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "ppo-trxl"
+version = "1.0.0"
+description = ""
+authors = ["Marco Pleines <marco.pleines@tu-dortmund.de>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+memory-gym = "^1.0.0"
+einops = "^0.7.0"
+minigrid = "^2.3.1"
+reprint = "^0.6.0"
+opencv-python = "^4.9.0.80"
+torch = "^2.2.2"
+torchaudio = "^2.2.2"
+wandb = "^0.16.6"
+tyro = "^0.8.3"
+tensorboard = "^2.16.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
