@@ -617,14 +617,14 @@ if __name__ == "__main__":
                 episode_result[key + "_mean"] = np.mean([info[key] for info in episode_infos])
 
         print(
-            "{:9} return={:.2f} length={:.1f} pi_loss={:3f} v_loss={:3f} entropy={:.3f} loss={:3f} value={:.3f} adv={:.3f}".format(
+            "{:9} return={:.2f} length={:.1f} pi_loss={:3f} v_loss={:3f} entropy={:.3f} r_loss={:3f} value={:.3f} adv={:.3f}".format(
                 iteration,
                 episode_result["r_mean"],
                 episode_result["l_mean"],
                 training_stats[0],
                 training_stats[1],
                 training_stats[3],
-                training_stats[2],
+                training_stats[4],
                 torch.mean(values),
                 torch.mean(advantages),
             )
