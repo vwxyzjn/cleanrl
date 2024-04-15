@@ -104,11 +104,6 @@ def make_env(env_id):
             env = gym.wrappers.TimeLimit(env, 96)
         else:
             env = gym.make(env_id)
-
-        if len(env.observation_space.shape) > 1:
-            env = gym.wrappers.GrayScaleObservation(env)
-            env = gym.wrappers.FrameStack(env, 1)
-
         return gym.wrappers.RecordEpisodeStatistics(env)
 
     return thunk
@@ -251,7 +246,7 @@ class Agent(nn.Module):
 
         if len(self.obs_shape) > 1:
             self.encoder = nn.Sequential(
-                layer_init(nn.Conv2d(1, 32, 8, stride=4)),
+                layer_init(nn.Conv2d(3, 32, 8, stride=4)),
                 nn.ReLU(),
                 layer_init(nn.Conv2d(32, 64, 4, stride=2)),
                 nn.ReLU(),
@@ -291,7 +286,7 @@ class Agent(nn.Module):
 
     def get_value(self, x, memory, memory_mask, memory_indices):
         if len(self.obs_shape) > 1:
-            x = self.encoder(x / 255.0)
+            x = self.encoder(x.permute((0, 3, 1, 2)) / 255.0)
         else:
             x = self.encoder(x)
         x, _ = self.transformer(x, memory, memory_mask, memory_indices)
@@ -299,7 +294,7 @@ class Agent(nn.Module):
 
     def get_action_and_value(self, x, memory, memory_mask, memory_indices, action=None):
         if len(self.obs_shape) > 1:
-            x = self.encoder(x / 255.0)
+            x = self.encoder(x.permute((0, 3, 1, 2)) / 255.0)
         else:
             x = self.encoder(x)
         x, memory = self.transformer(x, memory, memory_mask, memory_indices)
