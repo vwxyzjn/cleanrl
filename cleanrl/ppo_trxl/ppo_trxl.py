@@ -96,14 +96,14 @@ class Args:
     """the number of iterations (computed in runtime)"""
 
 
-def make_env(env_id):
+def make_env(env_id, render_mode = None):
     def thunk():
         if "MiniGrid" in env_id:
             env = gym.make(env_id, agent_view_size=3, tile_size=28)
             env = ImgObsWrapper(RGBImgPartialObsWrapper(env, tile_size=28))
             env = gym.wrappers.TimeLimit(env, 96)
         else:
-            env = gym.make(env_id)
+            env = gym.make(env_id, render_mode=render_mode)
         return gym.wrappers.RecordEpisodeStatistics(env)
 
     return thunk

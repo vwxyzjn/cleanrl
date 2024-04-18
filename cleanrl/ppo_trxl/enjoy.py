@@ -1,14 +1,16 @@
+import gymnasium as gym
 import torch
 from ppo_trxl import Agent, make_env
 
 # Load checkpoint
-checkpoint = torch.load("./train.cleanrl_model")
+checkpoint = torch.load("./ppo_trxl.cleanrl_model")
 args = checkpoint["args"]
 args = type("Args", (), args)
 
 # Init env and reset
-env = make_env(args.env_id, 0, True, "enjoy")()
+env = make_env(args.env_id, "human")()
 obs, _ = env.reset()
+env.render()
 
 # Determine maximum episode steps
 max_episode_steps = env.spec.max_episode_steps
@@ -16,7 +18,12 @@ if not max_episode_steps:
     max_episode_steps = env.max_episode_steps
 
 # Setup agent and load its model parameters
-agent = Agent(args, env.observation_space, (env.action_space.n,), max_episode_steps)
+action_space_shape = (
+        (env.action_space.n,)
+        if isinstance(env.action_space, gym.spaces.Discrete)
+        else tuple(env.action_space.nvec)
+    )
+agent = Agent(args, env.observation_space, action_space_shape, max_episode_steps)
 agent.load_state_dict(checkpoint["model_weights"])
 
 # Setup memory, mask and indices
@@ -44,7 +51,8 @@ while not done:
     action, _, _, _, new_memory = agent.get_action_and_value(obs, memory_window, mask, indices)
     memory[:, t] = new_memory
     # Step
-    obs, reward, termination, truncation, info = env.step(action.cpu().numpy())
+    obs, reward, termination, truncation, info = env.step(action.cpu().squeeze().numpy())
+    env.render()
     done = termination or truncation
     t += 1
 
