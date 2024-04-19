@@ -8,7 +8,7 @@ args = checkpoint["args"]
 args = type("Args", (), args)
 
 # Init env and reset
-env = make_env(args.env_id, "human")()
+env = make_env(args.env_id, 0, False, "", "human")()
 obs, _ = env.reset()
 env.render()
 

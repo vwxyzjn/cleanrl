@@ -34,6 +34,8 @@ class Args:
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
+    capture_video: bool = False
+    """whether to capture videos of the agent performances (check out `videos` folder)"""
     save_model: bool = False
     """whether to save model into the `runs/{run_name}` folder"""
 
@@ -96,7 +98,7 @@ class Args:
     """the number of iterations (computed in runtime)"""
 
 
-def make_env(env_id, render_mode = None):
+def make_env(env_id, idx, capture_video, run_name, render_mode="debug_rgb_array"):
     def thunk():
         if "MiniGrid" in env_id:
             env = gym.make(env_id, agent_view_size=3, tile_size=28)
@@ -104,6 +106,10 @@ def make_env(env_id, render_mode = None):
             env = gym.wrappers.TimeLimit(env, 96)
         else:
             env = gym.make(env_id, render_mode=render_mode)
+
+        if capture_video and idx == 0:
+            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+
         return gym.wrappers.RecordEpisodeStatistics(env)
 
     return thunk
@@ -353,7 +359,7 @@ if __name__ == "__main__":
 
     # Environment setup
     envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id) for i in range(args.num_envs)],
+        [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)],
     )
     observation_space = envs.single_observation_space
     action_space_shape = (
