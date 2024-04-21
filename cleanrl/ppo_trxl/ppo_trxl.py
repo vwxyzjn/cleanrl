@@ -40,51 +40,51 @@ class Args:
     """whether to save model into the `runs/{run_name}` folder"""
 
     # Algorithm specific arguments
-    env_id: str = "ProofofMemory-v0"  # MiniGrid-MemoryS9-v0 MysteryPath-Grid-v0 MortarMayhem-Grid-v0 ProofofMemory-v0
+    env_id: str = "MortarMayhem-Grid-v0" # CartPoleMasked CartPoleMasked MiniGrid-MemoryS9-v0 MysteryPath-Grid-v0 MortarMayhem-Grid-v0
     """the id of the environment"""
-    total_timesteps: int = 25000
+    total_timesteps: int = 200000000
     """total timesteps of the experiments"""
-    learning_rate: float = 3.0e-4
+    learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 16
+    num_envs: int = 32
     """the number of parallel game environments"""
-    num_steps: int = 128
+    num_steps: int = 512
     """the number of steps to run in each environment per policy rollout"""
     anneal_lr: bool = False
     """Toggle learning rate annealing for policy and value networks"""
-    gamma: float = 0.99
+    gamma: float = 0.95
     """the discount factor gamma"""
     gae_lambda: float = 0.95
     """the lambda for the general advantage estimation"""
     num_minibatches: int = 8
     """the number of mini-batches"""
-    update_epochs: int = 4
+    update_epochs: int = 3
     """the K epochs to update the policy"""
     norm_adv: bool = False
     """Toggles advantages normalization"""
-    clip_coef: float = 0.2
+    clip_coef: float = 0.1
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
     ent_coef: float = 0.001
     """coefficient of the entropy"""
-    vf_coef: float = 0.1
+    vf_coef: float = 0.5
     """coefficient of the value function"""
-    max_grad_norm: float = 0.5
+    max_grad_norm: float = 0.25
     """the maximum norm for the gradient clipping"""
     target_kl: float = None
     """the target KL divergence threshold"""
 
     # Transformer-XL specific arguments
-    trxl_num_blocks: int = 4
+    trxl_num_blocks: int = 3
     """the number of transformer blocks"""
-    trxl_num_heads: int = 1
+    trxl_num_heads: int = 4
     """the number of heads used in multi-head attention"""
-    trxl_dim: int = 64
+    trxl_dim: int = 384
     """the dimension of the transformer"""
-    trxl_memory_length: int = 16
+    trxl_memory_length: int = 119
     """the length of TrXL's sliding memory window"""
-    trxl_positional_encoding: str = ""
+    trxl_positional_encoding: str = "absolute"
     """the positional encoding type of the transformer, choices: "", "absolute", "learned" """
     reconstruction_coef: float = 0.0
     """the coefficient of the observation reconstruction loss, if set to 0.0 the reconstruction loss is not used"""
@@ -106,10 +106,8 @@ def make_env(env_id, idx, capture_video, run_name, render_mode="debug_rgb_array"
             env = gym.wrappers.TimeLimit(env, 96)
         else:
             env = gym.make(env_id, render_mode=render_mode)
-
         if capture_video and idx == 0:
             env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-
         return gym.wrappers.RecordEpisodeStatistics(env)
 
     return thunk
