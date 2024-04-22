@@ -267,7 +267,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             if global_step % args.policy_frequency == 0:  # TD 3 Delayed update support
                 for _ in range(
                     args.policy_frequency
-                ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
+                ):  # compensate for the delay by doing 'policy_frequency' updates instead of 1
                     pi, log_pi, _ = actor.get_action(data.observations)
                     qf1_pi = qf1(data.observations, pi)
                     qf2_pi = qf2(data.observations, pi)
