@@ -7,7 +7,7 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-memory-gym = "^1.0.0"
+memory-gym = "^1.0.2"
 einops = "^0.7.0"
 minigrid = "^2.3.1"
 reprint = "^0.6.0"

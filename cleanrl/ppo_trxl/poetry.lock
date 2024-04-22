@@ -554,13 +554,13 @@ files = [
 
 [[package]]
 name = "memory-gym"
-version = "1.0.0"
+version = "1.0.2"
 description = "A gym that contains the memory benchmarks Mortar Mayhem, Mystery Maze and Searing Spotlights"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "memory-gym-1.0.0.tar.gz", hash = "sha256:0ebcbeeba0e4a9320baec26b479647b934c414482ebb2cdcc44b958755a95613"},
-    {file = "memory_gym-1.0.0-py3-none-any.whl", hash = "sha256:90ab92acc2d86285544da5ac12de32739c04f79e82480be6372c6b234356d69d"},
+    {file = "memory_gym-1.0.2-py3-none-any.whl", hash = "sha256:f012f2ffa91dbd2f9f2c5972f41ef7a96f5992a4cb5fdcf72f13eeec836dfbe4"},
+    {file = "memory_gym-1.0.2.tar.gz", hash = "sha256:ce159f6f8c4c3d1a55ee4e08385e948bb9add68350cd3ed0fcd8cf82a0589c2a"},
 ]
 
 [package.dependencies]
@@ -1556,4 +1556,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "62eb5e14f02057450a2c7631ec83b183f2aaa4230680f9b9e8ba9cf41324ea2d"
+content-hash = "d3ee1ef77a5ae4324a047c9c45f773bf171b488b754db47e482b41365522b738"
