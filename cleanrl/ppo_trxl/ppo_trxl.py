@@ -40,7 +40,7 @@ class Args:
     """whether to save model into the `runs/{run_name}` folder"""
 
     # Algorithm specific arguments
-    env_id: str = "MortarMayhem-Grid-v0" # CartPoleMasked CartPoleMasked MiniGrid-MemoryS9-v0 MysteryPath-Grid-v0 MortarMayhem-Grid-v0
+    env_id: str = "MortarMayhem-Grid-v0" # MysteryPath-Grid-v0 SearingSpotlights-v0
     """the id of the environment"""
     total_timesteps: int = 200000000
     """total timesteps of the experiments"""
