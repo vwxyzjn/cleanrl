@@ -535,6 +535,13 @@ if __name__ == "__main__":
         b_memory_mask = stored_memory_masks.reshape(-1, *stored_memory_masks.shape[2:])
         stored_memories = torch.stack(stored_memories, dim=0)
 
+        # Remove unnecessary padding from TrXL memory, if applicable
+        actual_max_episode_steps = (stored_memory_indices * stored_memory_masks).max().item() + 1
+        if actual_max_episode_steps < args.trxl_memory_length:
+            b_memory_indices = b_memory_indices[:, :actual_max_episode_steps]
+            b_memory_mask = b_memory_mask[:, :actual_max_episode_steps]
+            stored_memories = stored_memories[:, :actual_max_episode_steps]
+
         # Optimizing the policy and value network
         train_info = []
         for epoch in range(args.update_epochs):
