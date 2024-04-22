@@ -630,8 +630,9 @@ if __name__ == "__main__":
                 episode_result[key + "_mean"] = np.mean([info[key] for info in episode_infos])
 
         print(
-            "{:9} return={:.2f} length={:.1f} pi_loss={:3f} v_loss={:3f} entropy={:.3f} r_loss={:3f} value={:.3f} adv={:.3f}".format(
+            "{:9} SPS={:4} return={:.2f} length={:.1f} pi_loss={:3f} v_loss={:3f} entropy={:.3f} r_loss={:3f} value={:.3f} adv={:.3f}".format(
                 iteration,
+                int(global_step / (time.time() - start_time)),
                 episode_result["r_mean"],
                 episode_result["l_mean"],
                 training_stats[0],
@@ -658,7 +659,6 @@ if __name__ == "__main__":
         writer.add_scalar("losses/approx_kl", training_stats[6], global_step)
         writer.add_scalar("losses/clipfrac", training_stats[7], global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
-        # print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
     if args.save_model:
