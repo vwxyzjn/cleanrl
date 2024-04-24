@@ -462,9 +462,8 @@ if __name__ == "__main__":
                     next_obs, memory_window, stored_memory_masks[step], stored_memory_indices[step]
                 )
                 next_memory[env_ids, env_current_episode_step] = new_memory
-                actions[step] = action
-                log_probs[step] = logprob
-                values[step] = value
+                # Store the action, log_prob, and value in the buffer
+                actions[step], log_probs[step], values[step] = action, logprob, value
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
