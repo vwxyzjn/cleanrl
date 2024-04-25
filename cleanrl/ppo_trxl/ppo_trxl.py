@@ -44,14 +44,16 @@ class Args:
     """the id of the environment"""
     total_timesteps: int = 200000000
     """total timesteps of the experiments"""
-    learning_rate: float = 2.5e-4
-    """the learning rate of the optimizer"""
+    init_lr: float = 2.5e-4
+    """the initial learning rate of the optimizer"""
+    final_lr: float = 2.5e-4
+    """the final learning rate of the optimizer after linearly annealing"""
     num_envs: int = 32
     """the number of parallel game environments"""
     num_steps: int = 512
     """the number of steps to run in each environment per policy rollout"""
-    anneal_lr: bool = False
-    """Toggle learning rate annealing for policy and value networks"""
+    anneal_steps: int = 0
+    """the number of steps to linearly anneal the learning rate and entropy coefficient from initial to final"""
     gamma: float = 0.95
     """the discount factor gamma"""
     gae_lambda: float = 0.95
@@ -66,8 +68,10 @@ class Args:
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    ent_coef: float = 0.001
-    """coefficient of the entropy"""
+    init_ent_coef: float = 0.001
+    """initial coefficient of the entropy bonus"""
+    final_ent_coef: float = 0.001
+    """final coefficient of the entropy bonus after linearly annealing"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
     max_grad_norm: float = 0.25
@@ -376,7 +380,7 @@ if __name__ == "__main__":
     args.trxl_memory_length = min(args.trxl_memory_length, max_episode_steps)
 
     agent = Agent(args, observation_space, action_space_shape, max_episode_steps).to(device)
-    optimizer = optim.AdamW(agent.parameters(), lr=args.learning_rate)
+    optimizer = optim.AdamW(agent.parameters(), lr=args.init_lr)
     bce_loss = nn.BCELoss()  # Binary cross entropy loss for observation reconstruction
 
     # ALGO Logic: Storage setup
@@ -436,11 +440,13 @@ if __name__ == "__main__":
     for iteration in range(1, args.num_iterations + 1):
         sampled_episode_infos = []
 
-        # Annealing the learning rate if instructed to do so
-        if args.anneal_lr:
-            frac = 1.0 - (iteration - 1.0) / args.num_iterations
-            lrnow = frac * args.learning_rate
-            optimizer.param_groups[0]["lr"] = lrnow
+        # Annealing the learning rate and entropy coefficient if instructed to do so
+        do_anneal = args.anneal_steps > 0 and global_step < args.anneal_steps
+        frac = 1 - global_step / args.anneal_steps if do_anneal else 0
+        lr = (args.init_lr - args.final_lr) * frac + args.final_lr
+        for param_group in optimizer.param_groups:
+            param_group["lr"] = lr
+        ent_coef = (args.init_ent_coef - args.final_ent_coef) * frac + args.final_ent_coef          
 
         # Init episodic memory buffer using each environments' current episodic memory
         stored_memories = [next_memory[e] for e in range(args.num_envs)]
@@ -582,7 +588,7 @@ if __name__ == "__main__":
                 entropy_loss = entropy.mean()
 
                 # Combined losses
-                loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
+                loss = pg_loss - ent_coef * entropy_loss + v_loss * args.vf_coef
 
                 # Add reconstruction loss if used
                 if args.reconstruction_coef > 0.0:
@@ -648,7 +654,8 @@ if __name__ == "__main__":
                 writer.add_scalar("episode/" + key, episode_result[key], global_step)
         writer.add_scalar("episode/value_mean", torch.mean(values), global_step)
         writer.add_scalar("episode/advantage_mean", torch.mean(advantages), global_step)
-        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
+        writer.add_scalar("charts/learning_rate", lr, global_step)
+        writer.add_scalar("charts/entropy_coefficient", ent_coef, global_step)
         writer.add_scalar("losses/policy_loss", training_stats[0], global_step)
         writer.add_scalar("losses/value_loss", training_stats[1], global_step)
         writer.add_scalar("losses/loss", training_stats[2], global_step)
