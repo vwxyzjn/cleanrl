@@ -86,6 +86,7 @@ def ode_qw(qw,t,J,T):
     w = qw[4:7]
     return np.concatenate((q_kin(q, w),  euler_dyn(w, J, T)))
 
+
 #### Linearized dynamics #### 
 def dyn_qw_lin(qw, I):
     """

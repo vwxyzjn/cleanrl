@@ -62,6 +62,7 @@ class RPO_ENV(gym.Env):
         qw = self.state[0:7]        
         T = a2t_laser_2d(action, self.d, self.r) 
         qw = odeint(ode_qw, qw, [0, self.dt], args=(T,))[1]
+        self.state[3:6] = qw[4:7]   # only update angular velocity now... 
         
         self.t += self.dt 
         self.oe += np.array([0,0,0,0,0,self.n*self.dt])
