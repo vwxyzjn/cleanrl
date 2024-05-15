@@ -129,3 +129,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Your virtual environment
+cleanrl_venv/

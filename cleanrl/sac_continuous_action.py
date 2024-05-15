@@ -4,7 +4,9 @@ import random
 import time
 from dataclasses import dataclass
 
-import gymnasium as gym
+# import gymnasium as gym
+import gym
+import gym_examples
 import numpy as np
 import torch
 import torch.nn as nn
@@ -35,7 +37,8 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
-    env_id: str = "Hopper-v4"
+    # env_id: str = "Hopper-v4"
+    env_id: str = "gym_examples/RPO_Detumble2DEnv-v0"
     """the environment id of the task"""
     total_timesteps: int = 1000000
     """total timesteps of the experiments"""
@@ -68,10 +71,12 @@ class Args:
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         if capture_video and idx == 0:
-            env = gym.make(env_id, render_mode="rgb_array")
+            # env = gym.make(env_id, render_mode="rgb_array")
+            env = gym.make('gym_examples/RPO_Detumble2DEnv-v0', render_mode="rgb_array")
             env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         else:
-            env = gym.make(env_id)
+            # env = gym.make(env_id)
+            env = gym.make('gym_examples/RPO_Detumble2DEnv-v0')
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env.action_space.seed(seed)
         return env

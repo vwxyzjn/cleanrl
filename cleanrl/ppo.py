@@ -4,7 +4,9 @@ import random
 import time
 from dataclasses import dataclass
 
-import gymnasium as gym
+import gym_examples
+import gym 
+# import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn
@@ -12,6 +14,7 @@ import torch.optim as optim
 import tyro
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
+import gym_examples
 
 
 @dataclass
@@ -34,7 +37,9 @@ class Args:
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
-    env_id: str = "CartPole-v1"
+    ##TODO: change 
+    # env_id: str = "CartPole-v1"
+    env_id: str = "RPO_DeTumbling2D-v0"
     """the id of the environment"""
     total_timesteps: int = 500000
     """total timesteps of the experiments"""
@@ -81,10 +86,12 @@ class Args:
 def make_env(env_id, idx, capture_video, run_name):
     def thunk():
         if capture_video and idx == 0:
-            env = gym.make(env_id, render_mode="rgb_array")
+            # env = gym.make(env_id, render_mode="rgb_array")
+            env = gym.make('gym_examples/RPO_Detumble2DEnv-v0', render_mode="rgb_array")
             env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         else:
-            env = gym.make(env_id)
+            # env = gym.make(env_id)
+            env = gym.make('gym_examples/RPO_Detumble2DEnv-v0')
         env = gym.wrappers.RecordEpisodeStatistics(env)
         return env
 
