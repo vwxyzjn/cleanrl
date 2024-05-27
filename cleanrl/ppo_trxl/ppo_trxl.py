@@ -40,7 +40,7 @@ class Args:
     """whether to save model into the `runs/{run_name}` folder"""
 
     # Algorithm specific arguments
-    env_id: str = "MortarMayhem-Grid-v0" # MysteryPath-Grid-v0 SearingSpotlights-v0
+    env_id: str = "MortarMayhem-Grid-v0"  # MysteryPath-Grid-v0 SearingSpotlights-v0
     """the id of the environment"""
     total_timesteps: int = 200000000
     """total timesteps of the experiments"""
@@ -446,7 +446,7 @@ if __name__ == "__main__":
         lr = (args.init_lr - args.final_lr) * frac + args.final_lr
         for param_group in optimizer.param_groups:
             param_group["lr"] = lr
-        ent_coef = (args.init_ent_coef - args.final_ent_coef) * frac + args.final_ent_coef          
+        ent_coef = (args.init_ent_coef - args.final_ent_coef) * frac + args.final_ent_coef
 
         # Init episodic memory buffer using each environments' current episodic memory
         stored_memories = [next_memory[e] for e in range(args.num_envs)]
