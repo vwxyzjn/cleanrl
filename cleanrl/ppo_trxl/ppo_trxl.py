@@ -548,7 +548,7 @@ if __name__ == "__main__":
             stored_memories = stored_memories[:, :actual_max_episode_steps]
 
         # Optimizing the policy and value network
-        train_info = []
+        clipfracs = []
         for epoch in range(args.update_epochs):
             b_inds = torch.randperm(args.batch_size)
             for start in range(0, args.batch_size, args.minibatch_size):
@@ -591,6 +591,7 @@ if __name__ == "__main__":
                 loss = pg_loss - ent_coef * entropy_loss + v_loss * args.vf_coef
 
                 # Add reconstruction loss if used
+                r_loss = torch.tensor(0.0)
                 if args.reconstruction_coef > 0.0:
                     r_loss = bce_loss(agent.reconstruct_observation(), b_obs[mb_inds] / 255.0)
                     loss += args.reconstruction_coef * r_loss
@@ -601,27 +602,13 @@ if __name__ == "__main__":
                 optimizer.step()
 
                 with torch.no_grad():
+                    # calculate approx_kl http://joschu.net/blog/kl-approx.html
                     old_approx_kl = (-logratio).mean()
-                    approx_kl = (ratio - 1.0) - logratio  # http://joschu.net/blog/kl-approx.html
-                    clip_fraction = (abs(ratio - 1.0) > args.clip_coef).float().mean()
-
-                train_info.append(
-                    [
-                        pg_loss.cpu().data.numpy(),
-                        v_loss.cpu().data.numpy(),
-                        loss.cpu().data.numpy(),
-                        entropy_loss.cpu().data.numpy(),
-                        r_loss.cpu().data.numpy() if args.reconstruction_coef > 0.0 else 0.0,
-                        old_approx_kl.cpu().data.numpy(),
-                        approx_kl.mean().cpu().data.numpy(),
-                        clip_fraction.cpu().data.numpy(),
-                    ]
-                )
+                    approx_kl = ((ratio - 1) - logratio).mean()
+                    clipfracs += [((ratio - 1.0).abs() > args.clip_coef).float().mean().item()]
 
             if args.target_kl is not None and approx_kl > args.target_kl:
                 break
-
-        training_stats = np.mean(train_info, axis=0)
 
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
         var_y = np.var(y_true)
@@ -635,15 +622,15 @@ if __name__ == "__main__":
                 episode_result[key + "_mean"] = np.mean([info[key] for info in episode_infos])
 
         print(
-            "{:9} SPS={:4} return={:.2f} length={:.1f} pi_loss={:3f} v_loss={:3f} entropy={:.3f} r_loss={:3f} value={:.3f} adv={:.3f}".format(
+            "{:9} SPS={:4} return={:.2f} length={:.1f} pi_loss={:.3f} v_loss={:.3f} entropy={:.3f} r_loss={:.3f} value={:.3f} adv={:.3f}".format(
                 iteration,
                 int(global_step / (time.time() - start_time)),
                 episode_result["r_mean"],
                 episode_result["l_mean"],
-                training_stats[0],
-                training_stats[1],
-                training_stats[3],
-                training_stats[4],
+                pg_loss.item(),
+                v_loss.item(),
+                entropy_loss.item(),
+                r_loss.item(),
                 torch.mean(values),
                 torch.mean(advantages),
             )
@@ -656,14 +643,14 @@ if __name__ == "__main__":
         writer.add_scalar("episode/advantage_mean", torch.mean(advantages), global_step)
         writer.add_scalar("charts/learning_rate", lr, global_step)
         writer.add_scalar("charts/entropy_coefficient", ent_coef, global_step)
-        writer.add_scalar("losses/policy_loss", training_stats[0], global_step)
-        writer.add_scalar("losses/value_loss", training_stats[1], global_step)
-        writer.add_scalar("losses/loss", training_stats[2], global_step)
-        writer.add_scalar("losses/entropy", training_stats[3], global_step)
-        writer.add_scalar("losses/reconstruction_loss", training_stats[4], global_step)
-        writer.add_scalar("losses/old_approx_kl", training_stats[5], global_step)
-        writer.add_scalar("losses/approx_kl", training_stats[6], global_step)
-        writer.add_scalar("losses/clipfrac", training_stats[7], global_step)
+        writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
+        writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
+        writer.add_scalar("losses/loss", loss.item(), global_step)
+        writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
+        writer.add_scalar("losses/reconstruction_loss", r_loss.item(), global_step)
+        writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
+        writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
+        writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
