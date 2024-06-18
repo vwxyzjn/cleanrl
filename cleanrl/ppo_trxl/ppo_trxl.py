@@ -44,17 +44,17 @@ class Args:
     """the id of the environment"""
     total_timesteps: int = 200000000
     """total timesteps of the experiments"""
-    init_lr: float = 2.5e-4
+    init_lr: float = 2.75e-4
     """the initial learning rate of the optimizer"""
-    final_lr: float = 2.5e-4
+    final_lr: float = 1.0e-5
     """the final learning rate of the optimizer after linearly annealing"""
     num_envs: int = 32
     """the number of parallel game environments"""
     num_steps: int = 512
     """the number of steps to run in each environment per policy rollout"""
-    anneal_steps: int = 0
+    anneal_steps: int = 32*512*10000
     """the number of steps to linearly anneal the learning rate and entropy coefficient from initial to final"""
-    gamma: float = 0.95
+    gamma: float = 0.995
     """the discount factor gamma"""
     gae_lambda: float = 0.95
     """the lambda for the general advantage estimation"""
@@ -62,15 +62,15 @@ class Args:
     """the number of mini-batches"""
     update_epochs: int = 3
     """the K epochs to update the policy"""
-    norm_adv: bool = False
+    norm_adv: bool = True
     """Toggles advantages normalization"""
     clip_coef: float = 0.1
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
-    init_ent_coef: float = 0.001
+    init_ent_coef: float = 0.0001
     """initial coefficient of the entropy bonus"""
-    final_ent_coef: float = 0.001
+    final_ent_coef: float = 0.000001
     """final coefficient of the entropy bonus after linearly annealing"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
@@ -119,7 +119,7 @@ def make_env(env_id, idx, capture_video, run_name, render_mode="debug_rgb_array"
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     torch.nn.init.orthogonal_(layer.weight, std)
-    torch.nn.init.constant_(layer.bias, bias_const)
+    # torch.nn.init.constant_(layer.bias, bias_const)
     return layer
 
 
@@ -159,20 +159,22 @@ class MultiHeadAttention(nn.Module):
 
         assert self.head_size * num_heads == embed_dim, "Embedding dimension needs to be divisible by the number of heads"
 
-        self.values = nn.Linear(embed_dim, embed_dim, bias=False)
-        self.keys = nn.Linear(embed_dim, embed_dim, bias=False)
-        self.queries = nn.Linear(embed_dim, embed_dim, bias=False)
-        self.fc_out = nn.Linear(embed_dim, embed_dim)
+        self.values = nn.Linear(self.head_size, self.head_size, bias=False)
+        self.keys = nn.Linear(self.head_size, self.head_size, bias=False)
+        self.queries = nn.Linear(self.head_size, self.head_size, bias=False)
+        self.fc_out = nn.Linear(self.num_heads * self.head_size, embed_dim)
 
-    def forward(self, values, keys, queries, mask):
-        N = queries.shape[0]
-        value_len, key_len, query_len = values.shape[1], keys.shape[1], queries.shape[1]
-        values = self.values(values)  # (N, value_len, heads, embed_dim)
-        keys = self.keys(keys)  # (N, key_len, heads, embed_dim)
-        queries = self.queries(queries)  # (N, query_len, heads, embed_dim)
+    def forward(self, values, keys, query, mask):
+        N = query.shape[0]
+        value_len, key_len, query_len = values.shape[1], keys.shape[1], query.shape[1]
+
         values = values.reshape(N, value_len, self.num_heads, self.head_size)
         keys = keys.reshape(N, key_len, self.num_heads, self.head_size)
-        queries = queries.reshape(N, query_len, self.num_heads, self.head_size)
+        query = query.reshape(N, query_len, self.num_heads, self.head_size)
+
+        values = self.values(values)  # (N, value_len, heads, head_dim)
+        keys = self.keys(keys)  # (N, key_len, heads, head_dim)
+        queries = self.queries(query)  # (N, query_len, heads, heads_dim)
 
         # Dot-product
         energy = torch.einsum("nqhd,nkhd->nhqk", [queries, keys])
