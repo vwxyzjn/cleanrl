@@ -315,7 +315,7 @@ class Agent(nn.Module):
         log_probs = []
         for i, dist in enumerate(probs):
             log_probs.append(dist.log_prob(action[:, i]))
-        entropies = torch.stack([dist.entropy() for dist in probs], dim=1)
+        entropies = torch.stack([dist.entropy() for dist in probs], dim=1).sum(1).reshape(-1)
         return action, torch.stack(log_probs, dim=1), entropies, self.critic(x).flatten(), memory
 
     def reconstruct_observation(self):
