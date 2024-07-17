@@ -2,6 +2,7 @@
 import os
 import random
 import time
+from collections import deque
 from dataclasses import dataclass
 
 import envpool
@@ -12,9 +13,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import tyro
-from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
-from collections import deque
+
 
 @dataclass
 class Args:
@@ -34,7 +34,7 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    
+
     # Algorithm specific arguments
     env_id: str = "CartPole-v1"
     """the id of the environment"""
@@ -66,7 +66,8 @@ class Args:
     """the reward scaling factor"""
     q_lambda: float = 0.65
     """the lambda for Q(lambda)"""
-    
+
+
 class RecordEpisodeStatistics(gym.Wrapper):
     def __init__(self, env, deque_size=100):
         super().__init__(env)
@@ -100,11 +101,12 @@ class RecordEpisodeStatistics(gym.Wrapper):
             infos,
         )
 
+
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
-        
+
         self.network = nn.Sequential(
             nn.Linear(np.array(env.single_observation_space.shape).prod(), 120),
             nn.LayerNorm(120),
@@ -122,6 +124,7 @@ class QNetwork(nn.Module):
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope = (end_e - start_e) / duration
     return max(slope * t + start_e, end_e)
+
 
 if __name__ == "__main__":
     args = tyro.cli(Args)
@@ -178,14 +181,14 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     avg_returns = deque(maxlen=20)
-    
+
     global_step = 0
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
     next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
-    
+
     for iteration in range(1, args.num_iterations + 1):
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
@@ -196,7 +199,7 @@ if __name__ == "__main__":
         for step in range(0, args.num_steps):
             global_step += args.num_envs
             obs[step] = next_obs
-            dones[step] = next_done           
+            dones[step] = next_done
 
             epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
             if random.random() < epsilon:
@@ -211,7 +214,7 @@ if __name__ == "__main__":
             next_obs, reward, next_done, info = envs.step(action.cpu().numpy())
             rewards[step] = torch.tensor(reward).to(device).view(-1) * args.rew_scale
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
-            
+
             # TRY NOT TO MODIFY: record rewards for plotting purposes
             for idx, d in enumerate(next_done):
                 if d:
@@ -232,7 +235,9 @@ if __name__ == "__main__":
                 else:
                     nextnonterminal = 1.0 - dones[t + 1]
                     next_value, _ = torch.max(q_network(obs[t + 1]), dim=-1)
-                    returns[t] = rewards[t] + args.gamma * (args.q_lambda * returns[t+1] + (1-args.q_lambda) * next_value * nextnonterminal)
+                    returns[t] = rewards[t] + args.gamma * (
+                        args.q_lambda * returns[t + 1] + (1 - args.q_lambda) * next_value * nextnonterminal
+                    )
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)

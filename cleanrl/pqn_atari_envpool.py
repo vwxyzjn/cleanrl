@@ -10,10 +10,11 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import tyro
 from torch.utils.tensorboard import SummaryWriter
-import torch.nn.functional as F
+
 
 @dataclass
 class Args:
@@ -106,6 +107,7 @@ class RecordEpisodeStatistics(gym.Wrapper):
             infos,
         )
 
+
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
     def __init__(self, env):
@@ -129,10 +131,12 @@ class QNetwork(nn.Module):
 
     def forward(self, x):
         return self.network(x / 255.0)
-    
+
+
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope = (end_e - start_e) / duration
     return max(slope * t + start_e, end_e)
+
 
 if __name__ == "__main__":
     args = tyro.cli(Args)
@@ -217,7 +221,7 @@ if __name__ == "__main__":
                     q_values = q_network(next_obs)
                     action = torch.argmax(q_values, dim=1)
             actions[step] = action
-            
+
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, next_done, info = envs.step(action.cpu().numpy())
             rewards[step] = torch.tensor(reward).to(device).view(-1)
@@ -242,7 +246,9 @@ if __name__ == "__main__":
                 else:
                     nextnonterminal = 1.0 - dones[t + 1]
                     next_value, _ = torch.max(q_network(obs[t + 1]), dim=-1)
-                    returns[t] = rewards[t] + args.gamma * (args.q_lambda * returns[t+1] + (1-args.q_lambda) * next_value * nextnonterminal)
+                    returns[t] = rewards[t] + args.gamma * (
+                        args.q_lambda * returns[t + 1] + (1 - args.q_lambda) * next_value * nextnonterminal
+                    )
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
