@@ -1,7 +1,8 @@
-# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/dqn/#dqnpy
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpoolpy
 import os
 import random
 import time
+from collections import deque
 from dataclasses import dataclass
 
 import envpool
@@ -9,12 +10,10 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 import tyro
-from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
-from collections import deque
+import torch.nn.functional as F
 
 @dataclass
 class Args:
@@ -34,39 +33,46 @@ class Args:
     """the entity (team) of wandb's project"""
     capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
-    
+
     # Algorithm specific arguments
-    env_id: str = "CartPole-v1"
+    env_id: str = "Breakout-v5"
     """the id of the environment"""
-    total_timesteps: int = 500000
+    total_timesteps: int = 10000000
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 32
+    num_envs: int = 128
     """the number of parallel game environments"""
-    num_steps: int = 64
-    """the number of steps to run for each environment per update"""
-    num_minibatches: int = 16
+    num_steps: int = 32
+    """the number of steps to run in each environment per policy rollout"""
+    anneal_lr: bool = True
+    """Toggle learning rate annealing for policy and value networks"""
+    gamma: float = 0.99
+    """the discount factor gamma"""
+    num_minibatches: int = 32
     """the number of mini-batches"""
     update_epochs: int = 2
     """the K epochs to update the policy"""
-    anneal_lr: bool = True
-    """Toggle learning rate annealing"""
-    gamma: float = 0.99
-    """the discount factor gamma"""
-    start_e: float = 1
-    """the starting epsilon for exploration"""
-    end_e: float = 0.05
-    """the ending epsilon for exploration"""
-    exploration_fraction: float = 0.5
-    """the fraction of `total_timesteps` it takes from start_e to end_e"""
     max_grad_norm: float = 10.0
     """the maximum norm for the gradient clipping"""
-    rew_scale: float = 0.1
-    """the reward scaling factor"""
+    start_e: float = 1
+    """the starting epsilon for exploration"""
+    end_e: float = 0.01
+    """the ending epsilon for exploration"""
+    exploration_fraction: float = 0.10
+    """the fraction of `total_timesteps` it takes from start_e to end_e"""
     q_lambda: float = 0.65
-    """the lambda for Q(lambda)"""
-    
+    """the lambda for the Q-Learning algorithm"""
+
+    # to be filled in runtime
+    batch_size: int = 0
+    """the batch size (computed in runtime)"""
+    minibatch_size: int = 0
+    """the mini-batch size (computed in runtime)"""
+    num_iterations: int = 0
+    """the number of iterations (computed in runtime)"""
+
+
 class RecordEpisodeStatistics(gym.Wrapper):
     def __init__(self, env, deque_size=100):
         super().__init__(env)
@@ -85,12 +91,12 @@ class RecordEpisodeStatistics(gym.Wrapper):
 
     def step(self, action):
         observations, rewards, dones, infos = super().step(action)
-        self.episode_returns += rewards
+        self.episode_returns += infos["reward"]
         self.episode_lengths += 1
         self.returned_episode_returns[:] = self.episode_returns
         self.returned_episode_lengths[:] = self.episode_lengths
-        self.episode_returns *= 1 - dones
-        self.episode_lengths *= 1 - dones
+        self.episode_returns *= 1 - infos["terminated"]
+        self.episode_lengths *= 1 - infos["terminated"]
         infos["r"] = self.returned_episode_returns
         infos["l"] = self.returned_episode_lengths
         return (
@@ -104,21 +110,26 @@ class RecordEpisodeStatistics(gym.Wrapper):
 class QNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
-        
         self.network = nn.Sequential(
-            nn.Linear(np.array(env.single_observation_space.shape).prod(), 120),
-            nn.LayerNorm(120),
+            nn.Conv2d(4, 32, 8, stride=4),
+            nn.LayerNorm([32, 20, 20]),
             nn.ReLU(),
-            nn.Linear(120, 84),
-            nn.LayerNorm(84),
+            nn.Conv2d(32, 64, 4, stride=2),
+            nn.LayerNorm([64, 9, 9]),
             nn.ReLU(),
-            nn.Linear(84, env.single_action_space.n),
+            nn.Conv2d(64, 64, 3, stride=1),
+            nn.LayerNorm([64, 7, 7]),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(3136, 512),
+            nn.LayerNorm(512),
+            nn.ReLU(),
+            nn.Linear(512, env.single_action_space.n),
         )
 
     def forward(self, x):
-        return self.network(x)
-
-
+        return self.network(x / 255.0)
+    
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope = (end_e - start_e) / duration
     return max(slope * t + start_e, end_e)
@@ -160,6 +171,8 @@ if __name__ == "__main__":
         args.env_id,
         env_type="gym",
         num_envs=args.num_envs,
+        episodic_life=True,
+        reward_clip=True,
         seed=args.seed,
     )
     envs.num_envs = args.num_envs
@@ -168,24 +181,22 @@ if __name__ == "__main__":
     envs = RecordEpisodeStatistics(envs)
     assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
-    # agent setup
     q_network = QNetwork(envs).to(device)
     optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
 
-    # storage setup
+    # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     avg_returns = deque(maxlen=20)
-    
-    global_step = 0
-    start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
+    global_step = 0
+    start_time = time.time()
     next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
-    
+
     for iteration in range(1, args.num_iterations + 1):
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
@@ -196,7 +207,7 @@ if __name__ == "__main__":
         for step in range(0, args.num_steps):
             global_step += args.num_envs
             obs[step] = next_obs
-            dones[step] = next_done           
+            dones[step] = next_done
 
             epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
             if random.random() < epsilon:
@@ -206,15 +217,14 @@ if __name__ == "__main__":
                     q_values = q_network(next_obs)
                     action = torch.argmax(q_values, dim=1)
             actions[step] = action
-
+            
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, next_done, info = envs.step(action.cpu().numpy())
-            rewards[step] = torch.tensor(reward).to(device).view(-1) * args.rew_scale
+            rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
-            
-            # TRY NOT TO MODIFY: record rewards for plotting purposes
+
             for idx, d in enumerate(next_done):
-                if d:
+                if d and info["lives"][idx] == 0:
                     print(f"global_step={global_step}, episodic_return={info['r'][idx]}")
                     avg_returns.append(info["r"][idx])
                     writer.add_scalar("charts/avg_episodic_return", np.average(avg_returns), global_step)
