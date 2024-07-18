@@ -214,12 +214,14 @@ if __name__ == "__main__":
             dones[step] = next_done
 
             epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
-            if random.random() < epsilon:
-                action = torch.randint(0, envs.single_action_space.n, (envs.num_envs,))
-            else:
-                with torch.no_grad():
-                    q_values = q_network(next_obs)
-                    action = torch.argmax(q_values, dim=1)
+
+            random_actions = torch.randint(0, envs.single_action_space.n, (args.num_envs,)).to(device)
+            with torch.no_grad():
+                q_values = q_network(next_obs)
+                max_actions = torch.argmax(q_values, dim=1)
+
+            explore = (torch.rand((args.num_envs,)).to(device) < epsilon)
+            action = torch.where(explore, random_actions, max_actions)
             actions[step] = action
 
             # TRY NOT TO MODIFY: execute the game and log data.
