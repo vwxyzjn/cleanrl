@@ -16,6 +16,8 @@ env.render()
 max_episode_steps = env.spec.max_episode_steps
 if not max_episode_steps:
     max_episode_steps = env.max_episode_steps
+if max_episode_steps <= 0:
+    max_episode_steps = 2048  # Memory Gym envs have max_episode_steps set to -1
 
 # Setup agent and load its model parameters
 action_space_shape = (
