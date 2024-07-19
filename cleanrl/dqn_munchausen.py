@@ -168,11 +168,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
-        # softmax policy
-        with torch.no_grad():
-            q_values = q_network(torch.Tensor(obs).to(device))
-            policy = F.softmax(q_values / args.tau_soft, dim=-1)
-            actions = torch.multinomial(policy, 1).squeeze(-1).cpu().numpy()
+        if global_step < args.learning_starts:
+            actions = np.array([envs.single_action_space.sample() for _ in range(args.num_envs)])
+        else:
+            with torch.no_grad():
+                q_values = q_network(torch.Tensor(obs).to(device))
+                policy = F.softmax(q_values / args.tau_soft, dim=-1)
+                actions = torch.multinomial(policy, 1).squeeze(-1).cpu().numpy()
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
@@ -199,25 +201,14 @@ poetry run pip install "stable_baselines3==2.0.0a1"
             if global_step % args.train_frequency == 0:
                 data = rb.sample(args.batch_size)
                 with torch.no_grad():
-                    target_q_values = target_network(data.next_observations)
+                    target_q_values = target_network(data.observations)
                     target_policy = F.softmax(target_q_values / args.tau_soft, dim=-1)
                     target_next_q_values = target_network(data.next_observations)
                     target_next_policy = F.softmax(target_next_q_values / args.tau_soft, dim=-1)
                     red_term = args.alpha * (
-                        args.tau_soft * torch.log(target_policy.gather(1, data.actions)) + args.epsilon_tar
-                    ).clamp(
-                        args.l_0, 0.0
-                    )  # Page 3: https://arxiv.org/pdf/2007.14430
-                    blue_term = -args.tau_soft * torch.log(
-                        target_next_policy + args.epsilon_tar
-                    )  # Page 3: https://arxiv.org/pdf/2007.14430
-                    munchausen_target = (
-                        data.rewards
-                        + red_term
-                        + args.gamma
-                        * (1 - data.dones)
-                        * (target_next_policy * (target_next_q_values + blue_term)).sum(dim=-1).unsqueeze(-1)
-                    )
+                        args.tau_soft * torch.log(target_policy.gather(1, data.actions)) + args.epsilon_tar).clamp(args.l_0, 0.0)  
+                    blue_term = -args.tau_soft * torch.log(target_next_policy + args.epsilon_tar)  
+                    munchausen_target = (data.rewards + red_term + args.gamma * (1 - data.dones)* (target_next_policy * (target_next_q_values + blue_term)).sum(dim=-1).unsqueeze(-1))
                     td_target = munchausen_target.squeeze()
                 old_val = q_network(data.observations).gather(1, data.actions).squeeze()
                 loss = F.mse_loss(td_target, old_val)
