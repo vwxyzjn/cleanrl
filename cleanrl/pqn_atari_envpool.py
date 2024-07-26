@@ -107,7 +107,6 @@ class RecordEpisodeStatistics(gym.Wrapper):
             infos,
         )
 
-
 # ALGO LOGIC: initialize agent here:
 class QNetwork(nn.Module):
     def __init__(self, env):
@@ -193,6 +192,7 @@ if __name__ == "__main__":
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    values = torch.zeros((args.num_steps, args.num_envs)).to(device)
     avg_returns = deque(maxlen=20)
 
     # TRY NOT TO MODIFY: start the game
@@ -219,6 +219,7 @@ if __name__ == "__main__":
             with torch.no_grad():
                 q_values = q_network(next_obs)
                 max_actions = torch.argmax(q_values, dim=1)
+                values[step] = q_values[torch.arange(args.num_envs), max_actions].flatten()
 
             explore = (torch.rand((args.num_envs,)).to(device) < epsilon)
             action = torch.where(explore, random_actions, max_actions)
@@ -247,7 +248,7 @@ if __name__ == "__main__":
                     returns[t] = rewards[t] + args.gamma * next_value * nextnonterminal
                 else:
                     nextnonterminal = 1.0 - dones[t + 1]
-                    next_value, _ = torch.max(q_network(obs[t + 1]), dim=-1)
+                    next_value = values[t + 1]
                     returns[t] = rewards[t] + args.gamma * (
                         args.q_lambda * returns[t + 1] + (1 - args.q_lambda) * next_value * nextnonterminal
                     )
