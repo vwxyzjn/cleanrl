@@ -68,17 +68,23 @@ class Args:
 
 
     # RND specific arguments
-    rnd_lr: float = 1e-4
-    """the learning rate of the RND"""
-    rnd_epochs: int = 1
-    """the number of epochs for the RND"""
-    rnd_frequency: int = 800
-    """the frequency of training RND"""
+    ngu_lr: float = 1e-4
+    """the learning rate of the NGU"""
+    ngu_epochs: int = 1
+    """the number of epochs for the NGU"""
+    ngu_frequency: int = 800
+    """the frequency of training NGU"""
+    ngu_feature_dim: int = 64
+    """the feature dimension of the NGU"""
+    k_nearest_neighbors: int = 8
+    """the number of nearest neighbors for the NGU"""
+    clip_reward: float = 5.0
+    """the clipping value of the reward"""
 
 
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    coef_intrinsic : float = 1000.0
+    coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
@@ -159,18 +165,35 @@ class Actor(nn.Module):
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
         return action, log_prob, mean
     
-
-class RND(nn.Module):   
-    def __init__(self, env):
-        super(RND, self).__init__()
+class NGU(nn.Module):   
+    def __init__(self, env, feature_dim, k = 10, c = 0.001, L=5, eps = 1e-3, clip_reward = 5.0):
+        super(NGU, self).__init__()
+        state_dim = np.prod(env.single_observation_space.shape)
+        action_dim = np.prod(env.single_action_space.shape)
+        # RND
         # trained network
-        self.f1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
-        self.f2 = nn.Linear(256, 256)
-        self.f3 = nn.Linear(256, 1)
+        self.f1 = nn.Linear(state_dim, 128)
+        self.f2 = nn.Linear(128, 64)
+        self.f3 = nn.Linear(64, 1)
         # target network
-        self.f1_t = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
-        self.f2_t = nn.Linear(256, 256)
-        self.f3_t = nn.Linear(256, 1)
+        self.f1_t = nn.Linear(state_dim, 128)
+        self.f2_t = nn.Linear(128, 64)
+        self.f3_t = nn.Linear(64, 1)
+        # embedding network
+        self.f1_z = nn.Linear(state_dim, 128)
+        self.f2_z = nn.Linear(128, 64)
+        self.f3_z = nn.Linear(64, feature_dim)
+        # action network
+        self.f1_a = nn.Linear(feature_dim*2 , 128)
+        self.f2_a = nn.Linear(128, 64)
+        self.f3_a = nn.Linear(64, action_dim)
+        self.dm2 = 0.0
+        # HP NGU 
+        self.k = k
+        self.c = c
+        self.L = L
+        self.epsilon = eps
+        self.clip_reward = clip_reward
 
     def forward(self, x):
         x = F.relu(self.f1(x))
@@ -185,9 +208,51 @@ class RND(nn.Module):
             x = self.f3_t(x)
             return x
     
-    def loss(self, x, reduce = True):
+    def rnd_loss(self, x, reduce = True):
         return F.mse_loss(self.forward(x), self.forward_t(x)) if reduce else F.mse_loss(self.forward(x), self.forward_t(x), reduction = 'none')
+    
+    def embedding(self, s):
+        x = F.relu(self.f1_z(s))
+        x = F.relu(self.f2_z(x))
+        x = self.f3_z(x)
+        return x
+    
+    def action_pred(self, s0, s1):
+        x = torch.cat([s0, s1], 1)
+        x = F.relu(self.f1_a(x))
+        x = F.relu(self.f2_a(x))
+        x = self.f3_a(x)
+        return x
+       
+    def reward_episode(self, s, episode):
+        z_s = self.embedding(s)
+        z_episode = self.embedding(episode)
+        dist = torch.norm(z_s - z_episode, dim=1)
+        kernel = self.epsilon/(dist/self.dm2 + self.epsilon)
+        top_k_kernel = torch.topk(kernel, self.k, largest = True)
+        top_k = torch.topk(dist, self.k, largest = False)
+        # update running mean and std
+        self.dm2 = 0.99 * self.dm2 + 0.01 * top_k.values.mean().item()
+        # rnd loss
+        rnd_loss = self.rnd_loss(s, reduce = False).item()
+        # episodic reward
+        reward_episodic = (1/(torch.sqrt(top_k_kernel.values.mean()) + self.c)).item() 
+        # ngu reward
+        ngu_reward = reward_episodic * min(max(rnd_loss, 1), self.L)
+        # clip reward
+        ngu_reward = np.clip(ngu_reward, -self.clip_reward, self.clip_reward)
+        return ngu_reward
+    
+    
 
+    def loss(self,s,s_next,a,d): 
+        rnd_loss = self.rnd_loss(s)
+        # NGU loss 
+        s0 = self.embedding(s)
+        s1 = self.embedding(s_next)
+        h_loss = (self.action_pred(s0, s1) - a)**2 * (1-d)
+        return rnd_loss + h_loss.mean()
+        
 
 if __name__ == "__main__":
     import stable_baselines3 as sb3
@@ -244,9 +309,12 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     qf2_target.load_state_dict(qf2.state_dict())
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
-
-    rnd = RND(envs).to(device)
-    rnd_optimizer = optim.Adam(list(rnd.parameters()), lr=args.rnd_lr)
+    ngu = NGU(envs,
+              feature_dim=args.ngu_feature_dim,
+              k = args.k_nearest_neighbors, 
+              clip_reward=args.clip_reward).to(device)
+    optimizer_ngu = optim.Adam(ngu.parameters(), lr=args.ngu_lr)
+    episodes = [ [] for _ in range(args.num_envs)]
 
     # Automatic entropy tuning
     if args.autotune:
@@ -282,6 +350,20 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
+
+        # The intrinsic reward must be computed here because of the episodic buffer
+        intrinsic_reward = torch.zeros(args.num_envs)
+        for idx in range(args.num_envs):
+            with torch.no_grad():
+                # rewards NGU 
+                intrinsic_reward[idx] = ngu.reward_episode(torch.tensor(obs[idx]).unsqueeze(0).to(device), torch.tensor(np.array(episodes[idx])).to(device)) if len(episodes[idx]) > args.k_nearest else 0.0
+        extrinsic_reward = rewards  
+        if args.keep_extrinsic_reward:
+            rewards = extrinsic_reward*args.coef_extrinsic + intrinsic_reward*args.coef_intrinsic
+        else:
+            rewards = intrinsic_reward*args.coef_intrinsic
+
+
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:

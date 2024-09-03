@@ -67,18 +67,23 @@ class Args:
 
 
 
-    # RND specific arguments
-    rnd_lr: float = 1e-4
-    """the learning rate of the RND"""
-    rnd_epochs: int = 1
-    """the number of epochs for the RND"""
-    rnd_frequency: int = 800
-    """the frequency of training RND"""
+    # icm specific arguments
+    icm_lr: float = 1e-4
+    """the learning rate of the icm"""
+    icm_epochs: int = 4
+    """the number of epochs for the icm"""
+    icm_frequency: int = 800
+    """the frequency of training icm"""
+    beta: float = 0.2
+    """the beta of the icm"""
+    clip_intrinsic_reward: float = 10.0
+    """the clipping of the intrinsic reward"""
+    feature_dim: int = 64
 
 
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    coef_intrinsic : float = 1000.0
+    coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
@@ -160,34 +165,54 @@ class Actor(nn.Module):
         return action, log_prob, mean
     
 
-class RND(nn.Module):   
-    def __init__(self, env):
-        super(RND, self).__init__()
-        # trained network
-        self.f1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
-        self.f2 = nn.Linear(256, 256)
-        self.f3 = nn.Linear(256, 1)
-        # target network
-        self.f1_t = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
-        self.f2_t = nn.Linear(256, 256)
-        self.f3_t = nn.Linear(256, 1)
+class ICM(nn.Module):   
+    def __init__(self, envs, feature_dim = 64, beta = 0.2, device = 'cpu'):
+        super(ICM, self).__init__()
+        state_dim = np.prod(envs.single_observation_space.shape)
+        action_dim = np.prod(envs.single_action_space.shape)
+        # feature network
+        self.f1 = nn.Linear(state_dim, 256, device=device)
+        self.f2 = nn.Linear(256, 64, device=device)
+        self.f3 = nn.Linear(64, feature_dim, device=device)
+        # inverse model
+        self.i1 = nn.Linear(2*feature_dim, 64, device=device)
+        self.i2 = nn.Linear(64, action_dim, device=device)
+        # forward model
+        self.fo1 = nn.Linear(feature_dim + action_dim, 64, device=device)
+        self.fo2 = nn.Linear(64, feature_dim, device=device)
+        # beta
+        self.beta = beta
+        self.device = device
 
-    def forward(self, x):
+    def feature(self, x):
         x = F.relu(self.f1(x))
         x = F.relu(self.f2(x))
         x = self.f3(x)
         return x
+    def inverse(self, f1, f2):
+        x = torch.cat([f1, f2], dim = 1)
+        x = F.relu(self.i1(x))
+        x = self.i2(x)
+        return x
+    def forward_t(self, f1, a):
+        x = torch.cat([f1, a], dim = 1)
+        x = F.relu(self.fo1(x))
+        x = self.fo2(x)
+        return x
     
-    def forward_t(self, x):
-        with torch.no_grad():
-            x = F.relu(self.f1_t(x))
-            x = F.relu(self.f2_t(x))
-            x = self.f3_t(x)
-            return x
+    def loss(self, obs, next_obs, action, reduce = True):
+        # feature
+        f = self.feature(obs)
+        f_next = self.feature(next_obs)
+        # inverse
+        a_pred = self.inverse(f, f_next)
+        # forward
+        f_next_pred = self.forward_t(f, action)
+        # loss
+        loss_inverse = F.mse_loss(a_pred, action, reduction = 'none').sum(1) if not reduce else F.mse_loss(a_pred, action)
+        loss_forward = F.mse_loss(f_next_pred, f_next, reduction = 'none').sum(1) if not reduce else F.mse_loss(f_next_pred, f_next)
+        return self.beta * loss_forward + (1 - self.beta) * loss_inverse
     
-    def loss(self, x, reduce = True):
-        return F.mse_loss(self.forward(x), self.forward_t(x)) if reduce else F.mse_loss(self.forward(x), self.forward_t(x), reduction = 'none')
-
 
 if __name__ == "__main__":
     import stable_baselines3 as sb3
@@ -244,9 +269,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     qf2_target.load_state_dict(qf2.state_dict())
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
-
-    rnd = RND(envs).to(device)
-    rnd_optimizer = optim.Adam(list(rnd.parameters()), lr=args.rnd_lr)
+    icm = ICM(envs,
+              feature_dim=64,
+              beta=args.beta,
+              device=device).to(device)
+    icm_optimizer = optim.Adam(icm.parameters(), lr=args.icm_lr)
 
     # Automatic entropy tuning
     if args.autotune:
@@ -304,19 +331,19 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
 
-            if global_step % args.rnd_frequency == 0:
-                mean_rnd_loss = 0.0
-                for _ in range(args.rnd_epochs):
+            if global_step % args.icm_frequency == 0:
+                mean_icm_loss = 0.0
+                for _ in range(args.icm_epochs):
                     data = rb.sample(args.batch_size)
                     
-                    rnd_loss = rnd.loss(data.observations).mean()
-                    rnd_optimizer.zero_grad()
-                    rnd_loss.backward()
-                    rnd_optimizer.step()
-                    mean_rnd_loss += rnd_loss.item()
+                    icm_loss = icm.loss(data.observations, data.next_observations, data.actions, reduce = True)
+                    icm_optimizer.zero_grad()
+                    icm_loss.backward()
+                    icm_optimizer.step()
+                    mean_icm_loss += icm_loss.item()
 
-                mean_rnd_loss /= args.rnd_epochs
-                writer.add_scalar("losses/rnd_loss", mean_rnd_loss, global_step)
+                mean_icm_loss /= args.icm_epochs
+                writer.add_scalar("losses/icm_loss", mean_icm_loss, global_step)
                 
 
 
@@ -326,7 +353,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                 qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                intrinsic_reward = rnd.loss(data.observations, reduce = False)
+                intrinsic_reward = icm.loss(data.observations, data.next_observations, data.actions, reduce = False)
                 extrinsic_reward = data.rewards.flatten()
                 if args.keep_extrinsic_reward:
                     rewards = extrinsic_reward*args.coef_extrinsic + intrinsic_reward*args.coef_intrinsic

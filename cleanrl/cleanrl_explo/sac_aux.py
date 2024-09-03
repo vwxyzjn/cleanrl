@@ -67,18 +67,24 @@ class Args:
 
 
 
-    # RND specific arguments
-    rnd_lr: float = 1e-4
-    """the learning rate of the RND"""
-    rnd_epochs: int = 1
-    """the number of epochs for the RND"""
-    rnd_frequency: int = 800
-    """the frequency of training RND"""
+    # VAE specific arguments
+    vae_lr: float = 1e-4
+    """the learning rate of the VAE"""
+    vae_epochs: int = 1
+    """the number of epochs for the VAE"""
+    vae_frequency: int = 800
+    """the frequency of training VAE"""
+    vae_latent_dim: int = 32
+    """the latent dimension of the VAE"""
+    clip_vae: float = 120.0
+    """the clipping of the VAE"""
+    vae_batch_size: int = 128
+    """the batch size of the VAE"""
 
 
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    coef_intrinsic : float = 1000.0
+    coef_intrinsic : float = 100.0
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
@@ -159,35 +165,51 @@ class Actor(nn.Module):
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
         return action, log_prob, mean
     
+class VAE(nn.Module):
+    def __init__(self, envs, latent_dim, clip_vae=120.0, scale_l = 1000.0):
+        super().__init__()
+        input_dim = np.prod(envs.single_observation_space.shape)
+        self.clip_vae = clip_vae
+        self.scale_l = scale_l
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, 256),
+            nn.ReLU(),
+        )
+        self.mean_layer = nn.Linear(256, latent_dim)
+        self.logstd_layer = nn.Linear(256, latent_dim)
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Linear(256, input_dim),
+        )   
+    def encode(self, x):
+        x = self.encoder(x)
+        mean = self.mean_layer(x)
+        logstd = self.logstd_layer(x)
+        return mean, logstd
 
-class RND(nn.Module):   
-    def __init__(self, env):
-        super(RND, self).__init__()
-        # trained network
-        self.f1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
-        self.f2 = nn.Linear(256, 256)
-        self.f3 = nn.Linear(256, 1)
-        # target network
-        self.f1_t = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
-        self.f2_t = nn.Linear(256, 256)
-        self.f3_t = nn.Linear(256, 1)
-
+    def decode(self, z):
+        return self.decoder(z)
+    
     def forward(self, x):
-        x = F.relu(self.f1(x))
-        x = F.relu(self.f2(x))
-        x = self.f3(x)
-        return x
+        mean, logstd = self.encode(x/self.scale_l)
+        z = mean + torch.randn_like(mean) * torch.exp(logstd)
+        x_recon = torch.clamp(self.decode(z), -self.clip_vae, self.clip_vae)
+        return x_recon, mean, logstd
     
-    def forward_t(self, x):
-        with torch.no_grad():
-            x = F.relu(self.f1_t(x))
-            x = F.relu(self.f2_t(x))
-            x = self.f3_t(x)
-            return x
-    
-    def loss(self, x, reduce = True):
-        return F.mse_loss(self.forward(x), self.forward_t(x)) if reduce else F.mse_loss(self.forward(x), self.forward_t(x), reduction = 'none')
-
+    def loss(self, x, reduce=True):
+        x_recon, mean, logstd = self(x)
+        x = x/self.scale_l
+        recon_loss = F.mse_loss(x_recon, x, reduction='none').sum(1)
+        kl_loss = -0.5 * (1 + 2 * logstd - mean ** 2 - torch.exp(2 * logstd)).sum(1)
+        loss = recon_loss + kl_loss
+        if reduce:
+            return loss.mean()
+        return loss
 
 if __name__ == "__main__":
     import stable_baselines3 as sb3
@@ -245,8 +267,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
 
-    rnd = RND(envs).to(device)
-    rnd_optimizer = optim.Adam(list(rnd.parameters()), lr=args.rnd_lr)
+    vae = VAE(envs, 
+              latent_dim=args.vae_latent_dim, 
+              clip_vae=args.clip_vae).to(device)
+    vae_optimizer = optim.Adam(vae.parameters(), lr=args.vae_lr, eps=1e-5)
 
     # Automatic entropy tuning
     if args.autotune:
@@ -304,19 +328,19 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
 
-            if global_step % args.rnd_frequency == 0:
-                mean_rnd_loss = 0.0
-                for _ in range(args.rnd_epochs):
+            if global_step % args.vae_frequency == 0:
+                mean_vae_loss = 0.0
+                for _ in range(args.vae_epochs):
                     data = rb.sample(args.batch_size)
                     
-                    rnd_loss = rnd.loss(data.observations).mean()
-                    rnd_optimizer.zero_grad()
-                    rnd_loss.backward()
-                    rnd_optimizer.step()
-                    mean_rnd_loss += rnd_loss.item()
+                    vae_loss = vae.loss(data.observations, reduce=True)
+                    vae_optimizer.zero_grad()
+                    vae_loss.backward()
+                    vae_optimizer.step()
+                    mean_vae_loss += vae_loss.item()
 
-                mean_rnd_loss /= args.rnd_epochs
-                writer.add_scalar("losses/rnd_loss", mean_rnd_loss, global_step)
+                mean_vae_loss /= args.vae_epochs
+                writer.add_scalar("losses/vae_loss", mean_vae_loss, global_step)
                 
 
 
@@ -326,7 +350,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                 qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                intrinsic_reward = rnd.loss(data.observations, reduce = False)
+                intrinsic_reward = vae.loss(data.observations, reduce = False)
                 extrinsic_reward = data.rewards.flatten()
                 if args.keep_extrinsic_reward:
                     rewards = extrinsic_reward*args.coef_extrinsic + intrinsic_reward*args.coef_intrinsic

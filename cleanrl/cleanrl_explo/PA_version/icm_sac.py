@@ -12,15 +12,16 @@ import torch.nn.functional as F
 import torch.optim as optim
 import tyro
 from stable_baselines3.common.buffers import ReplayBuffer
-from torch.utils.tensorboard import SummaryWriter
-from lil_maze import LilMaze
+from envs.wenv import Wenv
+from envs.config_env import config
+from src.utils.wandb_utils import send_matrix
 
 
 @dataclass
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 10
+    seed: int = 1
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
@@ -28,21 +29,37 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "cleanRL"
+    wandb_project_name: str = "contrastive_test_2"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
-    capture_video: bool = True
+    capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
+    use_hp_file : bool = False
+    """if toggled, will load the hyperparameters from file"""
+    hp_file: str = "hyper_parameters_sac.json"
+    """the path to the hyperparameters json file"""
+    sweep_mode: bool = False
+    """if toggled, will log the sweep id to wandb"""
+    
+    # GIF
+    make_gif: bool = True
+    """if toggled, will make gif """
+    plotly: bool = False
+    """if toggled, will use plotly instead of matplotlib"""
+    fig_frequency: int = 1000
+    """the frequency of logging the figures"""
+    metric_freq: int = 1000
+    """the frequency of ploting metric"""
+
+
 
     # Algorithm specific arguments
-    env_id: str = "Hopper-v4"
+    env_id: str = "Maze-Ur-v0"
     """the environment id of the task"""
     total_timesteps: int = 1000000
     """total timesteps of the experiments"""
-    num_envs: int = 4
-    """the number of parallel game environments to run"""
-    buffer_size: int = int(1e6)
+    buffer_size: int = int(1e7)
     """the replay memory buffer size"""
     gamma: float = 0.99
     """the discount factor gamma"""
@@ -60,41 +77,41 @@ class Args:
     """the frequency of training policy (delayed)"""
     target_network_frequency: int = 1  # Denis Yarats' implementation delays this by 2.
     """the frequency of updates for the target nerworks"""
-    alpha: float = 0.2
+    alpha: float = 0.1
     """Entropy regularization coefficient."""
-    autotune: bool = True
+    autotune: bool = False
     """automatic tuning of the entropy coefficient"""
+    num_envs: int = 4
+    """ num of parallel envs """
 
-
-
-    # RND specific arguments
-    rnd_lr: float = 1e-4
-    """the learning rate of the RND"""
-    rnd_epochs: int = 1
-    """the number of epochs for the RND"""
-    rnd_frequency: int = 800
-    """the frequency of training RND"""
-
+    # ICM SPECIFIC
+    nb_epoch_before_training: int = 8
+    """ nb epoch between each training """
+    icm_lr: float = 5e-4
+    """the learning rate of the icm"""
+    icm_epochs: int = 4
+    """the number of epochs for the icm"""
+    beta: float = 0.2
+    """the beta of the icm"""
+    clip_intrinsic_reward: float = 10.0
+    """the clipping of the intrinsic reward"""
 
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    coef_intrinsic : float = 1000.0
+    coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
     coef_extrinsic : float = 1.0
     """the coefficient of the extrinsic reward"""
 
-
-def make_env(env_id, seed, idx, capture_video, run_name):
+def make_env(env_id, idx, capture_video, run_name):
     def thunk():
-        if capture_video and idx == 0:
-            #env = gym.make(env_id, render_mode="rgb_array")
-            env = LilMaze(render_mode="rgb_array")
-            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-
-        else:
-            env = LilMaze()
+        env = Wenv(env_id=env_id, xp_id=run_name, **config[env_id])
+        env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
         env = gym.wrappers.RecordEpisodeStatistics(env)
-        env.action_space.seed(seed)
+        if capture_video:
+            if idx == 0:
+                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+        env = gym.wrappers.ClipAction(env)
         return env
 
     return thunk
@@ -158,35 +175,52 @@ class Actor(nn.Module):
         log_prob = log_prob.sum(1, keepdim=True)
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
         return action, log_prob, mean
-    
 
-class RND(nn.Module):   
-    def __init__(self, env):
-        super(RND, self).__init__()
-        # trained network
-        self.f1 = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
-        self.f2 = nn.Linear(256, 256)
-        self.f3 = nn.Linear(256, 1)
-        # target network
-        self.f1_t = nn.Linear(np.array(env.single_observation_space.shape).prod(), 256)
-        self.f2_t = nn.Linear(256, 256)
-        self.f3_t = nn.Linear(256, 1)
+class ICM(nn.Module):   
+    def __init__(self, state_dim, action_dim, feature_dim = 64, beta = 0.2, device = 'cpu'):
+        super(ICM, self).__init__()
+        # feature network
+        self.f1 = nn.Linear(state_dim, 256, device=device)
+        self.f2 = nn.Linear(256, 64, device=device)
+        self.f3 = nn.Linear(64, feature_dim, device=device)
+        # inverse model
+        self.i1 = nn.Linear(2*feature_dim, 64, device=device)
+        self.i2 = nn.Linear(64, action_dim, device=device)
+        # forward model
+        self.fo1 = nn.Linear(feature_dim + action_dim, 64, device=device)
+        self.fo2 = nn.Linear(64, feature_dim, device=device)
+        # beta
+        self.beta = beta
+        self.device = device
 
-    def forward(self, x):
+    def feature(self, x):
         x = F.relu(self.f1(x))
         x = F.relu(self.f2(x))
         x = self.f3(x)
         return x
+    def inverse(self, f1, f2):
+        x = torch.cat([f1, f2], dim = 1)
+        x = F.relu(self.i1(x))
+        x = self.i2(x)
+        return x
+    def forward_t(self, f1, a):
+        x = torch.cat([f1, a], dim = 1)
+        x = F.relu(self.fo1(x))
+        x = self.fo2(x)
+        return x
     
-    def forward_t(self, x):
-        with torch.no_grad():
-            x = F.relu(self.f1_t(x))
-            x = F.relu(self.f2_t(x))
-            x = self.f3_t(x)
-            return x
-    
-    def loss(self, x, reduce = True):
-        return F.mse_loss(self.forward(x), self.forward_t(x)) if reduce else F.mse_loss(self.forward(x), self.forward_t(x), reduction = 'none')
+    def loss(self, obs, next_obs, action, dones, reduce = True):
+        # feature
+        f = self.feature(obs)
+        f_next = self.feature(next_obs)
+        # inverse
+        a_pred = self.inverse(f, f_next)
+        # forward
+        f_next_pred = self.forward_t(f, action)
+        # loss
+        loss_inverse = F.mse_loss(a_pred, action, reduction = 'none').sum(1) if not reduce else F.mse_loss(a_pred, action)
+        loss_forward = F.mse_loss(f_next_pred, f_next, reduction = 'none').sum(1) if not reduce else F.mse_loss(f_next_pred, f_next)
+        return self.beta * loss_forward + (1 - self.beta) * loss_inverse
 
 
 if __name__ == "__main__":
@@ -200,24 +234,49 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         )
 
     args = tyro.cli(Args)
+    if args.use_hp_file:
+        import json
+        with open(args.hp_file, "r") as f:
+            type_id = config[args.env_id]['type_id']
+            hp = json.load(f)['hyperparameters'][type_id][args.exp_name]
+            for k, v in hp.items():
+                setattr(args, k, v)
+
+
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
+        if args.sweep_mode:
+            wandb.init()
+            # set config from sweep
+            wandb.config.update(args)
+        else :
+            wandb.init(
+                project=args.wandb_project_name,
+                entity=args.wandb_entity,
+                sync_tensorboard=False,
+                config=vars(args),
+                name=run_name,
+                monitor_gym=True,
+                save_code=True,
+            )
 
-        wandb.init(
-            project=args.wandb_project_name,
-            entity=args.wandb_entity,
-            sync_tensorboard=True,
-            config=vars(args),
-            name=run_name,
-            monitor_gym=True,
-            save_code=True,
-        )
-    writer = SummaryWriter(f"runs/{run_name}")
-    writer.add_text(
-        "hyperparameters",
-        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
-    )
+    # PLOTTING
+    if args.make_gif:
+        env_plot = Wenv(env_id=args.env_id, 
+                        render_bool_matplot=True, 
+                        xp_id=run_name, 
+                        **config[args.env_id])
+    if args.plotly:
+        env_plot = Wenv(env_id=args.env_id, 
+                        render_bool_plotly=True, 
+                        xp_id=run_name, 
+                        **config[args.env_id])
+    # coverage check env 
+    env_check = Wenv(env_id=args.env_id,
+                    render_bool_matplot=False,
+                    xp_id=run_name,
+                    **config[args.env_id])
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -228,11 +287,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
+    # env setup
     envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, args.seed, i, args.capture_video, run_name) for i in range(args.num_envs)]
+        [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)]
     )
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
-
+    
+    max_step = config[args.env_id]['kwargs']['max_episode_steps']
     max_action = float(envs.single_action_space.high[0])
 
     actor = Actor(envs).to(device)
@@ -244,9 +305,12 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     qf2_target.load_state_dict(qf2.state_dict())
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
-
-    rnd = RND(envs).to(device)
-    rnd_optimizer = optim.Adam(list(rnd.parameters()), lr=args.rnd_lr)
+    icm = ICM(state_dim=np.array(envs.single_observation_space.shape).prod(),
+              action_dim=np.array(envs.single_action_space.shape).prod(),
+              feature_dim=64,
+              beta=args.beta,
+              device=device).to(device)
+    optimizer_icm = optim.Adam(icm.parameters(), lr=args.icm_lr, eps=1e-5)
 
     # Automatic entropy tuning
     if args.autotune:
@@ -258,21 +322,21 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         alpha = args.alpha
 
     envs.single_observation_space.dtype = np.float32
-
-    # The replay buffer parameters have been updated to handle multiple envs
     rb = ReplayBuffer(
         args.buffer_size,
         envs.single_observation_space,
         envs.single_action_space,
         device,
         handle_timeout_termination=False,
-        n_envs=args.num_envs
+        n_envs= args.num_envs
     )
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
+        # coverage assessment 
+        env_check.update_coverage(obs)
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
             actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
@@ -286,10 +350,13 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
             for info in infos["final_info"]:
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                break
+                if info is not None:
+                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}, episodic_length={info['episode']['l']}")
+                    wandb.log({
+                    "charts/episodic_return" : info["episode"]["r"],
+                    "charts/episodic_length" : info["episode"]["l"],
+                    }, step = global_step) if args.track else None
+                    
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
@@ -301,43 +368,39 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
 
+        # ICM TRAINING
+        if global_step % args.nb_epoch_before_training*max_step == 0 and global_step > args.learning_starts:
+            mean_icm_loss = 0.0
+            for _ in range(args.icm_epochs):
+                # for _ in range(int(args.nb_epoch_before_training*max_step/args.vae_batch_size)):
+                data = rb.sample(args.batch_size)
+                icm_loss = icm.loss(data.observations, data.next_observations, data.actions, data.dones, reduce = True)
+                optimizer_icm.zero_grad()
+                icm_loss.mean().backward()
+                optimizer_icm.step()
+                mean_icm_loss += icm_loss.mean().item()
+            wandb.log({
+                "losses/icm_loss" : mean_icm_loss / args.icm_epochs,
+            }, step = global_step) if args.track else None
+
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
-
-            if global_step % args.rnd_frequency == 0:
-                mean_rnd_loss = 0.0
-                for _ in range(args.rnd_epochs):
-                    data = rb.sample(args.batch_size)
-                    
-                    rnd_loss = rnd.loss(data.observations).mean()
-                    rnd_optimizer.zero_grad()
-                    rnd_loss.backward()
-                    rnd_optimizer.step()
-                    mean_rnd_loss += rnd_loss.item()
-
-                mean_rnd_loss /= args.rnd_epochs
-                writer.add_scalar("losses/rnd_loss", mean_rnd_loss, global_step)
-                
-
-
             data = rb.sample(args.batch_size)
             with torch.no_grad():
                 next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
                 qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                 qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                intrinsic_reward = rnd.loss(data.observations, reduce = False)
+                intrinsic_reward = icm.loss(data.observations, data.next_observations, data.actions, data.dones, reduce = False)
                 extrinsic_reward = data.rewards.flatten()
                 if args.keep_extrinsic_reward:
                     rewards = extrinsic_reward*args.coef_extrinsic + intrinsic_reward*args.coef_intrinsic
                 else:
-                    rewards = intrinsic_reward.flatten() *args.coef_intrinsic
+                    rewards = intrinsic_reward*args.coef_intrinsic
                 next_q_value = rewards + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
 
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
             qf2_a_values = qf2(data.observations, data.actions).view(-1)
-
-
             qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
             qf2_loss = F.mse_loss(qf2_a_values, next_q_value)
             qf_loss = qf1_loss + qf2_loss
@@ -378,21 +441,36 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
                     target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
+
             if global_step % 100 == 0:
-                writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
-                writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
-                writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
-                writer.add_scalar("losses/qf2_loss", qf2_loss.item(), global_step)
-                writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
-                writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
-                writer.add_scalar("losses/alpha", alpha, global_step)
-                print("SPS:", int(global_step / (time.time() - start_time)))
-                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
-                if args.autotune:
-                    writer.add_scalar("losses/alpha_loss", alpha_loss.item(), global_step)
-                writer.add_scalar("specific/intrinsic_reward_mean", intrinsic_reward.mean().item(), global_step)
-                writer.add_scalar("specific/intrinsic_reward_max", intrinsic_reward.max().item(), global_step)
-                writer.add_scalar("specific/intrinsic_reward_min", intrinsic_reward.min().item(), global_step)
-                
+                wandb.log({
+                "losses/qf1_values" : qf1_a_values.mean().item(), 
+                "losses/qf2_values" : qf2_a_values.mean().item(), 
+                "losses/qf1_loss" : qf1_loss.item(), 
+                "losses/qf2_loss" : qf2_loss.item(), 
+                "losses/qf_loss" : qf_loss.item() / 2.0, 
+                "losses/actor_loss" : actor_loss.item(), 
+                "losses/alpha" : alpha, 
+                "charts/SPS" : int(global_step / (time.time() - start_time)), 
+                "losses/alpha_loss" : alpha_loss.item() if args.autotune else 0.0,
+                "specific/intrinsic_reward_mean" : intrinsic_reward.mean().item(),
+                "specific/intrinsic_reward_max" : intrinsic_reward.max().item(),
+                "specific/intrinsic_reward_min" : intrinsic_reward.min().item(),
+                }, step = global_step) if args.track else None
+
+        if global_step % args.metric_freq == 0 : 
+            wandb.log({
+                "charts/coverage" : env_check.get_coverage(),
+                "charts/shannon_entropy": env_check.shannon_entropy(),
+                }, step = global_step) if args.track else None
+            
+        if global_step % args.fig_frequency == 0  and global_step > args.learning_starts:
+            if args.make_gif : 
+                # print('size rho', size_rho)
+                # print('max x rho', rb.observations[max(rb.pos if not rb.full else rb.buffer_size-size_rho, 0):rb.pos if not rb.full else rb.buffer_size][0][:,0].max())
+                image = env_plot.gif(obs_un = rb.observations[np.random.randint(0, rb.pos if not rb.full else rb.buffer_size, 100_000)],
+                                        classifier = None,
+                                        device= device)
+                send_matrix(wandb, image, "gif", global_step)
+        
     envs.close()
-    writer.close()

@@ -72,15 +72,14 @@ class LilMaze(gym.Env):
         new_position = self.agent_position + action * self.step_size
 
         # only made for 1 wall
-        cond1 = new_position[0] >= 0.5 and self.agent_position[0] < 0.5
-        cond2 = new_position[0] < 0.5 and self.agent_position[0] >= 0.5
+        cond1 = new_position[1] >= 0.5 and self.agent_position[1] < 0.5
+        cond2 = new_position[1] < 0.5 and self.agent_position[1] >= 0.5
 
-        if (cond1 and cond2) and self.agent_position[0] + (new_position[0] - self.agent_position[0])/(new_position[1] - self.agent_position[1]) * (0.5 - self.agent_position[1]) < 0.5 :
-            if (0.5 - self.agent_position[1]) > 0:
-
-                new_position = [self.agent_position[0] + (new_position[0] - self.agent_position[0])/(new_position[1] - self.agent_position[1]) * (0.5 - self.agent_position[1]), 0.5 - 0.001]
-            else:
-                new_position = [self.agent_position[0] + (new_position[0] - self.agent_position[0])/(new_position[1] - self.agent_position[1]) * (0.5 - self.agent_position[1]), 0.5 + 0.001]
+        if cond1 and self.agent_position[0] + (new_position[0] - self.agent_position[0])/(new_position[1] - self.agent_position[1]) * (0.5 - self.agent_position[1]) < 0.5 : 
+            new_position = [self.agent_position[0] + (new_position[0] - self.agent_position[0])/(new_position[1] - self.agent_position[1]) * (0.5 - self.agent_position[1]), 0.5 - 0.001]
+        if cond2 and self.agent_position[0] + (new_position[0] - self.agent_position[0])/(new_position[1] - self.agent_position[1]) * (0.5 - self.agent_position[1]) < 0.5 : 
+            new_position = [self.agent_position[0] + (new_position[0] - self.agent_position[0])/(new_position[1] - self.agent_position[1]) * (0.5 - self.agent_position[1]), 0.5 + 0.001]
+        
         
         self.agent_position = np.clip(np.array(new_position), 0,1)
 
@@ -95,7 +94,7 @@ class LilMaze(gym.Env):
 
         infos = self._get_info()
 
-        return self.agent_position, reward, None, done, infos
+        return self.agent_position, reward, done, None, infos
 
     def render(self):
         if self.render_mode == 'rgb_array':
