@@ -10,6 +10,23 @@ import numpy as np
 @dataclass
 class Sweep_Args():
 
+    
+    ############################### IMPORTANT ################################
+    """
+    This code produce a sweep for training a SAC agent with different hyperparameters.
+    It will print an id. This id can be used to run the same sweep in parellel on different machines.
+    Thus, you can run the same sweep on different machines and the results will be aggregated in the same wandb project,
+    therefore speeding up the hyperparameter search.
+
+    To do so you must run the following line in a python script of the other machine:
+
+    wandb.agent(args.sweep_id, function=lambda: train(args), project=args.project, count=args.count)
+
+    with args being the Sweep_Args object you created here and train the function from this script.
+    """
+
+    ###########################################################################
+
     available_methods = ["aux", "icm", "ngu", "rnd"]
     "All the methods available for training"
     method = "aux"
