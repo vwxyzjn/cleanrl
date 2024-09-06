@@ -13,16 +13,13 @@ class Sweep_Args():
     
     ############################### IMPORTANT ################################
     """
-    This code produce a sweep for training a SAC agent with different hyperparameters.
+    This code produces a sweep for training a SAC-exploration agent with different hyperparameters.
     It will print an id. This id can be used to run the same sweep in parellel on different machines.
     Thus, you can run the same sweep on different machines and the results will be aggregated in the same wandb project,
     therefore speeding up the hyperparameter search.
 
-    To do so you must run the following line in a python script of the other machine:
-
-    wandb.agent(args.sweep_id, function=lambda: train(args), project=args.project, count=args.count)
-
-    with args being the Sweep_Args object you created here and train the function from this script.
+    To do so you must run same script than this one on the other machines, but with the same sweep id. 
+    So you must copy the sweep id from the output of this script and paste it in the other scripts.
     """
 
     ###########################################################################
@@ -35,7 +32,7 @@ class Sweep_Args():
     "The file to run for training" 
     project: str = f"{method} sweep"
     "The project name to use in wandb"
-    nb_of_attempts: int = 5
+    nb_of_attempts: int = 3
     "Every hyperparameter combination will be tried this many times, the average will be used"
     nb_of_parallel_jobs: int = 3
     "The number of parallel agents to run (remember that several environments will already be run in parallel for every single agent)"
@@ -74,10 +71,13 @@ class Sweep_Args():
                 "min": 0.1,
             },
             "total_timesteps": {
-                'value': 7000,   
+                'value': 6000,   
             },
             'capture_video': {
                 'value': False
+            },
+            'keep_extrinsic_reward': {
+                'value': True
             },
         },
     }

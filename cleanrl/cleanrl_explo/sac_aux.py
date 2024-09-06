@@ -28,7 +28,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = False
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "aux hyperparameters optimization" 
+    wandb_project_name: str = "SAC - exploration with auxiliary VAE" 
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
@@ -82,7 +82,7 @@ class Args:
     """the batch size of the VAE"""
 
 
-    keep_extrinsic_reward: bool = False
+    keep_extrinsic_reward: bool = True
     """if toggled, the extrinsic reward will be kept"""
     coef_intrinsic : float = 100.0
     """the coefficient of the intrinsic reward"""
@@ -289,7 +289,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     vae = VAE(envs, 
               latent_dim=args.vae_latent_dim, 
               clip_vae=args.clip_vae).to(device)
-    vae_optimizer = optim.Adam(vae.parameters(), lr=args.vae_lr, eps=1e-5)
+    vae_optimizer = optim.Adam(vae.parameters(), lr=args.vae_lr)
 
     # Automatic entropy tuning
     if args.autotune:

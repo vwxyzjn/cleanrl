@@ -20,19 +20,19 @@ from lil_maze import LilMaze
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 10
+    seed: int = 1
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
-    track: bool = True
+    track: bool = False
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "cleanRL"
+    wandb_project_name: str = "SAC - exploration with ICM"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
-    capture_video: bool = True
+    capture_video: bool = False
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
@@ -81,7 +81,7 @@ class Args:
     feature_dim: int = 64
 
 
-    keep_extrinsic_reward: bool = False
+    keep_extrinsic_reward: bool = True
     """if toggled, the extrinsic reward will be kept"""
     coef_intrinsic : float = 1.0
     """the coefficient of the intrinsic reward"""
@@ -92,12 +92,10 @@ class Args:
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         if capture_video and idx == 0:
-            #env = gym.make(env_id, render_mode="rgb_array")
-            env = LilMaze(render_mode="rgb_array")
+            env = gym.make(env_id, render_mode="rgb_array")
             env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-
         else:
-            env = LilMaze()
+            env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env.action_space.seed(seed)
         return env
@@ -214,7 +212,8 @@ class ICM(nn.Module):
         return self.beta * loss_forward + (1 - self.beta) * loss_inverse
     
 
-if __name__ == "__main__":
+def main(seed=None, sweep=False):
+
     import stable_baselines3 as sb3
 
     if sb3.__version__ < "2.0":
@@ -225,24 +224,44 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         )
 
     args = tyro.cli(Args)
+    if seed is not None:
+        args.seed = seed
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    if args.track:
-        import wandb
 
-        wandb.init(
-            project=args.wandb_project_name,
-            entity=args.wandb_entity,
-            sync_tensorboard=True,
-            config=vars(args),
-            name=run_name,
-            monitor_gym=True,
-            save_code=True,
+
+    # For hyperparameter optimization, see trainer.py file
+    if sweep:
+        episodic_returns_list = []
+
+        import wandb
+        wandb.init()
+
+        config = wandb.config
+
+        for key, value in vars(args).items():
+            if key in config:
+                setattr(args, key, config[key])
+
+
+    else :
+        
+        if args.track:
+            import wandb
+
+            wandb.init(
+                project=args.wandb_project_name,
+                entity=args.wandb_entity,
+                sync_tensorboard=True,
+                config=vars(args),
+                name=run_name,
+                monitor_gym=True,
+                save_code=True,
+            )
+        writer = SummaryWriter(f"runs/{run_name}")
+        writer.add_text(
+            "hyperparameters",
+            "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
         )
-    writer = SummaryWriter(f"runs/{run_name}")
-    writer.add_text(
-        "hyperparameters",
-        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
-    )
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -313,10 +332,14 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
             for info in infos["final_info"]:
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                break
+                if info is not None:
+                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                    if sweep:
+                        episodic_returns_list.append(info["episode"]["r"])
+                    else:
+                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                    break
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
@@ -343,7 +366,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     mean_icm_loss += icm_loss.item()
 
                 mean_icm_loss /= args.icm_epochs
-                writer.add_scalar("losses/icm_loss", mean_icm_loss, global_step)
+                if not sweep:
+                    writer.add_scalar("losses/vae_loss", mean_vae_loss, global_step)
                 
 
 
@@ -405,7 +429,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
                     target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
-            if global_step % 100 == 0:
+            if global_step % 100 == 0 and not sweep:
                 writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
                 writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
                 writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
@@ -422,4 +446,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 writer.add_scalar("specific/intrinsic_reward_min", intrinsic_reward.min().item(), global_step)
                 
     envs.close()
+    if sweep:
+        return episodic_returns_list
     writer.close()
+
+if __name__ == "__main__":
+    main()
