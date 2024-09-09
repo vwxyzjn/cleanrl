@@ -26,18 +26,25 @@ class Sweep_Args():
 
     available_methods = ["aux", "icm", "ngu", "rnd"]
     "All the methods available for training"
+
+
     method = "aux"
     "The method to use for training"
+    environment = "Hopper-v4"
+    "The environment to use for training"
+    nb_of_attempts: int = 5
+    "Every hyperparameter combination will be tried this many times, the average will be used"
+    nb_of_parallel_jobs: int = 10
+    "The number of parallel agents to run (remember that several environments will already be run in parallel for every single agent)"
+    count: int = 3
+    "The number of hyperparameter combinations to try per agent"
+
+
     fichier = f"sac_{method}"
     "The file to run for training" 
-    project: str = f"{method} sweep"
+    project: str = f"{method} sweep {environment}"
     "The project name to use in wandb"
-    nb_of_attempts: int = 3
-    "Every hyperparameter combination will be tried this many times, the average will be used"
-    nb_of_parallel_jobs: int = 3
-    "The number of parallel agents to run (remember that several environments will already be run in parallel for every single agent)"
-    count: int = 8
-    "The number of hyperparameter combinations to try per agent"
+    
 
 
     """
@@ -71,13 +78,16 @@ class Sweep_Args():
                 "min": 0.1,
             },
             "total_timesteps": {
-                'value': 6000,   
+                'value': 500000,   
             },
             'capture_video': {
                 'value': False
             },
             'keep_extrinsic_reward': {
                 'value': True
+            },
+            'env_id': {
+                'value': f"{environment}"
             },
         },
     }
@@ -93,19 +103,47 @@ def train(args: Sweep_Args):
     try:
         module = importlib.import_module(args.fichier)
         values = []
+        steps = []
         for i in range(args.nb_of_attempts):
-            values.append(module.main(seed=i, sweep=True))
+            v, t = module.main(seed=i, sweep=True)
+
+            values += v
+            steps += t
+
 
 
         values = np.array(values)
-        mean = np.mean(values, axis=0)
-        std = np.std(values, axis=0)
-        for step, (mean_, std_) in enumerate(zip(mean, std)):
+        steps = np.array(steps).reshape(-1, 1)
+
+
+        # We use the quantile regression to get the median and the 95% confidence interval
+        
+
+        from sklearn.ensemble import GradientBoostingRegressor
+
+        gbm_median = GradientBoostingRegressor(loss="quantile", alpha=0.5, n_estimators=100)
+        gbm_median.fit(steps, values)
+
+        gbm_upper = GradientBoostingRegressor(loss="quantile", alpha=0.975, n_estimators=100)
+        gbm_upper.fit(steps, values)
+
+        gbm_lower = GradientBoostingRegressor(loss="quantile", alpha=0.025, n_estimators=100)
+        gbm_lower.fit(steps, values)
+
+
+        plot_steps = np.linspace(steps.min(), steps.max(), 200)[:, np.newaxis]
+
+        y_pred_median = gbm_median.predict(plot_steps).ravel()
+        y_pred_upper = gbm_upper.predict(plot_steps).ravel()
+        y_pred_lower = gbm_lower.predict(plot_steps).ravel()
+
+
+        for t, min, median, max in list(zip(steps, y_pred_lower, y_pred_median, y_pred_upper)):
             wandb.log({
-                "episodic_return": mean_,
-                "episodic_return_upper": mean_ + std_,
-                "episodic_return_lower": mean_ - std_
-            }, step=step)
+                "episodic_return": median,
+                "episodic_return_upper": max,
+                "episodic_return_lower": min
+            }, step=t[0])
 
         
     except ModuleNotFoundError:

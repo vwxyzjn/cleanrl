@@ -13,7 +13,6 @@ import torch.optim as optim
 import tyro
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
-from lil_maze import LilMaze
 
 
 @dataclass
@@ -229,6 +228,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     # For hyperparameter optimization, see trainer.py file
     if sweep:
         episodic_returns_list = []
+        corresponding_steps = []
 
         import wandb
         wandb.init()
@@ -333,6 +333,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                     if sweep:
                         episodic_returns_list.append(info["episode"]["r"])
+                        corresponding_steps.append(global_step)
                     else:
                         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                         writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
@@ -381,6 +382,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 else:
                     rewards = intrinsic_reward.flatten() *args.coef_intrinsic
                 next_q_value = rewards + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+                
 
             qf1_a_values = qf1(data.observations, data.actions).view(-1)
             qf2_a_values = qf2(data.observations, data.actions).view(-1)
@@ -444,7 +446,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 
     envs.close()
     if sweep:
-        return episodic_returns_list
+        return episodic_returns_list, corresponding_steps
     writer.close()
 
 if __name__ == "__main__":

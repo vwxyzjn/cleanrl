@@ -20,7 +20,7 @@ from lil_maze import LilMaze
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 10
+    seed: int = 1
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
@@ -28,7 +28,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "cleanRL"
+    wandb_project_name: str = "SAC - exploration with NGU" 
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
@@ -40,7 +40,7 @@ class Args:
     """the environment id of the task"""
     total_timesteps: int = 1000000
     """total timesteps of the experiments"""
-    num_envs: int = 4
+    num_envs: int = 2
     """the number of parallel game environments to run"""
     buffer_size: int = int(1e6)
     """the replay memory buffer size"""
@@ -67,7 +67,7 @@ class Args:
 
 
 
-    # RND specific arguments
+    # NGU specific arguments
     ngu_lr: float = 1e-4
     """the learning rate of the NGU"""
     ngu_epochs: int = 1
@@ -76,10 +76,16 @@ class Args:
     """the frequency of training NGU"""
     ngu_feature_dim: int = 64
     """the feature dimension of the NGU"""
-    k_nearest_neighbors: int = 8
+    k_nearest: int = 8
     """the number of nearest neighbors for the NGU"""
     clip_reward: float = 5.0
     """the clipping value of the reward"""
+    c: float = 0.001
+    """the constant used not to divide by zero"""
+    L: float = 5.0
+    """the maximum value for the multiplier in the intrinsic reward of NGU"""
+    epsilon_kernel: float = 1e-3
+    """the epsilon value for the kernel of the NGU"""
 
 
     keep_extrinsic_reward: bool = False
@@ -93,17 +99,57 @@ class Args:
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         if capture_video and idx == 0:
+
             #env = gym.make(env_id, render_mode="rgb_array")
             env = LilMaze(render_mode="rgb_array")
             env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-
         else:
-            env = LilMaze()
+            env = LilMaze(render_mode="rgb_array")
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env.action_space.seed(seed)
         return env
 
     return thunk
+
+class NGU_ReplayBuffer():
+    def __init__(self, buffer_size, observation_space, action_space, device, handle_timeout_termination=False, n_envs=1):
+        self.buffer_size = buffer_size
+        self.device = device
+        self.handle_timeout_termination = handle_timeout_termination
+        self.n_envs = n_envs
+
+        self.observations = np.zeros((buffer_size, n_envs) + observation_space.shape, dtype=np.float32)
+        self.next_observations = np.zeros((buffer_size, n_envs) + observation_space.shape, dtype=np.float32)
+        self.actions = np.zeros((buffer_size, n_envs) + action_space.shape, dtype=np.float32)
+        self.rewards = np.zeros((buffer_size, n_envs), dtype=np.float32)
+        self.rewards_ngu = np.zeros((buffer_size, n_envs), dtype=np.float32)
+        self.dones = np.zeros((buffer_size, n_envs), dtype=np.float32)
+        self.ptr, self.size, self.max_size = 0, 0, buffer_size
+
+    def add(self, obs, next_obs, action, reward, reward_ngu, done, info):
+        self.observations[self.ptr] = obs
+        self.next_observations[self.ptr] = next_obs
+        self.actions[self.ptr] = action
+        self.rewards[self.ptr] = reward
+        self.rewards_ngu[self.ptr] = reward_ngu
+        self.dones[self.ptr] = done
+        self.ptr = (self.ptr + 1) % self.max_size
+        self.size = min(self.size + 1, self.max_size)
+
+    def sample(self, batch_size):
+        idxs = np.random.randint(0, self.size, size=batch_size)
+        idxs_2 = np.random.randint(0, self.n_envs, size=batch_size)
+        return (
+            torch.as_tensor(self.observations[idxs,idxs_2,:], device=self.device),
+            torch.as_tensor(self.next_observations[idxs,idxs_2,:], device=self.device),
+            torch.as_tensor(self.actions[idxs,idxs_2,:], device=self.device),
+            torch.as_tensor(self.rewards[idxs,idxs_2], device=self.device),
+            torch.as_tensor(self.rewards_ngu[idxs,idxs_2], device=self.device),
+            torch.as_tensor(self.dones[idxs,idxs_2], device=self.device),
+        )
+
+    def __len__(self):
+        return self.size
 
 
 # ALGO LOGIC: initialize agent here:
@@ -165,11 +211,18 @@ class Actor(nn.Module):
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
         return action, log_prob, mean
     
-class NGU(nn.Module):   
-    def __init__(self, env, feature_dim, k = 10, c = 0.001, L=5, eps = 1e-3, clip_reward = 5.0):
-        super(NGU, self).__init__()
-        state_dim = np.prod(env.single_observation_space.shape)
-        action_dim = np.prod(env.single_action_space.shape)
+class NGU(nn.Module):
+    def __init__(self, envs, feature_dim, k_nearest, clip_reward, c, L, epsilon_kernel):
+        super().__init__()
+        state_dim = np.prod(envs.single_observation_space.shape)
+        action_dim = np.prod(envs.single_action_space.shape)
+        self.feature_dim = feature_dim
+        self.k_nearest = k_nearest
+        self.clip_reward = clip_reward
+        self.c = c
+        self.L = L
+        self.epsilon_kernel = epsilon_kernel
+
         # RND
         # trained network
         self.f1 = nn.Linear(state_dim, 128)
@@ -187,20 +240,15 @@ class NGU(nn.Module):
         self.f1_a = nn.Linear(feature_dim*2 , 128)
         self.f2_a = nn.Linear(128, 64)
         self.f3_a = nn.Linear(64, action_dim)
+        # running average of the squared Euclidean distance of the k-th nearest neighbors
         self.dm2 = 0.0
-        # HP NGU 
-        self.k = k
-        self.c = c
-        self.L = L
-        self.epsilon = eps
-        self.clip_reward = clip_reward
 
     def forward(self, x):
         x = F.relu(self.f1(x))
         x = F.relu(self.f2(x))
         x = self.f3(x)
         return x
-    
+
     def forward_t(self, x):
         with torch.no_grad():
             x = F.relu(self.f1_t(x))
@@ -223,38 +271,33 @@ class NGU(nn.Module):
         x = F.relu(self.f2_a(x))
         x = self.f3_a(x)
         return x
-       
+    
     def reward_episode(self, s, episode):
         z_s = self.embedding(s)
         z_episode = self.embedding(episode)
+
         dist = torch.norm(z_s - z_episode, dim=1)
-        kernel = self.epsilon/(dist/self.dm2 + self.epsilon)
-        top_k_kernel = torch.topk(kernel, self.k, largest = True)
-        top_k = torch.topk(dist, self.k, largest = False)
-        # update running mean and std
+        kernel = self.epsilon_kernel/(dist/self.dm2 + self.epsilon_kernel)
+        top_k_kernel = torch.topk(kernel, self.k_nearest, largest = True)
+        top_k = torch.topk(dist, self.k_nearest, largest = False)
         self.dm2 = 0.99 * self.dm2 + 0.01 * top_k.values.mean().item()
-        # rnd loss
-        rnd_loss = self.rnd_loss(s, reduce = False).item()
-        # episodic reward
         reward_episodic = (1/(torch.sqrt(top_k_kernel.values.mean()) + self.c)).item() 
-        # ngu reward
-        ngu_reward = reward_episodic * min(max(rnd_loss, 1), self.L)
-        # clip reward
-        ngu_reward = np.clip(ngu_reward, -self.clip_reward, self.clip_reward)
-        return ngu_reward
+
+        return reward_episodic
     
     
 
     def loss(self,s,s_next,a,d): 
         rnd_loss = self.rnd_loss(s)
-        # NGU loss 
+
         s0 = self.embedding(s)
         s1 = self.embedding(s_next)
-        h_loss = (self.action_pred(s0, s1) - a)**2 * (1-d)
-        return rnd_loss + h_loss.mean()
-        
+        h_loss = torch.norm(self.action_pred(s0, s1) - a, dim=1) * (1-d)
 
-if __name__ == "__main__":
+        return rnd_loss + h_loss.mean()
+
+def main(seed=None, sweep=False):
+
     import stable_baselines3 as sb3
 
     if sb3.__version__ < "2.0":
@@ -265,24 +308,45 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         )
 
     args = tyro.cli(Args)
+    if seed is not None:
+        args.seed = seed
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
-    if args.track:
-        import wandb
 
-        wandb.init(
-            project=args.wandb_project_name,
-            entity=args.wandb_entity,
-            sync_tensorboard=True,
-            config=vars(args),
-            name=run_name,
-            monitor_gym=True,
-            save_code=True,
+
+    # For hyperparameter optimization, see trainer.py file
+    if sweep:
+        episodic_returns_list = []
+        corresponding_steps = []
+
+        import wandb
+        wandb.init()
+
+        config = wandb.config
+
+        for key, value in vars(args).items():
+            if key in config:
+                setattr(args, key, config[key])
+
+
+    else :
+        
+        if args.track:
+            import wandb
+
+            wandb.init(
+                project=args.wandb_project_name,
+                entity=args.wandb_entity,
+                sync_tensorboard=True,
+                config=vars(args),
+                name=run_name,
+                monitor_gym=True,
+                save_code=True,
+            )
+        writer = SummaryWriter(f"runs/{run_name}")
+        writer.add_text(
+            "hyperparameters",
+            "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
         )
-    writer = SummaryWriter(f"runs/{run_name}")
-    writer.add_text(
-        "hyperparameters",
-        "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
-    )
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -309,11 +373,16 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     qf2_target.load_state_dict(qf2.state_dict())
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
-    ngu = NGU(envs,
-              feature_dim=args.ngu_feature_dim,
-              k = args.k_nearest_neighbors, 
-              clip_reward=args.clip_reward).to(device)
-    optimizer_ngu = optim.Adam(ngu.parameters(), lr=args.ngu_lr)
+
+    ngu = NGU(envs, 
+              feature_dim = args.ngu_feature_dim,
+              k_nearest = args.k_nearest,
+              clip_reward = args.clip_reward,
+              c = args.c,
+              L = args.L,
+              epsilon_kernel = args.epsilon_kernel
+              ).to(device)
+    ngu_optimizer = optim.Adam(ngu.parameters(), lr=args.ngu_lr)
     episodes = [ [] for _ in range(args.num_envs)]
 
     # Automatic entropy tuning
@@ -327,8 +396,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
     envs.single_observation_space.dtype = np.float32
 
+
+    # This replay buffer is hand designed for NGU
     # The replay buffer parameters have been updated to handle multiple envs
-    rb = ReplayBuffer(
+    rb = NGU_ReplayBuffer(
         args.buffer_size,
         envs.single_observation_space,
         envs.single_action_space,
@@ -351,34 +422,38 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
-        # The intrinsic reward must be computed here because of the episodic buffer
-        intrinsic_reward = torch.zeros(args.num_envs)
+        # COMPUTE REWARD
+        reward_ngu = torch.zeros(args.num_envs)
         for idx in range(args.num_envs):
             with torch.no_grad():
-                # rewards NGU 
-                intrinsic_reward[idx] = ngu.reward_episode(torch.tensor(obs[idx]).unsqueeze(0).to(device), torch.tensor(np.array(episodes[idx])).to(device)) if len(episodes[idx]) > args.k_nearest else 0.0
-        extrinsic_reward = rewards  
-        if args.keep_extrinsic_reward:
-            rewards = extrinsic_reward*args.coef_extrinsic + intrinsic_reward*args.coef_intrinsic
-        else:
-            rewards = intrinsic_reward*args.coef_intrinsic
-
-
+                reward_ngu[idx] = ngu.reward_episode(torch.tensor(obs[idx]).unsqueeze(0).float().to(device), torch.tensor(np.array(episodes[idx])).float().to(device)) if len(episodes[idx]) > args.k_nearest else 0.0
+        
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
             for info in infos["final_info"]:
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                break
+                if info is not None:
+                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                    if sweep:
+                        episodic_returns_list.append(info["episode"]["r"])
+                        corresponding_steps.append(global_step)
+                    else:
+                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                    break
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
-        for idx, trunc in enumerate(truncations):
+        for idx, (done_, trunc) in enumerate(zip(terminations,truncations)):
             if trunc:
                 real_next_obs[idx] = infos["final_observation"][idx]
-        rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
+            if done_ or trunc:
+                episodes[idx] = []
+        rb.add(obs, real_next_obs, actions, rewards, reward_ngu, terminations, infos)
+
+        for idx, ob in enumerate(obs):
+            episodes[idx].append(ob)
+            
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -386,38 +461,54 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
 
-            if global_step % args.rnd_frequency == 0:
-                mean_rnd_loss = 0.0
-                for _ in range(args.rnd_epochs):
+            if global_step % args.ngu_frequency == 0:
+                mean_ngu_loss = 0.0
+                for _ in range(args.ngu_epochs):
                     data = rb.sample(args.batch_size)
+                    data_observations = data[0]
+                    data_next_observations = data[1]
+                    data_actions = data[2]
+                    data_rewards = data[3]
+                    data_rewards_ngu = data[4]
+                    data_dones = data[5]
                     
-                    rnd_loss = rnd.loss(data.observations).mean()
-                    rnd_optimizer.zero_grad()
-                    rnd_loss.backward()
-                    rnd_optimizer.step()
-                    mean_rnd_loss += rnd_loss.item()
+                    ngu_loss = ngu.loss(data_observations, data_next_observations, data_actions, data_dones)
+                    ngu_optimizer.zero_grad()
+                    ngu_loss.backward()
+                    ngu_optimizer.step()
+                    mean_ngu_loss += ngu_loss.item()
 
-                mean_rnd_loss /= args.rnd_epochs
-                writer.add_scalar("losses/rnd_loss", mean_rnd_loss, global_step)
+                mean_ngu_loss /= args.ngu_epochs
+                if not sweep:
+                    writer.add_scalar("losses/ngu_loss", mean_ngu_loss, global_step)
                 
 
 
             data = rb.sample(args.batch_size)
+            data_observations = data[0]
+            data_next_observations = data[1]
+            data_actions = data[2]
+            data_rewards = data[3]
+            data_rewards_ngu = data[4]
+            data_dones = data[5]
             with torch.no_grad():
-                next_state_actions, next_state_log_pi, _ = actor.get_action(data.next_observations)
-                qf1_next_target = qf1_target(data.next_observations, next_state_actions)
-                qf2_next_target = qf2_target(data.next_observations, next_state_actions)
+                next_state_actions, next_state_log_pi, _ = actor.get_action(data_next_observations)
+                qf1_next_target = qf1_target(data_next_observations, next_state_actions)
+                qf2_next_target = qf2_target(data_next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                intrinsic_reward = rnd.loss(data.observations, reduce = False)
-                extrinsic_reward = data.rewards.flatten()
+                rnd_loss = ngu.rnd_loss(data_observations, reduce = False)
+                intrinsic_reward = data_rewards_ngu * torch.min(torch.max(rnd_loss.flatten(), torch.tensor(1).to(device)), torch.tensor(args.L).to(device))
+                intrinsic_reward = torch.clip(intrinsic_reward, -args.clip_reward, args.clip_reward)
+                extrinsic_reward = data_rewards.flatten()
                 if args.keep_extrinsic_reward:
                     rewards = extrinsic_reward*args.coef_extrinsic + intrinsic_reward*args.coef_intrinsic
                 else:
-                    rewards = intrinsic_reward.flatten() *args.coef_intrinsic
-                next_q_value = rewards + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+                    rewards = intrinsic_reward *args.coef_intrinsic
+                next_q_value = rewards + (1 - data_dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)
+                
 
-            qf1_a_values = qf1(data.observations, data.actions).view(-1)
-            qf2_a_values = qf2(data.observations, data.actions).view(-1)
+            qf1_a_values = qf1(data_observations, data_actions).view(-1)
+            qf2_a_values = qf2(data_observations, data_actions).view(-1)
 
 
             qf1_loss = F.mse_loss(qf1_a_values, next_q_value)
@@ -433,9 +524,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 for _ in range(
                     args.policy_frequency
                 ):  # compensate for the delay by doing 'actor_update_interval' instead of 1
-                    pi, log_pi, _ = actor.get_action(data.observations)
-                    qf1_pi = qf1(data.observations, pi)
-                    qf2_pi = qf2(data.observations, pi)
+                    pi, log_pi, _ = actor.get_action(data_observations)
+                    qf1_pi = qf1(data_observations, pi)
+                    qf2_pi = qf2(data_observations, pi)
                     min_qf_pi = torch.min(qf1_pi, qf2_pi)
                     actor_loss = ((alpha * log_pi) - min_qf_pi).mean()
 
@@ -445,7 +536,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
                     if args.autotune:
                         with torch.no_grad():
-                            _, log_pi, _ = actor.get_action(data.observations)
+                            _, log_pi, _ = actor.get_action(data_observations)
                         alpha_loss = (-log_alpha.exp() * (log_pi + target_entropy)).mean()
 
                         a_optimizer.zero_grad()
@@ -460,7 +551,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 for param, target_param in zip(qf2.parameters(), qf2_target.parameters()):
                     target_param.data.copy_(args.tau * param.data + (1 - args.tau) * target_param.data)
 
-            if global_step % 100 == 0:
+            if global_step % 100 == 0 and not sweep:
                 writer.add_scalar("losses/qf1_values", qf1_a_values.mean().item(), global_step)
                 writer.add_scalar("losses/qf2_values", qf2_a_values.mean().item(), global_step)
                 writer.add_scalar("losses/qf1_loss", qf1_loss.item(), global_step)
@@ -477,4 +568,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 writer.add_scalar("specific/intrinsic_reward_min", intrinsic_reward.min().item(), global_step)
                 
     envs.close()
+    if sweep:
+        return episodic_returns_list, corresponding_steps
     writer.close()
+
+if __name__ == "__main__":
+    main()
