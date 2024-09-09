@@ -1,13 +1,13 @@
-# PPO leveraging Tranformer-XL (TrXL) as Episodic Memory
+# Tranformer-XL (PPO-TrXL)
 
 ## Overview
 
-Real-world tasks may expose imperfect information (e.g. partial observability). Such tasks require an agent to leverage memory capabilities. One way to do this is to use recurrent neural networks (e.g. LSTM) as seen in :material-github: [`ppo_atari_lstm.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_lstmpy). Here, Transformer-XL is used as episodic memory.
+Real-world tasks may expose imperfect information (e.g. partial observability). Such tasks require an agent to leverage memory capabilities. One way to do this is to use recurrent neural networks (e.g. LSTM) as seen in :material-github: [`ppo_atari_lstm.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_lstmpy). Here, Transformer-XL is used as episodic memory in Proximal Policy Optimization (PPO).
 
 Original Paper and Implementation
 
 * :material-file-document: [Memory Gym: Towards Endless Tasks to Benchmark Memory Capabilities of Agents](https://arxiv.org/abs/2309.17207)
-* :material-github: [neroRL](https://github.com/MarcoMeter/neroRL)
+* :material-github: [neroRL](https://github.com/MarcoMeter/neroRL), [Episodic Transformer Memory PPO](https://github.com/MarcoMeter/episodic-transformer-memory-ppo)
 
 Related Publications and Repositories
 
@@ -22,7 +22,7 @@ Related Publications and Repositories
 
 | Variants Implemented      | Description |
 | ----------- | ----------- |
-| :material-github: [`ppo_trxl.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_trxl/ppo_trxl.py), :material-file-document: [docs](/rl-algorithms/ppo_trxl#ppo_trxlpy) | For training on tasks like `Endless-MortarMayhem-v0`. |
+| :material-github: [`ppo_trxl.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_trxl/ppo_trxl.py), :material-file-document: [docs](/rl-algorithms/ppo-trxl#ppo_trxlpy) | For training on tasks like `Endless-MortarMayhem-v0`. |
 
 Below is our single-file implementation of PPO-TrXL:
 
@@ -97,7 +97,7 @@ Note: When training on potentially endless episodes, the cached hidden states de
 
 Learning curves:
 
-<img src="./ppo-trxl/compare.png">
+<img src="../ppo-trxl/compare.png">
 
 
 ### Enjoy pre-trained models
