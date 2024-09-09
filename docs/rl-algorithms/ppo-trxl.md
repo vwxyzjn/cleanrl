@@ -8,6 +8,7 @@ Original Paper and Implementation
 
 * :material-file-document: [Memory Gym: Towards Endless Tasks to Benchmark Memory Capabilities of Agents](https://arxiv.org/abs/2309.17207)
 * :material-github: [neroRL](https://github.com/MarcoMeter/neroRL), [Episodic Transformer Memory PPO](https://github.com/MarcoMeter/episodic-transformer-memory-ppo)
+* :material-play-circle: [Interactive Visualizations of Trained Agents](https://marcometer.github.io/)
 
 Related Publications and Repositories
 
@@ -97,8 +98,13 @@ Note: When training on potentially endless episodes, the cached hidden states de
 
 Learning curves:
 
+
 <img src="../ppo-trxl/compare.png">
 
+
+Tracked experiments:
+
+<iframe src="https://api.wandb.ai/links/m-pleines/wo9m43hv" style="width:100%; height:500px" title="CleanRL-s-PPO-TrXL"></iframe>
 
 ### Enjoy pre-trained models
 
