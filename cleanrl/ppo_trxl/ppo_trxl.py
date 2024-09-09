@@ -40,7 +40,7 @@ class Args:
     """whether to save model into the `runs/{run_name}` folder"""
 
     # Algorithm specific arguments
-    env_id: str = "MortarMayhem-Grid-v0"  # MysteryPath-Grid-v0 SearingSpotlights-v0
+    env_id: str = "MortarMayhem-Grid-v0"
     """the id of the environment"""
     total_timesteps: int = 200000000
     """total timesteps of the experiments"""
@@ -385,6 +385,8 @@ if __name__ == "__main__":
     if not max_episode_steps:
         envs.envs[0].reset()  # Memory Gym envs need to be reset before accessing max_episode_steps
         max_episode_steps = envs.envs[0].max_episode_steps
+    if max_episode_steps <= 0:
+        max_episode_steps = 1024  # Memory Gym envs have max_episode_steps set to -1
     # Set transformer memory length to max episode steps if greather than max episode steps
     args.trxl_memory_length = min(args.trxl_memory_length, max_episode_steps)
 
