@@ -183,7 +183,7 @@ class MultiHeadAttention(nn.Module):
         if mask is not None:
             energy = energy.masked_fill(mask.unsqueeze(1).unsqueeze(1) == 0, float("-1e20"))  # -inf causes NaN
 
-        # Normalize energy values and apply softmax to retreive the attention scores
+        # Normalize energy values and apply softmax to retrieve the attention scores
         attention = torch.softmax(
             energy / (self.embed_dim ** (1 / 2)), dim=3
         )  # attention shape: (N, heads, query_len, key_len)
@@ -387,7 +387,7 @@ if __name__ == "__main__":
         max_episode_steps = envs.envs[0].max_episode_steps
     if max_episode_steps <= 0:
         max_episode_steps = 1024  # Memory Gym envs have max_episode_steps set to -1
-    # Set transformer memory length to max episode steps if greather than max episode steps
+    # Set transformer memory length to max episode steps if greater than max episode steps
     args.trxl_memory_length = min(args.trxl_memory_length, max_episode_steps)
 
     agent = Agent(args, observation_space, action_space_shape, max_episode_steps).to(device)

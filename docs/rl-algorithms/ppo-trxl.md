@@ -74,7 +74,7 @@ Most details are derived from [ppo.py](/rl-algorithms/ppo#ppopy). These are addi
 
 1. The policy and value function share parameters.
 2. Multi-head attention is implemented so that all heads share parameters.
-3. Abolute positional encoding is used as default. Learned positional encodings are supported.
+3. Absolute positional encoding is used as default. Learned positional encodings are supported.
 4. Previously computed hidden states of the TrXL layers are cached and re-used for up to `trxl_memory_length`. Only 1 hidden state is computed anew.
 5. TrXL layers adhere to pre-layer normalization.
 6. Support for multi-discrete action spaces.
