@@ -19,7 +19,9 @@ if __name__ == "__main__":
             from huggingface_hub import hf_hub_download
             path = hf_hub_download(repo_id="LilHairdy/cleanrl_memory_gym", filename=cli_args.name)
         except:
-            raise RuntimeError("Cannot load model from the huggingface hub. Please install the huggingface_hub pypi package and verify the model name. You can also download the model from the hub manually and load it from disk.")
+            raise RuntimeError(
+                "Cannot load model from the huggingface hub. Please install the huggingface_hub pypi package and verify the model name. You can also download the model from the hub manually and load it from disk."
+            )
     else:
         path = cli_args.name
 
@@ -43,7 +45,7 @@ if __name__ == "__main__":
 
     # Setup agent and load its model parameters
     action_space_shape = (
-            (env.action_space.n,) if isinstance(env.action_space, gym.spaces.Discrete) else tuple(env.action_space.nvec)
+        (env.action_space.n,) if isinstance(env.action_space, gym.spaces.Discrete) else tuple(env.action_space.nvec)
     )
     agent = Agent(args, env.observation_space, action_space_shape, max_episode_steps)
     agent.load_state_dict(checkpoint["model_weights"])
