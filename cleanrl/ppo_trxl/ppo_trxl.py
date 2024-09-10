@@ -5,7 +5,7 @@ from collections import deque
 from dataclasses import dataclass
 
 import gymnasium as gym
-import memory_gym # noqa
+import memory_gym  # noqa
 import numpy as np
 import torch
 import torch.nn as nn
@@ -13,7 +13,7 @@ import torch.optim as optim
 import tyro
 from einops import rearrange
 from minigrid.wrappers import ImgObsWrapper, RGBImgPartialObsWrapper
-from pom_env import PoMEnv # noqa
+from pom_env import PoMEnv  # noqa
 from torch.distributions import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
