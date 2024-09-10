@@ -108,3 +108,19 @@ Tracked experiments:
 
 ### Enjoy pre-trained models
 
+Use [cleanrl/ppo_trxl/enjoy.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_trxl/en.py) to watch pre-trained agents.
+You can retrieve pre-trained models from [huggingface](https://huggingface.co/LilHairdy/cleanrl_memory_gym).
+
+
+Run models from the hub:
+```bash
+python cleanrl/ppo_trxl/enjoy.py --hub --name Endless-MortarMayhem-v0_12.nn
+python cleanrl/ppo_trxl/enjoy.py --hub --name Endless-MysterPath-v0_11.nn
+python cleanrl/ppo_trxl/enjoy.py --hub --name Endless-SearingSpotlights-v0_30.nn
+```
+
+
+Run local models (or download them from the hub manually):
+```bash
+python cleanrl/ppo_trxl/enjoy.py --name Your.cleanrl_model
+```
