@@ -5,6 +5,7 @@ import torch
 import tyro
 from ppo_trxl import Agent, make_env
 
+
 @dataclass
 class Args:
     hub: bool = False
@@ -12,12 +13,14 @@ class Args:
     name: str = "Endless-MortarMayhem-v0_12.nn"
     """path to the model file"""
 
+
 if __name__ == "__main__":
     # Parse command line arguments and retrieve model path
     cli_args = tyro.cli(Args)
     if cli_args.hub:
         try:
             from huggingface_hub import hf_hub_download
+
             path = hf_hub_download(repo_id="LilHairdy/cleanrl_memory_gym", filename=cli_args.name)
         except:
             raise RuntimeError(
