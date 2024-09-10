@@ -1,7 +1,8 @@
+from dataclasses import dataclass
+
 import gymnasium as gym
 import torch
 import tyro
-from dataclasses import dataclass
 from ppo_trxl import Agent, make_env
 
 @dataclass
