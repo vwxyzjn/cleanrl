@@ -353,7 +353,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 intrinsic_reward = rnd.loss(data.observations, reduce = False)
                 extrinsic_reward = data.rewards.flatten()
                 if args.keep_extrinsic_reward:
-                    rewards = extrinsic_reward*args.coef_extrinsic + intrinsic_reward*args.coef_intrinsic
+                    rewards = extrinsic_reward*args.coef_extrinsic + intrinsic_reward.flatten()*args.coef_intrinsic
                 else:
                     rewards = intrinsic_reward.flatten() *args.coef_intrinsic
                 next_q_value = rewards + (1 - data.dones.flatten()) * args.gamma * (min_qf_next_target).view(-1)

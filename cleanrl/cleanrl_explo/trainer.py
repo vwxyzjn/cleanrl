@@ -28,7 +28,7 @@ class Sweep_Args():
     "All the methods available for training"
 
 
-    method = "aux"
+    method = "ngu"
     "The method to use for training"
     environment = "Hopper-v4"
     "The environment to use for training"
@@ -56,16 +56,27 @@ class Sweep_Args():
         "method": "bayes",
         "metric": {"goal": "maximize", "name": "episodic_return"},
         "parameters": {
-            "vae_lr": {
+            "ngu_lr": {
                 "distribution": "log_uniform_values",
                 "max": 1e-2,
                 "min": 1e-5,
             },
-            "vae_frequency": {
+            "ngu_frequency": {
                 "distribution": "q_uniform",
                 "max": 1000,
                 "min": 100,
                 "q": 100,
+            },
+            "k_nearest": {
+                "distribution": "q_uniform",
+                "max": 16,
+                "min": 2,
+                "q": 2,
+            },
+            "clip_reward": {
+                "distribution": "log_uniform_values",
+                "max": 100.0,
+                "min": 0.1,
             },
             "coef_intrinsic": {
                 "distribution": "log_uniform_values",
