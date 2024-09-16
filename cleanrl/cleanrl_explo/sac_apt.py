@@ -25,13 +25,13 @@ class Args:
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
-    track: bool = False
+    track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "SAC - exploration with ICM"
+    wandb_project_name: str = "SAC - exploration with APT"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
-    capture_video: bool = False
+    capture_video: bool = True
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
@@ -172,7 +172,7 @@ class Actor(nn.Module):
 
 class Encoder(nn.Module):   
     def __init__(self, envs, latent_dim, sigma, k_nearest):
-        super(ICM, self).__init__()
+        super(Encoder, self).__init__()
         state_dim = np.prod(envs.single_observation_space.shape)
         action_dim = np.prod(envs.single_action_space.shape)
 
