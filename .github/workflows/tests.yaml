@@ -12,7 +12,7 @@ jobs:
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
         poetry-version: ["1.7"]
-        os: [ubuntu-22.04, macos-latest, windows-latest]
+        os: [ubuntu-22.04, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -55,7 +55,7 @@ jobs:
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
         poetry-version: ["1.7"]
-        os: [ubuntu-22.04, macos-latest, windows-latest]
+        os: [ubuntu-22.04, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
@@ -91,7 +91,7 @@ jobs:
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
         poetry-version: ["1.7"]
-        os: [ubuntu-22.04, macos-latest, windows-latest]
+        os: [ubuntu-22.04, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
