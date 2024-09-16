@@ -66,18 +66,26 @@ class Args:
 
 
 
-    # icm specific arguments
-    icm_lr: float = 1e-4
-    """the learning rate of the icm"""
-    icm_epochs: int = 4
-    """the number of epochs for the icm"""
-    icm_frequency: int = 800
-    """the frequency of training icm"""
-    beta: float = 0.2
-    """the beta of the icm"""
-    clip_intrinsic_reward: float = 10.0
-    """the clipping of the intrinsic reward"""
-    feature_dim: int = 64
+    # encoder specific arguments
+    encoder_lr: float = 1e-4
+    """the learning rate of the encoder"""
+    encoder_epochs: int = 4
+    """the number of epochs for the encoder"""
+    encoder_frequency: int = 800
+    """the frequency of training encoder"""
+    latent_dim: int = 8
+    """the dimension of the latent space"""
+    sigma: float = 0.05
+    """the sigma for the data augmentation"""
+    k_nearest: int = 4
+    """the number of nearest neighbors"""
+
+    # intrinsic reward specific arguments
+    normalize_reward: bool = True
+    """if toggled, the intrinsic reward will be normalized"""
+    reward_update_rate : float = 0.001
+    """the update rate of the runnign estimators of the reward"""
+
 
 
     keep_extrinsic_reward: bool = True
@@ -162,52 +170,51 @@ class Actor(nn.Module):
         return action, log_prob, mean
     
 
-class ICM(nn.Module):   
-    def __init__(self, envs, feature_dim = 64, beta = 0.2):
+class Encoder(nn.Module):   
+    def __init__(self, envs, latent_dim, sigma, k_nearest):
         super(ICM, self).__init__()
         state_dim = np.prod(envs.single_observation_space.shape)
         action_dim = np.prod(envs.single_action_space.shape)
-        # feature network
+
+        # encoder network
         self.f1 = nn.Linear(state_dim, 256)
         self.f2 = nn.Linear(256, 64)
-        self.f3 = nn.Linear(64, feature_dim)
-        # inverse model
-        self.i1 = nn.Linear(2*feature_dim, 64)
-        self.i2 = nn.Linear(64, action_dim)
-        # forward model
-        self.fo1 = nn.Linear(feature_dim + action_dim, 64)
-        self.fo2 = nn.Linear(64, feature_dim)
-        # beta
-        self.beta = beta
+        self.f3 = nn.Linear(64, latent_dim)
 
-    def feature(self, x):
+
+        self.latent_dim = latent_dim
+        self.sigma = sigma
+        self.k_nearest = k_nearest
+
+    
+    def forward(self, x):
         x = F.relu(self.f1(x))
         x = F.relu(self.f2(x))
         x = self.f3(x)
         return x
-    def inverse(self, f1, f2):
-        x = torch.cat([f1, f2], dim = 1)
-        x = F.relu(self.i1(x))
-        x = self.i2(x)
-        return x
-    def forward_t(self, f1, a):
-        x = torch.cat([f1, a], dim = 1)
-        x = F.relu(self.fo1(x))
-        x = self.fo2(x)
-        return x
-    
-    def loss(self, obs, next_obs, action, reduce = True):
-        # feature
-        f = self.feature(obs)
-        f_next = self.feature(next_obs)
-        # inverse
-        a_pred = self.inverse(f, f_next)
-        # forward
-        f_next_pred = self.forward_t(f, action)
-        # loss
-        loss_inverse = F.mse_loss(a_pred, action, reduction = 'none').sum(1) if not reduce else F.mse_loss(a_pred, action)
-        loss_forward = F.mse_loss(f_next_pred, f_next, reduction = 'none').sum(1) if not reduce else F.mse_loss(f_next_pred, f_next)
-        return self.beta * loss_forward + (1 - self.beta) * loss_inverse
+
+    def data_augmentation(self, x):
+        noise = torch.randn_like(x) * self.sigma
+        return x + noise
+
+    def normalize(self, x):
+        return nn.functional.normalize(x, p=2, dim=1)
+
+    def constrastive_loss(self, x, x_augmented):
+        x_norm = self.normalize(x)
+        x_augmented_norm = self.normalize(x_augmented)
+        numerator = torch.exp(torch.einsum('ij,ij->i', x_norm, x_augmented_norm))
+        denominator = torch.sum(torch.exp(torch.einsum('ik,jk->ij', x_norm, x_norm)), dim=1)
+        return -torch.log(numerator/denominator).mean()
+
+    def get_knn_sum(self, x, x_augmented):
+        x_encoded = self(x)
+        x_augmented_encoded = self(x_augmented)
+
+        distances = torch.cdist(x_encoded, x_augmented_encoded)
+        knn_sum = torch.topk(distances, self.k_nearest, largest=False, sorted=False, dim=1).values.sum(dim=1)
+        return knn_sum
+
     
 
 def main(seed=None, sweep=False):
@@ -287,11 +294,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     qf2_target.load_state_dict(qf2.state_dict())
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
-    icm = ICM(envs,
-              feature_dim=64,
-              beta=args.beta,
-              device=device).to(device)
-    icm_optimizer = optim.Adam(icm.parameters(), lr=args.icm_lr)
+    encoder = Encoder(envs, args.latent_dim, args.sigma, args.k_nearest).to(device)
+    encoder_optimizer = optim.Adam(encoder.parameters(), lr=args.encoder_lr)
 
     # Automatic entropy tuning
     if args.autotune:
@@ -313,6 +317,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         handle_timeout_termination=False,
         n_envs=args.num_envs
     )
+
+    intrinsic_reward_running_mean = torch.zeros(1, device=device, dtype=torch.float32)
+    intrinsic_reward_running_std = torch.ones(1, device=device, dtype=torch.float32)
+
+
     start_time = time.time()
 
     # TRY NOT TO MODIFY: start the game
@@ -354,20 +363,25 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
 
-            if global_step % args.icm_frequency == 0:
-                mean_icm_loss = 0.0
-                for _ in range(args.icm_epochs):
+            if global_step % args.encoder_frequency == 0:
+                mean_encoder_loss = 0.0
+                for _ in range(args.encoder_epochs):
                     data = rb.sample(args.batch_size)
-                    
-                    icm_loss = icm.loss(data.observations, data.next_observations, data.actions, reduce = True)
-                    icm_optimizer.zero_grad()
-                    icm_loss.backward()
-                    icm_optimizer.step()
-                    mean_icm_loss += icm_loss.item()
+                    obs_augmented = encoder.data_augmentation(data.observations)
+                    obs_encoded = encoder(data.observations)
+                    obs_augmented_encoded = encoder(obs_augmented)
 
-                mean_icm_loss /= args.icm_epochs
+                    encoder_loss = encoder.constrastive_loss(obs_encoded, obs_augmented_encoded)
+
+                    encoder_optimizer.zero_grad()
+                    encoder_loss.backward()
+                    encoder_optimizer.step()
+                    
+                    mean_encoder_loss += encoder_loss.item()
+
+                mean_encoder_loss /= args.encoder_epochs
                 if not sweep:
-                    writer.add_scalar("losses/vae_loss", mean_vae_loss, global_step)
+                    writer.add_scalar("losses/encoder_loss", mean_encoder_loss, global_step)
                 
 
 
@@ -377,9 +391,15 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                 qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                intrinsic_reward = icm.loss(data.observations, data.next_observations, data.actions, reduce = False)
+                intrinsic_reward = encoder.get_knn_sum(data.observations, data.next_observations)/args.latent_dim
                 extrinsic_reward = data.rewards.flatten()
-                if args.keep_extrinsic_reward:
+
+                if args.normalize_reward:
+                    intrinsic_reward = (intrinsic_reward - intrinsic_reward_running_mean) / (intrinsic_reward_running_std + 1e-6)
+                    intrinsic_reward_running_mean = intrinsic_reward_running_mean + args.reward_update_rate * (intrinsic_reward.mean() - intrinsic_reward_running_mean)
+                    intrinsic_reward_running_std = intrinsic_reward_running_std + args.reward_update_rate * (intrinsic_reward.std() - intrinsic_reward_running_std)
+                
+                if args.keep_extrinsic_reward:                  
                     rewards = extrinsic_reward*args.coef_extrinsic + intrinsic_reward*args.coef_intrinsic
                 else:
                     rewards = intrinsic_reward.flatten() *args.coef_intrinsic
