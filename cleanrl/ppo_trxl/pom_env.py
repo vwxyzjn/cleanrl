@@ -1,7 +1,7 @@
 import gymnasium as gym
 import numpy as np
-from gymnasium import spaces
 import pygame
+from gymnasium import spaces
 
 gym.register(
     id="ProofofMemory-v0",
@@ -142,10 +142,14 @@ class PoMEnv(gym.Env):
             left_goal_color = (0, 255, 0) if self._goals[0] > 0 else (255, 0, 0)
             pygame.draw.rect(canvas, left_goal_color, pygame.Rect(0, 0, self.cell_width, self.height))
             right_goal_color = (0, 255, 0) if self._goals[1] > 0 else (255, 0, 0)
-            pygame.draw.rect(canvas, right_goal_color, pygame.Rect(self.width - self.cell_width, 0, self.cell_width, self.height))
+            pygame.draw.rect(
+                canvas, right_goal_color, pygame.Rect(self.width - self.cell_width, 0, self.cell_width, self.height)
+            )
         else:
             pygame.draw.rect(canvas, (200, 200, 200), pygame.Rect(0, 0, self.cell_width, self.height))
-            pygame.draw.rect(canvas, (200, 200, 200), pygame.Rect(self.width - self.cell_width, 0, self.cell_width, self.height))
+            pygame.draw.rect(
+                canvas, (200, 200, 200), pygame.Rect(self.width - self.cell_width, 0, self.cell_width, self.height)
+            )
 
         # Render text information
         font = pygame.font.SysFont(None, 24)
@@ -157,9 +161,7 @@ class PoMEnv(gym.Env):
             pygame.display.flip()
             self.clock.tick(self.metadata["render_fps"])
         elif self.render_mode in ["rgb_array", "debug_rgb_array"]:
-            return np.transpose(
-                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
-            )
+            return np.transpose(np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2))
 
     def close(self):
         if self.window is not None:
