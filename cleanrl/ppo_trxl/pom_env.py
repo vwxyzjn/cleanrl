@@ -1,10 +1,7 @@
-import os
-import time
-
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
-from reprint import output
+import pygame
 
 gym.register(
     id="ProofofMemory-v0",
@@ -27,7 +24,7 @@ class PoMEnv(gym.Env):
     To further challenge the agent, the step_size can be decreased.
     """
 
-    metadata = {"render_modes": ["human"], "render_fps": 1}
+    metadata = {"render_modes": ["human", "rgb_array", "debug_rgb_array"], "render_fps": 4}
 
     def __init__(self, render_mode="human"):
         self._freeze = True
@@ -35,7 +32,6 @@ class PoMEnv(gym.Env):
         self._min_steps = int(1.0 / self._step_size) + 1
         self._time_penalty = 0.1
         self._num_show_steps = 2
-        self._op = None
         self.render_mode = render_mode
         glob = False
 
@@ -43,16 +39,20 @@ class PoMEnv(gym.Env):
         self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
 
         # Create an array with possible positions
-        # Valid local positions are one tick away from 0.0 or between -0.4 and 0.4
-        # Valid global positions are between -1 + step_size and 1 - step_size
         num_steps = int(0.4 / self._step_size)
         lower = min(-2.0 * self._step_size, -num_steps * self._step_size) if not glob else -1 + self._step_size
         upper = max(3.0 * self._step_size, self._step_size, (num_steps + 1) * self._step_size) if not glob else 1
         self.possible_positions = np.arange(lower, upper, self._step_size).clip(-1 + self._step_size, 1 - self._step_size)
         self.possible_positions = list(map(lambda x: round(x, 2), self.possible_positions))  # fix floating point errors
 
+        # Pygame-related attributes for rendering
+        self.window = None
+        self.clock = None
+        self.width = 400
+        self.height = 80
+        self.cell_width = self.width / (2 * int(1 / self._step_size) + 1)
+
     def step(self, action):
-        action = action[0]
         reward = 0.0
         done = False
 
@@ -86,13 +86,20 @@ class PoMEnv(gym.Env):
             done = True
         else:
             reward -= self._time_penalty
+        self.rewards.append(reward)
+
+        if done:
+            info = {"reward": sum(self.rewards), "length": len(self.rewards)}
+        else:
+            info = {}
 
         self._step_count += 1
 
-        return obs, reward, done, False, {}
+        return obs, reward, done, False, info
 
     def reset(self, *, seed=None, options=None):
         super().reset(seed=seed)
+        self.rewards = []
         self._position = np.random.choice(self.possible_positions)
         self._step_count = 0
         goals = np.asarray([-1.0, 1.0])
@@ -101,44 +108,77 @@ class PoMEnv(gym.Env):
         return obs, {}
 
     def render(self):
-        if self._op is None:
-            self.init_render = False
-            self._op = output()
-            self._op = self._op.warped_obj
-            os.system("cls||clear")
+        if self.render_mode not in self.metadata["render_modes"]:
+            return
 
-            for _ in range(6):
-                self._op.append("#")
+        # Initialize Pygame
+        if not pygame.get_init():
+            pygame.init()
+        if self.window is None and self.render_mode == "human":
+            pygame.display.init()
+            self.window = pygame.display.set_mode((self.width, self.height))
+            pygame.display.set_caption("Proof of Memory Environment")
+        if self.clock is None and self.render_mode == "human":
+            self.clock = pygame.time.Clock()
 
-        num_grids = 2 * int(1 / self._step_size) + 1
-        agent_grid = int(num_grids / 2 + self._position / self._step_size) + 1
-        self._op[1] = "######" * num_grids + "#"
-        self._op[2] = "#     " * num_grids + "#"
-        field = [*("#     " * agent_grid)[:-3], *"A  ", *("#     " * (num_grids - agent_grid)), "#"]
-        if field[3] != "A":
-            field[3] = "+" if self._goals[0] > 0 else "-"
-        if field[-4] != "A":
-            field[-4] = "+" if self._goals[1] > 0 else "-"
-        self._op[3] = "".join(field)
-        self._op[4] = "#     " * num_grids + "#"
-        self._op[5] = "######" * num_grids + "#"
+        # Create surface
+        canvas = pygame.Surface((self.width, self.height))
+        canvas.fill((255, 255, 255))  # Fill the background with white
 
-        self._op[6] = "Goals are shown: " + str(self._num_show_steps > self._step_count)
+        # Draw grid
+        num_cells = 2 * int(1 / self._step_size) + 1
+        for i in range(num_cells):
+            x = i * self.cell_width
+            pygame.draw.rect(canvas, (200, 200, 200), pygame.Rect(x, 0, self.cell_width, self.height), 1)
 
-        time.sleep(1.0)
+        # Draw agent
+        agent_pos = int((self._position + 1) / self._step_size)
+        agent_x = agent_pos * self.cell_width + self.cell_width / 2
+        pygame.draw.circle(canvas, (0, 0, 255), (agent_x, self.height / 2), 15)
+
+        # Draw goals
+        show_goals = self._num_show_steps > self._step_count
+        if show_goals:
+            left_goal_color = (0, 255, 0) if self._goals[0] > 0 else (255, 0, 0)
+            pygame.draw.rect(canvas, left_goal_color, pygame.Rect(0, 0, self.cell_width, self.height))
+            right_goal_color = (0, 255, 0) if self._goals[1] > 0 else (255, 0, 0)
+            pygame.draw.rect(canvas, right_goal_color, pygame.Rect(self.width - self.cell_width, 0, self.cell_width, self.height))
+        else:
+            pygame.draw.rect(canvas, (200, 200, 200), pygame.Rect(0, 0, self.cell_width, self.height))
+            pygame.draw.rect(canvas, (200, 200, 200), pygame.Rect(self.width - self.cell_width, 0, self.cell_width, self.height))
+
+        # Render text information
+        font = pygame.font.SysFont(None, 24)
+        text = font.render(f"Goals are shown: {show_goals}", True, (0, 0, 0))
+        canvas.blit(text, (10, 10))
+
+        if self.render_mode == "human":
+            self.window.blit(canvas, (0, 0))
+            pygame.display.flip()
+            self.clock.tick(self.metadata["render_fps"])
+        elif self.render_mode in ["rgb_array", "debug_rgb_array"]:
+            return np.transpose(
+                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
+            )
 
     def close(self):
-        if self._op is not None:
-            self._op.clear()
-            self._op = None
+        if self.window is not None:
+            pygame.display.quit()
+            pygame.quit()
+            self.window = None
+            self.clock = None
 
 
 if __name__ == "__main__":
-    env = gym.make("ProofofMemory-v0")
+    env = PoMEnv(render_mode="human")
     o, _ = env.reset()
-    env.render()
+    img = env.render()
     done = False
+    rewards = []
+    const_action = 1
     while not done:
-        o, r, done, _, _ = env.step(1)
-        env.render()
+        o, r, done, _, _ = env.step(const_action)
+        rewards.append(r)
+        img = env.render()
+    print(f"Total reward: {sum(rewards)}, Steps: {len(rewards)}")
     env.close()

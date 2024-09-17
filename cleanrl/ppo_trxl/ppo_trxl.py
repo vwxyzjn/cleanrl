@@ -103,9 +103,13 @@ class Args:
 
 
 def make_env(env_id, idx, capture_video, run_name, render_mode="debug_rgb_array"):
+    if "MiniGrid" in env_id:
+            if render_mode == "debug_rgb_array":
+                render_mode = "rgb_array"
     def thunk():
         if "MiniGrid" in env_id:
-            env = gym.make(env_id, agent_view_size=3, tile_size=28)
+            env = gym.make(env_id, agent_view_size=3, tile_size=28, 
+                           render_mode="rgb_array" if render_mode == "debug_rgb_array" else render_mode)
             env = ImgObsWrapper(RGBImgPartialObsWrapper(env, tile_size=28))
             env = gym.wrappers.TimeLimit(env, 96)
         else:

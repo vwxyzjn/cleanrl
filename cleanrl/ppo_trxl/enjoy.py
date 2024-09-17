@@ -84,5 +84,8 @@ if __name__ == "__main__":
         done = termination or truncation
         t += 1
 
-    print(f"Episode return: {info['reward']}, Episode length: {info['length']}")
+    if "r" in info["episode"].keys():
+        print(f"Episode return: {info['episode']['r'][0]}, Episode length: {info['episode']['l'][0]}")
+    else:
+        print(f"Episode return: {info['reward']}, Episode length: {info['length']}")
     env.close()

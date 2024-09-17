@@ -70,7 +70,7 @@ Below is our single-file implementation of PPO-TrXL:
 
 ### Implementation details
 
-Most details are derived from [ppo.py](/rl-algorithms/ppo#ppopy). These are additional or differing details:
+Most details are derived from [`ppo.py`](/rl-algorithms/ppo#ppopy). These are additional or differing details:
 
 1. The policy and value function share parameters.
 2. Multi-head attention is implemented so that all heads share parameters.
@@ -83,7 +83,7 @@ Most details are derived from [ppo.py](/rl-algorithms/ppo#ppopy). These are addi
 
 ### Experiment results
 
-Note: When training on potentially endless episodes, the cached hidden states demand a large GPU memory. To reproduce the following experiments a minimum of 40GB is required.
+Note: When training on potentially endless episodes, the cached hidden states demand a large GPU memory. To reproduce the following experiments a minimum of 40GB is required. One workaround is to cache the hidden states in the buffer with lower precision as bfloat16. This is under examination for future updates.
 
 |                              | PPO-TrXL    |
 |:-----------------------------|:------------|
@@ -106,9 +106,53 @@ Tracked experiments:
 
 <iframe src="https://api.wandb.ai/links/m-pleines/wo9m43hv" style="width:100%; height:500px" title="CleanRL-s-PPO-TrXL"></iframe>
 
+
+### Hyperparameters
+
+Memory Gym Environments
+
+Please refer to the defaults in [`ppo_trxl.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_trxl/ppo_trxl.py) and the single modifications as found in [`benchmark/ppo_trxl.sh`](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/ppo_trxl.sh)
+
+ProofofMemory-v0
+```bash
+python ppo_trxl.py \
+  --env_id ProofofMemory-v0 \
+  --total_timesteps 25000 \
+  --num_envs 16 \
+  --num_steps 128 \
+  --num_minibatches 8 \
+  --update_epochs 4 \
+  --trxl_num_layers 4 \
+  --trxl_num_heads 1 \
+  --trxl_dim 64 \
+  --trxl_memory_length 16 \
+  --trxl_positional_encoding none \
+  --vf_coef 0.1 \
+  --max_grad_norm 0.5 \
+  --init_lr 3.0e-4 \
+  --init_ent_coef 0.001 \
+  --clip_coef 0.2
+```
+
+MiniGrid-MemoryS9-v0
+```bash
+python ppo_trxl.py \
+  --env_id MiniGrid-MemoryS9-v0 \
+  --total_timesteps 2048000 \
+  --num_envs 16 \
+  --num_steps 256 \
+  --trxl_num_layers 2 \
+  --trxl_num_heads 4 \
+  --trxl_dim 256 \
+  --trxl_memory_length 64 \
+  --max_grad_norm 0.25 \
+  --anneal_steps 4096000
+  --clip_coef 0.2
+```
+
 ### Enjoy pre-trained models
 
-Use [cleanrl/ppo_trxl/enjoy.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_trxl/en.py) to watch pre-trained agents.
+Use [`cleanrl/ppo_trxl/enjoy.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_trxl/en.py) to watch pre-trained agents.
 You can retrieve pre-trained models from [huggingface](https://huggingface.co/LilHairdy/cleanrl_memory_gym).
 
 
@@ -117,6 +161,8 @@ Run models from the hub:
 python cleanrl/ppo_trxl/enjoy.py --hub --name Endless-MortarMayhem-v0_12.nn
 python cleanrl/ppo_trxl/enjoy.py --hub --name Endless-MysterPath-v0_11.nn
 python cleanrl/ppo_trxl/enjoy.py --hub --name Endless-SearingSpotlights-v0_30.nn
+python cleanrl/ppo_trxl/enjoy.py --hub --name MiniGrid-MemoryS9-v0_10.nn
+python cleanrl/ppo_trxl/enjoy.py --hub --name ProofofMemory-v0_1.nn
 ```
 
 
