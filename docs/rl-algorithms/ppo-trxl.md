@@ -38,6 +38,8 @@ Below is our single-file implementation of PPO-TrXL:
 
 ### Usage
 
+As the recommended way, the requirements default to PyTorch's CUDA packages.
+
 === "poetry"
 
     ```bash
@@ -46,7 +48,14 @@ Below is our single-file implementation of PPO-TrXL:
     poetry run python ppo_trxl.py --help
     poetry run python ppo_trxl.py --env-id Endless-MortarMayhem-v0
     ```
+  
+=== "pip"
 
+    ```bash
+    pip install -r requirements/requirements-memory_gym.txt
+    python cleanrl/ppo_trxl/ppo_trxl.py --help
+    python cleanrl/ppo_trxl/ppo_trxl.py --env-id Endless-MortarMayhem-v0
+    ```
 
 ### Explanation of the logged metrics
 
@@ -115,7 +124,7 @@ Please refer to the defaults in [`ppo_trxl.py`](https://github.com/vwxyzjn/clean
 
 ProofofMemory-v0
 ```bash
-python ppo_trxl.py \
+poetry run python ppo_trxl.py \
   --env_id ProofofMemory-v0 \
   --total_timesteps 25000 \
   --num_envs 16 \
@@ -136,7 +145,7 @@ python ppo_trxl.py \
 
 MiniGrid-MemoryS9-v0
 ```bash
-python ppo_trxl.py \
+poetry run python ppo_trxl.py \
   --env_id MiniGrid-MemoryS9-v0 \
   --total_timesteps 2048000 \
   --num_envs 16 \
@@ -154,6 +163,7 @@ python ppo_trxl.py \
 
 Use [`cleanrl/ppo_trxl/enjoy.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_trxl/en.py) to watch pre-trained agents.
 You can retrieve pre-trained models from [huggingface](https://huggingface.co/LilHairdy/cleanrl_memory_gym).
+Note that Memory Gym environments are usually rendered using the `debug_rgb_array` render mode, which shows ground truth information about the current task that the agent cannot observe.
 
 
 Run models from the hub:
