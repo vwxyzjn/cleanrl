@@ -85,6 +85,7 @@ pip install -r requirements/requirements-pettingzoo.txt
 pip install -r requirements/requirements-jax.txt
 pip install -r requirements/requirements-docs.txt
 pip install -r requirements/requirements-cloud.txt
+pip install -r requirements/requirements-memory_gym.txt
 ```
 
 To run training scripts in other games:

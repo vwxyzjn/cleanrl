@@ -7,7 +7,9 @@ Real-world tasks may expose imperfect information (e.g. partial observability). 
 Original Paper and Implementation
 
 * :material-file-document: [Memory Gym: Towards Endless Tasks to Benchmark Memory Capabilities of Agents](https://arxiv.org/abs/2309.17207)
-* :material-github: [neroRL](https://github.com/MarcoMeter/neroRL), [Episodic Transformer Memory PPO](https://github.com/MarcoMeter/episodic-transformer-memory-ppo)
+* :material-github: [neroRL](https://github.com/MarcoMeter/neroRL)
+* :material-github:  [Episodic Transformer Memory PPO](https://github.com/MarcoMeter/episodic-transformer-memory-ppo)
+* :material-github: [Endless Memory Gym](https://github.com/MarcoMeter/endless-memory-gym)
 * :material-play-circle: [Interactive Visualizations of Trained Agents](https://marcometer.github.io/)
 
 Related Publications and Repositories
