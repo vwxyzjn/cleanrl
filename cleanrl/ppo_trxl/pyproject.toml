@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "ppo-trxl"
+version = "1.0.1"
+description = ""
+authors = ["Marco Pleines <marco.pleines@tu-dortmund.de>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+memory-gym = "^1.0.2"
+einops = "^0.7.0"
+minigrid = "^2.3.1"
+reprint = "^0.6.0"
+opencv-python = "^4.9.0.80"
+torch = { version = "^2.0.0", source = "pytorch" }
+torchaudio = { version = "^2.0.0", source = "pytorch" }
+wandb = "^0.16.6"
+tyro = "^0.8.3"
+tensorboard = "^2.16.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[[tool.poetry.source]]
+name = "pytorch"
+url = "https://download.pytorch.org/whl/cu118"
+priority = "explicit"
