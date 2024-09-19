@@ -163,7 +163,7 @@ poetry run python ppo_trxl.py \
 
 ### Enjoy pre-trained models
 
-Use [`cleanrl/ppo_trxl/enjoy.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_trxl/en.py) to watch pre-trained agents.
+Use [`cleanrl/ppo_trxl/enjoy.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_trxl/enjoy.py) to watch pre-trained agents.
 You can retrieve pre-trained models from [huggingface](https://huggingface.co/LilHairdy/cleanrl_memory_gym).
 Note that Memory Gym environments are usually rendered using the `debug_rgb_array` render mode, which shows ground truth information about the current task that the agent cannot observe.
 
