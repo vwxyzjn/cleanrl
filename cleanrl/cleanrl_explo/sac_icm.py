@@ -13,31 +13,32 @@ import torch.optim as optim
 import tyro
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
+from lil_maze import LilMaze
 
 
 @dataclass
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 1
+    seed: int = 12
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
-    track: bool = False
+    track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
     wandb_project_name: str = "SAC - exploration with ICM"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
-    capture_video: bool = False
+    capture_video: bool = True
     """whether to capture videos of the agent performances (check out `videos` folder)"""
 
     # Algorithm specific arguments
     env_id: str = "Hopper-v4"
     """the environment id of the task"""
-    total_timesteps: int = 1000000
+    total_timesteps: int = 200000
     """total timesteps of the experiments"""
     num_envs: int = 4
     """the number of parallel game environments to run"""
@@ -67,34 +68,36 @@ class Args:
 
 
     # icm specific arguments
-    icm_lr: float = 1e-4
+    icm_lr: float = 0.00082
     """the learning rate of the icm"""
     icm_epochs: int = 4
     """the number of epochs for the icm"""
-    icm_frequency: int = 800
+    icm_frequency: int = 1000
     """the frequency of training icm"""
-    beta: float = 0.2
+    beta: float = 0.1083
     """the beta of the icm"""
     clip_intrinsic_reward: float = 10.0
     """the clipping of the intrinsic reward"""
     feature_dim: int = 64
 
 
-    keep_extrinsic_reward: bool = True
+    keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    coef_intrinsic : float = 1.0
+    coef_intrinsic : float = 84.185
     """the coefficient of the intrinsic reward"""
-    coef_extrinsic : float = 1.0
+    coef_extrinsic : float = 1.96
     """the coefficient of the extrinsic reward"""
 
 
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         if capture_video and idx == 0:
-            env = gym.make(env_id, render_mode="rgb_array")
+            #env = gym.make(env_id, render_mode="rgb_array")
+            env = LilMaze(render_mode="rgb_array")
             env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         else:
-            env = gym.make(env_id)
+            #env = gym.make(env_id)
+            env = LilMaze()
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env.action_space.seed(seed)
         return env
@@ -289,8 +292,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
     icm = ICM(envs,
               feature_dim=64,
-              beta=args.beta,
-              device=device).to(device)
+              beta=args.beta).to(device)
     icm_optimizer = optim.Adam(icm.parameters(), lr=args.icm_lr)
 
     # Automatic entropy tuning
@@ -315,6 +317,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     )
     start_time = time.time()
 
+
+    pure_exploration_discrete_matrix = np.zeros((50,50))
+
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
@@ -328,15 +333,22 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
+        for aaa in range(len(obs)):
+            pure_exploration_discrete_matrix[min(int(obs[aaa][0]*50),49)][min(int(obs[aaa][1]*50),49)] = min(1, pure_exploration_discrete_matrix[min(int(obs[aaa][0]*50),49)][min(int(obs[aaa][1]*50),49)] +1)
+
+
+
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
             for info in infos["final_info"]:
                 if info is not None:
                     print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                     if sweep:
-                        episodic_returns_list.append(info["episode"]["r"])
+                        #episodic_returns_list.append(info["episode"]["r"])
+                        episodic_returns_list.append(np.array([np.mean(pure_exploration_discrete_matrix)]))
                         corresponding_steps.append(global_step)
                     else:
+                        writer.add_scalar("charts/mean_exploration", np.mean(pure_exploration_discrete_matrix), global_step)
                         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                         writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                     break
@@ -367,7 +379,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
                 mean_icm_loss /= args.icm_epochs
                 if not sweep:
-                    writer.add_scalar("losses/vae_loss", mean_vae_loss, global_step)
+                    writer.add_scalar("losses/icm_loss", mean_icm_loss, global_step)
                 
 
 

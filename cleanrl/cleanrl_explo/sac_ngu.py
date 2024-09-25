@@ -20,7 +20,7 @@ from lil_maze import LilMaze
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
     """the name of this experiment"""
-    seed: int = 1
+    seed: int = 12
     """seed of the experiment"""
     torch_deterministic: bool = True
     """if toggled, `torch.backends.cudnn.deterministic=False`"""
@@ -38,9 +38,9 @@ class Args:
     # Algorithm specific arguments
     env_id: str = "Hopper-v4"
     """the environment id of the task"""
-    total_timesteps: int = 1000000
+    total_timesteps: int = 200000
     """total timesteps of the experiments"""
-    num_envs: int = 2
+    num_envs: int = 4
     """the number of parallel game environments to run"""
     buffer_size: int = int(1e6)
     """the replay memory buffer size"""
@@ -68,17 +68,17 @@ class Args:
 
 
     # NGU specific arguments
-    ngu_lr: float = 1e-4
+    ngu_lr: float = 0.00004501
     """the learning rate of the NGU"""
-    ngu_epochs: int = 1
+    ngu_epochs: int = 4
     """the number of epochs for the NGU"""
-    ngu_frequency: int = 800
+    ngu_frequency: int = 900
     """the frequency of training NGU"""
     ngu_feature_dim: int = 64
     """the feature dimension of the NGU"""
-    k_nearest: int = 8
+    k_nearest: int = 6
     """the number of nearest neighbors for the NGU"""
-    clip_reward: float = 5.0
+    clip_reward: float = 0.3656
     """the clipping value of the reward"""
     c: float = 0.001
     """the constant used not to divide by zero"""
@@ -88,22 +88,22 @@ class Args:
     """the epsilon value for the kernel of the NGU"""
 
 
-    keep_extrinsic_reward: bool = True
+    keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    coef_intrinsic : float = 1.0
+    coef_intrinsic : float = 48.311
     """the coefficient of the intrinsic reward"""
-    coef_extrinsic : float = 1.0
+    coef_extrinsic : float = 7.099
     """the coefficient of the extrinsic reward"""
-
 
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         if capture_video and idx == 0:
-
-            env = gym.make(env_id, render_mode="rgb_array")
+            #env = gym.make(env_id, render_mode="rgb_array")
+            env = LilMaze(render_mode="rgb_array")
             env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         else:
-            env = gym.make(env_id)
+            #env = gym.make(env_id)
+            env = LilMaze()
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env.action_space.seed(seed)
         return env
@@ -408,6 +408,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     )
     start_time = time.time()
 
+
+    pure_exploration_discrete_matrix = np.zeros((50,50))
+
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
@@ -420,6 +423,10 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
+
+        for aaa in range(len(obs)):
+            pure_exploration_discrete_matrix[min(int(obs[aaa][0]*50),49)][min(int(obs[aaa][1]*50),49)] = min(1, pure_exploration_discrete_matrix[min(int(obs[aaa][0]*50),49)][min(int(obs[aaa][1]*50),49)] +1)
+
 
         # COMPUTE REWARD
         reward_ngu = torch.zeros(args.num_envs)
@@ -434,9 +441,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 if info is not None:
                     print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                     if sweep:
-                        episodic_returns_list.append(info["episode"]["r"])
+                        #episodic_returns_list.append(info["episode"]["r"])
+                        episodic_returns_list.append(np.array([np.mean(pure_exploration_discrete_matrix)]))
                         corresponding_steps.append(global_step)
                     else:
+                        writer.add_scalar("charts/mean_exploration", np.mean(pure_exploration_discrete_matrix), global_step)
                         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                         writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                     break

@@ -28,7 +28,7 @@ class LilMaze(gym.Env):
         self.initial_agent_position = np.array([0.25, 0.25])
 
         # Define the goal position
-        self.goal_position = np.array([0.75, 0.75])
+        self.goal_position = np.array([0.25, 0.75])
 
         # Wall positions
         self.wall_positions = [

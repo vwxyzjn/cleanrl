@@ -27,7 +27,7 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = True
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "SAC - exploration with auxiliary VAE" 
+    wandb_project_name: str = "SAC - exploration with auxiliary classifier" 
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
@@ -66,26 +66,22 @@ class Args:
 
 
 
-    # VAE specific arguments
-    vae_lr: float = 0.001139
-    """the learning rate of the VAE"""
-    vae_epochs: int = 4
-    """the number of epochs for the VAE"""
-    vae_frequency: int = 800
-    """the frequency of training VAE"""
-    vae_latent_dim: int = 32
-    """the latent dimension of the VAE"""
-    clip_vae: float = 120.0
-    """the clipping of the VAE"""
-    vae_batch_size: int = 128
-    """the batch size of the VAE"""
+    # classifier specific arguments
+    classifier_lr: float = 0.005497
+    """the learning rate of the classifier"""
+    classifier_epochs: int = 4
+    """the number of epochs for the classifier"""
+    classifier_frequency: int = 800
+    """the frequency of training classifier"""
+    classifier_lim : float = 10.0
+    """the limit of the classifier output"""
 
 
     keep_extrinsic_reward: bool = False
     """if toggled, the extrinsic reward will be kept"""
-    coef_intrinsic : float = 0.3472
+    coef_intrinsic : float = 0.6502
     """the coefficient of the intrinsic reward"""
-    coef_extrinsic : float = 0.5422
+    coef_extrinsic : float = 10.59
     """the coefficient of the extrinsic reward"""
 
 
@@ -163,52 +159,27 @@ class Actor(nn.Module):
         log_prob = log_prob.sum(1, keepdim=True)
         mean = torch.tanh(mean) * self.action_scale + self.action_bias
         return action, log_prob, mean
-    
-class VAE(nn.Module):
-    def __init__(self, envs, latent_dim, clip_vae=120.0, scale_l = 1000.0):
-        super().__init__()
-        input_dim = np.prod(envs.single_observation_space.shape)
-        self.clip_vae = clip_vae
-        self.scale_l = scale_l
-        self.encoder = nn.Sequential(
-            nn.Linear(input_dim, 256),
-            nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.ReLU(),
-        )
-        self.mean_layer = nn.Linear(256, latent_dim)
-        self.logstd_layer = nn.Linear(256, latent_dim)
-        self.decoder = nn.Sequential(
-            nn.Linear(latent_dim, 256),
-            nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.ReLU(),
-            nn.Linear(256, input_dim),
-        )   
-    def encode(self, x):
-        x = self.encoder(x)
-        mean = self.mean_layer(x)
-        logstd = self.logstd_layer(x)
-        return mean, logstd
 
-    def decode(self, z):
-        return self.decoder(z)
-    
+
+class Classifier(nn.Module):
+    def __init__(self, input_size, lim = 10):
+        super().__init__()
+        self.fc1 = nn.Linear(input_size, 256)
+        self.fc2 = nn.Linear(256, 256)
+        self.fc3 = nn.Linear(256, 1)
+        self.sigmoid = nn.Sigmoid()
+        self.lim = lim
+
     def forward(self, x):
-        mean, logstd = self.encode(x/self.scale_l)
-        z = mean + torch.randn_like(mean) * torch.exp(logstd)
-        x_recon = torch.clamp(self.decode(z), -self.clip_vae, self.clip_vae)
-        return x_recon, mean, logstd
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return torch.clamp(x, -self.lim, self.lim)
     
-    def loss(self, x, reduce=True):
-        x_recon, mean, logstd = self(x)
-        x = x/self.scale_l
-        recon_loss = F.mse_loss(x_recon, x, reduction='none').sum(1)
-        kl_loss = -0.5 * (1 + 2 * logstd - mean ** 2 - torch.exp(2 * logstd)).sum(1)
-        loss = recon_loss + kl_loss
-        if reduce:
-            return loss.mean()
-        return loss
+    def loss(self, s : torch.Tensor):
+        imaginary_sample = torch.rand_like(s)
+        obj = (torch.log(1-self.sigmoid(self(s))) + torch.log(self.sigmoid(self(imaginary_sample)))).mean()
+        return obj
 
 def main(seed=None, sweep=False):
 
@@ -288,10 +259,8 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     q_optimizer = optim.Adam(list(qf1.parameters()) + list(qf2.parameters()), lr=args.q_lr)
     actor_optimizer = optim.Adam(list(actor.parameters()), lr=args.policy_lr)
 
-    vae = VAE(envs, 
-              latent_dim=args.vae_latent_dim, 
-              clip_vae=args.clip_vae).to(device)
-    vae_optimizer = optim.Adam(vae.parameters(), lr=args.vae_lr)
+    classifier = Classifier(np.prod(envs.single_observation_space.shape), args.classifier_lim).to(device)
+    classifier_optimizer = optim.Adam(classifier.parameters(), lr=args.classifier_lr)
 
     # Automatic entropy tuning
     if args.autotune:
@@ -315,7 +284,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     )
     start_time = time.time()
 
+
     pure_exploration_discrete_matrix = np.zeros((50,50))
+
 
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
@@ -332,6 +303,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
         for aaa in range(len(obs)):
             pure_exploration_discrete_matrix[min(int(obs[aaa][0]*50),49)][min(int(obs[aaa][1]*50),49)] = min(1, pure_exploration_discrete_matrix[min(int(obs[aaa][0]*50),49)][min(int(obs[aaa][1]*50),49)] +1)
+
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
@@ -361,20 +333,20 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
 
-            if global_step % args.vae_frequency == 0:
-                mean_vae_loss = 0.0
-                for _ in range(args.vae_epochs):
+            if global_step % args.classifier_frequency == 0:
+                mean_classifier_loss = 0.0
+                for _ in range(args.classifier_epochs):
                     data = rb.sample(args.batch_size)
                     
-                    vae_loss = vae.loss(data.observations, reduce=True)
-                    vae_optimizer.zero_grad()
-                    vae_loss.backward()
-                    vae_optimizer.step()
-                    mean_vae_loss += vae_loss.item()
+                    classifier_loss = classifier.loss(data.observations)
+                    classifier_optimizer.zero_grad()
+                    classifier_loss.backward()
+                    classifier_optimizer.step()
+                    mean_classifier_loss += classifier_loss.item()
 
-                mean_vae_loss /= args.vae_epochs
+                mean_classifier_loss /= args.classifier_epochs
                 if not sweep:
-                    writer.add_scalar("losses/vae_loss", mean_vae_loss, global_step)
+                    writer.add_scalar("losses/classifier_loss", mean_classifier_loss, global_step)
                 
 
 
@@ -384,8 +356,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 qf1_next_target = qf1_target(data.next_observations, next_state_actions)
                 qf2_next_target = qf2_target(data.next_observations, next_state_actions)
                 min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - alpha * next_state_log_pi
-                intrinsic_reward = vae.loss(data.observations, reduce = False)
+                intrinsic_reward = classifier(data.observations).flatten()
                 extrinsic_reward = data.rewards.flatten()
+                assert intrinsic_reward.shape == extrinsic_reward.shape
                 if args.keep_extrinsic_reward:
                     rewards = extrinsic_reward*args.coef_extrinsic + intrinsic_reward*args.coef_intrinsic
                 else:

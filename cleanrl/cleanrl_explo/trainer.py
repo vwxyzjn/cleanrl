@@ -24,19 +24,19 @@ class Sweep_Args():
 
     ###########################################################################
 
-    available_methods = ["aux", "icm", "ngu", "rnd"]
+    available_methods = ["aux", "icm", "ngu", "rnd", "apt", "our_method"]
     "All the methods available for training"
 
 
-    method = "ngu"
+    method = "our_method"
     "The method to use for training"
-    environment = "Hopper-v4"
+    environment = "LilMaze"
     "The environment to use for training"
-    nb_of_attempts: int = 5
+    nb_of_attempts: int = 1
     "Every hyperparameter combination will be tried this many times, the average will be used"
-    nb_of_parallel_jobs: int = 10
-    "The number of parallel agents to run (remember that several environments will already be run in parallel for every single agent)"
-    count: int = 3
+    nb_of_parallel_jobs: int = 1
+    "The number of parallel agents to run (remember that several environments will already be run for every single agent)"
+    count: int = 10
     "The number of hyperparameter combinations to try per agent"
 
 
@@ -56,27 +56,10 @@ class Sweep_Args():
         "method": "bayes",
         "metric": {"goal": "maximize", "name": "episodic_return"},
         "parameters": {
-            "ngu_lr": {
+            "classifier_lr": {
                 "distribution": "log_uniform_values",
                 "max": 1e-2,
                 "min": 1e-5,
-            },
-            "ngu_frequency": {
-                "distribution": "q_uniform",
-                "max": 1000,
-                "min": 100,
-                "q": 100,
-            },
-            "k_nearest": {
-                "distribution": "q_uniform",
-                "max": 16,
-                "min": 2,
-                "q": 2,
-            },
-            "clip_reward": {
-                "distribution": "log_uniform_values",
-                "max": 100.0,
-                "min": 0.1,
             },
             "coef_intrinsic": {
                 "distribution": "log_uniform_values",
@@ -89,13 +72,13 @@ class Sweep_Args():
                 "min": 0.1,
             },
             "total_timesteps": {
-                'value': 500000,   
+                'value': 200000,   
             },
             'capture_video': {
                 'value': False
             },
             'keep_extrinsic_reward': {
-                'value': True
+                'value': False
             },
             'env_id': {
                 'value': f"{environment}"
