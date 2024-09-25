@@ -13,7 +13,6 @@ import torch.optim as optim
 import tyro
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
-from lil_maze import LilMaze
 
 
 @dataclass
@@ -98,12 +97,10 @@ class Args:
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         if capture_video and idx == 0:
-            #env = gym.make(env_id, render_mode="rgb_array")
-            env = LilMaze(render_mode="rgb_array")
+            env = gym.make(env_id, render_mode="rgb_array")
             env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         else:
-            #env = gym.make(env_id)
-            env = LilMaze()
+            env = gym.make(env_id)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env.action_space.seed(seed)
         return env
@@ -408,9 +405,6 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     )
     start_time = time.time()
 
-
-    pure_exploration_discrete_matrix = np.zeros((50,50))
-
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
@@ -423,10 +417,6 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
-
-        for aaa in range(len(obs)):
-            pure_exploration_discrete_matrix[min(int(obs[aaa][0]*50),49)][min(int(obs[aaa][1]*50),49)] = min(1, pure_exploration_discrete_matrix[min(int(obs[aaa][0]*50),49)][min(int(obs[aaa][1]*50),49)] +1)
-
 
         # COMPUTE REWARD
         reward_ngu = torch.zeros(args.num_envs)
@@ -441,11 +431,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 if info is not None:
                     print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                     if sweep:
-                        #episodic_returns_list.append(info["episode"]["r"])
-                        episodic_returns_list.append(np.array([np.mean(pure_exploration_discrete_matrix)]))
+                        episodic_returns_list.append(info["episode"]["r"])
                         corresponding_steps.append(global_step)
                     else:
-                        writer.add_scalar("charts/mean_exploration", np.mean(pure_exploration_discrete_matrix), global_step)
                         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                         writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
                     break
