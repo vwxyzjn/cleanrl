@@ -284,7 +284,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                         a_optimizer.zero_grad()
                         alpha_loss.backward()
                         a_optimizer.step()
-                        alpha = log_alpha.exp().item()
+                        self.alpha = log_alpha.exp().item()
 
             # update the target networks
             if global_step % args.target_network_frequency == 0:
