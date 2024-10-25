@@ -15,7 +15,6 @@ import torch.optim as optim
 import tyro
 from torch.utils.tensorboard import SummaryWriter
 
-
 @dataclass
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
@@ -52,7 +51,7 @@ class Args:
     """the discount factor gamma"""
     num_minibatches: int = 4
     """the number of mini-batches"""
-    update_epochs: int = 2
+    update_epochs: int = 4
     """the K epochs to update the policy"""
     max_grad_norm: float = 0.5
     """the maximum norm for the gradient clipping"""
@@ -108,29 +107,38 @@ class RecordEpisodeStatistics(gym.Wrapper):
         )
 
 
-# ALGO LOGIC: initialize agent here:
+def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+    torch.nn.init.orthogonal_(layer.weight, std)
+    torch.nn.init.constant_(layer.bias, bias_const)
+    return layer
+
+
 class QNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
         self.network = nn.Sequential(
-            nn.Conv2d(1, 32, 8, stride=4),
+            layer_init(nn.Conv2d(1, 32, 8, stride=4)),
             nn.LayerNorm([32, 20, 20]),
             nn.ReLU(),
-            nn.Conv2d(32, 64, 4, stride=2),
+            layer_init(nn.Conv2d(32, 64, 4, stride=2)),
             nn.LayerNorm([64, 9, 9]),
             nn.ReLU(),
-            nn.Conv2d(64, 64, 3, stride=1),
+            layer_init(nn.Conv2d(64, 64, 3, stride=1)),
             nn.LayerNorm([64, 7, 7]),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(3136, 512),
+            layer_init(nn.Linear(3136, 512)),
             nn.LayerNorm(512),
             nn.ReLU(),
         )
         self.lstm = nn.LSTM(512, 128)
-        self.head = nn.Linear(128, env.single_action_space.n)
+        for name, param in self.lstm.named_parameters():
+            if "bias" in name:
+                nn.init.constant_(param, 0)
+            elif "weight" in name:
+                nn.init.orthogonal_(param, 1.0)
+        self.q_func = layer_init(nn.Linear(128, env.single_action_space.n))
 
-    
     def get_states(self, x, lstm_state, done):
         hidden = self.network(x / 255.0)
 
@@ -153,7 +161,7 @@ class QNetwork(nn.Module):
 
     def forward(self, x, lstm_state, done):
         hidden, lstm_state = self.get_states(x, lstm_state, done)
-        return self.head(hidden), lstm_state
+        return self.q_func(hidden), lstm_state
 
 
 def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
@@ -209,7 +217,7 @@ if __name__ == "__main__":
     assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(envs).to(device)
-    optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
+    optimizer = optim.RAdam(q_network.parameters(), lr=args.learning_rate)
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -218,7 +226,6 @@ if __name__ == "__main__":
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
     avg_returns = deque(maxlen=20)
-
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0

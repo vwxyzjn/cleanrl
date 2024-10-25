@@ -42,17 +42,17 @@ class Args:
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 128
+    num_envs: int = 8
     """the number of parallel game environments"""
-    num_steps: int = 32
+    num_steps: int = 128
     """the number of steps to run in each environment per policy rollout"""
     anneal_lr: bool = True
     """Toggle learning rate annealing for policy and value networks"""
     gamma: float = 0.99
     """the discount factor gamma"""
-    num_minibatches: int = 32
+    num_minibatches: int = 4
     """the number of mini-batches"""
-    update_epochs: int = 2
+    update_epochs: int = 4
     """the K epochs to update the policy"""
     max_grad_norm: float = 10.0
     """the maximum norm for the gradient clipping"""
@@ -107,25 +107,31 @@ class RecordEpisodeStatistics(gym.Wrapper):
             infos,
         )
 
-# ALGO LOGIC: initialize agent here:
+
+def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
+    torch.nn.init.orthogonal_(layer.weight, std)
+    torch.nn.init.constant_(layer.bias, bias_const)
+    return layer
+
+
 class QNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
         self.network = nn.Sequential(
-            nn.Conv2d(4, 32, 8, stride=4),
+            layer_init(nn.Conv2d(4, 32, 8, stride=4)),
             nn.LayerNorm([32, 20, 20]),
             nn.ReLU(),
-            nn.Conv2d(32, 64, 4, stride=2),
+            layer_init(nn.Conv2d(32, 64, 4, stride=2)),
             nn.LayerNorm([64, 9, 9]),
             nn.ReLU(),
-            nn.Conv2d(64, 64, 3, stride=1),
+            layer_init(nn.Conv2d(64, 64, 3, stride=1)),
             nn.LayerNorm([64, 7, 7]),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(3136, 512),
+            layer_init(nn.Linear(3136, 512)),
             nn.LayerNorm(512),
             nn.ReLU(),
-            nn.Linear(512, env.single_action_space.n),
+            layer_init(nn.Linear(512, env.single_action_space.n)),
         )
 
     def forward(self, x):
@@ -185,7 +191,7 @@ if __name__ == "__main__":
     assert isinstance(envs.action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     q_network = QNetwork(envs).to(device)
-    optimizer = optim.Adam(q_network.parameters(), lr=args.learning_rate)
+    optimizer = optim.RAdam(q_network.parameters(), lr=args.learning_rate)
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
@@ -221,7 +227,7 @@ if __name__ == "__main__":
                 max_actions = torch.argmax(q_values, dim=1)
                 values[step] = q_values[torch.arange(args.num_envs), max_actions].flatten()
 
-            explore = (torch.rand((args.num_envs,)).to(device) < epsilon)
+            explore = torch.rand((args.num_envs,)).to(device) < epsilon
             action = torch.where(explore, random_actions, max_actions)
             actions[step] = action
 
