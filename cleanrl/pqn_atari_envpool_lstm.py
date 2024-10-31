@@ -1,4 +1,4 @@
-# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppo_atari_envpoolpy
+# docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/pqn/#pqn_atari_envpool_lstmpy
 import os
 import random
 import time
@@ -14,6 +14,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import tyro
 from torch.utils.tensorboard import SummaryWriter
+
 
 @dataclass
 class Args:
@@ -168,6 +169,7 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
     slope = (end_e - start_e) / duration
     return max(slope * t + start_e, end_e)
 
+
 if __name__ == "__main__":
     args = tyro.cli(Args)
     args.batch_size = int(args.num_envs * args.num_steps)
@@ -232,7 +234,7 @@ if __name__ == "__main__":
     start_time = time.time()
     next_obs = torch.Tensor(envs.reset()).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
-    
+
     next_lstm_state = (
         torch.zeros(q_network.lstm.num_layers, args.num_envs, q_network.lstm.hidden_size).to(device),
         torch.zeros(q_network.lstm.num_layers, args.num_envs, q_network.lstm.hidden_size).to(device),
@@ -260,7 +262,7 @@ if __name__ == "__main__":
                 max_actions = torch.argmax(q_values, dim=1)
                 values[step] = q_values[torch.arange(args.num_envs), max_actions].flatten()
 
-            explore = (torch.rand((args.num_envs,)).to(device) < epsilon)
+            explore = torch.rand((args.num_envs,)).to(device) < epsilon
             action = torch.where(explore, random_actions, max_actions)
             actions[step] = action
 
@@ -315,7 +317,7 @@ if __name__ == "__main__":
                 old_val, _ = q_network(
                     b_obs[mb_inds],
                     (initial_lstm_state[0][:, mbenvinds], initial_lstm_state[1][:, mbenvinds]),
-                    b_dones[mb_inds]
+                    b_dones[mb_inds],
                 )
                 old_val = old_val.gather(1, b_actions[mb_inds].unsqueeze(-1).long()).squeeze()
 

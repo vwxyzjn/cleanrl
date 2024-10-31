@@ -58,7 +58,7 @@ Running `python cleanrl/pqn.py` will automatically record various metrics such a
 * `charts/SPS`: number of steps per second
 * `charts/learning_rate`: the current learning rate
 * `losses/td_loss`: the mean squared error (MSE) between the Q values at timestep $t$ and the Bellman update target estimated using the $Q(\lambda)$ returns.
-* `losses/q_values`: implemented as `qf1(data.observations, data.actions).view(-1)`, it is the average Q values of the sampled data in the replay buffer; useful when gauging if under or over estimation happens.
+* `losses/q_values`: it is the average Q values of the sampled data in the replay buffer; useful when gauging if under or over estimation happens.
 
 ### Implementation details
 
@@ -73,21 +73,29 @@ Running `python cleanrl/pqn.py` will automatically record various metrics such a
 
 ### Experiment results
 
-To run benchmark experiments, see :material-github: [benchmark/pqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/pqn.sh). Specifically, execute the following command:
+Episode Rewards:
 
-``` title="benchmark/pqn.sh" linenums="1"
---8<-- "benchmark/pqn.sh:3:8"
-```
+| Environment      | CleanRL PQN       |
+|------------------|-------------------|
+| CartPole-v1      | 408.14 ± 128.42   |
+| Acrobot-v1       | -93.71 ± 2.94     |
+| MountainCar-v0   | -200.00 ± 0.00    |
 
-# TODO
+Runtime:
+
+| Environment      | CleanRL PQN          |
+|------------------|----------------------|
+| CartPole-v1      | 3.619667511995135    |
+| Acrobot-v1       | 4.264845468334595    |
+| MountainCar-v0   | 3.99800178870078     |
 
 Learning curves:
 
-``` title="benchmark/pqn_plot.sh" linenums="1"
---8<-- "benchmark/pqn_plot.sh::9"
-```
+<img src="../pqn/pqn_state.png">
 
-# TODO
+Tracked experiments: 
+
+<iframe src="https://api.wandb.ai/links/rogercreus/9s50xw0j" style="width:100%; height:500px" title="CleanRL-s-PPO-TrXL"></iframe>
 
 ## `pqn_atari_envpool.py`
 
@@ -141,22 +149,34 @@ See [related docs](/rl-algorithms/pqn/#explanation-of-the-logged-metrics) for `p
 
 ### Experiment results
 
-To run benchmark experiments, see :material-github: [benchmark/pqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/pqn.sh). Specifically, execute the following command:
+Episode Rewards:
 
+| Environment       | CleanRL PQN        |
+|-------------------|--------------------|
+| Breakout-v5       | 356.93 ± 7.48      |
+| SpaceInvaders-v5  | 900.07 ± 107.95    |
+| BeamRider-v5      | 1987.97 ± 24.47    |
+| Pong-v5           | 20.44 ± 0.11       |
+| MsPacman-v5       | 2437.57 ± 215.01   |
 
-``` title="benchmark/pqn.sh" linenums="1"
---8<-- "benchmark/pqn.sh:58:63"
-```
+Runtime:
 
-# TODO
+| Environment       | CleanRL PQN           |
+|-------------------|-----------------------|
+| Breakout-v5       | 41.27235000576079     |
+| SpaceInvaders-v5  | 42.191246278536035    |
+| BeamRider-v5      | 42.66799268151052     |
+| Pong-v5           | 39.35770012905844     |
+| MsPacman-v5       | 43.22808379473344     |
 
 
 Learning curves:
 
-``` title="benchmark/pqn_plot.sh" linenums="1"
---8<-- "benchmark/pqn_plot.sh:51:62"
-```
-# TODO
+<img src="../pqn/pqn.png">
+
+Tracked experiments: 
+
+<iframe src="https://wandb.ai/rogercreus/cleanRL/reports/PQN-PR-472--Vmlldzo5ODg1NTkx" style="width:100%; height:500px" title="CleanRL-s-PPO-TrXL"></iframe>
 
 ## `pqn_atari_envpool_lstm.py`
 
@@ -219,18 +239,28 @@ To help test out the memory, we remove the 4 stacked frames from the observation
 
 ### Experiment results
 
-To run benchmark experiments, see :material-github: [benchmark/pqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/pqn.sh). Specifically, execute the following command:
+Episode Rewards:
 
-``` title="benchmark/pqn.sh" linenums="1"
---8<-- "benchmark/pqn.sh:47:52"
-```
+| Environment       | CleanRL PQN        |
+|-------------------|--------------------|
+| Breakout-v5       | 366.47 ± 2.72      |
+| SpaceInvaders-v5  | 681.92 ± 40.15     |
+| BeamRider-v5      | 2050.85 ± 38.58    |
+| MsPacman-v5       | 1815.20 ± 183.03   |
 
-# TODO
+Runtime:
+
+| Environment       | CleanRL PQN           |
+|-------------------|-----------------------|
+| Breakout-v5       | 170.30230232607076    |
+| SpaceInvaders-v5  | 168.45747969698144    |
+| BeamRider-v5      | 172.11561139317593    |
+| MsPacman-v5       | 171.66131707108408    |
 
 Learning curves:
 
-``` title="benchmark/pqn_plot.sh" linenums="1"
---8<-- "benchmark/pqn_plot.sh:11:19"
-```
+<img src="../pqn/pqn_lstm.png">
 
-# TODO
+Tracked experiments: 
+
+<iframe src="https://wandb.ai/rogercreus/cleanRL/reports/PQN-PR-472--Vmlldzo5ODg1NTkx" style="width:100%; height:500px" title="CleanRL-s-PPO-TrXL"></iframe>
