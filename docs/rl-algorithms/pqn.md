@@ -73,6 +73,12 @@ Running `python cleanrl/pqn.py` will automatically record various metrics such a
 
 ### Experiment results
 
+To run benchmark experiments, see :material-github: [benchmark/pqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/pqn.sh). Specifically, execute the following command:
+
+``` title="benchmark/pqn.sh" linenums="1"
+--8<-- "benchmark/pqn.sh:0:6"
+```
+
 Episode Rewards:
 
 | Environment      | CleanRL PQN       |
@@ -90,6 +96,10 @@ Runtime:
 | MountainCar-v0   | 3.99800178870078     |
 
 Learning curves:
+
+``` title="benchmark/pqn_plot.sh" linenums="1"
+--8<-- "benchmark/pqn_plot.sh:1:9"
+```
 
 <img src="../pqn/pqn_state.png">
 
@@ -149,6 +159,12 @@ See [related docs](/rl-algorithms/pqn/#explanation-of-the-logged-metrics) for `p
 
 ### Experiment results
 
+To run benchmark experiments, see :material-github: [benchmark/pqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/pqn.sh). Specifically, execute the following command:
+
+``` title="benchmark/pqn.sh" linenums="1"
+--8<-- "benchmark/pqn.sh:12:17"
+```
+
 Episode Rewards:
 
 | Environment       | CleanRL PQN        |
@@ -171,6 +187,10 @@ Runtime:
 
 
 Learning curves:
+
+``` title="benchmark/pqn_plot.sh" linenums="1"
+--8<-- "benchmark/pqn_plot.sh:11:29"
+```
 
 <img src="../pqn/pqn.png">
 
@@ -239,6 +259,13 @@ To help test out the memory, we remove the 4 stacked frames from the observation
 
 ### Experiment results
 
+To run benchmark experiments, see :material-github: [benchmark/pqn.sh](https://github.com/vwxyzjn/cleanrl/blob/master/benchmark/pqn.sh). Specifically, execute the following command:
+
+``` title="benchmark/pqn.sh" linenums="1"
+--8<-- "benchmark/pqn.sh:23:28"
+```
+
+
 Episode Rewards:
 
 | Environment       | CleanRL PQN        |
@@ -258,6 +285,10 @@ Runtime:
 | MsPacman-v5       | 171.66131707108408    |
 
 Learning curves:
+
+``` title="benchmark/pqn_plot.sh" linenums="1"
+--8<-- "benchmark/pqn_plot.sh:32:50"
+```
 
 <img src="../pqn/pqn_lstm.png">
 
