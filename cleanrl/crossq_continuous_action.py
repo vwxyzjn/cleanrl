@@ -59,10 +59,11 @@ class Args:
 
 
 # BatchRenorm implementation from https://github.com/danielpalen/stable-baselines3-contrib/blob/feat/crossq/sb3_contrib/common/torch_layers.py
-class BatchRenorm(torch.jit.ScriptModule):
+class BatchRenorm(torch.nn.Module):
     """
     BatchRenorm Module (https://arxiv.org/abs/1702.03275).
-    Adapted to Pytorch from sbx.sbx.common.jax_layers.BatchRenorm
+    Adapted to Pytorch from
+    https://github.com/araffin/sbx/blob/master/sbx/common/jax_layers.py
 
     BatchRenorm is an improved version of vanilla BatchNorm. Contrary to BatchNorm,
     BatchRenorm uses the running statistics for normalizing the batches after a warmup phase.
@@ -76,11 +77,12 @@ class BatchRenorm(torch.jit.ScriptModule):
 
     :param num_features: Number of features in the input tensor.
     :param eps: A value added to the variance for numerical stability.
-    :param momentum: The value used for the ra_mean and ra_var computation.
+    :param momentum: The value used for the ra_mean and ra_var (running average) computation.
+        It controls the rate of convergence for the batch renormalization statistics.
     :param affine: A boolean value that when set to True, this module has learnable
             affine parameters. Default: True
     :param warmup_steps: Number of warum steps that are performed before the running statistics
-            are used form normalization. During the warump phase, the batch statistics are used.
+            are used for normalization. During the warump phase, the batch statistics are used.
     """
 
     def __init__(
@@ -103,6 +105,8 @@ class BatchRenorm(torch.jit.ScriptModule):
         self.eps = eps
         self.step = 0
         self.momentum = momentum
+        self.num_features = num_features
+        # Clip scale and bias of the affine transform
         self.rmax = 3.0
         self.dmax = 5.0
         self.warmup_steps = warmup_steps
@@ -119,8 +123,9 @@ class BatchRenorm(torch.jit.ScriptModule):
         """
 
         if self.training:
-            batch_mean = x.mean(0)
-            batch_var = x.var(0)
+            # Compute batch statistics
+            batch_mean = x.mean(dim=0)
+            batch_var = x.var(dim=0)
             batch_std = (batch_var + self.eps).sqrt()
 
             # Use batch statistics during initial warm up phase.
@@ -138,9 +143,6 @@ class BatchRenorm(torch.jit.ScriptModule):
                 d = d.clamp(-self.dmax, self.dmax)
 
                 # BatchNorm normalization, using minibatch stats and running average stats
-                # Because we use _normalize, this is equivalent to
-                # ((x - x_mean) / sigma) * r + d = ((x - x_mean) * r + d * sigma) / sigma
-                # where sigma = sqrt(var)
                 custom_mean = batch_mean - d * batch_var.sqrt() / r
                 custom_var = batch_var / (r**2)
 
@@ -153,6 +155,7 @@ class BatchRenorm(torch.jit.ScriptModule):
             self.steps += 1
 
         else:
+            # Use running statistics during evaluation mode
             custom_mean, custom_var = self.ra_mean, self.ra_var
 
         # Normalize
@@ -163,12 +166,17 @@ class BatchRenorm(torch.jit.ScriptModule):
 
         return x
 
+    def extra_repr(self) -> str:
+        return (
+            f"num_features={self.num_features}, momentum={self.momentum}, "
+            f"warmup_steps={self.warmup_steps}, affine={self.affine}"
+        )
+
 
 class BatchRenorm1d(BatchRenorm):
     def _check_input_dim(self, x: torch.Tensor) -> None:
         if x.dim() == 1:
             raise ValueError(f"Expected 2D or 3D input (got {x.dim()}D input)")
-
 
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
