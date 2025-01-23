@@ -234,7 +234,9 @@ E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py
 
     agent = Agent(envs).to(device)
     if args.world_size > 1:
+        # DDP syncs gradients (after each backward step), weights are sync'd at DDP initialization
         agent = DDP(agent)
+
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage setup
