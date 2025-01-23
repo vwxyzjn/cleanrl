@@ -38,7 +38,7 @@ the CleanRL script under the poetry virtual environments.
 
 !!! note
 
-    We recommend `poetry shell` workflow for development. When the shell is activeated, you should
+    We recommend `poetry shell` workflow for development. When the shell is activated, you should
     be seeing a prefix like `(cleanrl-iXg02GqF-py3.9)` in your shell's prompt, which is the name
     of the poetry's virtual environment.
     **We will assume to run other commands (e.g. `tensorboard`) in the documentation within the poetry's shell.**
