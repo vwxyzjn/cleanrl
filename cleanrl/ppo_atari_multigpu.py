@@ -213,7 +213,7 @@ E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py
     args.seed += local_rank
     random.seed(args.seed)
     np.random.seed(args.seed)
-    torch.manual_seed(args.seed - local_rank)
+    torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
     if len(args.device_ids) > 0:
@@ -235,7 +235,6 @@ E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py
     agent = Agent(envs).to(device)
     if args.world_size > 1:
         agent = DDP(agent)
-    torch.manual_seed(args.seed)
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage setup
