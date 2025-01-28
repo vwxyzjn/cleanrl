@@ -26,6 +26,10 @@ rich = "<12.0"
 tenacity = "^8.2.2"
 tyro = "^0.5.10"
 pyyaml = "^6.0.1"
+tomli = "^2.0.1"
+msgpack = "^1.0.5"
+cffi = "^1.15.1"
+pip = "^22.3.1"
 
 ale-py = {version = "0.8.1", optional = true}
 AutoROM = {extras = ["accept-rom-license"], version = "~0.4.2", optional = true}
