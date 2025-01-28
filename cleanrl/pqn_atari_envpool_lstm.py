@@ -290,8 +290,9 @@ if __name__ == "__main__":
                 else:
                     nextnonterminal = 1.0 - dones[t + 1]
                     next_value = values[t + 1]
-                    returns[t] = rewards[t] + args.gamma * (
-                        args.q_lambda * returns[t + 1] + (1 - args.q_lambda) * next_value * nextnonterminal
+                    returns[t] = (
+                        rewards[t]
+                        + args.gamma * (args.q_lambda * returns[t + 1] + (1 - args.q_lambda) * next_value) * nextnonterminal
                     )
 
         # flatten the batch
