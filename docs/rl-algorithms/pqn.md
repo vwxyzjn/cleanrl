@@ -81,19 +81,19 @@ To run benchmark experiments, see :material-github: [benchmark/pqn.sh](https://g
 
 Episode Rewards:
 
-| Environment      | CleanRL PQN       |
-|------------------|-------------------|
-| CartPole-v1      | 408.14 ± 128.42   |
-| Acrobot-v1       | -93.71 ± 2.94     |
-| MountainCar-v0   | -200.00 ± 0.00    |
+|                | CleanRL PQN    |
+|:---------------|:---------------|
+| CartPole-v1    | 495.13 ± 6.89  |
+| Acrobot-v1     | -95.63 ± 5.73  |
+| MountainCar-v0 | -200.00 ± 0.00 |
 
 Runtime:
 
-| Environment      | CleanRL PQN          |
-|------------------|----------------------|
-| CartPole-v1      | 3.619667511995135    |
-| Acrobot-v1       | 4.264845468334595    |
-| MountainCar-v0   | 3.99800178870078     |
+|                |   CleanRL PQN |
+|:---------------|--------------:|
+| CartPole-v1    |      0.833548 |
+| Acrobot-v1     |      1.35797  |
+| MountainCar-v0 |      1.02083  |
 
 Learning curves:
 
@@ -167,23 +167,23 @@ To run benchmark experiments, see :material-github: [benchmark/pqn.sh](https://g
 
 Episode Rewards:
 
-| Environment       | CleanRL PQN        |
-|-------------------|--------------------|
-| Breakout-v5       | 356.93 ± 7.48      |
-| SpaceInvaders-v5  | 900.07 ± 107.95    |
-| BeamRider-v5      | 1987.97 ± 24.47    |
-| Pong-v5           | 20.44 ± 0.11       |
-| MsPacman-v5       | 2437.57 ± 215.01   |
+|                  | CleanRL PQN       |
+|:-----------------|:------------------|
+| Breakout-v5      | 384.85 ± 12.39    |
+| SpaceInvaders-v5 | 1325.20 ± 78.49   |
+| BeamRider-v5     | 5753.03 ± 2394.70 |
+| Pong-v5          | 20.49 ± 0.11      |
+| MsPacman-v5      | 2298.83 ± 128.24  |
 
 Runtime:
 
-| Environment       | CleanRL PQN           |
-|-------------------|-----------------------|
-| Breakout-v5       | 41.27235000576079     |
-| SpaceInvaders-v5  | 42.191246278536035    |
-| BeamRider-v5      | 42.66799268151052     |
-| Pong-v5           | 39.35770012905844     |
-| MsPacman-v5       | 43.22808379473344     |
+|                  |   CleanRL PQN |
+|:-----------------|--------------:|
+| Breakout-v5      |       42.8203 |
+| SpaceInvaders-v5 |       41.2196 |
+| BeamRider-v5     |       43.0951 |
+| Pong-v5          |       40.7316 |
+| MsPacman-v5      |       43.7812 |
 
 
 Learning curves:
@@ -268,22 +268,23 @@ To run benchmark experiments, see :material-github: [benchmark/pqn.sh](https://g
 
 Episode Rewards:
 
-| Environment       | CleanRL PQN        |
-|-------------------|--------------------|
-| Breakout-v5       | 366.47 ± 2.72      |
-| SpaceInvaders-v5  | 681.92 ± 40.15     |
-| BeamRider-v5      | 2050.85 ± 38.58    |
-| MsPacman-v5       | 1815.20 ± 183.03   |
+|                  | CleanRL PQN       |
+|:-----------------|:------------------|
+| Breakout-v5      | 400.35 ± 9.08     |
+| SpaceInvaders-v5 | 813.47 ± 58.14    |
+| BeamRider-v5     | 11161.43 ± 579.88 |
+| Pong-v5          | 20.43 ± 0.11      |
+| MsPacman-v5      | 1649.63 ± 135.80  |
 
 Runtime:
 
-| Environment       | CleanRL PQN           |
-|-------------------|-----------------------|
-| Breakout-v5       | 170.30230232607076    |
-| SpaceInvaders-v5  | 168.45747969698144    |
-| BeamRider-v5      | 172.11561139317593    |
-| MsPacman-v5       | 171.66131707108408    |
-
+|                  |   CleanRL PQN |
+|:-----------------|--------------:|
+| Breakout-v5      |       178.144 |
+| SpaceInvaders-v5 |       209.603 |
+| BeamRider-v5     |       174.153 |
+| Pong-v5          |       160.462 |
+| MsPacman-v5      |       162.222 |
 Learning curves:
 
 ``` title="benchmark/pqn_plot.sh" linenums="1"

@@ -1,7 +1,7 @@
 
 python -m openrlbenchmark.rlops \
     --filters '?we=rogercreus&wpn=cleanRL&ceik=env_id&cen=exp_name&metric=charts/episodic_return' \
-        'pqn?tag=pr-472&cl=CleanRL PQN' \
+        'pqn?tag=pr-494&cl=CleanRL PQN' \
     --env-ids CartPole-v1 Acrobot-v1 MountainCar-v0 \
     --no-check-empty-runs \
     --pc.ncols 3 \
@@ -11,7 +11,7 @@ python -m openrlbenchmark.rlops \
 
 python -m openrlbenchmark.rlops \
     --filters '?we=rogercreus&wpn=cleanRL&ceik=env_id&cen=exp_name&metric=charts/episodic_return' \
-        'pqn_atari_envpool?tag=pr-472&cl=CleanRL PQN' \
+        'pqn_atari_envpool?tag=pr-494&cl=CleanRL PQN' \
     --env-ids Breakout-v5 SpaceInvaders-v5 BeamRider-v5 Pong-v5 MsPacman-v5 \
     --no-check-empty-runs \
     --pc.ncols 3 \
@@ -31,8 +31,8 @@ python -m openrlbenchmark.rlops \
 
 python -m openrlbenchmark.rlops \
     --filters '?we=rogercreus&wpn=cleanRL&ceik=env_id&cen=exp_name&metric=charts/episodic_return' \
-        'pqn_atari_envpool_lstm?tag=pr-472&cl=CleanRL PQN' \
-    --env-ids Breakout-v5 SpaceInvaders-v5 BeamRider-v5 MsPacman-v5 \
+        'pqn_atari_envpool_lstm?tag=pr-494&cl=CleanRL PQN' \
+    --env-ids Breakout-v5 SpaceInvaders-v5 BeamRider-v5 Pong-v5 MsPacman-v5 \
     --no-check-empty-runs \
     --pc.ncols 3 \
     --pc.ncols-legend 3 \
