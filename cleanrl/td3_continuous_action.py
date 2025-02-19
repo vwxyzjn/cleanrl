@@ -47,6 +47,8 @@ class Args:
     """total timesteps of the experiments"""
     learning_rate: float = 3e-4
     """the learning rate of the optimizer"""
+    num_envs: int = 1
+    """the number of parallel game environments"""
     buffer_size: int = int(1e6)
     """the replay memory buffer size"""
     gamma: float = 0.99
@@ -85,7 +87,10 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 class QNetwork(nn.Module):
     def __init__(self, env):
         super().__init__()
-        self.fc1 = nn.Linear(np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape), 256)
+        self.fc1 = nn.Linear(
+            np.array(env.single_observation_space.shape).prod() + np.prod(env.single_action_space.shape),
+            256,
+        )
         self.fc2 = nn.Linear(256, 256)
         self.fc3 = nn.Linear(256, 1)
 
@@ -105,10 +110,18 @@ class Actor(nn.Module):
         self.fc_mu = nn.Linear(256, np.prod(env.single_action_space.shape))
         # action rescaling
         self.register_buffer(
-            "action_scale", torch.tensor((env.action_space.high - env.action_space.low) / 2.0, dtype=torch.float32)
+            "action_scale",
+            torch.tensor(
+                (env.single_action_space.high - env.single_action_space.low) / 2.0,
+                dtype=torch.float32,
+            ),
         )
         self.register_buffer(
-            "action_bias", torch.tensor((env.action_space.high + env.action_space.low) / 2.0, dtype=torch.float32)
+            "action_bias",
+            torch.tensor(
+                (env.single_action_space.high + env.single_action_space.low) / 2.0,
+                dtype=torch.float32,
+            ),
         )
 
     def forward(self, x):
@@ -157,7 +170,9 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv([make_env(args.env_id, args.seed, 0, args.capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
+    )
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     actor = Actor(envs).to(device)
@@ -178,6 +193,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         envs.single_observation_space,
         envs.single_action_space,
         device,
+        n_envs=args.num_envs,
         handle_timeout_termination=False,
     )
     start_time = time.time()
@@ -200,10 +216,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
             for info in infos["final_info"]:
-                print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
-                break
+                if info is not None:
+                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
+                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                    break
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
@@ -264,7 +281,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                 writer.add_scalar("losses/qf_loss", qf_loss.item() / 2.0, global_step)
                 writer.add_scalar("losses/actor_loss", actor_loss.item(), global_step)
                 print("SPS:", int(global_step / (time.time() - start_time)))
-                writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+                writer.add_scalar(
+                    "charts/SPS",
+                    int(global_step / (time.time() - start_time)),
+                    global_step,
+                )
 
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
@@ -290,7 +311,14 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
             repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
             repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
-            push_to_hub(args, episodic_returns, repo_id, "TD3", f"runs/{run_name}", f"videos/{run_name}-eval")
+            push_to_hub(
+                args,
+                episodic_returns,
+                repo_id,
+                "TD3",
+                f"runs/{run_name}",
+                f"videos/{run_name}-eval",
+            )
 
     envs.close()
     writer.close()

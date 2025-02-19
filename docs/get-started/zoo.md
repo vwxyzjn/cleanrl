@@ -3,7 +3,7 @@
 [<img src="https://img.shields.io/badge/%F0%9F%A4%97%20Models-Huggingface-F8D521">](https://huggingface.co/cleanrl)
 [![Open In Colab](https://github.com/vwxyzjn/cleanrl/raw/master/docs/get-started/colab-badge.svg)](https://colab.research.google.com/github/vwxyzjn/cleanrl/blob/master/docs/get-started/CleanRL_Huggingface_Integration_Demo.ipynb)
 
-CleanRL now has 🧪 experimental support for saving and loading models from 🤗 HuggingFace's [Model Hub](https://huggingface.co/models). We are rolling out this feature in phases, and currently only support saving and loading models from the following algorithm varaints:
+CleanRL now has 🧪 experimental support for saving and loading models from 🤗 HuggingFace's [Model Hub](https://huggingface.co/models). We are rolling out this feature in phases, and currently only support saving and loading models from the following algorithm variants:
 
 
 | Algorithm      | Variants Implemented |
