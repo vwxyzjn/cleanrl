@@ -15,42 +15,47 @@ files = [
 
 [[package]]
 name = "ale-py"
-version = "0.8.1"
+version = "0.10.1"
 description = "The Arcade Learning Environment (ALE) - a platform for AI research."
 optional = true
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 groups = ["main"]
 markers = "platform_system == \"Linux\" and platform_machine == \"aarch64\" and (extra == \"atari\" or extra == \"dqn-atari\" or extra == \"dqn-atari-jax\" or extra == \"c51-atari\" or extra == \"c51-atari-jax\" or extra == \"ppo-atari-envpool-xla-jax-scan\" or extra == \"qdagger-dqn-atari-impalacnn\" or extra == \"qdagger-dqn-atari-jax-impalacnn\") and sys_platform != \"linux\""
 files = [
-    {file = "ale_py-0.8.1-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:b2aa2f69a4169742800615970efe6914fa856e33eaf7fa9133c0e06a617a80e2"},
-    {file = "ale_py-0.8.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:6f2f6b92c8fd6189654979bbf0b305dbe0ecf82176c47f244d8c1cbc36286b89"},
-    {file = "ale_py-0.8.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c9b168eb88c87d0f3e2a778e6c5cdde4ad951d1ca8a6dc3d3679fd45398df7d1"},
-    {file = "ale_py-0.8.1-cp310-cp310-win_amd64.whl", hash = "sha256:5fcc31f495de79ee1d6bfc0f4b7c4619948851e679bbf010035e25f23146a687"},
-    {file = "ale_py-0.8.1-cp311-cp311-macosx_10_15_x86_64.whl", hash = "sha256:0856ca777473ec4ae8a59f3af9580259adb0fd4a47d586a125a440c62e82fc10"},
-    {file = "ale_py-0.8.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:f10b1df8774bbe3b00365748b5e0e07cf35f6a703bbaff991bc7b3b2247dccc9"},
-    {file = "ale_py-0.8.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0006d80dfe7745eb5a93444492337203c8bc7eb594a2c24c6a651c5c5b0eaf09"},
-    {file = "ale_py-0.8.1-cp311-cp311-win_amd64.whl", hash = "sha256:9773eea7505484e024beb2fff0f3bfd363db151bdb9799d70995448e196b1ded"},
-    {file = "ale_py-0.8.1-cp37-cp37m-macosx_10_15_x86_64.whl", hash = "sha256:87557db05be0e04130e2ec1bf909d3bb0b0bc034645d4f664e6baa573fe32191"},
-    {file = "ale_py-0.8.1-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ae2ba24557e0ce541ea3be13b148db2a9cfa730d83537b4cbed5e10449826e51"},
-    {file = "ale_py-0.8.1-cp37-cp37m-win_amd64.whl", hash = "sha256:ade5c32af567629164a6b49378978c728a15dc4db07ad6b679e8832d4fd3ea1f"},
-    {file = "ale_py-0.8.1-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:0ffecb5c956749596030e464827642945162170a132d093c3d4fa2d7e5725c18"},
-    {file = "ale_py-0.8.1-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:7cd74b7ee0248ef11a086c9764e142e71defd40ec8989a99232bfd2d9e8023be"},
-    {file = "ale_py-0.8.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:eadf9f3990b4ff2f9e5ca35889f5e2e95cddd6a353d9d857d9b4601a6e1c4e7c"},
-    {file = "ale_py-0.8.1-cp38-cp38-win_amd64.whl", hash = "sha256:817adf9a3a82c4923c731e634520a5ecf296aca0367f5c69959a96b32119d831"},
-    {file = "ale_py-0.8.1-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:2d9fcfa06c74a613c5419e942ef4d3e0959533f52e94d2d4bda61d07fbfffeee"},
-    {file = "ale_py-0.8.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:f278036f9b6066062abcdf0987a0ec5a8e0f22a2c7cfac925e39378d4343d490"},
-    {file = "ale_py-0.8.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b00f74e27815131c1a2791f3d48114363fa2708e19f09ce6b7b614cb14c9d469"},
-    {file = "ale_py-0.8.1-cp39-cp39-win_amd64.whl", hash = "sha256:d49b550a2d9c25b63c343aa680fd81f253a3714cdc0e1835640933ebff1798ff"},
+    {file = "ale_py-0.10.1-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:7733d521921452b9e644e9e31e4d5b1ba612305473c5ba0266cafb7eff6a5461"},
+    {file = "ale_py-0.10.1-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:4f3aaea36c1671812c21b5f7c5dcf9f5f9c726f5b10cbe7a657a844de963bb55"},
+    {file = "ale_py-0.10.1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:5d4f326236c95736182323a480363c7b98959fc9a4ba09d2aa5b152faa6a2d59"},
+    {file = "ale_py-0.10.1-cp310-cp310-win_amd64.whl", hash = "sha256:9fa3f3977f63b685394301432cba7fe417882cfea72424d75aaf6bf98f79a2c9"},
+    {file = "ale_py-0.10.1-cp311-cp311-macosx_10_15_x86_64.whl", hash = "sha256:076a44a61c2518b844f765692a91d0a6b383c6592b5fdabd94fd24d4c62a54ef"},
+    {file = "ale_py-0.10.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:b84025670cf37527348a417d7465ee193a19d0a336bcd62f943957c13fef6ebb"},
+    {file = "ale_py-0.10.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6f0a3da4ff47f913b5c61e66571fe7fb92fc569e5babdf4b0eeee348aac1d457"},
+    {file = "ale_py-0.10.1-cp311-cp311-win_amd64.whl", hash = "sha256:c77653e47d79e60abcc21bfad7dd105784ce2649fc5bc4eaaa1de45b40112772"},
+    {file = "ale_py-0.10.1-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:24f7aa19e1b3b1540516942020a95f57964af71285497620e58f03b2c113424e"},
+    {file = "ale_py-0.10.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:4dd55a52e074497f1143785a215a50706afba3111be8b4923d46cc507c16be8f"},
+    {file = "ale_py-0.10.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3d82d81715f15598b9db50529da971d36117cda027af9d112bd2ea22cefe3bcb"},
+    {file = "ale_py-0.10.1-cp312-cp312-win_amd64.whl", hash = "sha256:e0637ddc4074b814ae46db28d61aface08d7eba16ea713cdfe0734e0b18c3794"},
+    {file = "ale_py-0.10.1-cp313-cp313-macosx_10_15_x86_64.whl", hash = "sha256:c43308af7013cb60c6f5e77cba2b9ccaed2f5e2ae444b365dce9b7ac3bb5d48f"},
+    {file = "ale_py-0.10.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:0835ee11004efeb5a9805a09c1525242f737257a8a4f5f4f0b9b3e047e6dca86"},
+    {file = "ale_py-0.10.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:92a31bd44687c6a3595fcdac35bc3238e305dd604171ba6a9cb7912bc83c99ee"},
+    {file = "ale_py-0.10.1-cp313-cp313-win_amd64.whl", hash = "sha256:9f30d763c38063e5579783844868c1330f89049f252e94c49534785515f785f2"},
+    {file = "ale_py-0.10.1-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:c9fac7fe11c56ed301a409d8a940f3e764ed2929b756ebb033eadf492a3d696e"},
+    {file = "ale_py-0.10.1-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:82c676030b8b6543cb6969a905ff841ae6f086a2efe707542d014ef6ca4ada4e"},
+    {file = "ale_py-0.10.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:12617edc9799c73570df67a731a4293bcfd500f413e0bfa867b53fc411fa7629"},
+    {file = "ale_py-0.10.1-cp38-cp38-win_amd64.whl", hash = "sha256:771d5a1cd5a50d2cf226eba45c418fb7a18b453bd332b6a2189310030eda421a"},
+    {file = "ale_py-0.10.1-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:d3247ad68f7dda1f9c046ede74310e347114f2c191a9f4cd247f432410941eb9"},
+    {file = "ale_py-0.10.1-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:f6f91ab4b2a18e24c82a33fd1d616f32d121fcd6429f9045d515960df8cdc580"},
+    {file = "ale_py-0.10.1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:24b9e61a4e868a4266f8a0ef7809cc20cecedb8c10d515d14ff6078950d51d8b"},
+    {file = "ale_py-0.10.1-cp39-cp39-win_amd64.whl", hash = "sha256:43d63b262f4b3bfcd567ce736a5648b4193470b2691bc14e38ac0c05dfe2a7e2"},
+    {file = "ale_py-0.10.1.tar.gz", hash = "sha256:3971a8552d2f982f569c87152479901574a9fe86410e5d1a26276e7ffccb59e1"},
 ]
 
 [package.dependencies]
 importlib-metadata = {version = ">=4.10.0", markers = "python_version < \"3.10\""}
-importlib-resources = "*"
-numpy = "*"
+numpy = ">1.20"
 typing-extensions = {version = "*", markers = "python_version < \"3.11\""}
 
 [package.extras]
-test = ["gym (>=0.23,<1.0)", "pytest (>=7.0)"]
+test = ["gymnasium (>=1.0.0a1)", "pytest (>=7.0)"]
 
 [[package]]
 name = "alembic"
@@ -1655,7 +1660,7 @@ description = "Read resources from Python packages"
 optional = true
 python-versions = ">=3.7"
 groups = ["main"]
-markers = "platform_system == \"Linux\" and platform_machine == \"aarch64\" and (extra == \"atari\" or extra == \"dqn-atari\" or extra == \"dqn-atari-jax\" or extra == \"c51-atari\" or extra == \"c51-atari-jax\" or extra == \"ppo-atari-envpool-xla-jax-scan\" or extra == \"qdagger-dqn-atari-impalacnn\" or extra == \"qdagger-dqn-atari-jax-impalacnn\" or extra == \"jax\" or extra == \"dqn-jax\" or extra == \"c51-jax\") and sys_platform != \"linux\""
+markers = "platform_system == \"Linux\" and platform_machine == \"aarch64\" and (extra == \"jax\" or extra == \"dqn-jax\" or extra == \"dqn-atari-jax\" or extra == \"c51-jax\" or extra == \"c51-atari-jax\" or extra == \"ppo-atari-envpool-xla-jax-scan\" or extra == \"qdagger-dqn-atari-jax-impalacnn\") and sys_platform != \"linux\""
 files = [
     {file = "importlib_resources-5.12.0-py3-none-any.whl", hash = "sha256:7b1deeebbf351c7578e09bf2f63fa2ce8b5ffec296e0d349139d43cca061a81a"},
     {file = "importlib_resources-5.12.0.tar.gz", hash = "sha256:4be82589bf5c1d7999aedf2a45159d10cb3ca4f19b2271f8792bc8e6da7b22f6"},
@@ -4912,4 +4917,4 @@ qdagger-dqn-atari-jax-impalacnn = ["AutoROM", "ale-py", "flax", "jax", "jaxlib",
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "b074cab5afe1a471fb8f79ba6a1ca2e1ddfa890704a3c508a260b689278fbf71"
+content-hash = "3e36bbe66d95f1edeee979183f76f1510b7bc636334f90e0ea6d03ade03825de"

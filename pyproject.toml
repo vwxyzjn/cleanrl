@@ -17,8 +17,8 @@ tensorboard = "^2.10.0"
 wandb = "^0.13.11"
 gym = "0.23.1"
 torch = ">=1.12.1"
-stable-baselines3 = ">=2.4.0"
-gymnasium = ">=1.0.0"
+stable-baselines3 = "^2.4.0"
+gymnasium = "^1.0.0"
 moviepy = "^1.0.3"
 pygame = "2.1.0"
 huggingface-hub = "^0.11.1"
@@ -27,7 +27,7 @@ tenacity = "^8.2.2"
 tyro = "^0.5.10"
 pyyaml = "^6.0.1"
 
-ale-py = {version = "0.8.1", optional = true}
+ale-py = {version = "0.10.1", optional = true}
 AutoROM = {extras = ["accept-rom-license"], version = "~0.4.2", optional = true}
 opencv-python = {version = "^4.6.0.66", optional = true}
 procgen = {version = "^0.10.7", optional = true}
