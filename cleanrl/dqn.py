@@ -168,6 +168,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
+    episode_start = np.zeros(envs.num_envs, dtype=bool)
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
@@ -181,22 +182,22 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        if "final_info" in infos:
-            for info in infos["final_info"]:
-                if info and "episode" in info:
-                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+        if "episode" in infos:
+            for i in range(envs.num_envs):
+                if infos["_episode"][i]:
+                    print(f"global_step={global_step}, episodic_return={infos['episode']['r'][i]}")
+                    writer.add_scalar("charts/episodic_return", infos["episode"]["r"][i], global_step)
+                    writer.add_scalar("charts/episodic_length", infos["episode"]["l"][i], global_step)
 
-        # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
+        # TRY NOT TO MODIFY: save data to reply buffer
         real_next_obs = next_obs.copy()
-        for idx, trunc in enumerate(truncations):
-            if trunc:
-                real_next_obs[idx] = infos["final_observation"][idx]
-        rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
+        for i in range(envs.num_envs):
+            if not episode_start[i]:
+                rb.add(obs[i], real_next_obs[i], actions[i], rewards[i], terminations[i], {})
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
+        episode_start = np.logical_or(terminations, truncations)
 
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
