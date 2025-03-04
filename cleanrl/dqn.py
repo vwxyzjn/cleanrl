@@ -188,6 +188,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     print(f"global_step={global_step}, episodic_return={infos['final_info']['episode']['r'][i]}")
                     writer.add_scalar("charts/episodic_return", infos["final_info"]["episode"]["r"][i], global_step)
                     writer.add_scalar("charts/episodic_length", infos["final_info"]["episode"]["l"][i], global_step)
+                    break
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()

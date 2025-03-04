@@ -13,6 +13,8 @@ import torch.optim as optim
 import tyro
 from torch.utils.tensorboard import SummaryWriter
 
+from cleanrl_utils.same_model_vector_env import SameModelSyncVectorEnv
+
 
 @dataclass
 class Args:
@@ -142,7 +144,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv(
+    envs = SameModelSyncVectorEnv(
         [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
     )
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
@@ -194,12 +196,13 @@ if __name__ == "__main__":
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
 
-            if "final_info" in infos:
-                for info in infos["final_info"]:
-                    if info and "episode" in info:
-                        print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+        if "final_info" in infos:
+            for i in range(envs.num_envs):
+                if infos["final_info"]["_episode"][i]:
+                    print(f"global_step={global_step}, episodic_return={infos['final_info']['episode']['r'][i]}")
+                    writer.add_scalar("charts/episodic_return", infos["final_info"]["episode"]["r"][i], global_step)
+                    writer.add_scalar("charts/episodic_length", infos["final_info"]["episode"]["l"][i], global_step)
+                    break
 
         # Compute Q(lambda) targets
         with torch.no_grad():

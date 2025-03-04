@@ -4917,4 +4917,4 @@ qdagger-dqn-atari-jax-impalacnn = ["AutoROM", "ale-py", "flax", "jax", "jaxlib",
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "3e36bbe66d95f1edeee979183f76f1510b7bc636334f90e0ea6d03ade03825de"
+content-hash = "a65071036de873e4fc2184efa26588d7dd5cea43bfc9bccd965c9049405129f8"
