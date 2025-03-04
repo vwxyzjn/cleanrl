@@ -2,7 +2,6 @@
 import os
 import random
 import time
-from copy import deepcopy
 from dataclasses import dataclass
 
 import gymnasium as gym
@@ -14,6 +13,8 @@ import torch.optim as optim
 import tyro
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
+
+from cleanrl_utils.same_model_vector_env import SameModelSyncVectorEnv
 
 
 @dataclass
@@ -70,36 +71,6 @@ class Args:
     """timestep to start learning"""
     train_frequency: int = 10
     """the frequency of training"""
-
-
-# Only for gymnasium v1.0.0
-class SameModelSyncVectorEnv(gym.vector.SyncVectorEnv):
-    def step(self, actions):
-        observations, infos = [], {}
-        for i, action in enumerate(gym.vector.utils.iterate(self.action_space, actions)):
-            (_env_obs, self._rewards[i], self._terminations[i], self._truncations[i], env_info,) = self.envs[
-                i
-            ].step(action)
-
-            if self._terminations[i] or self._truncations[i]:
-                infos = self._add_info(
-                    infos,
-                    {"final_obs": _env_obs, "final_info": env_info},
-                    i,
-                )
-                _env_obs, env_info = self.envs[i].reset()
-            observations.append(_env_obs)
-            infos = self._add_info(infos, env_info, i)
-
-        # Concatenate the observations
-        self._observations = gym.vector.utils.concatenate(self.single_observation_space, observations, self._observations)
-        return (
-            deepcopy(self._observations) if self.copy else self._observations,
-            np.copy(self._rewards),
-            np.copy(self._terminations),
-            np.copy(self._truncations),
-            infos,
-        )
 
 
 def make_env(env_id, seed, idx, capture_video, run_name):
@@ -218,7 +189,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
                     writer.add_scalar("charts/episodic_return", infos["final_info"]["episode"]["r"][i], global_step)
                     writer.add_scalar("charts/episodic_length", infos["final_info"]["episode"]["l"][i], global_step)
 
-        # TRY NOT TO MODIFY: save data to reply buffer
+        # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()
         for idx, trunc in enumerate(truncations):
             if trunc:
