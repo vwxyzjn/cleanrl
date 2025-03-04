@@ -2,6 +2,7 @@
 import os
 import random
 import time
+from copy import deepcopy
 from dataclasses import dataclass
 
 import gymnasium as gym
@@ -69,6 +70,36 @@ class Args:
     """timestep to start learning"""
     train_frequency: int = 10
     """the frequency of training"""
+
+
+# Only for gymnasium v1.0.0
+class SameModelSyncVectorEnv(gym.vector.SyncVectorEnv):
+    def step(self, actions):
+        observations, infos = [], {}
+        for i, action in enumerate(gym.vector.utils.iterate(self.action_space, actions)):
+            (_env_obs, self._rewards[i], self._terminations[i], self._truncations[i], env_info,) = self.envs[
+                i
+            ].step(action)
+
+            if self._terminations[i] or self._truncations[i]:
+                infos = self._add_info(
+                    infos,
+                    {"final_obs": _env_obs, "final_info": env_info},
+                    i,
+                )
+                _env_obs, env_info = self.envs[i].reset()
+            observations.append(_env_obs)
+            infos = self._add_info(infos, env_info, i)
+
+        # Concatenate the observations
+        self._observations = gym.vector.utils.concatenate(self.single_observation_space, observations, self._observations)
+        return (
+            deepcopy(self._observations) if self.copy else self._observations,
+            np.copy(self._rewards),
+            np.copy(self._terminations),
+            np.copy(self._truncations),
+            infos,
+        )
 
 
 def make_env(env_id, seed, idx, capture_video, run_name):
@@ -147,7 +178,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv(
+    envs = SameModelSyncVectorEnv(
         [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
     )
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
@@ -168,7 +199,6 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
-    episode_start = np.zeros(envs.num_envs, dtype=bool)
     for global_step in range(args.total_timesteps):
         # ALGO LOGIC: put action logic here
         epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
@@ -181,23 +211,22 @@ poetry run pip install "stable_baselines3==2.0.0a1"
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
-        # TRY NOT TO MODIFY: record rewards for plotting purposes
-        if "episode" in infos:
+        if "final_info" in infos:
             for i in range(envs.num_envs):
-                if infos["_episode"][i]:
-                    print(f"global_step={global_step}, episodic_return={infos['episode']['r'][i]}")
-                    writer.add_scalar("charts/episodic_return", infos["episode"]["r"][i], global_step)
-                    writer.add_scalar("charts/episodic_length", infos["episode"]["l"][i], global_step)
+                if infos["final_info"]["_episode"][i]:
+                    print(f"global_step={global_step}, episodic_return={infos['final_info']['episode']['r'][i]}")
+                    writer.add_scalar("charts/episodic_return", infos["final_info"]["episode"]["r"][i], global_step)
+                    writer.add_scalar("charts/episodic_length", infos["final_info"]["episode"]["l"][i], global_step)
 
         # TRY NOT TO MODIFY: save data to reply buffer
         real_next_obs = next_obs.copy()
-        for i in range(envs.num_envs):
-            if not episode_start[i]:
-                rb.add(obs[i], real_next_obs[i], actions[i], rewards[i], terminations[i], {})
+        for idx, trunc in enumerate(truncations):
+            if trunc:
+                real_next_obs[idx] = infos["final_observation"][idx]
+        rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
-        episode_start = np.logical_or(terminations, truncations)
 
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
