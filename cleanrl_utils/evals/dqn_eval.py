@@ -1,9 +1,10 @@
 import random
 from typing import Callable
 
-import gymnasium as gym
 import numpy as np
 import torch
+
+from cleanrl_utils.same_model_vector_env import SameModelSyncVectorEnv
 
 
 def evaluate(
@@ -17,7 +18,7 @@ def evaluate(
     epsilon: float = 0.05,
     capture_video: bool = True,
 ):
-    envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
+    envs = SameModelSyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
     model = Model(envs).to(device)
     model.load_state_dict(torch.load(model_path, map_location=device))
     model.eval()
@@ -32,11 +33,11 @@ def evaluate(
             actions = torch.argmax(q_values, dim=1).cpu().numpy()
         next_obs, _, _, _, infos = envs.step(actions)
         if "final_info" in infos:
-            for info in infos["final_info"]:
-                if "episode" not in info:
-                    continue
-                print(f"eval_episode={len(episodic_returns)}, episodic_return={info['episode']['r']}")
-                episodic_returns += [info["episode"]["r"]]
+            for i in range(envs.num_envs):
+                if infos["final_info"]["_episode"][i]:
+                    print(f"eval_episode={len(episodic_returns)}, episodic_return={infos['final_info']['episode']['r']}")
+                    episodic_returns += [infos["final_info"]["episode"]["r"]]
+                    break
         obs = next_obs
 
     return episodic_returns

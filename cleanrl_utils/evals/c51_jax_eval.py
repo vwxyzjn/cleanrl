@@ -4,10 +4,11 @@ from typing import Callable
 
 import flax
 import flax.linen as nn
-import gymnasium as gym
 import jax
 import jax.numpy as jnp
 import numpy as np
+
+from cleanrl_utils.same_model_vector_env import SameModelSyncVectorEnv
 
 
 def evaluate(
@@ -21,7 +22,7 @@ def evaluate(
     capture_video: bool = True,
     seed=1,
 ):
-    envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
+    envs = SameModelSyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
     obs, _ = envs.reset()
     model_data = None
     with open(model_path, "rb") as f:
@@ -44,11 +45,11 @@ def evaluate(
             actions = jax.device_get(actions)
         next_obs, _, _, _, infos = envs.step(actions)
         if "final_info" in infos:
-            for info in infos["final_info"]:
-                if "episode" not in info:
-                    continue
-                print(f"eval_episode={len(episodic_returns)}, episodic_return={info['episode']['r']}")
-                episodic_returns += [info["episode"]["r"]]
+            for i in range(envs.num_envs):
+                if infos["final_info"]["_episode"][i]:
+                    print(f"eval_episode={len(episodic_returns)}, episodic_return={infos['final_info']['episode']['r']}")
+                    episodic_returns += [infos["final_info"]["episode"]["r"]]
+                    break
         obs = next_obs
 
     return episodic_returns
