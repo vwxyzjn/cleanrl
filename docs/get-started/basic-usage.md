@@ -50,7 +50,7 @@ Currently, `ddpg_continuous_action_jax.py`, `ddpg_continuous_action.py` have bee
 Please note that, `stable-baselines3` version `1.2` does not support `gymnasium`. To use these scripts, please install the `alpha1` version like, 
 
 ```
-poetry run pip install sb3==2.0.0a1
+poetry run pip install ==2.0.0a1
 ```
 
 !!! warning
