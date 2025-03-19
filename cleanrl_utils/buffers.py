@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from typing import Any, NamedTuple, Optional, Union
+from typing import Any, NamedTuple
 
 import numpy as np
 import torch as th
@@ -65,7 +67,7 @@ def get_action_dim(action_space: spaces.Space) -> int:
         raise NotImplementedError(f"{action_space} action space is not supported")
 
 
-def get_device(device: Union[th.device, str] = "auto") -> th.device:
+def get_device(device: th.device | str = "auto") -> th.device:
     """
     Retrieve PyTorch device.
     It checks that the requested device is available first.
@@ -108,7 +110,7 @@ class BaseBuffer(ABC):
         buffer_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[th.device, str] = "auto",
+        device: th.device | str = "auto",
         n_envs: int = 1,
     ):
         super().__init__()
@@ -177,7 +179,7 @@ class BaseBuffer(ABC):
         return self._get_samples(batch_inds)
 
     @abstractmethod
-    def _get_samples(self, batch_inds: np.ndarray) -> Union[ReplayBufferSamples, RolloutBufferSamples]:
+    def _get_samples(self, batch_inds: np.ndarray) -> ReplayBufferSamples | RolloutBufferSamples:
         """
         :param batch_inds:
         :return:
@@ -231,7 +233,7 @@ class ReplayBuffer(BaseBuffer):
         buffer_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[th.device, str] = "auto",
+        device: th.device | str = "auto",
         n_envs: int = 1,
         optimize_memory_usage: bool = False,
         handle_timeout_termination: bool = True,
@@ -419,7 +421,7 @@ class RolloutBuffer(BaseBuffer):
         buffer_size: int,
         observation_space: spaces.Space,
         action_space: spaces.Space,
-        device: Union[th.device, str] = "auto",
+        device: th.device | str = "auto",
         gae_lambda: float = 1,
         gamma: float = 0.99,
         n_envs: int = 1,
@@ -520,7 +522,7 @@ class RolloutBuffer(BaseBuffer):
         if self.pos == self.buffer_size:
             self.full = True
 
-    def get(self, batch_size: Optional[int] = None) -> Generator[RolloutBufferSamples, None, None]:
+    def get(self, batch_size: int | None = None) -> Generator[RolloutBufferSamples, None, None]:
         assert self.full, ""
         indices = np.random.permutation(self.buffer_size * self.n_envs)
         # Prepare the data

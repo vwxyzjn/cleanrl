@@ -1,4 +1,5 @@
 """Copied from https://github.com/DLR-RM/stable-baselines3/blob/master/stable_baselines3/common/atari_wrappers.py"""
+from __future__ import annotations
 
 from typing import SupportsFloat
 
