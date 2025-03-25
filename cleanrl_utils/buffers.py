@@ -1,3 +1,22 @@
+# Copyright notice
+#
+# This file contains code adapted from stable-baselines3
+# (https://github.com/DLR-RM/stable-baselines3/blob/master/stable_baselines3/common/buffers.py)
+# licensed under the MIT License.
+#
+# Copyright (c) 2019-2023 Antonin Raffin, Ashley Hill, Anssi Kanervisto,
+# Maximilian Ernestus, Rinu Boney, Pavan Goli, and other contributors
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
 from __future__ import annotations
 
 import warnings
