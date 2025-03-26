@@ -23,6 +23,8 @@ from stable_baselines3.common.atari_wrappers import (
 )
 from torch.utils.tensorboard import SummaryWriter
 
+from IPython import embed
+
 @dataclass
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
@@ -209,68 +211,58 @@ PrioritizedBatch = collections.namedtuple(
 
 class SumSegmentTree:
     def __init__(self, capacity):
-        self.n = capacity
-        self.tree_size = 1
-        while self.tree_size < capacity:
-            self.tree_size *= 2
-        self.tree = np.zeros(2 * self.tree_size, dtype=np.float32)
+        self.capacity = capacity
+        self.tree_size = 2 * capacity - 1
+        self.tree = np.zeros(self.tree_size, dtype=np.float32)
+
+    def _propagate(self, idx):
+        parent = (idx - 1) // 2
+        while parent >= 0:
+            self.tree[parent] = self.tree[parent * 2 + 1] + self.tree[parent * 2 + 2]
+            parent = (parent - 1) // 2
 
     def update(self, idx, value):
-        idx += self.tree_size
-        self.tree[idx] = value
-        while idx > 1:
-            idx //= 2
-            self.tree[idx] = self.tree[2 * idx] + self.tree[2 * idx + 1]
+        tree_idx = idx + self.capacity - 1
+        self.tree[tree_idx] = value
+        self._propagate(tree_idx)
 
     def total(self):
-        return self.tree[1]
+        return self.tree[0]
 
     def retrieve(self, value):
-        idx = 1
-        while idx < self.tree_size:
-            left = 2 * idx
-            if self.tree[left] >= value:
+        idx = 0
+        while idx * 2 + 1 < self.tree_size:
+            left = idx * 2 + 1
+            right = left + 1
+            if value <= self.tree[left]:
                 idx = left
             else:
                 value -= self.tree[left]
-                idx = left + 1
-        result = idx - self.tree_size
-        return min(result, self.n - 1)
+                idx = right
+        return idx - (self.capacity - 1)
 
 class MinSegmentTree:
     def __init__(self, capacity):
-        self.n = capacity  # actual capacity
-        self.tree_size = 1
-        while self.tree_size < capacity:
-            self.tree_size *= 2
-        self.tree = np.full(2 * self.tree_size, float('inf'), dtype=np.float32)
+        self.capacity = capacity
+        self.tree_size = 2 * capacity - 1
+        self.tree = np.full(self.tree_size, float('inf'), dtype=np.float32)
+
+    def _propagate(self, idx):
+        parent = (idx - 1) // 2
+        while parent >= 0:
+            self.tree[parent] = min(self.tree[parent * 2 + 1], self.tree[parent * 2 + 2])
+            parent = (parent - 1) // 2
 
     def update(self, idx, value):
-        idx += self.tree_size
-        self.tree[idx] = value
-        while idx > 1:
-            idx //= 2
-            self.tree[idx] = min(self.tree[2 * idx], self.tree[2 * idx + 1])
+        tree_idx = idx + self.capacity - 1
+        self.tree[tree_idx] = value
+        self._propagate(tree_idx)
 
-    def min(self, start=0, end=None):
-        if end is None:
-            end = self.n  # only consider the actual capacity
-        m = float('inf')
-        start += self.tree_size
-        end += self.tree_size
-        while start < end:
-            if start % 2 == 1:
-                m = min(m, self.tree[start])
-                start += 1
-            if end % 2 == 1:
-                end -= 1
-                m = min(m, self.tree[end])
-            start //= 2
-            end //= 2
-        return m
+    def min(self):
+        return self.tree[0]
 
 class PrioritizedReplayBuffer:
-    def __init__(self, capacity, obs_shape, device, n_step, gamma, alpha, beta, eps):
+    def __init__(self, capacity, obs_shape, device, n_step, gamma, alpha=0.6, beta=0.4, eps=1e-6):
         self.capacity = capacity
         self.device = device
         self.n_step = n_step
@@ -278,74 +270,46 @@ class PrioritizedReplayBuffer:
         self.alpha = alpha
         self.beta = beta
         self.eps = eps
-        self.obs_shape = obs_shape
 
-        self.buffer_obs = np.empty((capacity, ) + obs_shape, dtype=np.uint8)
-        self.buffer_next_obs = np.empty((capacity, ) + obs_shape, dtype=np.uint8)
-        self.buffer_actions = np.empty((capacity,), dtype=np.int64)
-        self.buffer_rewards = np.empty((capacity,), dtype=np.float32)
-        self.buffer_dones = np.empty((capacity,), dtype=np.bool_)
+        self.buffer_obs = np.zeros((capacity,) + obs_shape, dtype=np.uint8)
+        self.buffer_next_obs = np.zeros((capacity,) + obs_shape, dtype=np.uint8)
+        self.buffer_actions = np.zeros(capacity, dtype=np.int64)
+        self.buffer_rewards = np.zeros(capacity, dtype=np.float32)
+        self.buffer_dones = np.zeros(capacity, dtype=np.bool_)
 
         self.pos = 0
         self.size = 0
-
-        self.n_step_buffer = deque(maxlen=n_step)
-
         self.max_priority = 1.0
 
         self.sum_tree = SumSegmentTree(capacity)
         self.min_tree = MinSegmentTree(capacity)
-
-        total_bytes = (
-            self.buffer_obs.nbytes +
-            self.buffer_next_obs.nbytes +
-            self.buffer_actions.nbytes +
-            self.buffer_rewards.nbytes +
-            self.buffer_dones.nbytes
-        )
-        print(f"Replay Buffer will use approximately {total_bytes / (1024*1024):.2f} MB of RAM.")
-
-    def add(self, obs, next_obs, actions, rewards, dones):
-        for o, no, a, r, d in zip(obs, next_obs, actions, rewards, dones):
-            transition = (o, a, r, no, d)
-            self.n_step_buffer.append(transition)
-            if len(self.n_step_buffer) < self.n_step:
-                # if episode ends before filling the n-step buffer, flush what we have
-                if d:
-                    self._flush_n_step_buffer()
-                continue
-            o0, a0, _, _, _ = self.n_step_buffer[0]
-            cum_reward, final_next, final_done = self._get_n_step_info()
-            self._add(o0, a0, cum_reward, final_next, final_done)
-            # cut n_step returns accross episodes
-            if d:
-                self._flush_n_step_buffer()
+        
+        # For n-step returns
+        self.n_step_buffer = deque(maxlen=n_step)
 
     def _get_n_step_info(self):
-        cum_reward = 0.0
-        for idx, (_, _, r, next_obs, done) in enumerate(self.n_step_buffer):
-            cum_reward += (self.gamma ** idx) * r
-            if done:
+        reward = 0.0
+        next_obs = self.n_step_buffer[-1][3]
+        done = self.n_step_buffer[-1][4]
+
+        for i in range(len(self.n_step_buffer)):
+            reward += self.gamma**i * self.n_step_buffer[i][2]
+            if self.n_step_buffer[i][4]:
+                next_obs = self.n_step_buffer[i][3]
+                done = True
                 break
-        final_next = self.n_step_buffer[idx][3]
-        final_done = self.n_step_buffer[idx][4]
-        return cum_reward, final_next, final_done
+        return reward, next_obs, done
 
-    def _flush_n_step_buffer(self):
-        while self.n_step_buffer:
-            o, a, r, next_obs, d = self.n_step_buffer.popleft()
-            cum_reward = 0.0
-            transitions = [(o, a, r, next_obs, d)] + list(self.n_step_buffer)
-            final_next, final_done = next_obs, d
-            for idx, (_, _, r_i, next_obs_i, done_i) in enumerate(transitions):
-                cum_reward += (self.gamma ** idx) * r_i
-                final_next, final_done = next_obs_i, done_i
-                if done_i:
-                    break
-            self._add(o, a, cum_reward, final_next, final_done)
-
-    def _add(self, obs, action, reward, next_obs, done):
-        """Adds a single (n-step) transition into the buffer and updates the trees."""
+    def add(self, obs, action, reward, next_obs, done):
+        self.n_step_buffer.append((obs, action, reward, next_obs, done))
+        
+        if len(self.n_step_buffer) < self.n_step:
+            return
+            
+        reward, next_obs, done = self._get_n_step_info()
+        obs = self.n_step_buffer[0][0]
+        action = self.n_step_buffer[0][1]
+        
         idx = self.pos
         self.buffer_obs[idx] = obs
         self.buffer_next_obs[idx] = next_obs
@@ -353,7 +317,6 @@ class PrioritizedReplayBuffer:
         self.buffer_rewards[idx] = reward
         self.buffer_dones[idx] = done
 
-        # Use the maximum priority so far for new transitions.
         priority = self.max_priority ** self.alpha
         self.sum_tree.update(idx, priority)
         self.min_tree.update(idx, priority)
@@ -361,44 +324,45 @@ class PrioritizedReplayBuffer:
         self.pos = (self.pos + 1) % self.capacity
         self.size = min(self.size + 1, self.capacity)
 
+        if done:
+            self.n_step_buffer.clear()
+
     def sample(self, batch_size):
-        if batch_size > self.size:
-            raise ValueError("Batch size larger than the buffer size.")
         indices = []
-        total_priority = self.sum_tree.total()
-        segment = total_priority / batch_size
-
+        p_total = self.sum_tree.total()
+        segment = p_total / batch_size
+        
         for i in range(batch_size):
-            a, b = segment * i, segment * (i + 1)
-            sample_val = np.random.uniform(a, b)
-            idx = self.sum_tree.retrieve(sample_val)
+            a = segment * i
+            b = segment * (i + 1)
+            upperbound = np.random.uniform(a, b)
+            idx = self.sum_tree.retrieve(upperbound)
             indices.append(idx)
-        indices = np.array(indices)
+            
+        samples = {
+            'observations': torch.from_numpy(self.buffer_obs[indices]).to(self.device),
+            'actions': torch.from_numpy(self.buffer_actions[indices]).to(self.device).unsqueeze(1),
+            'rewards': torch.from_numpy(self.buffer_rewards[indices]).to(self.device).unsqueeze(1),
+            'next_observations': torch.from_numpy(self.buffer_next_obs[indices]).to(self.device),
+            'dones': torch.from_numpy(self.buffer_dones[indices]).to(self.device).unsqueeze(1),
+        }
 
-        obs_batch = torch.from_numpy(self.buffer_obs[indices]).to(self.device).float()
-        actions_batch = torch.from_numpy(self.buffer_actions[indices]).to(self.device).long().unsqueeze(1)
-        rewards_batch = torch.from_numpy(self.buffer_rewards[indices]).to(self.device).float().unsqueeze(1)
-        next_obs_batch = torch.from_numpy(self.buffer_next_obs[indices]).to(self.device).float()
-        dones_batch = torch.from_numpy(self.buffer_dones[indices]).to(self.device).float().unsqueeze(1)
+        probs = np.array([self.sum_tree.tree[idx + self.capacity - 1] for idx in indices])
+        weights = (self.size * probs / p_total) ** -self.beta
+        weights = weights / weights.max()
+        samples['weights'] = torch.from_numpy(weights).to(self.device).unsqueeze(1)
+        samples['indices'] = indices
 
-        probs = np.array([self.sum_tree.tree[idx + self.sum_tree.tree_size] for idx in indices])
-        p = probs / total_priority
-        weights = (p * self.size) ** (-self.beta)
-        min_prob = self.min_tree.min(0, self.size) / total_priority
-        max_weight = (min_prob * self.size) ** (-self.beta)
-        weights = weights / max_weight
-        weights = torch.tensor(weights, device=self.device, dtype=torch.float32).unsqueeze(1)
-
-        return PrioritizedBatch(obs_batch, actions_batch, rewards_batch, next_obs_batch, dones_batch, indices, weights)
+        return PrioritizedBatch(**samples)
 
     def update_priorities(self, indices, priorities):
-        """Update the priorities of sampled transitions."""
+        priorities = np.abs(priorities) + self.eps
+        self.max_priority = max(self.max_priority, priorities.max())
+        
         for idx, priority in zip(indices, priorities):
-            updated_priority = abs(priority) + self.eps
-            self.max_priority = max(self.max_priority, updated_priority)
-            prio = updated_priority ** self.alpha
-            self.sum_tree.update(idx, prio)
-            self.min_tree.update(idx, prio)
+            priority = priority ** self.alpha
+            self.sum_tree.update(idx, priority)
+            self.min_tree.update(idx, priority)
 
 if __name__ == "__main__":
     import stable_baselines3 as sb3
@@ -490,7 +454,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         for idx, trunc in enumerate(truncations):
             if trunc:
                 real_next_obs[idx] = infos["final_observation"][idx]
-        rb.add(obs, real_next_obs, actions, rewards, terminations)
+        rb.add(obs, actions, rewards, real_next_obs, terminations)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
@@ -516,7 +480,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
                     
                     # compute the n-step Bellman update.
                     gamma_n = args.gamma ** args.n_step
-                    next_atoms = data.rewards + gamma_n * support * (1 - data.dones)
+                    next_atoms = data.rewards + gamma_n * support * (1 - data.dones.float())
                     tz = next_atoms.clamp(q_network.v_min, q_network.v_max)
                     
                     # projection
