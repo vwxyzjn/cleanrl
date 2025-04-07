@@ -23,8 +23,6 @@ from stable_baselines3.common.atari_wrappers import (
 )
 from torch.utils.tensorboard import SummaryWriter
 
-from IPython import embed
-
 @dataclass
 class Args:
     exp_name: str = os.path.basename(__file__)[: -len(".py")]
@@ -209,6 +207,7 @@ PrioritizedBatch = collections.namedtuple(
     ['observations', 'actions', 'rewards', 'next_observations', 'dones', 'indices', 'weights']
 )
 
+# adapted from: https://github.com/openai/baselines/blob/master/baselines/common/segment_tree.py
 class SumSegmentTree:
     def __init__(self, capacity):
         self.capacity = capacity
@@ -241,6 +240,7 @@ class SumSegmentTree:
                 idx = right
         return idx - (self.capacity - 1)
 
+# adapted from: https://github.com/openai/baselines/blob/master/baselines/common/segment_tree.py
 class MinSegmentTree:
     def __init__(self, capacity):
         self.capacity = capacity
@@ -462,8 +462,8 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
             if global_step % args.train_frequency == 0:
+                # reset the noise for both networks
                 q_network.reset_noise()
-                # should we reset the noise for the target network?
                 target_network.reset_noise()
                 data = rb.sample(args.batch_size)
                 
