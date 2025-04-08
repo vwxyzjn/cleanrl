@@ -1,9 +1,9 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/rainbow/#rainbow_ataripy
+import collections
+import math
 import os
 import random
 import time
-import math
-import collections
 from collections import deque
 from dataclasses import dataclass
 
@@ -22,6 +22,7 @@ from stable_baselines3.common.atari_wrappers import (
     NoopResetEnv,
 )
 from torch.utils.tensorboard import SummaryWriter
+
 
 @dataclass
 class Args:
@@ -47,7 +48,7 @@ class Args:
     """whether to upload the saved model to huggingface"""
     hf_entity: str = ""
     """the user or org name of the model repository from the Hugging Face Hub"""
-    
+
     env_id: str = "BreakoutNoFrameskip-v4"
     """the id of the environment"""
     total_timesteps: int = 10000000
@@ -91,6 +92,7 @@ class Args:
     v_max: float = 10
     """the return upper bound"""
 
+
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         if capture_video and idx == 0:
@@ -115,19 +117,20 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 
     return thunk
 
+
 class NoisyLinear(nn.Module):
     def __init__(self, in_features, out_features, std_init=0.5):
-        super(NoisyLinear, self).__init__()
+        super().__init__()
         self.in_features = in_features
         self.out_features = out_features
         self.std_init = std_init
 
         self.weight_mu = nn.Parameter(torch.FloatTensor(out_features, in_features))
         self.weight_sigma = nn.Parameter(torch.FloatTensor(out_features, in_features))
-        self.register_buffer('weight_epsilon', torch.FloatTensor(out_features, in_features))
+        self.register_buffer("weight_epsilon", torch.FloatTensor(out_features, in_features))
         self.bias_mu = nn.Parameter(torch.FloatTensor(out_features))
         self.bias_sigma = nn.Parameter(torch.FloatTensor(out_features))
-        self.register_buffer('bias_epsilon', torch.FloatTensor(out_features))
+        self.register_buffer("bias_epsilon", torch.FloatTensor(out_features))
         # factorized gaussian noise
         self.reset_parameters()
         self.reset_noise()
@@ -152,10 +155,11 @@ class NoisyLinear(nn.Module):
             bias = self.bias_mu
         return F.linear(input, weight, bias)
 
+
 # ALGO LOGIC: initialize agent here:
 class NoisyDuelingDistributionalNetwork(nn.Module):
     def __init__(self, env, n_atoms, v_min, v_max):
-        super(NoisyDuelingDistributionalNetwork, self).__init__()
+        super().__init__()
         self.n_atoms = n_atoms
         self.v_min = v_min
         self.v_max = v_max
@@ -174,16 +178,10 @@ class NoisyDuelingDistributionalNetwork(nn.Module):
         )
         conv_output_size = 3136
 
-        self.value_head = nn.Sequential(
-            NoisyLinear(conv_output_size, 512), 
-            nn.ReLU(),
-            NoisyLinear(512, n_atoms)
-        )
-        
+        self.value_head = nn.Sequential(NoisyLinear(conv_output_size, 512), nn.ReLU(), NoisyLinear(512, n_atoms))
+
         self.advantage_head = nn.Sequential(
-            NoisyLinear(conv_output_size, 512),
-            nn.ReLU(),
-            NoisyLinear(512, n_atoms * self.n_actions)
+            NoisyLinear(conv_output_size, 512), nn.ReLU(), NoisyLinear(512, n_atoms * self.n_actions)
         )
 
     def forward(self, x):
@@ -201,10 +199,10 @@ class NoisyDuelingDistributionalNetwork(nn.Module):
         for layer in self.advantage_head:
             if isinstance(layer, NoisyLinear):
                 layer.reset_noise()
-              
+
+
 PrioritizedBatch = collections.namedtuple(
-    'PrioritizedBatch',
-    ['observations', 'actions', 'rewards', 'next_observations', 'dones', 'indices', 'weights']
+    "PrioritizedBatch", ["observations", "actions", "rewards", "next_observations", "dones", "indices", "weights"]
 )
 
 # adapted from: https://github.com/openai/baselines/blob/master/baselines/common/segment_tree.py
@@ -240,12 +238,13 @@ class SumSegmentTree:
                 idx = right
         return idx - (self.capacity - 1)
 
+
 # adapted from: https://github.com/openai/baselines/blob/master/baselines/common/segment_tree.py
 class MinSegmentTree:
     def __init__(self, capacity):
         self.capacity = capacity
         self.tree_size = 2 * capacity - 1
-        self.tree = np.full(self.tree_size, float('inf'), dtype=np.float32)
+        self.tree = np.full(self.tree_size, float("inf"), dtype=np.float32)
 
     def _propagate(self, idx):
         parent = (idx - 1) // 2
@@ -260,6 +259,7 @@ class MinSegmentTree:
 
     def min(self):
         return self.tree[0]
+
 
 class PrioritizedReplayBuffer:
     def __init__(self, capacity, obs_shape, device, n_step, gamma, alpha=0.6, beta=0.4, eps=1e-6):
@@ -283,7 +283,7 @@ class PrioritizedReplayBuffer:
 
         self.sum_tree = SumSegmentTree(capacity)
         self.min_tree = MinSegmentTree(capacity)
-        
+
         # For n-step returns
         self.n_step_buffer = deque(maxlen=n_step)
 
@@ -302,14 +302,14 @@ class PrioritizedReplayBuffer:
 
     def add(self, obs, action, reward, next_obs, done):
         self.n_step_buffer.append((obs, action, reward, next_obs, done))
-        
+
         if len(self.n_step_buffer) < self.n_step:
             return
-            
+
         reward, next_obs, done = self._get_n_step_info()
         obs = self.n_step_buffer[0][0]
         action = self.n_step_buffer[0][1]
-        
+
         idx = self.pos
         self.buffer_obs[idx] = obs
         self.buffer_next_obs[idx] = next_obs
@@ -317,7 +317,7 @@ class PrioritizedReplayBuffer:
         self.buffer_rewards[idx] = reward
         self.buffer_dones[idx] = done
 
-        priority = self.max_priority ** self.alpha
+        priority = self.max_priority**self.alpha
         self.sum_tree.update(idx, priority)
         self.min_tree.update(idx, priority)
 
@@ -331,38 +331,39 @@ class PrioritizedReplayBuffer:
         indices = []
         p_total = self.sum_tree.total()
         segment = p_total / batch_size
-        
+
         for i in range(batch_size):
             a = segment * i
             b = segment * (i + 1)
             upperbound = np.random.uniform(a, b)
             idx = self.sum_tree.retrieve(upperbound)
             indices.append(idx)
-            
+
         samples = {
-            'observations': torch.from_numpy(self.buffer_obs[indices]).to(self.device),
-            'actions': torch.from_numpy(self.buffer_actions[indices]).to(self.device).unsqueeze(1),
-            'rewards': torch.from_numpy(self.buffer_rewards[indices]).to(self.device).unsqueeze(1),
-            'next_observations': torch.from_numpy(self.buffer_next_obs[indices]).to(self.device),
-            'dones': torch.from_numpy(self.buffer_dones[indices]).to(self.device).unsqueeze(1),
+            "observations": torch.from_numpy(self.buffer_obs[indices]).to(self.device),
+            "actions": torch.from_numpy(self.buffer_actions[indices]).to(self.device).unsqueeze(1),
+            "rewards": torch.from_numpy(self.buffer_rewards[indices]).to(self.device).unsqueeze(1),
+            "next_observations": torch.from_numpy(self.buffer_next_obs[indices]).to(self.device),
+            "dones": torch.from_numpy(self.buffer_dones[indices]).to(self.device).unsqueeze(1),
         }
 
         probs = np.array([self.sum_tree.tree[idx + self.capacity - 1] for idx in indices])
         weights = (self.size * probs / p_total) ** -self.beta
         weights = weights / weights.max()
-        samples['weights'] = torch.from_numpy(weights).to(self.device).unsqueeze(1)
-        samples['indices'] = indices
+        samples["weights"] = torch.from_numpy(weights).to(self.device).unsqueeze(1)
+        samples["indices"] = indices
 
         return PrioritizedBatch(**samples)
 
     def update_priorities(self, indices, priorities):
         priorities = np.abs(priorities) + self.eps
         self.max_priority = max(self.max_priority, priorities.max())
-        
+
         for idx, priority in zip(indices, priorities):
-            priority = priority ** self.alpha
+            priority = priority**self.alpha
             self.sum_tree.update(idx, priority)
             self.min_tree.update(idx, priority)
+
 
 if __name__ == "__main__":
     import stable_baselines3 as sb3
@@ -379,7 +380,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
         import wandb
-        
+
         wandb.init(
             project=args.wandb_project_name,
             entity=args.wandb_entity,
@@ -431,8 +432,10 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
         # anneal PER beta to 1
-        rb.beta = min(1.0, args.prioritized_replay_beta + global_step * (1.0 - args.prioritized_replay_beta) / args.total_timesteps)
-        
+        rb.beta = min(
+            1.0, args.prioritized_replay_beta + global_step * (1.0 - args.prioritized_replay_beta) / args.total_timesteps
+        )
+
         # ALGO LOGIC: put action logic here
         with torch.no_grad():
             q_dist = q_network(torch.Tensor(obs).to(device))
@@ -466,7 +469,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
                 q_network.reset_noise()
                 target_network.reset_noise()
                 data = rb.sample(args.batch_size)
-                
+
                 with torch.no_grad():
                     next_dist = target_network(data.next_observations)  # [B, num_actions, n_atoms]
                     support = target_network.support  # [n_atoms]
@@ -477,28 +480,28 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
                     next_q_online = torch.sum(next_dist_online * support, dim=2)  # [B, num_actions]
                     best_actions = torch.argmax(next_q_online, dim=1)  # [B]
                     next_pmfs = next_dist[torch.arange(args.batch_size), best_actions]  # [B, n_atoms]
-                    
+
                     # compute the n-step Bellman update.
-                    gamma_n = args.gamma ** args.n_step
+                    gamma_n = args.gamma**args.n_step
                     next_atoms = data.rewards + gamma_n * support * (1 - data.dones.float())
                     tz = next_atoms.clamp(q_network.v_min, q_network.v_max)
-                    
+
                     # projection
-                    delta_z = q_network.delta_z  
+                    delta_z = q_network.delta_z
                     b = (tz - q_network.v_min) / delta_z  # shape: [B, n_atoms]
                     l = b.floor().clamp(0, args.n_atoms - 1)
                     u = b.ceil().clamp(0, args.n_atoms - 1)
-                    
+
                     # (l == u).float() handles the case where bj is exactly an integer
                     # example bj = 1, then the upper ceiling should be uj= 2, and lj= 1
                     d_m_l = (u.float() + (l == b).float() - b) * next_pmfs  # [B, n_atoms]
                     d_m_u = (b - l) * next_pmfs  # [B, n_atoms]
-                    
+
                     target_pmfs = torch.zeros_like(next_pmfs)
                     for i in range(target_pmfs.size(0)):
                         target_pmfs[i].index_add_(0, l[i].long(), d_m_l[i])
                         target_pmfs[i].index_add_(0, u[i].long(), d_m_u[i])
-                        
+
                 dist = q_network(data.observations)  # [B, num_actions, n_atoms]
                 pred_dist = dist.gather(1, data.actions.unsqueeze(-1).expand(-1, -1, args.n_atoms)).squeeze(1)
                 log_pred = torch.log(pred_dist.clamp(min=1e-5, max=1 - 1e-5))
@@ -511,14 +514,14 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
                 rb.update_priorities(data.indices, new_priorities)
 
                 if global_step % 100 == 0:
-                    writer.add_scalar("losses/loss", loss.item(), global_step)
+                    writer.add_scalar("losses/td_loss", loss.item(), global_step)
                     q_values = (pred_dist * q_network.support).sum(dim=1)  # [B]
                     writer.add_scalar("losses/q_values", q_values.mean().item(), global_step)
                     sps = int(global_step / (time.time() - start_time))
                     print("SPS:", sps)
                     writer.add_scalar("charts/SPS", sps, global_step)
                     writer.add_scalar("charts/beta", rb.beta, global_step)
-                    
+
                 # optimize the model
                 optimizer.zero_grad()
                 loss.backward()
