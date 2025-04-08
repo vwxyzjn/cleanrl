@@ -4,6 +4,7 @@ import random
 import time
 from dataclasses import dataclass
 
+import ale_py
 import gymnasium as gym
 import numpy as np
 import torch
@@ -13,13 +14,16 @@ import torch.optim as optim
 import tyro
 from stable_baselines3.common.atari_wrappers import (
     ClipRewardEnv,
-    EpisodicLifeEnv,
     FireResetEnv,
     MaxAndSkipEnv,
     NoopResetEnv,
 )
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
+
+from cleanrl_utils.same_model_vector_env import SameModelSyncVectorEnv
+
+gym.register_envs(ale_py)
 
 
 @dataclass
@@ -89,13 +93,14 @@ def make_env(env_id, seed, idx, capture_video, run_name):
 
         env = NoopResetEnv(env, noop_max=30)
         env = MaxAndSkipEnv(env, skip=4)
-        env = EpisodicLifeEnv(env)
+        # EpisodicLifeEnv conflicts with gym v1.0.0's RecordEpisodeStatistics and will be fixed later.
+        # env = EpisodicLifeEnv(env)
         if "FIRE" in env.unwrapped.get_action_meanings():
             env = FireResetEnv(env)
         env = ClipRewardEnv(env)
         env = gym.wrappers.ResizeObservation(env, (84, 84))
-        env = gym.wrappers.GrayScaleObservation(env)
-        env = gym.wrappers.FrameStack(env, 4)
+        env = gym.wrappers.GrayscaleObservation(env)
+        env = gym.wrappers.FrameStackObservation(env, 4)
 
         env.action_space.seed(seed)
         return env
@@ -169,7 +174,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv(
+    envs = SameModelSyncVectorEnv(
         [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
     )
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
@@ -205,11 +210,12 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
-            for info in infos["final_info"]:
-                if info and "episode" in info:
-                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+            for i in range(envs.num_envs):
+                if infos["final_info"]["_episode"][i]:
+                    print(f"global_step={global_step}, episodic_return={infos['final_info']['episode']['r'][i]}")
+                    writer.add_scalar("charts/episodic_return", infos["final_info"]["episode"]["r"][i], global_step)
+                    writer.add_scalar("charts/episodic_length", infos["final_info"]["episode"]["l"][i], global_step)
+                    break
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()

@@ -14,6 +14,8 @@ import tyro
 from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
 
+from cleanrl_utils.same_model_vector_env import SameModelSyncVectorEnv
+
 
 @dataclass
 class Args:
@@ -189,7 +191,7 @@ poetry run pip install "stable_baselines3==2.0.0a1"
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    envs = gym.vector.SyncVectorEnv(
+    envs = SameModelSyncVectorEnv(
         [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
     )
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
@@ -241,11 +243,11 @@ poetry run pip install "stable_baselines3==2.0.0a1"
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
-            for info in infos["final_info"]:
-                if info is not None:
-                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+            for i in range(envs.num_envs):
+                if infos["final_info"]["_episode"][i]:
+                    print(f"global_step={global_step}, episodic_return={infos['final_info']['episode']['r'][i]}")
+                    writer.add_scalar("charts/episodic_return", infos["final_info"]["episode"]["r"][i], global_step)
+                    writer.add_scalar("charts/episodic_length", infos["final_info"]["episode"]["l"][i], global_step)
                     break
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
