@@ -15,6 +15,12 @@ Original papers:
 
 * [Rainbow: Combining Improvements in Deep Reinforcement Learning](https://arxiv.org/abs/1710.02298)
 
+Reference resources:
+
+* :material-github: [Dopamine](https://github.com/google/dopamine)
+
+* :material-github: [Kaixhin](https://github.com/Kaixhin/Rainbow)
+
 ## Implemented Variants
 
 | Variants Implemented      | Description |
@@ -64,6 +70,26 @@ Running `python cleanrl/rainbow_atari.py` will automatically record various metr
 * `losses/td_loss`: the n-step distributional TD loss
 * `losses/q_values`: the mean Q values of the sampled data in the replay buffer
 * `charts/beta`: the beta value of the prioritized experience replay
+
+### Implementation details
+
+[rainbow_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/rainbow_atari.py) is based on (Hessel et al., 2018)[^1], and uses the same hyperparameters as (Hessel et al., 2018)[^1]. See Table 1 in (Hessel et al., 2018)[^1] for the hyperparameters. However, there are a few implementation differences:
+
+1. `rainbow_atari.py` uses the more popular Adam Optimizer with the `--learning-rate=0.0000625` as follows:
+    ```python
+    optim.Adam(q_network.parameters(), lr=0.0000625)
+    ```
+    whereas (Hessel et al., 2018)[^1] uses the RMSProp optimizer with `--learning-rate=0.0000625`, gradient momentum `0.95`, squared gradient momentum `0.95`, and min squared gradient `0.01` as follows:
+    ```python
+    optim.RMSprop(
+        q_network.parameters(),
+        lr=2.5e-4,
+        momentum=0.95,
+        # ... PyTorch's RMSprop does not directly support
+        # squared gradient momentum and min squared gradient
+        # so we are not sure what to put here.
+    )
+    ``` 
 
 ### Experiment results
 
