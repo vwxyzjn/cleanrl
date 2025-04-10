@@ -42,7 +42,7 @@ class Args:
 
     # Algorithm specific arguments
     env_id: str = "Hopper-v4"
-    """the environment id of the Atari game"""
+    """the environment id of the task"""
     total_timesteps: int = 1000000
     """total timesteps of the experiments"""
     learning_rate: float = 3e-4
@@ -61,8 +61,6 @@ class Args:
     """timestep to start learning"""
     policy_frequency: int = 2
     """the frequency of training policy (delayed)"""
-    noise_clip: float = 0.5
-    """noise clip parameter of the Target Policy Smoothing Regularization"""
 
 
 def make_env(env_id, seed, idx, capture_video, run_name):
