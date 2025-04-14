@@ -1,0 +1,51 @@
+<mujoco model="twod_point">
+    <compiler inertiafromgeom="true" angle="radian" coordinate="local" />
+    <option timestep="0.01" gravity="0 0 0" iterations="20" integrator="Euler" />
+    <default>
+        <joint limited="false" damping="1" />
+        <geom contype="2" conaffinity="1" condim="1" friction=".5 .1 .1" density="1000" margin="0.002" />
+    </default>
+
+    <worldbody>
+        <light directional="true" cutoff="100" exponent="1" diffuse="1 1 1" specular=".1 .1 .1" pos="0 0 1.3" dir="-0 0 -1.3" />
+        <!-- Pointmass -->
+        <body name="particle" pos="0. -0.1 0">
+            <geom name="particle_geom" type="sphere" size="0.03" rgba="0.0 0.0 1.0 1" contype="1"/>
+            <site name="particle_site" pos="0 0 0" size="0.01" />
+            <joint name="ball_x" type="slide" pos="0 0 0" axis="1 0 0" />
+            <joint name="ball_y" type="slide" pos="0 0 0" axis="0 1 0" />
+        </body>
+
+
+
+
+        <!-- Arena -->
+        <geom conaffinity="1" fromto="-.1 -.2 .01 .1 -.2 .01" name="sideS" rgba="0.9 0.4 0.6 1" size=".02" type="capsule"/>
+
+        <geom conaffinity="1" fromto=" .1 -.2 .01 .1  .2 .01" name="sideE" rgba="0.9 0.4 0.6 1" size=".02" type="capsule"/>
+        <geom conaffinity="1" fromto=" -.1 -.2 .01 -.1  .2 .01" name="sideW" rgba="0.9 0.4 0.6 1" size=".02" type="capsule"/>
+
+        <geom conaffinity="1" fromto=" .1 .2 .01 .4  .2 .01" name="sideEbottom" rgba="0.9 0.4 0.6 1" size=".02" type="capsule"/>
+        <geom conaffinity="1" fromto=" -.1 .2 .01 -.4  .2 .01" name="sideWbottom" rgba="0.9 0.4 0.6 1" size=".02" type="capsule"/>
+
+        <geom conaffinity="1" fromto=" .4 .2 .01 .4  .45 .01" name="sideEside" rgba="0.9 0.4 0.6 1" size=".02" type="capsule"/>
+        <geom conaffinity="1" fromto=" -.4 .2 .01 -.4  .45 .01" name="sideWside" rgba="0.9 0.4 0.6 1" size=".02" type="capsule"/>
+
+        <geom conaffinity="1" fromto="-.4  .45 .01 .4  .45 .01" name="sideN" rgba="0.9 0.4 0.6 1" size=".02" type="capsule"/>
+
+
+        <!-- Target -->
+        <body name="targetl" pos="-0.3 0.3 0">
+            <geom conaffinity="2" name="target_geoml" type="sphere" size="0.03" rgba="0 0.9 0.1 1"/>
+        </body>
+        <body name="targetr" pos="0.3 0.3 0">
+            <geom conaffinity="2" name="target_geomr" type="sphere" size="0.03" rgba="0 0.9 0.1 1"/>
+        </body>
+
+    </worldbody>
+
+    <actuator>
+        <motor joint="ball_x" ctrlrange="-1 1" ctrllimited="true"/>
+        <motor joint="ball_y" ctrlrange="-1 1" ctrllimited="true"/>
+    </actuator>
+</mujoco>
