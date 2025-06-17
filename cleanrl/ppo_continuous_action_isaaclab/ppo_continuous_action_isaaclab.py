@@ -1,19 +1,17 @@
 # TODO: find a proper header for this file
 
+import argparse
 import os
 import random
+import sys
 import time
 from dataclasses import dataclass
 
-import argparse
-import sys
 from isaaclab.app import AppLauncher
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Zero agent for Isaac Lab environments.")
-parser.add_argument(
-    "--disable_fabric", action="store_true", default=False, help="Disable fabric and use USD I/O operations."
-)
+parser.add_argument("--disable_fabric", action="store_true", default=False, help="Disable fabric and use USD I/O operations.")
 parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 # append AppLauncher cli args
@@ -24,7 +22,7 @@ argv = sys.argv[1:]
 if "--" in argv:
     sep_index = argv.index("--")
     isaac_argv = argv[:sep_index]
-    cleanrl_argv = argv[sep_index+1:]
+    cleanrl_argv = argv[sep_index + 1 :]
     print(f"IsaacLab arguments: {isaac_argv}")
     print(f"CleanRL arguments: {cleanrl_argv}")
 else:
@@ -39,12 +37,12 @@ simulation_app = app_launcher.app
 
 import gymnasium as gym
 import isaaclab_tasks  # noqa: F401
-from isaaclab_tasks.utils import parse_env_cfg
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import tyro
+from isaaclab_tasks.utils import parse_env_cfg
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
@@ -135,8 +133,8 @@ class RecordEpisodeStatisticsTorch(gym.Wrapper):
 
     def step(self, action):
         observations, rewards, terminations, truncations, infos = super().step(action)
-        dones = terminations | truncations # TODO: check how to migrate correctly
-        dones = dones.to(torch.int) # Convert to int for compatibility with the rest of the code
+        dones = terminations | truncations  # TODO: check how to migrate correctly
+        dones = dones.to(torch.int)  # Convert to int for compatibility with the rest of the code
         self.episode_returns += rewards
         self.episode_lengths += 1
         self.returned_episode_returns[:] = self.episode_returns
@@ -151,11 +149,11 @@ class RecordEpisodeStatisticsTorch(gym.Wrapper):
             dones,
             infos,
         )
-    
+
     @property
     def single_observation_space(self):
         """Return the single observation space of the environment."""
-        return self.env.single_observation_space['policy'] # Extract the policy observation space
+        return self.env.single_observation_space["policy"]  # Extract the policy observation space
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
@@ -237,7 +235,7 @@ if __name__ == "__main__":
     torch.manual_seed(args.seed)
     torch.backends.cudnn.deterministic = args.torch_deterministic
 
-    device = args_cli.device # torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
+    device = args_cli.device
 
     # env setup
     env_cfg = parse_env_cfg(args.env_id, device=device, num_envs=args.num_envs, use_fabric=not args_cli.disable_fabric)
@@ -254,7 +252,7 @@ if __name__ == "__main__":
         )
     envs = ExtractObsWrapper(envs)
     envs = RecordEpisodeStatisticsTorch(envs, device)
-    
+
     # Set single spaces using the original spaces
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
