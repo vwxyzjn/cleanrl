@@ -142,6 +142,8 @@ jobs:
          python-version: [3.8]
          os: [macos-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      MUJOCO_GL: egl
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
