@@ -38,8 +38,8 @@ The [pqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/pqn.py) has 
 
     ```bash
     poetry install
-    poetry run python cleanrl/pqn.py --help
-    poetry run python cleanrl/pqn.py --env-id CartPole-v1
+    uv run python cleanrl/pqn.py --help
+    uv run python cleanrl/pqn.py --env-id CartPole-v1
     ```
 
 === "pip"
@@ -136,9 +136,9 @@ The [pqn_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanr
 === "poetry"
 
     ```bash
-    poetry install -E envpool
-    poetry run python cleanrl/pqn_atari_envpool.py --help
-    poetry run python cleanrl/pqn_atari_envpool.py --env-id Breakout-v5
+    uv pip install ".[envpool]"
+    uv run python cleanrl/pqn_atari_envpool.py --help
+    uv run python cleanrl/pqn_atari_envpool.py --env-id Breakout-v5
     ```
 
 === "pip"
@@ -227,9 +227,9 @@ The [pqn_atari_envpool_lstm.py](https://github.com/vwxyzjn/cleanrl/blob/master/c
 === "poetry"
 
     ```bash
-    poetry install -E atari
-    poetry run python cleanrl/pqn_atari_envpool_lstm.py --help
-    poetry run python cleanrl/pqn_atari_envpool_lstm.py --env-id Breakout-v5
+    uv pip install ".[atari]"
+    uv run python cleanrl/pqn_atari_envpool_lstm.py --help
+    uv run python cleanrl/pqn_atari_envpool_lstm.py --env-id Breakout-v5
     ```
 
 === "pip"

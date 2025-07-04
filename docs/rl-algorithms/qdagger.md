@@ -36,7 +36,7 @@ The [qdagger_dqn_atari_impalacnn.py](https://github.com/vwxyzjn/cleanrl/blob/mas
 ### Usage
 
 ```bash
-poetry install -E atari
+uv pip install ".[atari]"
 python cleanrl/qdagger_dqn_atari_impalacnn.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/qdagger_dqn_atari_impalacnn.py --env-id PongNoFrameskip-v4
 ```
@@ -44,9 +44,9 @@ python cleanrl/qdagger_dqn_atari_impalacnn.py --env-id PongNoFrameskip-v4
 === "poetry"
 
     ```bash
-    poetry install -E atari
-    poetry run python cleanrl/qdagger_dqn_atari_impalacnn.py --env-id BreakoutNoFrameskip-v4
-    poetry run python cleanrl/qdagger_dqn_atari_impalacnn.py --env-id PongNoFrameskip-v4
+    uv pip install ".[atari]"
+    uv run python cleanrl/qdagger_dqn_atari_impalacnn.py --env-id BreakoutNoFrameskip-v4
+    uv run python cleanrl/qdagger_dqn_atari_impalacnn.py --env-id PongNoFrameskip-v4
     ```
 
 === "pip"
@@ -142,10 +142,10 @@ The [qdagger_dqn_atari_jax_impalacnn.py](https://github.com/vwxyzjn/cleanrl/blob
 === "poetry"
 
     ```bash
-    poetry install -E "atari jax"
-    poetry run pip install --upgrade "jax[cuda11_cudnn82]==0.4.8" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-    poetry run python cleanrl/qdagger_dqn_atari_jax_impalacnn.py --env-id BreakoutNoFrameskip-v4
-    poetry run python cleanrl/qdagger_dqn_atari_jax_impalacnn.py --env-id PongNoFrameskip-v4
+    uv pip install ".[atari jax]"
+    uv pip install --upgrade "jax[cuda11_cudnn82]==0.4.8" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    uv run python cleanrl/qdagger_dqn_atari_jax_impalacnn.py --env-id BreakoutNoFrameskip-v4
+    uv run python cleanrl/qdagger_dqn_atari_jax_impalacnn.py --env-id PongNoFrameskip-v4
     ```
 
 === "pip"

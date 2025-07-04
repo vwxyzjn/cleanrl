@@ -35,7 +35,7 @@ The [dqn_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn_at
 ### Usage
 
 ```bash
-poetry install -E atari
+uv pip install ".[atari]"
 python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
 ```
@@ -43,9 +43,9 @@ python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
 === "poetry"
 
     ```bash
-    poetry install -E atari
-    poetry run python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
-    poetry run python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
+    uv pip install ".[atari]"
+    uv run python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
+    uv run python cleanrl/dqn_atari.py --env-id PongNoFrameskip-v4
     ```
 
 === "pip"
@@ -80,7 +80,7 @@ with the Bellman update target is $y = r + \gamma \, Q^{'}(s', a')$ and the repl
         ```python
         optim.Adam(q_network.parameters(), lr=1e-4)
         ```
-       whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses the RMSProp optimizer with `--learning-rate=2.5e-4`, gradient momentum `0.95`, squared gradient momentum `0.95`, and min squared gradient `0.01` as follows:
+       whereas (Mnih et al., 2015)[^1] (Extended Data Table 1) uses the RMSProp optimizer with `--learning-rate=2.5e-4`, gradient momentum `0.95`, squared gradient momentum `0.95`, and min squared gradient `0.01` as follows:
         ```python
         optim.RMSprop(
             q_network.parameters(),
@@ -91,11 +91,11 @@ with the Bellman update target is $y = r + \gamma \, Q^{'}(s', a')$ and the repl
             # so we are not sure what to put here.
         )
         ``` 
-    - `dqn_atari.py` uses `--learning-starts=80000` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--learning-starts=50000`.
-    - `dqn_atari.py` uses `--target-network-frequency=1000` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--target-network-frequency=10000`.
+    - `dqn_atari.py` uses `--learning-starts=80000` whereas (Mnih et al., 2015)[^1] (Extended Data Table 1) uses `--learning-starts=50000`.
+    - `dqn_atari.py` uses `--target-network-frequency=1000` whereas (Mnih et al., 2015)[^1] (Extended Data Table 1) uses `--target-network-frequency=10000`.
     - `dqn_atari.py` uses `--total-timesteps=10000000` (i.e., 10M timesteps = 40M frames because of frame-skipping) whereas (Mnih et al., 2015)[^1] uses `--total-timesteps=50000000` (i.e., 50M timesteps = 200M frames) (See "Training details" under "METHODS" on page 6 and the related source code [run_gpu#L32](https://github.com/deepmind/dqn/blob/9d9b1d13a2b491d6ebd4d046740c511c662bbe0f/run_gpu#L32), [dqn/train_agent.lua#L81-L82](https://github.com/deepmind/dqn/blob/9d9b1d13a2b491d6ebd4d046740c511c662bbe0f/dqn/train_agent.lua#L81-L82), and [dqn/train_agent.lua#L165-L169](https://github.com/deepmind/dqn/blob/9d9b1d13a2b491d6ebd4d046740c511c662bbe0f/dqn/train_agent.lua#L165-L169)).
-    - `dqn_atari.py` uses `--end-e=0.01` (the final exploration epsilon) whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--end-e=0.1`.
-    - `dqn_atari.py` uses `--exploration-fraction=0.1` whereas (Mnih et al., 2015)[^1] (Exntended Data Table 1) uses `--exploration-fraction=0.02` (all corresponds to 250000 steps or 1M frames being the frame that epsilon is annealed to `--end-e=0.1` ).
+    - `dqn_atari.py` uses `--end-e=0.01` (the final exploration epsilon) whereas (Mnih et al., 2015)[^1] (Extended Data Table 1) uses `--end-e=0.1`.
+    - `dqn_atari.py` uses `--exploration-fraction=0.1` whereas (Mnih et al., 2015)[^1] (Extended Data Table 1) uses `--exploration-fraction=0.02` (all corresponds to 250000 steps or 1M frames being the frame that epsilon is annealed to `--end-e=0.1` ).
     - `dqn_atari.py` handles truncation and termination properly like (Mnih et al., 2015)[^1] by using SB3's replay buffer's `handle_timeout_termination=True`.
 2. `dqn_atari.py` use a self-contained evaluation scheme: `dqn_atari.py` reports the episodic returns obtained throughout training, whereas (Mnih et al., 2015)[^1] is trained with `--end-e=0.1` but reported episodic returns using a separate evaluation process with `--end-e=0.01` (See "Evaluation procedure" under "METHODS" on page 6).
 3. `dqn_atari.py` implements target network updates as Polyak updates. Compared to the original implementation in (Mnih et al., 2015)[^1], this version allows soft updates of the target network weights with `--tau` (update coefficient) values of less than 1 (i.e. `--tau=0.9`). Note that by default `--tau=1.0` is used to be consistent with (Mnih et al., 2015)[^1].
@@ -152,7 +152,7 @@ The [dqn.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dqn.py) has 
 === "poetry"
 
     ```bash
-    poetry run python cleanrl/dqn.py --env-id CartPole-v1
+    uv run python cleanrl/dqn.py --env-id CartPole-v1
     ```
 
 === "pip"
@@ -249,10 +249,10 @@ The [dqn_atari_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/dq
 === "poetry"
 
     ```bash
-    poetry install -E "atari jax"
-    poetry run pip install --upgrade "jax[cuda11_cudnn82]==0.4.8" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-    poetry run python cleanrl/dqn_atari_jax.py --env-id BreakoutNoFrameskip-v4
-    poetry run python cleanrl/dqn_atari_jax.py --env-id PongNoFrameskip-v4
+    uv pip install ".[atari, jax]"
+    uv pip install --upgrade "jax[cuda11_cudnn82]==0.4.8" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    uv run python cleanrl/dqn_atari_jax.py --env-id BreakoutNoFrameskip-v4
+    uv run python cleanrl/dqn_atari_jax.py --env-id PongNoFrameskip-v4
     ```
 
 === "pip"
@@ -333,8 +333,8 @@ python cleanrl/dqn_jax.py --env-id CartPole-v1
 === "poetry"
 
     ```bash
-    poetry run pip install --upgrade "jax[cuda11_cudnn82]==0.4.8" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-    poetry run python cleanrl/dqn_jax.py --env-id CartPole-v1
+    uv pip install --upgrade "jax[cuda11_cudnn82]==0.4.8" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    uv run python cleanrl/dqn_jax.py --env-id CartPole-v1
     ```
 
 === "pip"

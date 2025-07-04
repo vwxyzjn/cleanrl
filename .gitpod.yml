@@ -2,7 +2,7 @@ image:
   file: .gitpod.Dockerfile
 
 tasks:
-  - init: uv install
+  - init: uv pip install .
 
 # vscode:
 #   extensions:

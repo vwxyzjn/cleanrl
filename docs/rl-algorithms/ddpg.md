@@ -39,10 +39,10 @@ The [ddpg_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/c
 === "poetry"
 
     ```bash
-    poetry install
-    poetry run python cleanrl/ddpg_continuous_action.py --help
-    poetry install -E mujoco
-    poetry run python cleanrl/ddpg_continuous_action.py --env-id Hopper-v4
+    uv pip install .
+    uv run python cleanrl/ddpg_continuous_action.py --help
+    uv pip install ".[mujoco]"
+    uv run python cleanrl/ddpg_continuous_action.py --env-id Hopper-v4
     ```
 
 === "pip"
@@ -282,12 +282,11 @@ The [ddpg_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/mast
 === "poetry"
 
     ```bash
-    poetry install
-    poetry install -E "mujoco jax"
-    poetry run python cleanrl/ddpg_continuous_action_jax.py --help
-    poetry run python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v4
-    poetry install -E mujoco_py # only works in Linux
-    poetry run python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v2
+    uv pip install ".[mujoco, jax]"
+    uv run python cleanrl/ddpg_continuous_action_jax.py --help
+    uv run python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v4
+    uv pip install ".[mujoco_py]" # only works in Linux
+    uv run python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v2
     ```
 
 === "pip"

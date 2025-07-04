@@ -38,10 +38,9 @@ The [td3_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 === "poetry"
 
     ```bash
-    poetry install
-    poetry install -E mujoco
-    poetry run python cleanrl/td3_continuous_action.py --help
-    poetry run python cleanrl/td3_continuous_action.py --env-id Hopper-v4
+    uv pip install ".[mujoco]"
+    uv run python cleanrl/td3_continuous_action.py --help
+    uv run python cleanrl/td3_continuous_action.py --env-id Hopper-v4
     ```
 
 === "pip"
@@ -63,7 +62,7 @@ Running `python cleanrl/td3_continuous_action.py` will automatically record vari
 
 $$ \nabla_{\phi} J(\phi)=\left.N^{-1} \sum \nabla_{a} Q_{\theta_{1}}(s, a)\right|_{a=\pi_{\phi}(s)} \nabla_{\phi} \pi_{\phi}(s) $$
 
-* `losses/qf1_values`: implemented as `qf1(data.observations, data.actions).view(-1); it is the average Q values of the sampled data in the replay buffer; useful when gauging if under or over esitmations happen
+* `losses/qf1_values`: implemented as `qf1(data.observations, data.actions).view(-1); it is the average Q values of the sampled data in the replay buffer; useful when gauging if under or over estimations happen
 
 
 ### Implementation details
@@ -180,10 +179,9 @@ The [td3_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/maste
 === "poetry"
 
     ```bash
-    poetry install
-    poetry install -E "mujoco jax"
-    poetry run python cleanrl/td3_continuous_action_jax.py --help
-    poetry run python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v4
+    uv pip install ".[mujoco, jax]"
+    uv run python cleanrl/td3_continuous_action_jax.py --help
+    uv run python cleanrl/td3_continuous_action_jax.py --env-id Hopper-v4
     ```
 
 === "pip"

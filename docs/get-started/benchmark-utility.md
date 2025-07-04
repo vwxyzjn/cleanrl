@@ -54,7 +54,7 @@ The following example demonstrates how to run classic control benchmark experime
 ```bash
 OMP_NUM_THREADS=1 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids CartPole-v1 Acrobot-v1 MountainCar-v0 \
-    --command "poetry run python cleanrl/ppo.py --no_cuda --track --capture_video" \
+    --command "uv run python cleanrl/ppo.py --no_cuda --track --capture_video" \
     --num-seeds 3 \
     --workers 5
 ```
@@ -62,21 +62,21 @@ OMP_NUM_THREADS=1 xvfb-run -a python -m cleanrl_utils.benchmark \
 What just happened here? In principle the helps run the following commands in 5 subprocesses:
 
 ```bash
-poetry run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id CartPole-v1 --seed 1
-poetry run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id Acrobot-v1 --seed 1
-poetry run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id MountainCar-v0 --seed 1
-poetry run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id CartPole-v1 --seed 2
-poetry run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id Acrobot-v1 --seed 2
-poetry run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id MountainCar-v0 --seed 2
-poetry run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id CartPole-v1 --seed 3
-poetry run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id Acrobot-v1 --seed 3
-poetry run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id MountainCar-v0 --seed 3
+uv run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id CartPole-v1 --seed 1
+uv run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id Acrobot-v1 --seed 1
+uv run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id MountainCar-v0 --seed 1
+uv run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id CartPole-v1 --seed 2
+uv run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id Acrobot-v1 --seed 2
+uv run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id MountainCar-v0 --seed 2
+uv run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id CartPole-v1 --seed 3
+uv run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id Acrobot-v1 --seed 3
+uv run python cleanrl/ppo.py --no_cuda --track --capture_video --env-id MountainCar-v0 --seed 3
 ```
 
 More specifically:
 
 1. `--env-ids CartPole-v1 Acrobot-v1 MountainCar-v0` specifies that running experiments against these three environments
-1. `--command "poetry run python cleanrl/ppo.py --no_cuda --track --capture_video"` suggests running `ppo.py` with these settings:
+1. `--command "uv run python cleanrl/ppo.py --no_cuda --track --capture_video"` suggests running `ppo.py` with these settings:
     * turn off GPU usage via `--no_cuda`: because `ppo.py` has such as small neural network it often runs faster on CPU only
     * track the experiments via `--track`
     * render the agent gameplay videos via `--capture_video`; these videos algo get saved to the tracked experiments
@@ -92,7 +92,7 @@ Note that when you run with high-throughput environments such as `envpool` or `p
 ```bash
 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids Pong-v5 BeamRider-v5 Breakout-v5 \
-    --command "poetry run python cleanrl/ppo_atari_envpool.py --track --capture_video" \
+    --command "uv run python cleanrl/ppo_atari_envpool.py --track --capture_video" \
     --num-seeds 3 \
     --workers 1
 ```
@@ -110,9 +110,9 @@ If you have access to a slurm cluster, you can use `cleanrl_utils.benchmark` to 
 
 ```
 poetry install
-OMP_NUM_THREADS=1 xvfb-run -a poetry run python -m cleanrl_utils.benchmark \
+OMP_NUM_THREADS=1 xvfb-run -a uv run python -m cleanrl_utils.benchmark \
     --env-ids CartPole-v1 Acrobot-v1 MountainCar-v0 \
-    --command "poetry run python cleanrl/ppo.py --no_cuda --track --capture_video" \
+    --command "uv run python cleanrl/ppo.py --no_cuda --track --capture_video" \
     --num-seeds 3 \
     --workers 9 \
     --slurm-gpus-per-task 1 \
@@ -154,6 +154,6 @@ seed=${seeds[$SLURM_ARRAY_TASK_ID % 3]}
 
 echo "Running task $SLURM_ARRAY_TASK_ID with env_id: $env_id and seed: $seed"
 
-srun poetry run python cleanrl/ppo.py --no_cuda --track --env-id $env_id --seed $seed # 
+srun uv run python cleanrl/ppo.py --no_cuda --track --env-id $env_id --seed $seed # 
 ```
 

@@ -122,7 +122,7 @@ if __name__ == "__main__":
     if sb3.__version__ < "2.0":
         raise ValueError(
             """Ongoing migration: run the following command to install the new dependencies:
-poetry run pip install "stable_baselines3==2.0.0a1"
+uv pip install "stable_baselines3==2.0.0a1"
 """
         )
     args = tyro.cli(Args)

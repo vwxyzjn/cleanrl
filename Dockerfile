@@ -8,10 +8,10 @@ RUN ln -s /usr/bin/python3 /usr/bin/python
 
 # install python dependencies
 RUN mkdir cleanrl_utils && touch cleanrl_utils/__init__.py
-RUN pip install poetry --upgrade
+RUN pip install uv --upgrade
 COPY pyproject.toml pyproject.toml
-COPY poetry.lock poetry.lock
-RUN poetry install
+COPY uv.lock uv.lock
+RUN uv pip install .
 
 # install mujoco_py
 RUN apt-get -y install wget unzip software-properties-common \
@@ -19,8 +19,8 @@ RUN apt-get -y install wget unzip software-properties-common \
     libgl1-mesa-glx \
     libglew-dev \
     libosmesa6-dev patchelf
-RUN poetry install -E "atari mujoco_py"
-RUN poetry run python -c "import mujoco_py"
+RUN uv pip install ".[atari, mujoco_py]"
+RUN uv run python -c "import mujoco_py"
 
 COPY entrypoint.sh /usr/local/bin/
 RUN chmod 777 /usr/local/bin/entrypoint.sh

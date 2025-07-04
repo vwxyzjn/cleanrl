@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser(description='CleanRL Experiment Submission')
 # experiment generation
 parser.add_argument('--exp-script', type=str, default="debug.sh",
     help='the file name of this experiment')
-parser.add_argument('--command', type=str, default="poetry run python cleanrl/ppo.py",
+parser.add_argument('--command', type=str, default="uv run python cleanrl/ppo.py",
     help='the docker command')
 
 # CleanRL specific args
