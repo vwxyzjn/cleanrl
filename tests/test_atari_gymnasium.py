@@ -49,6 +49,22 @@ def test_c51_atari_eval():
     )
 
 
+def test_rainbow_atari():
+    subprocess.run(
+        "python cleanrl/rainbow_atari.py --learning-starts 10 --total-timesteps 16 --buffer-size 10 --batch-size 4",
+        shell=True,
+        check=True,
+    )
+
+
+def test_rainbow_atari_eval():
+    subprocess.run(
+        "python cleanrl/rainbow_atari.py --save-model --learning-starts 10 --total-timesteps 16 --buffer-size 10 --batch-size 4",
+        shell=True,
+        check=True,
+    )
+
+
 def test_sac():
     subprocess.run(
         "python cleanrl/sac_atari.py --learning-starts 10 --total-timesteps 16 --buffer-size 10 --batch-size 4",

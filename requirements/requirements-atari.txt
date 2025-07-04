@@ -2,10 +2,7 @@
 #    uv export --no-hashes --output-file requirements/requirements-atari.txt --extra atari
 -e .
 absl-py==1.4.0
-    # via
-    #   chex
-    #   optax
-    #   tensorboard
+    # via tensorboard
 ale-py==0.8.1
     # via cleanrl
 appdirs==1.4.4
@@ -24,10 +21,6 @@ cfgv==3.3.1
     # via pre-commit
 charset-normalizer==3.1.0
     # via requests
-chex==0.1.5
-    # via
-    #   cleanrl
-    #   optax
 click==8.1.3
     # via
     #   autorom
@@ -37,7 +30,6 @@ cloudpickle==2.2.1
     # via
     #   gym
     #   gymnasium
-    #   stable-baselines3
 colorama==0.4.4
     # via
     #   click
@@ -46,14 +38,10 @@ colorama==0.4.4
     #   tyro
 commonmark==0.9.1
     # via rich
-cycler==0.11.0
-    # via matplotlib
 decorator==4.4.2
     # via moviepy
 distlib==0.3.6
     # via virtualenv
-dm-tree==0.1.8
-    # via chex
 docker-pycreds==0.4.0
     # via wandb
 docstring-parser==0.15
@@ -63,9 +51,13 @@ farama-notifications==0.0.4
 filelock==3.12.0
     # via
     #   huggingface-hub
+    #   torch
+    #   triton
     #   virtualenv
-fonttools==4.38.0
-    # via matplotlib
+fsspec==2025.3.0 ; python_full_version < '3.9'
+    # via torch
+fsspec==2025.5.1 ; python_full_version >= '3.9'
+    # via torch
 gitdb==4.0.10
     # via gitpython
 gitpython==3.1.31
@@ -82,11 +74,10 @@ gym==0.23.1
     # via cleanrl
 gym-notices==0.0.8
     # via gym
-gymnasium==0.28.1
+gymnasium==0.29.1
     # via
     #   cleanrl
     #   shimmy
-    #   stable-baselines3
 huggingface-hub==0.11.1
     # via cleanrl
 identify==2.5.24
@@ -108,74 +99,116 @@ importlib-resources==5.12.0
     #   ale-py
     #   autorom
     #   autorom-accept-rom-license
-jax==0.4.8
-    # via
-    #   chex
-    #   optax
-jax-jumpy==1.0.0
-    # via gymnasium
-jaxlib==0.4.7
-    # via
-    #   chex
-    #   optax
-kiwisolver==1.4.4
-    # via matplotlib
+jinja2==3.1.2
+    # via torch
 markdown==3.3.7
     # via tensorboard
 markupsafe==2.1.2
-    # via werkzeug
-matplotlib==3.5.3
-    # via stable-baselines3
-ml-dtypes==0.2.0
     # via
-    #   jax
-    #   jaxlib
+    #   jinja2
+    #   werkzeug
 moviepy==1.0.3
     # via cleanrl
+mpmath==1.3.0
+    # via sympy
+networkx==3.1 ; python_full_version < '3.9'
+    # via torch
+networkx==3.2.1 ; python_full_version == '3.9.*'
+    # via torch
+networkx==3.4.2 ; python_full_version >= '3.10'
+    # via torch
 nodeenv==1.7.0
     # via pre-commit
 numpy==1.24.4
     # via
     #   ale-py
-    #   chex
-    #   cleanrl
     #   gym
     #   gymnasium
     #   imageio
-    #   jax
-    #   jax-jumpy
-    #   jaxlib
-    #   matplotlib
-    #   ml-dtypes
     #   moviepy
     #   opencv-python
-    #   opt-einsum
-    #   optax
-    #   pandas
-    #   scipy
     #   shimmy
-    #   stable-baselines3
     #   tensorboard
+nvidia-cublas-cu12==12.4.5.8 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via
+    #   nvidia-cudnn-cu12
+    #   nvidia-cusolver-cu12
+    #   torch
+nvidia-cublas-cu12==12.6.4.1 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via
+    #   nvidia-cudnn-cu12
+    #   nvidia-cusolver-cu12
+    #   torch
+nvidia-cuda-cupti-cu12==12.4.127 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-cuda-cupti-cu12==12.6.80 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-cuda-nvrtc-cu12==12.4.127 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-cuda-nvrtc-cu12==12.6.77 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-cuda-runtime-cu12==12.4.127 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-cuda-runtime-cu12==12.6.77 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-cudnn-cu12==9.1.0.70 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-cudnn-cu12==9.5.1.17 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-cufft-cu12==11.2.1.3 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-cufft-cu12==11.3.0.4 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-cufile-cu12==1.11.1.6 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-curand-cu12==10.3.5.147 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-curand-cu12==10.3.7.77 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-cusolver-cu12==11.6.1.9 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-cusolver-cu12==11.7.1.2 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-cusparse-cu12==12.3.1.170 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via
+    #   nvidia-cusolver-cu12
+    #   torch
+nvidia-cusparse-cu12==12.5.4.2 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via
+    #   nvidia-cusolver-cu12
+    #   torch
+nvidia-cusparselt-cu12==0.6.3 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-nccl-cu12==2.21.5 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-nccl-cu12==2.26.2 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-nvjitlink-cu12==12.4.127 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via
+    #   nvidia-cufft-cu12
+    #   nvidia-cusolver-cu12
+    #   nvidia-cusparse-cu12
+    #   torch
+nvidia-nvjitlink-cu12==12.6.85 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via
+    #   nvidia-cufft-cu12
+    #   nvidia-cusolver-cu12
+    #   nvidia-cusparse-cu12
+    #   torch
+nvidia-nvtx-cu12==12.4.127 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+nvidia-nvtx-cu12==12.6.77 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
 oauthlib==3.2.2
     # via requests-oauthlib
 opencv-python==4.7.0.72
     # via cleanrl
-opt-einsum==3.3.0
-    # via jax
-optax==0.1.4
-    # via cleanrl
 packaging==23.1
-    # via
-    #   huggingface-hub
-    #   matplotlib
-pandas==1.3.5
-    # via stable-baselines3
+    # via huggingface-hub
 pathtools==0.1.2
     # via wandb
 pillow==9.5.0
-    # via
-    #   imageio
-    #   matplotlib
+    # via imageio
 platformdirs==3.5.0
     # via virtualenv
 pre-commit==2.21.0
@@ -197,17 +230,8 @@ pygame==2.1.0
     # via cleanrl
 pygments==2.15.1
     # via rich
-pyparsing==3.0.9
-    # via matplotlib
-python-dateutil==2.8.2
-    # via
-    #   matplotlib
-    #   pandas
-pytz==2023.3
-    # via pandas
 pyyaml==6.0.1
     # via
-    #   cleanrl
     #   huggingface-hub
     #   pre-commit
     #   wandb
@@ -228,10 +252,6 @@ rich==11.2.0
     #   tyro
 rsa==4.7.2
     # via google-auth
-scipy==1.10.1
-    # via
-    #   jax
-    #   jaxlib
 sentry-sdk==1.22.2
     # via wandb
 setproctitle==1.3.2
@@ -240,6 +260,7 @@ setuptools==67.7.2
     # via
     #   nodeenv
     #   tensorboard
+    #   triton
     #   wandb
 shimmy==1.1.0
     # via cleanrl
@@ -249,11 +270,12 @@ six==1.16.0
     # via
     #   docker-pycreds
     #   google-auth
-    #   python-dateutil
 smmap==5.0.0
     # via gitdb
-stable-baselines3==2.0.0
-    # via cleanrl
+sympy==1.12.1 ; python_full_version < '3.9'
+    # via torch
+sympy==1.14.0 ; python_full_version >= '3.9'
+    # via torch
 tenacity==8.2.3
     # via cleanrl
 tensorboard==2.11.2
@@ -262,24 +284,25 @@ tensorboard-data-server==0.6.1
     # via tensorboard
 tensorboard-plugin-wit==1.8.1
     # via tensorboard
-toolz==0.12.0
-    # via chex
-torch==1.12.1
-    # via
-    #   cleanrl
-    #   stable-baselines3
+torch==2.5.1 ; python_full_version < '3.9'
+    # via cleanrl
+torch==2.7.1 ; python_full_version >= '3.9'
+    # via cleanrl
 tqdm==4.65.0
     # via
     #   autorom
     #   huggingface-hub
     #   moviepy
     #   proglog
+triton==3.1.0 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
+triton==3.3.1 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+    # via torch
 typing-extensions==4.13.2 ; python_full_version < '3.9'
     # via
     #   ale-py
     #   gymnasium
     #   huggingface-hub
-    #   optax
     #   torch
     #   tyro
     #   wandb
@@ -288,7 +311,6 @@ typing-extensions==4.14.1 ; python_full_version >= '3.9'
     #   ale-py
     #   gymnasium
     #   huggingface-hub
-    #   optax
     #   torch
     #   tyro
     #   wandb
