@@ -196,7 +196,6 @@ def kl_divergence_with_logits(target_logits, prediction_logits):
 
 
 if __name__ == "__main__":
-
     args = tyro.cli(Args)
     assert args.num_envs == 1, "vectorized envs are not supported at the moment"
     if args.teacher_policy_hf_repo is None:

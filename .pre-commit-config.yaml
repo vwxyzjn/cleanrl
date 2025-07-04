@@ -1,86 +1,78 @@
 repos:
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.31.1
+    rev: v3.20.0
     hooks:
       - id: pyupgrade
         args: 
           - --py37-plus
   - repo: https://github.com/PyCQA/isort
-    rev: 5.12.0
+    rev: 6.0.1
     hooks:
       - id: isort
         args:
           - --profile=black
           - --skip-glob=wandb/**/*
           - --thirdparty=wandb
-  - repo: https://github.com/myint/autoflake
-    rev: v1.4
-    hooks:
-      - id: autoflake
-        args:
-          - -r
-          - --exclude=wandb
-          - --in-place
-          - --remove-unused-variables
-          - --remove-all-unused-imports
   - repo: https://github.com/python/black
-    rev: 22.3.0
+    rev: 25.1.0
     hooks:
       - id: black
         args:
           - --line-length=127
           - --exclude=wandb
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.1.0
+    rev: v2.4.1
     hooks:
       - id: codespell
         args:
-          - --ignore-words-list=nd,reacher,thist,ths,magent,ba
+          - --ignore-words-list=nd,reacher,thist,ths,magent,ba,Meger
           - --skip=docs/css/termynal.css,docs/js/termynal.js,docs/get-started/CleanRL_Huggingface_Integration_Demo.ipynb
-  - repo: https://github.com/python-poetry/poetry
-    rev: 1.3.2
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.7.19
     hooks:
-      - id: poetry-export
-        name: poetry-export requirements.txt
-        args: ["--without-hashes", "-o", "requirements/requirements.txt"]
+      - id: uv-export
+        name: uv-export requirements.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements.txt"]
         stages: [manual]
-      - id: poetry-export
-        name: poetry-export requirements-atari.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-atari.txt", "-E", "atari"]
+      - id: uv-export
+        name: uv-export requirements-atari.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-atari.txt", "--extra", "atari"]
         stages: [manual]
-      - id: poetry-export
-        name: poetry-export requirements-mujoco.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-mujoco.txt", "-E", "mujoco"]
+      - id: uv-export
+        name: uv-export requirements-mujoco.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-mujoco.txt", "--extra", "mujoco"]
         stages: [manual]
-      - id: poetry-export
-        name: poetry-export requirements-dm_control.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-dm_control.txt", "-E", "dm_control"]
+      - id: uv-export
+        name: uv-export requirements-dm_control.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-dm_control.txt", "--extra", "dm_control"]
         stages: [manual]
-      - id: poetry-export
-        name: poetry-export requirements-procgen.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-procgen.txt", "-E", "procgen"]
+      - id: uv-export
+        name: uv-export requirements-procgen.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-procgen.txt", "--extra", "procgen"]
         stages: [manual]
-      - id: poetry-export
-        name: poetry-export requirements-envpool.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-envpool.txt", "-E", "envpool"]
+      - id: uv-export
+        name: uv-export requirements-envpool.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-envpool.txt", "--extra", "envpool"]
         stages: [manual]
-      - id: poetry-export
-        name: poetry-export requirements-pettingzoo.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-pettingzoo.txt", "-E", "pettingzoo"]
+      - id: uv-export
+        name: uv-export requirements-pettingzoo.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-pettingzoo.txt", "--extra", "pettingzoo"]
         stages: [manual]
-      - id: poetry-export
-        name: poetry-export requirements-jax.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-jax.txt", "-E", "jax"]
+      - id: uv-export
+        name: uv-export requirements-jax.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-jax.txt", "--extra", "jax"]
         stages: [manual]
-      - id: poetry-export
-        name: poetry-export requirements-optuna.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-optuna.txt", "-E", "optuna"]
+      - id: uv-export
+        name: uv-export requirements-optuna.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-optuna.txt", "--extra", "optuna"]
         stages: [manual]
-      - id: poetry-export
-        name: poetry-export requirements-docs.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-docs.txt", "-E", "docs"]
+      - id: uv-export
+        name: uv-export requirements-docs.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-docs.txt", "--extra", "docs"]
         stages: [manual]
-      - id: poetry-export
-        name: poetry-export requirements-cloud.txt
-        args: ["--without-hashes", "-o", "requirements/requirements-cloud.txt", "-E", "cloud"]
+      - id: uv-export
+        name: uv-export requirements-cloud.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-cloud.txt", "--extra", "cloud"]
         stages: [manual]
+      # requirements-memory-gym.txt must be hand updated,
+      #   `cd cleanrl/ppo_trxl`, `uv export --no-hashes --output-file ../../requirements/requirements-memory_gym.txt`

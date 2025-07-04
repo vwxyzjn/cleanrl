@@ -608,3 +608,125 @@ class RolloutBuffer(BaseBuffer):
             self.returns[batch_inds].flatten(),
         )
         return RolloutBufferSamples(*tuple(map(self.to_torch, data)))
+
+
+class PrioritizedReplayBuffer(BaseBuffer):
+    """
+    Replay buffer used in off-policy algorithms like SAC/TD3.
+    This time with priorization!
+
+    TODO normalization stuff is probably not implemented correctly.
+
+    Mainly copy/paste from
+        https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/buffers.py
+
+    :param buffer_size: Max number of element in the buffer
+    :param alpha: How much priorization is used (0: disabled, 1: full priorization)
+    :param observation_space: Observation space
+    :param action_space: Action space
+    :param device:
+    :param n_envs: Number of parallel environments
+    """
+
+    def __init__(
+        self,
+        buffer_size: int,
+        alpha: float,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        device: Union[th.device, str] = "cpu",
+        n_envs: int = 1,
+    ):
+        super().__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
+
+        assert n_envs == 1, "Replay buffer only support single environment for now"
+        assert alpha >= 0
+
+        self.observations = np.zeros((self.buffer_size, self.n_envs) + self.obs_shape, dtype=observation_space.dtype)
+        self.next_observations = np.zeros((self.buffer_size, self.n_envs) + self.obs_shape, dtype=observation_space.dtype)
+        self.actions = np.zeros((self.buffer_size, self.n_envs, self.action_dim), dtype=action_space.dtype)
+        self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        self.dones = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+
+        it_capacity = 1
+        while it_capacity < buffer_size:
+            it_capacity *= 2
+        self._alpha = alpha
+        self._it_sum = SumSegmentTree(it_capacity)
+        self._it_min = MinSegmentTree(it_capacity)
+        self._max_weight = 1.0
+
+    def add(self, obs: np.ndarray, next_obs: np.ndarray, action: np.ndarray, reward: np.ndarray, done: np.ndarray) -> None:
+        # Copy to avoid modification by reference
+        self.observations[self.pos] = np.array(obs).copy()
+        self.next_observations[self.pos] = np.array(next_obs).copy()
+
+        self.actions[self.pos] = np.array(action).copy()
+        self.rewards[self.pos] = np.array(reward).copy()
+        self.dones[self.pos] = np.array(done).copy()
+
+        self._it_sum[self.pos] = self._max_weight**self._alpha
+        self._it_min[self.pos] = self._max_weight**self._alpha
+
+        self.pos += 1
+        if self.pos == self.buffer_size:
+            self.full = True
+            self.pos = 0
+
+    def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None) -> PrioritizedReplayBufferSamples:
+        next_obs = self._normalize_obs(self.next_observations[batch_inds, 0, :], env)
+
+        data = (
+            self._normalize_obs(self.observations[batch_inds, 0, :], env),
+            self.actions[batch_inds, 0, :],
+            next_obs,
+            self.dones[batch_inds],
+            self._normalize_reward(self.rewards[batch_inds], env),
+        )
+
+        return data
+
+    def sample(self, batch_size: int, beta: float, env: Optional[VecNormalize] = None) -> ReplayBufferSamples:
+        """
+        Sample elements from the replay buffer using priorization.
+
+        :param batch_size: Number of element to sample
+        :param beta: To what degree to use importance weights (0 - no corrections, 1 - full correction)
+        :param env: associated gym VecEnv
+            to normalize the observations/rewards when sampling
+        :return:
+        """
+        # Sample indices
+        mass = []
+        total = self._it_sum.sum(0, self.size() - 1)
+        # TODO(szymon): should we ensure no repeats?
+        mass = np.random.random(size=batch_size) * total
+        batch_inds = self._it_sum.find_prefixsum_idx(mass)
+        th_data = self._get_samples(batch_inds, env=env)
+
+        p_min = self._it_min.min() / self._it_sum.sum()
+        max_weight = (p_min * self.size()) ** (-beta)
+        p_sample = self._it_sum[batch_inds] / self._it_sum.sum()
+        weights = (p_sample * self.size()) ** (-beta) / max_weight
+
+        return PrioritizedReplayBufferSamples(*tuple(map(self.to_torch, th_data)), weights=weights, indices=batch_inds)
+
+    def update_weights(self, batch_inds: np.ndarray, weights: np.ndarray):
+        """
+        Update weights of sampled transitions.
+
+        sets weight of transition at index idxes[i] in buffer
+        to weights[i].
+
+        :param batch_inds: ([int]) np.ndarray of idxes of sampled transitions
+        :param weights: ([float]) np.ndarray of updated weights corresponding to transitions at the sampled idxes
+            denoted by variable `batch_inds`.
+        """
+        assert len(batch_inds) == len(weights)
+        assert np.min(weights) > 0
+        assert np.min(batch_inds) >= 0
+        assert np.max(batch_inds) < self.size()
+        self._it_sum[batch_inds] = weights**self._alpha
+        self._it_min[batch_inds] = weights**self._alpha
+
+        self._max_weight = max(self._max_weight, np.max(weights))

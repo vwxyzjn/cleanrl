@@ -172,7 +172,6 @@ class Actor(nn.Module):
 
 
 if __name__ == "__main__":
-
     args = tyro.cli(Args)
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
@@ -312,7 +311,7 @@ if __name__ == "__main__":
                 actor_optimizer.step()
 
                 if args.autotune:
-                    # re-use action probabilities for temperature loss
+                    # reuse action probabilities for temperature loss
                     alpha_loss = (action_probs.detach() * (-log_alpha.exp() * (log_pi + target_entropy).detach())).mean()
 
                     a_optimizer.zero_grad()

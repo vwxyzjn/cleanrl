@@ -33,17 +33,17 @@ The [rpo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 
 ```bash
 # mujoco v4 environments
-poetry install -E mujoco
+uv pip install ".[mujoco]"
 python cleanrl/rpo_continuous_action.py --help
 python cleanrl/rpo_continuous_action.py --env-id Walker2d-v4
 # NOTE: we recommend using --rpo-alpha 0.01 for Ant Hopper InvertedDoublePendulum Reacher Pusher
 python cleanrl/rpo_continuous_action.py --env-id Ant-v4 --rpo-alpha 0.01
 # dm_control v4 environments
-poetry install -E "mujoco dm_control"
+uv pip install ".[mujoco, dm_control]"
 python cleanrl/rpo_continuous_action.py --env-id dm_control/cartpole-balance-v0
 # BipedalWalker-v3 experiment (hack)
-poetry install
-poetry run pip install box2d-py==2.3.5
+uv pip install .
+uv pip install box2d-py==2.3.5
 python cleanrl/rpo_continuous_action.py --env-id BipedalWalker-v3
 ```
 
@@ -52,20 +52,20 @@ python cleanrl/rpo_continuous_action.py --env-id BipedalWalker-v3
 
     ```bash
     # mujoco v4 environments
-    poetry install -E mujoco
+    uv pip install ".[mujoco]"
     python cleanrl/rpo_continuous_action.py --help
     python cleanrl/rpo_continuous_action.py --env-id Hopper-v4
     # NOTE: we recommend using --rpo-alpha 0.01 for Ant Hopper InvertedDoublePendulum Reacher Pusher
     python cleanrl/rpo_continuous_action.py --env-id Ant-v4 --rpo-alpha 0.01
     # dm_control environments
-    poetry install -E "mujoco dm_control"
+    uv pip install ".[mujoco, dm_control]"
     python cleanrl/rpo_continuous_action.py --env-id dm_control/cartpole-balance-v0
     # backwards compatibility with mujoco v2 environments
-    poetry install -E mujoco_py
+    uv pip install ".[mujoco_py]"
     python cleanrl/rpo_continuous_action.py --env-id Hopper-v2
     # BipedalWalker-v3 experiment (hack)
-    poetry run pip install box2d-py==2.3.5
-    poetry run python cleanrl/rpo_continuous_action.py --env-id BipedalWalker-v3
+    uv pip install box2d-py==2.3.5
+    uv run python cleanrl/rpo_continuous_action.py --env-id BipedalWalker-v3
     ```
 
 === "pip"

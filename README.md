@@ -43,17 +43,17 @@ Notable CleanRL-related projects:
 
 Prerequisites:
 * Python >=3.7.1,<3.11
-* [Poetry 1.2.1+](https://python-poetry.org)
+* [uv 0.7.9+](https://docs.astral.sh/uv/)
 
 To run experiments locally, give the following a try:
 
 ```bash
 git clone https://github.com/vwxyzjn/cleanrl.git && cd cleanrl
-poetry install
+uv pip install .
 
-# alternatively, you could use `poetry shell` and do
+# alternatively, you could use `uv venv` and do
 # `python run cleanrl/ppo.py`
-poetry run python cleanrl/ppo.py \
+uv run python cleanrl/ppo.py \
     --seed 1 \
     --env-id CartPole-v0 \
     --total-timesteps 50000
@@ -65,7 +65,7 @@ tensorboard --logdir runs
 To use experiment tracking with wandb, run
 ```bash
 wandb login # only required for the first time
-poetry run python cleanrl/ppo.py \
+uv run python cleanrl/ppo.py \
     --seed 1 \
     --env-id CartPole-v0 \
     --total-timesteps 50000 \
@@ -73,7 +73,7 @@ poetry run python cleanrl/ppo.py \
     --wandb-project-name cleanrltest
 ```
 
-If you are not using `poetry`, you can install CleanRL with `requirements.txt`:
+If you are not using `uv`, you can install CleanRL with `requirements.txt`:
 
 ```bash
 # core dependencies
@@ -94,7 +94,7 @@ pip install -r requirements/requirements-memory_gym.txt
 
 To run training scripts in other games:
 ```
-poetry shell
+uv venv
 
 # classic control
 python cleanrl/dqn.py --env-id CartPole-v1
@@ -102,26 +102,26 @@ python cleanrl/ppo.py --env-id CartPole-v1
 python cleanrl/c51.py --env-id CartPole-v1
 
 # atari
-poetry install -E atari
+uv pip install ".[atari]"
 python cleanrl/dqn_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/c51_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
 python cleanrl/sac_atari.py --env-id BreakoutNoFrameskip-v4
 
 # NEW: 3-4x side-effects free speed up with envpool's atari (only available to linux)
-poetry install -E envpool
+uv pip install ".[envpool]"
 python cleanrl/ppo_atari_envpool.py --env-id BreakoutNoFrameskip-v4
 # Learn Pong-v5 in ~5-10 mins
 # Side effects such as lower sample efficiency might occur
-poetry run python ppo_atari_envpool.py --clip-coef=0.2 --num-envs=16 --num-minibatches=8 --num-steps=128 --update-epochs=3
+uv run python ppo_atari_envpool.py --clip-coef=0.2 --num-envs=16 --num-minibatches=8 --num-steps=128 --update-epochs=3
 
 # procgen
-poetry install -E procgen
+uv pip install ".[procgen]"
 python cleanrl/ppo_procgen.py --env-id starpilot
 python cleanrl/ppg_procgen.py --env-id starpilot
 
 # ppo + lstm
-poetry install -E atari
+uv pip install ".[atari]"
 python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
 ```
 

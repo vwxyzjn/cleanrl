@@ -144,6 +144,7 @@ else:
         exp_names = pickle.load(handle)
 print("data loaded")
 
+
 # https://stackoverflow.com/questions/42281844/what-is-the-mathematics-behind-the-smoothing-parameter-in-tensorboards-scalar#_=_
 def smooth(scalars, weight):  # Weight between 0 and 1
     last = scalars[0]  # First value in the plot (first timestep)

@@ -6,24 +6,24 @@ Good luck and have fun!
 
 ## Development Environment Setup
 
-To setup the development environment, please clone the repository and follow the [installation docs](/get-started/installation/) and [usage docs](/get-started/basic-usage). They should help you set a working poetry environment, so you have the same set up as other contributors. Additionally, you may want to run the following command to install dev-dependencies for documentation:
+To setup the development environment, please clone the repository and follow the [installation docs](/get-started/installation/) and [usage docs](/get-started/basic-usage). They should help you set a working uv environment, so you have the same set-up as other contributors. Additionally, you may want to run the following command to install dev-dependencies for documentation:
 
 ```bash
-poetry install -E docs
+uv pip install ".[docs]"
 ```
 
 
 To build the documentation, you can run the following command:
 
 ```bash
-poetry run mkdocs serve
+uv run mkdocs serve
 ```
 
 For testing, we generally recommend making a PR and let GitHub run the tests in [`.github/workflows/tests.yaml`](https://github.com/vwxyzjn/cleanrl/blob/master/.github/workflows/tests.yaml) automatically. These tests are cross-platform and run on Linux, macOS, and Windows. However, if you want to run the tests locally, you can run the following command:
 
 ```bash
-poetry run install --all-extras
-poetry run pytest tests/.
+uv run install --all-extras
+uv run pytest tests/.
 ```
 
 
@@ -33,13 +33,12 @@ Also, we use [pre-commit](https://pre-commit.com/) to helps us automate a sequen
 * [**pyupgrade**](https://github.com/asottile/pyupgrade): pyupgrade upgrades syntax for newer versions of the language. 
 * [**isort**](https://github.com/PyCQA/isort): isort sorts imported dependencies according to their type (e.g, standard library vs third-party library) and name.
 * [**black**](https://black.readthedocs.io/en/stable/): black enforces an uniform code style across the codebase.
-* [**autoflake**](https://github.com/PyCQA/autoflake): autoflake helps remove unused imports and variables.
 * [**codespell**](https://github.com/codespell-project/codespell): codespell helps avoid common incorrect spelling.
 
 You can run the following command to run the following hooks:
 
 ```bash
-poetry run pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 which in most cases should automatically fix things as shown below: 
@@ -77,11 +76,11 @@ Importantly, **regardless of the slight difference in performance-impacting chan
 Given a new feature, we create a PR and then run the benchmark experiments through [`benchmark.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl_utils/benchmark.py), such as the following:
 
 ```bash
-poetry install -E "docs mujoco_py"
+uv pip install ".[docs, mujoco_py]"
 python -c "import mujoco_py"
 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 \
-    --command "poetry run python cleanrl/ddpg_continuous_action.py --track --capture_video" \
+    --command "uv run python cleanrl/ddpg_continuous_action.py --track --capture_video" \
     --num-seeds 3 \
     --workers 1
 ```

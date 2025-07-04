@@ -118,7 +118,6 @@ class Actor(nn.Module):
 
 
 if __name__ == "__main__":
-
     args = tyro.cli(Args)
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:

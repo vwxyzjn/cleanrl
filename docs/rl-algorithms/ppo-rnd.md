@@ -49,9 +49,9 @@ The [ppo_rnd_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/
 === "poetry"
 
     ```bash
-    poetry install -E envpool
-    poetry run python cleanrl/ppo_rnd_envpool.py --help
-    poetry run python cleanrl/ppo_rnd_envpool.py --env-id MontezumaRevenge-v5
+    uv pip install ".[envpool]"
+    uv run python cleanrl/ppo_rnd_envpool.py --help
+    uv run python cleanrl/ppo_rnd_envpool.py --env-id MontezumaRevenge-v5
     ```
 
 === "pip"

@@ -6,9 +6,8 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Sequence
 
-os.environ[
-    "XLA_PYTHON_CLIENT_MEM_FRACTION"
-] = "0.7"  # see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
+# see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.7"
 
 import flax
 import flax.linen as nn
@@ -189,7 +188,6 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
 
 
 if __name__ == "__main__":
-
     args = tyro.cli(Args)
     assert args.num_envs == 1, "vectorized envs are not supported at the moment"
     if args.teacher_policy_hf_repo is None:

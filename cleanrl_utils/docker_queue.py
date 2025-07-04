@@ -13,7 +13,6 @@ At the moment, nvidia-container-toolkit still includes nvidia-container-runtime.
 Then restart the docker service (sudo systemctl restart docker) and use runtime="nvidia" in docker-py as before.
 """
 
-
 import argparse
 import shlex
 import time
