@@ -119,6 +119,7 @@ with open(f"{feature_name}/cache.pkl", "wb") as handle:
     pickle.dump([summary_list, config_list, name_list, envs, exp_names, ids], handle, protocol=pickle.HIGHEST_PROTOCOL)
 print("data loaded")
 
+
 # https://stackoverflow.com/questions/42281844/what-is-the-mathematics-behind-the-smoothing-parameter-in-tensorboards-scalar#_=_
 def smooth(scalars, weight):  # Weight between 0 and 1
     last = scalars[0]  # First value in the plot (first timestep)

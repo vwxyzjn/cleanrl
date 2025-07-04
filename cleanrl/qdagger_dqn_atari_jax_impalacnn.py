@@ -6,9 +6,8 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Sequence
 
-os.environ[
-    "XLA_PYTHON_CLIENT_MEM_FRACTION"
-] = "0.7"  # see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
+# see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.7"
 
 import flax
 import flax.linen as nn

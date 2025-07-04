@@ -581,7 +581,7 @@ class RolloutBuffer(BaseBuffer):
 class PrioritizedReplayBuffer(BaseBuffer):
     """
     Replay buffer used in off-policy algorithms like SAC/TD3.
-    This time with priorization!
+    This time with prioritization!
 
     TODO normalization stuff is probably not implemented correctly.
 
@@ -589,7 +589,7 @@ class PrioritizedReplayBuffer(BaseBuffer):
         https://github.com/hill-a/stable-baselines/blob/master/stable_baselines/common/buffers.py
 
     :param buffer_size: Max number of element in the buffer
-    :param alpha: How much priorization is used (0: disabled, 1: full priorization)
+    :param alpha: How much prioritization is used (0: disabled, 1: full prioritization)
     :param observation_space: Observation space
     :param action_space: Action space
     :param device:
@@ -656,7 +656,7 @@ class PrioritizedReplayBuffer(BaseBuffer):
 
     def sample(self, batch_size: int, beta: float, env: Optional[VecNormalize] = None) -> ReplayBufferSamples:
         """
-        Sample elements from the replay buffer using priorization.
+        Sample elements from the replay buffer using prioritization.
 
         :param batch_size: Number of element to sample
         :param beta: To what degree to use importance weights (0 - no corrections, 1 - full correction)
