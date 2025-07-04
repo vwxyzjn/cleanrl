@@ -18,7 +18,9 @@ def evaluate(
     epsilon: float = 0.05,
     capture_video: bool = True,
 ):
-    envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(env_id, 0, 0, capture_video, run_name)], autoreset_mode=gym.vector.AutoresetMode.SAME_STEP
+    )
     model_data = torch.load(model_path, map_location="cpu")
     args = Namespace(**model_data["args"])
     model = Model(envs, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max)

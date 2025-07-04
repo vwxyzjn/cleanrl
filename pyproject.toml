@@ -3,7 +3,7 @@ name = "cleanrl"
 version = "2.0.0b1"
 description = "High-quality single file implementation of Deep Reinforcement Learning algorithms with research-friendly features"
 authors = [{ name = "Costa Huang", email = "costa.huang@outlook.com" }]
-requires-python = ">=3.8,<3.11"
+requires-python = ">=3.9,<3.13"
 readme = "README.md"
 license = "MIT"
 keywords = [
@@ -15,7 +15,7 @@ dependencies = [
     "tensorboard>=2.10.0",
     "wandb>=0.13.11",
     "gym==0.23.1",
-    "gymnasium==0.29.1",
+    "gymnasium>=1.1.1",
     "torch>=2.0",
     "moviepy>=1.0.3",
     "pygame>=2.1",
@@ -27,8 +27,7 @@ dependencies = [
 
 [project.optional-dependencies]
 atari = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
+    "ale-py==0.10.2",
     "opencv-python>=4.6.0.66,<5",
     "shimmy>=1.1.0",
 ]
@@ -72,8 +71,7 @@ dm_control = [
 ]
 dqn = []
 dqn_atari = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
+    "ale-py==0.10.2",
     "opencv-python>=4.6.0.66,<5",
 ]
 dqn_jax = [
@@ -82,8 +80,7 @@ dqn_jax = [
     "flax==0.6.8",
 ]
 dqn_atari_jax = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
+    "ale-py==0.10.2",
     "opencv-python>=4.6.0.66,<5",
     "jax==0.4.8",
     "jaxlib==0.4.7",
@@ -91,8 +88,7 @@ dqn_atari_jax = [
 ]
 c51 = []
 c51_atari = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
+    "ale-py==0.10.2",
     "opencv-python>=4.6.0.66,<5",
 ]
 c51_jax = [
@@ -101,16 +97,14 @@ c51_jax = [
     "flax==0.6.8",
 ]
 c51_atari_jax = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
+    "ale-py==0.10.2",
     "opencv-python>=4.6.0.66,<5",
     "jax==0.4.8",
     "jaxlib==0.4.7",
     "flax==0.6.8",
 ]
 ppo_atari_envpool_xla_jax_scan = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
+    "ale-py==0.10.2",
     "opencv-python>=4.6.0.66,<5",
     "jax==0.4.8",
     "jaxlib==0.4.7",
@@ -118,13 +112,11 @@ ppo_atari_envpool_xla_jax_scan = [
     "envpool>=0.6.4,<0.7",
 ]
 qdagger_dqn_atari_impalacnn = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
+    "ale-py==0.10.2",
     "opencv-python>=4.6.0.66,<5",
 ]
 qdagger_dqn_atari_jax_impalacnn = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
+    "ale-py==0.10.2",
     "opencv-python>=4.6.0.66,<5",
     "jax==0.4.8",
     "jaxlib==0.4.7",

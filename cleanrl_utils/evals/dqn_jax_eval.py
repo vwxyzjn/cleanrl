@@ -19,7 +19,9 @@ def evaluate(
     capture_video: bool = True,
     seed=1,
 ):
-    envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(env_id, 0, 0, capture_video, run_name)], autoreset_mode=gym.vector.AutoresetMode.SAME_STEP
+    )
     obs, _ = envs.reset()
     model = Model(action_dim=envs.single_action_space.n)
     q_key = jax.random.PRNGKey(seed)

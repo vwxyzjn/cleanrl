@@ -16,7 +16,9 @@ def evaluate(
     capture_video: bool = True,
     exploration_noise: float = 0.1,
 ):
-    envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(env_id, 0, 0, capture_video, run_name)], autoreset_mode=gym.vector.AutoresetMode.SAME_STEP
+    )
     actor = Model[0](envs).to(device)
     qf1 = Model[1](envs).to(device)
     qf2 = Model[1](envs).to(device)

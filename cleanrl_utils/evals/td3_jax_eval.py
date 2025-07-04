@@ -18,7 +18,9 @@ def evaluate(
     exploration_noise: float = 0.1,
     seed=1,
 ):
-    envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(env_id, 0, 0, capture_video, run_name)], autoreset_mode=gym.vector.AutoresetMode.SAME_STEP
+    )
     max_action = float(envs.single_action_space.high[0])
     obs, _ = envs.reset()
 
