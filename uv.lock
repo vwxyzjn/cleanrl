@@ -39,7 +39,8 @@ dependencies = [
     { name = "importlib-metadata", marker = "python_full_version < '3.10'" },
     { name = "importlib-resources" },
     { name = "numpy" },
-    { name = "typing-extensions" },
+    { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e1/f6/6d8cb491611e5424421a1878e42ee78a9edf9a0b08b1a05565ec92c4da10/ale_py-0.8.1-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:b2aa2f69a4169742800615970efe6914fa856e33eaf7fa9133c0e06a617a80e2", size = 1145153, upload-time = "2023-02-17T06:23:57.959Z" },
@@ -65,7 +66,8 @@ dependencies = [
     { name = "importlib-resources", marker = "python_full_version < '3.9'" },
     { name = "mako" },
     { name = "sqlalchemy" },
-    { name = "typing-extensions" },
+    { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/14/b3/e471678c278e5f9beb9cb9b6acc2cfbb5628545d9795a9e05627f87c7e7c/alembic-1.10.4.tar.gz", hash = "sha256:295b54bbb92c4008ab6a7dcd1e227e668416d6f84b98b3c4446a2bc6214a556b", size = 1152769, upload-time = "2023-04-24T15:12:18.231Z" }
 wheels = [
@@ -425,6 +427,8 @@ mujoco = [
 optuna = [
     { name = "optuna" },
     { name = "optuna-dashboard" },
+    { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 pettingzoo = [
     { name = "multi-agent-ale-py" },
@@ -547,6 +551,7 @@ requires-dist = [
     { name = "tenacity", specifier = ">=8.2.2,<9" },
     { name = "tensorboard", specifier = ">=2.10.0,<3" },
     { name = "torch", specifier = ">=1.12.1" },
+    { name = "typing-extensions", marker = "extra == 'optuna'", specifier = ">=4.6.0" },
     { name = "tyro", specifier = ">=0.5.10,<0.6" },
     { name = "wandb", specifier = ">=0.13.11,<0.14" },
 ]
@@ -771,7 +776,8 @@ version = "0.9.0.post1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pygments" },
-    { name = "typing-extensions" },
+    { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/77/93/a9243f5ce62906d86eacce0fd1adb015fc565c054e47b58ff781d89818cb/enum_tools-0.9.0.post1.tar.gz", hash = "sha256:e59eb1c16667400b185f8a61ac427029919be2ec48b9ca04aa1b388a42fb14d5", size = 18718, upload-time = "2022-02-10T07:52:10.889Z" }
 wheels = [
@@ -789,7 +795,8 @@ dependencies = [
     { name = "packaging" },
     { name = "treevalue" },
     { name = "types-protobuf" },
-    { name = "typing-extensions" },
+    { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8b/71/721fdec53bd0112178ca12c65b10102e8176af12e3f01fed310d14a9ccbe/envpool-0.6.6-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:78f7a7ab6f0c3ec55ddbb0b2e684a2a84e7133cc8d41e480b1173710c955d6ac", size = 28901218, upload-time = "2022-11-01T04:04:59.64Z" },
@@ -861,7 +868,8 @@ dependencies = [
     { name = "pyyaml" },
     { name = "rich" },
     { name = "tensorstore" },
-    { name = "typing-extensions" },
+    { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/dc/94/efee7afbcfdec16910f3b6bcc76ed5ed850c44e1b69630e2620a4faaf6c9/flax-0.6.8.tar.gz", hash = "sha256:bf1f81dd5dfbb10c603490531a86b1174ebbc38e5c5e8116a98115c135194c10", size = 183324, upload-time = "2023-03-28T21:15:11.689Z" }
 wheels = [
@@ -1122,7 +1130,8 @@ dependencies = [
     { name = "importlib-metadata", marker = "python_full_version < '3.10'" },
     { name = "jax-jumpy" },
     { name = "numpy" },
-    { name = "typing-extensions" },
+    { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/58/6a/c304954dc009648a21db245a8f56f63c8da8a025d446dd0fd67319726003/gymnasium-0.28.1.tar.gz", hash = "sha256:4c2c745808792c8f45c6e88ad0a5504774394e0c126f6e3db555e720d3da6f24", size = 796462, upload-time = "2023-03-25T12:02:00.613Z" }
 wheels = [
@@ -1181,7 +1190,8 @@ dependencies = [
     { name = "pyyaml" },
     { name = "requests" },
     { name = "tqdm" },
-    { name = "typing-extensions" },
+    { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2f/64/beeb8ef2f852abbd93887a87899899829a7a386b6f91631194f574d02b4d/huggingface_hub-0.11.1.tar.gz", hash = "sha256:8b9ebf9bbb1782f6f0419ec490973a6487c6c4ed84293a8a325d34c4f898f53f", size = 153159, upload-time = "2022-11-28T10:37:36.122Z" }
 wheels = [
@@ -1934,7 +1944,8 @@ dependencies = [
     { name = "jax" },
     { name = "jaxlib" },
     { name = "numpy" },
-    { name = "typing-extensions" },
+    { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9a/74/66b5c8c59b21017d50a04db5b2eca113418d35c99e17f7a62c76a22c8e88/optax-0.1.4.tar.gz", hash = "sha256:fb7a0550d57a6636164a3de25986a8a19be8ff6431fcdf1225b4e05175810f22", size = 116113, upload-time = "2022-11-21T13:45:09.15Z" }
 wheels = [
@@ -2683,7 +2694,8 @@ version = "2.0.13"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "greenlet", marker = "platform_machine == 'AMD64' or platform_machine == 'WIN32' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'ppc64le' or platform_machine == 'win32' or platform_machine == 'x86_64'" },
-    { name = "typing-extensions" },
+    { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/28/2e/b140b8dbba463663a025bb86eff8e8dd7c840047320a5412cf3e81ecbc1e/SQLAlchemy-2.0.13.tar.gz", hash = "sha256:8d97b37b4e60073c38bcf94e289e3be09ef9be870de88d163f16e08f2b9ded1a", size = 9286442, upload-time = "2023-05-10T22:30:11.425Z" }
 wheels = [
@@ -2873,7 +2885,8 @@ name = "torch"
 version = "1.12.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions" },
+    { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ca/74/7342c7f21449557a8263c925071a55081edd7e9b641404cfe31d6fb71d3b/torch-1.12.1-cp310-cp310-manylinux1_x86_64.whl", hash = "sha256:9c038662db894a23e49e385df13d47b2a777ffd56d9bcd5b832593fab0a7e286", size = 776338835, upload-time = "2022-08-05T17:26:39.042Z" },
@@ -2970,11 +2983,42 @@ wheels = [
 
 [[package]]
 name = "typing-extensions"
-version = "4.5.0"
+version = "4.13.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/d3/20/06270dac7316220643c32ae61694e451c98f8caf4c8eab3aa80a2bedf0df/typing_extensions-4.5.0.tar.gz", hash = "sha256:5cb5f4a79139d699607b3ef622a1dedafa84e115ab0024e0d9c044a9479ca7cb", size = 52399, upload-time = "2023-02-15T00:17:55.502Z" }
+resolution-markers = [
+    "python_full_version < '3.9' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version < '3.9' and platform_machine != 'aarch64' and platform_machine != 'arm64' and sys_platform == 'linux'",
+    "python_full_version < '3.9' and platform_machine == 'arm64' and sys_platform == 'linux'",
+    "python_full_version < '3.9' and platform_machine == 'arm64' and sys_platform == 'darwin'",
+    "python_full_version < '3.9' and platform_machine != 'aarch64' and platform_machine != 'arm64' and sys_platform != 'linux'",
+    "python_full_version < '3.9' and platform_machine == 'aarch64' and sys_platform != 'linux'",
+    "python_full_version < '3.9' and platform_machine == 'arm64' and sys_platform != 'darwin' and sys_platform != 'linux'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/f6/37/23083fcd6e35492953e8d2aaaa68b860eb422b34627b13f2ce3eb6106061/typing_extensions-4.13.2.tar.gz", hash = "sha256:e6c81219bd689f51865d9e372991c540bda33a0379d5573cddb9a3a23f7caaef", size = 106967, upload-time = "2025-04-10T14:19:05.416Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/25/5abcd82372d3d4a3932e1fa8c3dbf9efac10cc7c0d16e78467460571b404/typing_extensions-4.5.0-py3-none-any.whl", hash = "sha256:fb33085c39dd998ac16d1431ebc293a8b3eedd00fd4a32de0ff79002c19511b4", size = 27736, upload-time = "2023-02-15T00:17:53.726Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/54/b1ae86c0973cc6f0210b53d508ca3641fb6d0c56823f288d108bc7ab3cc8/typing_extensions-4.13.2-py3-none-any.whl", hash = "sha256:a439e7c04b49fec3e5d3e2beaa21755cadbbdc391694e28ccdd36ca4a1408f8c", size = 45806, upload-time = "2025-04-10T14:19:03.967Z" },
+]
+
+[[package]]
+name = "typing-extensions"
+version = "4.14.1"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.10' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and platform_machine != 'aarch64' and sys_platform == 'linux'",
+    "python_full_version == '3.9.*' and platform_machine == 'aarch64' and sys_platform == 'linux'",
+    "python_full_version == '3.9.*' and platform_machine != 'aarch64' and platform_machine != 'arm64' and sys_platform == 'linux'",
+    "python_full_version == '3.9.*' and platform_machine == 'arm64' and sys_platform == 'linux'",
+    "python_full_version >= '3.10' and sys_platform == 'darwin'",
+    "python_full_version >= '3.10' and sys_platform != 'darwin' and sys_platform != 'linux'",
+    "python_full_version == '3.9.*' and platform_machine == 'arm64' and sys_platform == 'darwin'",
+    "python_full_version == '3.9.*' and platform_machine != 'aarch64' and platform_machine != 'arm64' and sys_platform != 'linux'",
+    "python_full_version == '3.9.*' and platform_machine == 'aarch64' and sys_platform != 'linux'",
+    "python_full_version == '3.9.*' and platform_machine == 'arm64' and sys_platform != 'darwin' and sys_platform != 'linux'",
+]
+sdist = { url = "https://files.pythonhosted.org/packages/98/5a/da40306b885cc8c09109dc2e1abd358d5684b1425678151cdaed4731c822/typing_extensions-4.14.1.tar.gz", hash = "sha256:38b39f4aeeab64884ce9f74c94263ef78f3c22467c8724005483154c26648d36", size = 107673, upload-time = "2025-07-04T13:28:34.16Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b5/00/d631e67a838026495268c2f6884f3711a15a9a2a96cd244fdaea53b823fb/typing_extensions-4.14.1-py3-none-any.whl", hash = "sha256:d1e1e3b58374dc93031d6eda2420a48ea44a36c2b4766a4fdeb3710755731d76", size = 43906, upload-time = "2025-07-04T13:28:32.743Z" },
 ]
 
 [[package]]
@@ -2986,7 +3030,8 @@ dependencies = [
     { name = "docstring-parser" },
     { name = "rich" },
     { name = "shtab" },
-    { name = "typing-extensions" },
+    { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a9/9e/b684bbcb8b10e993970c5f8fe7767f85a8292f877dee0873ea12bd520dda/tyro-0.5.10.tar.gz", hash = "sha256:8d3cfecdf8a51151cc8c93c80677b91782c34cadcf3308838bb1152a81dfd074", size = 105779, upload-time = "2023-10-05T14:52:51.386Z" }
 wheels = [
@@ -3033,7 +3078,8 @@ dependencies = [
     { name = "sentry-sdk" },
     { name = "setproctitle" },
     { name = "setuptools" },
-    { name = "typing-extensions", marker = "python_full_version < '3.10'" },
+    { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
+    { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.9.*'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/5d/9f/43932085d115f24c5e785d22d23ed35226f3c6d9c482efdb9e6eafb8f66e/wandb-0.13.11.tar.gz", hash = "sha256:f2b065d1c732e8e1828fabe720dc82f12e6109d0d2bbfbcccc17eaefae0fd7c9", size = 1679876, upload-time = "2023-03-07T21:23:06.56Z" }
 wheels = [

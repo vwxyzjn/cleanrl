@@ -290,9 +290,21 @@ tqdm==4.65.0
     #   moviepy
     #   optuna
     #   proglog
-typing-extensions==4.5.0
+typing-extensions==4.13.2 ; python_full_version < '3.9'
     # via
     #   alembic
+    #   cleanrl
+    #   gymnasium
+    #   huggingface-hub
+    #   optax
+    #   sqlalchemy
+    #   torch
+    #   tyro
+    #   wandb
+typing-extensions==4.14.1 ; python_full_version >= '3.9'
+    # via
+    #   alembic
+    #   cleanrl
     #   gymnasium
     #   huggingface-hub
     #   optax

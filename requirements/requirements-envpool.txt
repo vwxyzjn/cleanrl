@@ -284,7 +284,17 @@ treevalue==1.4.10
     # via envpool
 types-protobuf==4.23.0.1
     # via envpool
-typing-extensions==4.5.0
+typing-extensions==4.13.2 ; python_full_version < '3.9'
+    # via
+    #   enum-tools
+    #   envpool
+    #   gymnasium
+    #   huggingface-hub
+    #   optax
+    #   torch
+    #   tyro
+    #   wandb
+typing-extensions==4.14.1 ; python_full_version >= '3.9'
     # via
     #   enum-tools
     #   envpool

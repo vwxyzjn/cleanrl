@@ -323,7 +323,15 @@ tueplots==0.0.4
     # via openrlbenchmark
 typeguard==2.13.3
     # via expt
-typing-extensions==4.5.0
+typing-extensions==4.13.2 ; python_full_version < '3.9'
+    # via
+    #   gymnasium
+    #   huggingface-hub
+    #   optax
+    #   torch
+    #   tyro
+    #   wandb
+typing-extensions==4.14.1 ; python_full_version >= '3.9'
     # via
     #   gymnasium
     #   huggingface-hub

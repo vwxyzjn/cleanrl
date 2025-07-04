@@ -58,6 +58,7 @@ envpool = ["envpool>=0.6.4,<0.7"]
 optuna = [
     "optuna>=3.0.1,<4",
     "optuna-dashboard>=0.7.2,<0.8",
+    "typing_extensions>=4.6.0"
 ]
 pettingzoo = [
     "PettingZoo==1.18.1",
