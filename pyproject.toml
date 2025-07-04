@@ -41,7 +41,7 @@ procgen = ["procgen>=0.10.7,<0.11"]
 plot = []
 pytest = ["pytest>=7.1.3,<8"]
 mujoco = [
-    "mujoco<=2.3.3",
+    "mujoco>=2.3.3",
     "imageio>=2.14.1,<3",
 ]
 jax = [
@@ -71,7 +71,7 @@ cloud = [
 ]
 dm_control = [
     "shimmy>=1.1.0",
-    "mujoco<=2.3.3",
+    "mujoco>=2.3.3",
     "dm-control>=1.0.10",
     "h5py>=3.7.0",
 ]
