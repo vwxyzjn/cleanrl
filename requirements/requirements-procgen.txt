@@ -3,8 +3,8 @@
 -e .
 absl-py==1.4.0
     # via tensorboard
-appdirs==1.4.4
-    # via wandb
+annotated-types==0.7.0
+    # via pydantic
 certifi==2023.5.7
     # via
     #   requests
@@ -33,8 +33,6 @@ decorator==4.4.2
     # via moviepy
 distlib==0.3.6
     # via virtualenv
-docker-pycreds==0.4.0
-    # via wandb
 docstring-parser==0.15
     # via tyro
 farama-notifications==0.0.4
@@ -56,8 +54,10 @@ glcontext==2.3.7
     # via moderngl
 glfw==1.12.0
     # via gym3
-grpcio==1.54.0
-    # via tensorboard
+grpcio==1.73.1
+    # via
+    #   cleanrl
+    #   tensorboard
 gym==0.23.1
     # via
     #   cleanrl
@@ -100,7 +100,7 @@ networkx==3.4.2
     # via torch
 nodeenv==1.7.0
     # via pre-commit
-numpy==1.24.4
+numpy==1.26.4
     # via
     #   gym
     #   gym3
@@ -144,12 +144,13 @@ packaging==23.1
     # via
     #   huggingface-hub
     #   tensorboard
-pathtools==0.1.2
-    # via wandb
+    #   wandb
 pillow==9.5.0
     # via imageio
 platformdirs==3.5.0
-    # via virtualenv
+    # via
+    #   virtualenv
+    #   wandb
 pre-commit==2.21.0
 procgen==0.10.7
     # via cleanrl
@@ -159,11 +160,13 @@ protobuf==3.20.3
     # via
     #   tensorboard
     #   wandb
-psutil==5.9.5
-    # via wandb
 pycparser==2.21
     # via cffi
-pygame==2.1.0
+pydantic==2.11.7
+    # via wandb
+pydantic-core==2.33.2
+    # via pydantic
+pygame==2.6.1
     # via cleanrl
 pygments==2.15.1
     # via rich
@@ -181,21 +184,16 @@ rich==11.2.0
     # via
     #   cleanrl
     #   tyro
-sentry-sdk==1.22.2
-    # via wandb
-setproctitle==1.3.2
+sentry-sdk==2.32.0
     # via wandb
 setuptools==67.7.2
     # via
     #   nodeenv
     #   tensorboard
-    #   wandb
 shtab==1.6.4
     # via tyro
 six==1.16.0
-    # via
-    #   docker-pycreds
-    #   tensorboard
+    # via tensorboard
 smmap==5.0.0
     # via gitdb
 sympy==1.14.0
@@ -213,15 +211,24 @@ tqdm==4.65.0
     #   huggingface-hub
     #   moviepy
     #   proglog
-triton==3.0.0 ; python_full_version < '3.13' and platform_machine == 'x86_64' and sys_platform == 'linux'
+triton==3.0.0 ; platform_machine == 'x86_64' and sys_platform == 'linux'
     # via torch
+typeguard==4.4.4
+    # via tyro
 typing-extensions==4.14.1
     # via
     #   gymnasium
     #   huggingface-hub
+    #   pydantic
+    #   pydantic-core
     #   torch
+    #   typeguard
+    #   typing-inspection
     #   tyro
-tyro==0.5.10
+    #   wandb
+typing-inspection==0.4.1
+    # via pydantic
+tyro==0.9.26
     # via cleanrl
 urllib3==1.26.15
     # via
@@ -229,7 +236,7 @@ urllib3==1.26.15
     #   sentry-sdk
 virtualenv==20.21.0
     # via pre-commit
-wandb==0.13.11
+wandb==0.21.0
     # via cleanrl
 werkzeug==2.2.3
     # via tensorboard

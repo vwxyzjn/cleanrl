@@ -1,8 +1,8 @@
 from typing import Callable
 
 import gymnasium as gym
-import torch
 import numpy as np
+import torch
 
 
 def evaluate(
