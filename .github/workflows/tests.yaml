@@ -112,6 +112,8 @@ jobs:
         python-version: ["3.8", "3.9", "3.10"]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
+    env:
+      DISPLAY: :0
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
