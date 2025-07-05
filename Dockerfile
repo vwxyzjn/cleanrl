@@ -13,15 +13,6 @@ COPY pyproject.toml pyproject.toml
 COPY uv.lock uv.lock
 RUN uv pip install .
 
-# install mujoco_py
-RUN apt-get -y install wget unzip software-properties-common \
-    libgl1-mesa-dev \
-    libgl1-mesa-glx \
-    libglew-dev \
-    libosmesa6-dev patchelf
-RUN uv pip install ".[atari, mujoco_py]"
-RUN uv run python -c "import mujoco_py"
-
 COPY entrypoint.sh /usr/local/bin/
 RUN chmod 777 /usr/local/bin/entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

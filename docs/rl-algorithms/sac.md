@@ -53,9 +53,7 @@ The [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
     uv pip install ".[mujoco]"
     uv run python cleanrl/sac_continuous_action.py --help
     uv run python cleanrl/sac_continuous_action.py --env-id Hopper-v4
-    uv pip install ".[mujoco_py]" # only works in Linux
-    uv run python cleanrl/sac_continuous_action.py --env-id Hopper-v2
-    uv run python cleanrl/sac_continuous_action.py --env-id Hopper-v2 --autotune False --alpha 0.2 ## Without Automatic entropy coef. tuning
+    uv run python cleanrl/sac_continuous_action.py --env-id Hopper-v4 --autotune False --alpha 0.2 ## Without Automatic entropy coef. tuning
     ```
 
 === "pip"
@@ -64,9 +62,7 @@ The [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
     pip install -r requirements/requirements-mujoco.txt
     python cleanrl/sac_continuous_action.py --help
     python cleanrl/sac_continuous_action.py --env-id Mujoco-v4
-    pip install -r requirements/requirements-mujoco_py.txt # only works in Linux
-    python cleanrl/sac_continuous_action.py --env-id Hopper-v2
-    python cleanrl/sac_continuous_action.py --env-id Hopper-v2 --autotune False --alpha 0.2 ## Without Automatic entropy coef. tuning
+    python cleanrl/sac_continuous_action.py --env-id Hopper-v4 --autotune False --alpha 0.2 ## Without Automatic entropy coef. tuning
     ```
 
 ### Explanation of the logged metrics

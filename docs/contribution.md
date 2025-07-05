@@ -76,10 +76,9 @@ Importantly, **regardless of the slight difference in performance-impacting chan
 Given a new feature, we create a PR and then run the benchmark experiments through [`benchmark.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl_utils/benchmark.py), such as the following:
 
 ```bash
-uv pip install ".[docs, mujoco_py]"
-python -c "import mujoco_py"
+uv pip install ".[docs, mujoco]"
 xvfb-run -a python -m cleanrl_utils.benchmark \
-    --env-ids HalfCheetah-v2 Walker2d-v2 Hopper-v2 \
+    --env-ids HalfCheetah-v4 Walker2d-v4 Hopper-v4 \
     --command "uv run python cleanrl/ddpg_continuous_action.py --track --capture_video" \
     --num-seeds 3 \
     --workers 1

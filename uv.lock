@@ -356,24 +356,6 @@ atari = [
     { name = "opencv-python" },
     { name = "shimmy" },
 ]
-c51-atari = [
-    { name = "ale-py" },
-    { name = "autorom", extra = ["accept-rom-license"] },
-    { name = "opencv-python" },
-]
-c51-atari-jax = [
-    { name = "ale-py" },
-    { name = "autorom", extra = ["accept-rom-license"] },
-    { name = "flax" },
-    { name = "jax" },
-    { name = "jaxlib" },
-    { name = "opencv-python" },
-]
-c51-jax = [
-    { name = "flax" },
-    { name = "jax" },
-    { name = "jaxlib" },
-]
 cloud = [
     { name = "awscli" },
     { name = "boto3" },
@@ -389,31 +371,15 @@ docs = [
     { name = "mkdocs-material" },
     { name = "openrlbenchmark" },
 ]
-dqn-atari = [
-    { name = "ale-py" },
-    { name = "autorom", extra = ["accept-rom-license"] },
-    { name = "opencv-python" },
-]
-dqn-atari-jax = [
-    { name = "ale-py" },
-    { name = "autorom", extra = ["accept-rom-license"] },
-    { name = "flax" },
-    { name = "jax" },
-    { name = "jaxlib" },
-    { name = "opencv-python" },
-]
-dqn-jax = [
-    { name = "flax" },
-    { name = "jax" },
-    { name = "jaxlib" },
-]
 envpool = [
     { name = "envpool" },
 ]
 jax = [
+    { name = "chex" },
     { name = "flax" },
     { name = "jax" },
     { name = "jaxlib" },
+    { name = "optax" },
 ]
 mujoco = [
     { name = "imageio" },
@@ -430,33 +396,11 @@ pettingzoo = [
     { name = "pettingzoo" },
     { name = "supersuit" },
 ]
-ppo-atari-envpool-xla-jax-scan = [
-    { name = "ale-py" },
-    { name = "autorom", extra = ["accept-rom-license"] },
-    { name = "envpool" },
-    { name = "flax" },
-    { name = "jax" },
-    { name = "jaxlib" },
-    { name = "opencv-python" },
-]
 procgen = [
     { name = "procgen" },
 ]
 pytest = [
     { name = "pytest" },
-]
-qdagger-dqn-atari-impalacnn = [
-    { name = "ale-py" },
-    { name = "autorom", extra = ["accept-rom-license"] },
-    { name = "opencv-python" },
-]
-qdagger-dqn-atari-jax-impalacnn = [
-    { name = "ale-py" },
-    { name = "autorom", extra = ["accept-rom-license"] },
-    { name = "flax" },
-    { name = "jax" },
-    { name = "jaxlib" },
-    { name = "opencv-python" },
 ]
 
 [package.dev-dependencies]
@@ -467,52 +411,20 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "ale-py", marker = "extra == 'atari'", specifier = "==0.8.1" },
-    { name = "ale-py", marker = "extra == 'c51-atari'", specifier = "==0.8.1" },
-    { name = "ale-py", marker = "extra == 'c51-atari-jax'", specifier = "==0.8.1" },
-    { name = "ale-py", marker = "extra == 'dqn-atari'", specifier = "==0.8.1" },
-    { name = "ale-py", marker = "extra == 'dqn-atari-jax'", specifier = "==0.8.1" },
-    { name = "ale-py", marker = "extra == 'ppo-atari-envpool-xla-jax-scan'", specifier = "==0.8.1" },
-    { name = "ale-py", marker = "extra == 'qdagger-dqn-atari-impalacnn'", specifier = "==0.8.1" },
-    { name = "ale-py", marker = "extra == 'qdagger-dqn-atari-jax-impalacnn'", specifier = "==0.8.1" },
     { name = "autorom", extras = ["accept-rom-license"], marker = "extra == 'atari'", specifier = "~=0.4.2" },
-    { name = "autorom", extras = ["accept-rom-license"], marker = "extra == 'c51-atari'", specifier = "~=0.4.2" },
-    { name = "autorom", extras = ["accept-rom-license"], marker = "extra == 'c51-atari-jax'", specifier = "~=0.4.2" },
-    { name = "autorom", extras = ["accept-rom-license"], marker = "extra == 'dqn-atari'", specifier = "~=0.4.2" },
-    { name = "autorom", extras = ["accept-rom-license"], marker = "extra == 'dqn-atari-jax'", specifier = "~=0.4.2" },
-    { name = "autorom", extras = ["accept-rom-license"], marker = "extra == 'ppo-atari-envpool-xla-jax-scan'", specifier = "~=0.4.2" },
-    { name = "autorom", extras = ["accept-rom-license"], marker = "extra == 'qdagger-dqn-atari-impalacnn'", specifier = "~=0.4.2" },
-    { name = "autorom", extras = ["accept-rom-license"], marker = "extra == 'qdagger-dqn-atari-jax-impalacnn'", specifier = "~=0.4.2" },
     { name = "awscli", marker = "extra == 'cloud'", specifier = ">=1.31.0,<2" },
     { name = "boto3", marker = "extra == 'cloud'", specifier = ">=1.24.70,<2" },
+    { name = "chex", marker = "extra == 'jax'", specifier = "==0.1.5" },
     { name = "dm-control", marker = "extra == 'dm-control'", specifier = ">=1.0.10" },
     { name = "envpool", marker = "extra == 'envpool'", specifier = ">=0.6.4,<0.7" },
-    { name = "envpool", marker = "extra == 'ppo-atari-envpool-xla-jax-scan'", specifier = ">=0.6.4,<0.7" },
-    { name = "flax", marker = "extra == 'c51-atari-jax'", specifier = "==0.6.8" },
-    { name = "flax", marker = "extra == 'c51-jax'", specifier = "==0.6.8" },
-    { name = "flax", marker = "extra == 'dqn-atari-jax'", specifier = "==0.6.8" },
-    { name = "flax", marker = "extra == 'dqn-jax'", specifier = "==0.6.8" },
     { name = "flax", marker = "extra == 'jax'", specifier = "==0.6.8" },
-    { name = "flax", marker = "extra == 'ppo-atari-envpool-xla-jax-scan'", specifier = "==0.6.8" },
-    { name = "flax", marker = "extra == 'qdagger-dqn-atari-jax-impalacnn'", specifier = "==0.6.8" },
     { name = "gym", specifier = "==0.23.1" },
     { name = "gymnasium", specifier = "==0.29.1" },
     { name = "h5py", marker = "extra == 'dm-control'", specifier = ">=3.7.0" },
     { name = "huggingface-hub", specifier = ">=0.11.1" },
     { name = "imageio", marker = "extra == 'mujoco'", specifier = ">=2.14.1,<3" },
-    { name = "jax", marker = "extra == 'c51-atari-jax'", specifier = "==0.4.8" },
-    { name = "jax", marker = "extra == 'c51-jax'", specifier = "==0.4.8" },
-    { name = "jax", marker = "extra == 'dqn-atari-jax'", specifier = "==0.4.8" },
-    { name = "jax", marker = "extra == 'dqn-jax'", specifier = "==0.4.8" },
     { name = "jax", marker = "extra == 'jax'", specifier = "==0.4.8" },
-    { name = "jax", marker = "extra == 'ppo-atari-envpool-xla-jax-scan'", specifier = "==0.4.8" },
-    { name = "jax", marker = "extra == 'qdagger-dqn-atari-jax-impalacnn'", specifier = "==0.4.8" },
-    { name = "jaxlib", marker = "extra == 'c51-atari-jax'", specifier = "==0.4.7" },
-    { name = "jaxlib", marker = "extra == 'c51-jax'", specifier = "==0.4.7" },
-    { name = "jaxlib", marker = "extra == 'dqn-atari-jax'", specifier = "==0.4.7" },
-    { name = "jaxlib", marker = "extra == 'dqn-jax'", specifier = "==0.4.7" },
     { name = "jaxlib", marker = "extra == 'jax'", specifier = "==0.4.7" },
-    { name = "jaxlib", marker = "extra == 'ppo-atari-envpool-xla-jax-scan'", specifier = "==0.4.7" },
-    { name = "jaxlib", marker = "extra == 'qdagger-dqn-atari-jax-impalacnn'", specifier = "==0.4.7" },
     { name = "markdown-include", marker = "extra == 'docs'", specifier = ">=0.7.0,<0.8" },
     { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=8.4.3,<9" },
     { name = "moviepy", specifier = ">=1.0.3" },
@@ -520,14 +432,8 @@ requires-dist = [
     { name = "mujoco", marker = "extra == 'mujoco'", specifier = "<=2.3.3" },
     { name = "multi-agent-ale-py", marker = "extra == 'pettingzoo'", specifier = "==0.1.11" },
     { name = "opencv-python", marker = "extra == 'atari'", specifier = ">=4.6.0.66,<5" },
-    { name = "opencv-python", marker = "extra == 'c51-atari'", specifier = ">=4.6.0.66,<5" },
-    { name = "opencv-python", marker = "extra == 'c51-atari-jax'", specifier = ">=4.6.0.66,<5" },
-    { name = "opencv-python", marker = "extra == 'dqn-atari'", specifier = ">=4.6.0.66,<5" },
-    { name = "opencv-python", marker = "extra == 'dqn-atari-jax'", specifier = ">=4.6.0.66,<5" },
-    { name = "opencv-python", marker = "extra == 'ppo-atari-envpool-xla-jax-scan'", specifier = ">=4.6.0.66,<5" },
-    { name = "opencv-python", marker = "extra == 'qdagger-dqn-atari-impalacnn'", specifier = ">=4.6.0.66,<5" },
-    { name = "opencv-python", marker = "extra == 'qdagger-dqn-atari-jax-impalacnn'", specifier = ">=4.6.0.66,<5" },
     { name = "openrlbenchmark", marker = "extra == 'docs'", specifier = ">=0.1.1b4,<0.2" },
+    { name = "optax", marker = "extra == 'jax'", specifier = "==0.1.4" },
     { name = "optuna", marker = "extra == 'optuna'", specifier = ">=3.0.1,<4" },
     { name = "optuna-dashboard", marker = "extra == 'optuna'", specifier = ">=0.7.2,<0.8" },
     { name = "pettingzoo", marker = "extra == 'pettingzoo'", specifier = "==1.18.1" },
@@ -545,7 +451,7 @@ requires-dist = [
     { name = "tyro", specifier = ">=0.5.10" },
     { name = "wandb", specifier = ">=0.13.11" },
 ]
-provides-extras = ["atari", "procgen", "plot", "pytest", "mujoco", "jax", "docs", "envpool", "optuna", "pettingzoo", "cloud", "dm-control", "dqn", "dqn-atari", "dqn-jax", "dqn-atari-jax", "c51", "c51-atari", "c51-jax", "c51-atari-jax", "ppo-atari-envpool-xla-jax-scan", "qdagger-dqn-atari-impalacnn", "qdagger-dqn-atari-jax-impalacnn"]
+provides-extras = ["atari", "envpool", "procgen", "mujoco", "dm-control", "pettingzoo", "jax", "optuna", "docs", "cloud", "plot", "pytest"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pre-commit", specifier = ">=2.20.0,<3" }]

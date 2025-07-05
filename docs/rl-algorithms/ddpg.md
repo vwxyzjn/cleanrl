@@ -285,8 +285,6 @@ The [ddpg_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/mast
     uv pip install ".[mujoco, jax]"
     uv run python cleanrl/ddpg_continuous_action_jax.py --help
     uv run python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v4
-    uv pip install ".[mujoco_py]" # only works in Linux
-    uv run python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v2
     ```
 
 === "pip"
@@ -296,8 +294,6 @@ The [ddpg_continuous_action_jax.py](https://github.com/vwxyzjn/cleanrl/blob/mast
     pip install -r requirements/requirements-jax.txt
     python cleanrl/ddpg_continuous_action_jax.py --help
     python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v4
-    pip install -r requirements/requirements-mujoco_py.txt # only works in Linux
-    python cleanrl/ddpg_continuous_action_jax.py --env-id Hopper-v2
     ```
 
 

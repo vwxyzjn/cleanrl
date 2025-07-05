@@ -60,9 +60,6 @@ python cleanrl/rpo_continuous_action.py --env-id BipedalWalker-v3
     # dm_control environments
     uv pip install ".[mujoco, dm_control]"
     python cleanrl/rpo_continuous_action.py --env-id dm_control/cartpole-balance-v0
-    # backwards compatibility with mujoco v2 environments
-    uv pip install ".[mujoco_py]"
-    python cleanrl/rpo_continuous_action.py --env-id Hopper-v2
     # BipedalWalker-v3 experiment (hack)
     uv pip install box2d-py==2.3.5
     uv run python cleanrl/rpo_continuous_action.py --env-id BipedalWalker-v3
@@ -78,8 +75,6 @@ python cleanrl/rpo_continuous_action.py --env-id BipedalWalker-v3
     python cleanrl/rpo_continuous_action.py --env-id Ant-v4 --rpo-alpha 0.01
     pip install -r requirements/requirements-dm_control.txt
     python cleanrl/rpo_continuous_action.py --env-id dm_control/cartpole-balance-v0
-    pip install -r requirements/requirements-mujoco_py.txt
-    python cleanrl/rpo_continuous_action.py --env-id Hopper-v2
     pip install box2d-py==2.3.5
     python cleanrl/rpo_continuous_action.py --env-id BipedalWalker-v3
     ```
