@@ -22,9 +22,7 @@ charset-normalizer==3.1.0
 click==8.1.3
     # via wandb
 cloudpickle==2.2.1
-    # via
-    #   gym
-    #   gymnasium
+    # via gymnasium
 cmaes==0.10.0
     # via optuna
 colorama==0.4.4
@@ -54,9 +52,7 @@ filelock==3.12.0
     #   torch
     #   triton
     #   virtualenv
-fsspec==2025.3.0 ; python_full_version < '3.9'
-    # via torch
-fsspec==2025.5.1 ; python_full_version >= '3.9'
+fsspec==2025.5.1
     # via torch
 gitdb==4.0.10
     # via gitpython
@@ -72,11 +68,9 @@ greenlet==2.0.2 ; platform_machine == 'AMD64' or platform_machine == 'WIN32' or 
     # via sqlalchemy
 grpcio==1.54.0
     # via tensorboard
-gym==0.23.1
+gymnasium==1.1.1 ; python_full_version < '3.10'
     # via cleanrl
-gym-notices==0.0.8
-    # via gym
-gymnasium==0.29.1
+gymnasium==1.2.0 ; python_full_version >= '3.10'
     # via cleanrl
 huggingface-hub==0.11.1
     # via cleanrl
@@ -90,12 +84,8 @@ imageio-ffmpeg==0.3.0
     # via moviepy
 importlib-metadata==5.2.0 ; python_full_version < '3.10'
     # via
-    #   alembic
-    #   gym
     #   gymnasium
     #   markdown
-importlib-resources==5.12.0 ; python_full_version < '3.9'
-    # via alembic
 jinja2==3.1.2
     # via torch
 joblib==1.2.0
@@ -113,9 +103,7 @@ moviepy==1.0.3
     # via cleanrl
 mpmath==1.3.0
     # via sympy
-networkx==3.1 ; python_full_version < '3.9'
-    # via torch
-networkx==3.2.1 ; python_full_version == '3.9.*'
+networkx==3.2.1 ; python_full_version < '3.10'
     # via torch
 networkx==3.4.2 ; python_full_version >= '3.10'
     # via torch
@@ -124,7 +112,6 @@ nodeenv==1.7.0
 numpy==1.24.4
     # via
     #   cmaes
-    #   gym
     #   gymnasium
     #   imageio
     #   moviepy
@@ -157,11 +144,7 @@ nvidia-cusparse-cu12==12.1.0.106 ; platform_machine == 'x86_64' and sys_platform
     #   torch
 nvidia-nccl-cu12==2.20.5 ; platform_machine == 'x86_64' and sys_platform == 'linux'
     # via torch
-nvidia-nvjitlink-cu12==12.4.127 ; python_full_version < '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
-    # via
-    #   nvidia-cusolver-cu12
-    #   nvidia-cusparse-cu12
-nvidia-nvjitlink-cu12==12.6.85 ; python_full_version >= '3.9' and platform_machine == 'x86_64' and sys_platform == 'linux'
+nvidia-nvjitlink-cu12==12.6.85 ; platform_machine == 'x86_64' and sys_platform == 'linux'
     # via
     #   nvidia-cusolver-cu12
     #   nvidia-cusparse-cu12
@@ -251,9 +234,7 @@ sqlalchemy==2.0.13
     # via
     #   alembic
     #   optuna
-sympy==1.12.1 ; python_full_version < '3.9'
-    # via torch
-sympy==1.14.0 ; python_full_version >= '3.9'
+sympy==1.14.0
     # via torch
 tenacity==8.2.3
     # via cleanrl
@@ -275,17 +256,7 @@ tqdm==4.65.0
     #   proglog
 triton==3.0.0 ; platform_machine == 'x86_64' and sys_platform == 'linux'
     # via torch
-typing-extensions==4.13.2 ; python_full_version < '3.9'
-    # via
-    #   alembic
-    #   cleanrl
-    #   gymnasium
-    #   huggingface-hub
-    #   sqlalchemy
-    #   torch
-    #   tyro
-    #   wandb
-typing-extensions==4.14.1 ; python_full_version >= '3.9'
+typing-extensions==4.14.1
     # via
     #   alembic
     #   cleanrl
@@ -311,6 +282,4 @@ werkzeug==2.2.3
 wheel==0.40.0
     # via tensorboard
 zipp==3.15.0 ; python_full_version < '3.10'
-    # via
-    #   importlib-metadata
-    #   importlib-resources
+    # via importlib-metadata
