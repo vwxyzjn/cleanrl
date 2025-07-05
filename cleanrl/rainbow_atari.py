@@ -442,7 +442,7 @@ if __name__ == "__main__":
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
-        if "final_info" in infos:
+        if "final_info" in infos and "episode" in infos["final_info"]:
             episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
             episodic_returns = infos["final_info"]["episode"]["r"][episodes_over]
             episodic_lengths = infos["final_info"]["episode"]["l"][episodes_over]

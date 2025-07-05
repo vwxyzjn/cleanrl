@@ -403,13 +403,13 @@ requires-dist = [
     { name = "optax", marker = "extra == 'jax'", specifier = ">=0.1.4" },
     { name = "optuna", marker = "extra == 'optuna'", specifier = ">=3.0.1,<4" },
     { name = "optuna-dashboard", marker = "extra == 'optuna'", specifier = ">=0.7.2,<0.8" },
-    { name = "pettingzoo", marker = "extra == 'pettingzoo'", specifier = "==1.18.1" },
+    { name = "pettingzoo", marker = "extra == 'pettingzoo'", specifier = ">=1.23.0" },
     { name = "procgen", marker = "extra == 'procgen'", specifier = ">=0.10.7,<0.11" },
     { name = "pygame", specifier = ">=2.1" },
     { name = "pytest", marker = "extra == 'pytest'", specifier = ">=7.1.3,<8" },
     { name = "rich", specifier = "<12.0" },
     { name = "shimmy", marker = "extra == 'dm-control'", specifier = ">=1.1.0" },
-    { name = "supersuit", marker = "extra == 'pettingzoo'", specifier = "==3.4.0" },
+    { name = "supersuit", marker = "extra == 'pettingzoo'", specifier = ">=3.8.0" },
     { name = "tenacity", specifier = ">=8.2.2" },
     { name = "tensorboard", specifier = ">=2.10.0" },
     { name = "torch", specifier = ">=2.0" },
@@ -1080,7 +1080,7 @@ name = "importlib-metadata"
 version = "8.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp" },
+    { name = "zipp", marker = "python_full_version < '3.10'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/76/66/650a33bd90f786193e4de4b3ad86ea60b53c89b669a5c7be931fac31cdb0/importlib_metadata-8.7.0.tar.gz", hash = "sha256:d13b81ad223b890aa16c5471f2ac3056cf76c5f10f82d6f9292f0b415f389000", size = 56641, upload-time = "2025-04-27T15:29:01.736Z" }
 wheels = [
@@ -1678,7 +1678,7 @@ name = "nvidia-cudnn-cu12"
 version = "9.1.0.70"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12" },
+    { name = "nvidia-cublas-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9f/fd/713452cd72343f682b1c7b9321e23829f00b842ceaedcda96e742ea0b0b3/nvidia_cudnn_cu12-9.1.0.70-py3-none-manylinux2014_x86_64.whl", hash = "sha256:165764f44ef8c61fcdfdfdbe769d687e06374059fbb388b6c89ecb0e28793a6f", size = 664752741, upload-time = "2024-04-22T15:24:15.253Z" },
@@ -1705,9 +1705,9 @@ name = "nvidia-cusolver-cu12"
 version = "11.4.5.107"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12" },
-    { name = "nvidia-cusparse-cu12" },
-    { name = "nvidia-nvjitlink-cu12" },
+    { name = "nvidia-cublas-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
+    { name = "nvidia-cusparse-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bc/1d/8de1e5c67099015c834315e333911273a8c6aaba78923dd1d1e25fc5f217/nvidia_cusolver_cu12-11.4.5.107-py3-none-manylinux1_x86_64.whl", hash = "sha256:8a7ec542f0412294b15072fa7dab71d31334014a69f953004ea7a118206fe0dd", size = 124161928, upload-time = "2023-04-19T15:51:25.781Z" },
@@ -1718,7 +1718,7 @@ name = "nvidia-cusparse-cu12"
 version = "12.1.0.106"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12" },
+    { name = "nvidia-nvjitlink-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/65/5b/cfaeebf25cd9fdec14338ccb16f6b2c4c7fa9163aefcf057d86b9cc248bb/nvidia_cusparse_cu12-12.1.0.106-py3-none-manylinux1_x86_64.whl", hash = "sha256:f3b50f42cf363f86ab21f720998517a659a48131e8d538dc02f8768237bd884c", size = 195958278, upload-time = "2023-04-19T15:51:49.939Z" },
@@ -1861,15 +1861,16 @@ wheels = [
 
 [[package]]
 name = "pettingzoo"
-version = "1.18.1"
+version = "1.25.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "gym" },
+    { name = "gymnasium", version = "1.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "gymnasium", version = "1.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f6/9e/4304f4abd0aeb881995567a2583f05a48be3696d1a3e3a39994bcd867d38/PettingZoo-1.18.1.tar.gz", hash = "sha256:7e6a3231dc3fc3801af83fe880f199f570d46a9acdcb990f2a223f121b6e5038", size = 693600, upload-time = "2022-04-29T19:55:04.186Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/38/cb/cbb8d0e973b284f709ce93a80354d464588301957220f031c51324b464b2/pettingzoo-1.25.0.tar.gz", hash = "sha256:4b8a8552eab07a9c8f37dca094e59ee194003c57e2a7e7348bdf7c62049eecf6", size = 723959, upload-time = "2025-04-22T14:37:37.36Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b0/71/d92cdc01ca27b224b88ae87185a8fad634ecbab1530da3d657c250e5f642/PettingZoo-1.18.1-py3-none-any.whl", hash = "sha256:25ae45fcfa2c623800e1f81b98ae50f5f5a1af6caabc5946764248de71a0371d", size = 796832, upload-time = "2022-04-29T19:55:02.459Z" },
+    { url = "https://files.pythonhosted.org/packages/d3/9a/33fb244264573687ef27b2f436ae98b524c5e8e5edc7c36183a59c5b4748/pettingzoo-1.25.0-py3-none-any.whl", hash = "sha256:f385bccbebdad73a0c3da884344aea6e2614aa962b653c790b06ef9ab162d651", size = 852489, upload-time = "2025-04-22T14:37:36.036Z" },
 ]
 
 [[package]]
@@ -2506,16 +2507,17 @@ wheels = [
 
 [[package]]
 name = "supersuit"
-version = "3.4.0"
+version = "3.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "gym" },
-    { name = "pettingzoo" },
+    { name = "gymnasium", version = "1.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
+    { name = "gymnasium", version = "1.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "numpy" },
     { name = "tinyscaler" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d1/38/1091693bafaeccba46beceae148245b68e9c476d1a4f6bc79569f8d9a3a7/SuperSuit-3.4.0.tar.gz", hash = "sha256:5999beec8d7923c11c9511eaa9dec8a38269cb0d7af029e17903c79234233409", size = 41941, upload-time = "2022-04-29T22:08:55.653Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7c/68/16b774842f9be011d2accc6ab86bc3808854a36ce5456e4e19b9ad7c484b/supersuit-3.10.0.tar.gz", hash = "sha256:85cc4723e2ee4fc7284e0e5586d9e20360ee073bc0d8b997fe48686c83cd348a", size = 34350, upload-time = "2025-04-22T16:01:24.921Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d0/25/2f6f5c722ab59bcef8ad61b0068e3c9ab4b95c505be84daf27289196ef48/SuperSuit-3.4.0-py3-none-any.whl", hash = "sha256:45b541b2b29faffd6494b53d649c8d94889966f407fd380b3e3211f9e68a49e9", size = 65542, upload-time = "2022-04-29T22:08:54.307Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/6e/fce0b8179ba9e99c40cd3fb013657110e4d5ca894de3f9aa4962b6a9d86c/supersuit-3.10.0-py3-none-any.whl", hash = "sha256:fd0b9e351808d3efaedafcbe48a6beb1f6a87828ccfeaf410af4b87e32882a7f", size = 50180, upload-time = "2025-04-22T16:01:23.654Z" },
 ]
 
 [[package]]
@@ -2599,15 +2601,25 @@ wheels = [
 
 [[package]]
 name = "tinyscaler"
-version = "1.2.5"
+version = "1.2.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a1/ab/b9ac72be8af6a909ba1e29f82bf5152c550837578ffae98f091ad661ba37/tinyscaler-1.2.5.tar.gz", hash = "sha256:deb47df1a53a55b53f0ae15b89b4814af184d149a8149385e54e11afc57364a5", size = 127639, upload-time = "2023-05-16T02:04:31.069Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0d/59/6b6495fe9bb3153306a4bd6dd24c78ff74eaf64f90fc6e545ede0574cfbe/tinyscaler-1.2.8.tar.gz", hash = "sha256:0ce3b77562f1db74b2035ccaf62807af043333ce655e71effd6ec85fbf8ded06", size = 156935, upload-time = "2024-08-02T19:25:10.976Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2c/8b/2bb12d5b77e92df728e28e1387fcba7a7bf4008c49fa0ba906ec1f46a202/tinyscaler-1.2.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0f32d794fc2b9c5e4aa3b435d040f9e75b11f55ab41b32580f2c8e8dfb350f25", size = 492712, upload-time = "2022-10-22T00:00:59.22Z" },
-    { url = "https://files.pythonhosted.org/packages/5c/19/e45682dfea2a6b38eabce3a0af8fa309c59ecc81187ece4ff1fdc7c12c6d/tinyscaler-1.2.5-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:46c75799068330ff7c28fd01f10409d4f12c22f1adbe732f1699228449a4d712", size = 495455, upload-time = "2022-10-22T00:01:05.114Z" },
+    { url = "https://files.pythonhosted.org/packages/96/14/0b47fbc882faa2358fc205734bd4b872c84539ef8231bbf1ef2eb5e99506/tinyscaler-1.2.8-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:b69a0414d626ba5d075b93546f37ece0c10f690f7d3ce3f162c2316ac1667511", size = 178487, upload-time = "2024-08-02T19:24:41.372Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/b2/3c38f6727b1618160248b6c56486eb006db153c2ca99381251343cd54376/tinyscaler-1.2.8-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:fb30db6782df95c34b294266876e71fd3d32dd3d33bf4c8ec72d07f570ae7bca", size = 522789, upload-time = "2024-08-02T19:24:43.158Z" },
+    { url = "https://files.pythonhosted.org/packages/70/7e/b42030012265686e2f95f2449dd7e40b1e54d92a371f90b11c11bdd8b6c3/tinyscaler-1.2.8-cp310-cp310-win_amd64.whl", hash = "sha256:34d43fad3e09331b7a9259ee11ff4c209c31f00129b3a0c98480f7e43c789c2f", size = 83870, upload-time = "2024-08-02T19:24:44.369Z" },
+    { url = "https://files.pythonhosted.org/packages/01/c9/a2dbce5c9ecfaff4887bc0f5ff2288c678e25810801e84ddd737d4c0f3e8/tinyscaler-1.2.8-cp311-cp311-macosx_10_9_universal2.whl", hash = "sha256:57ad9b0203e984ad140b31f0fe82f8bd82e4c31574461264a9a6e7f7d105eb50", size = 178323, upload-time = "2024-08-02T19:24:46.023Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/0e/c52b316dccb2181521a5faca6ef404670e567dddb6f38cbd72175af23d49/tinyscaler-1.2.8-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a7dbf9f80ba08918c304261e2f8e3356eccbc925364b706cef2997f0abf0fc91", size = 563254, upload-time = "2024-08-02T19:24:47.904Z" },
+    { url = "https://files.pythonhosted.org/packages/21/8f/c064ace9fe32a3968eedd1ae19f079020f0fdd55e811dfd1c7a2b6cc442f/tinyscaler-1.2.8-cp311-cp311-win_amd64.whl", hash = "sha256:93869b729bc2d596e2b2e0803d2f9e0e1a0baced6c96b8c21af178b3061b3fba", size = 83955, upload-time = "2024-08-02T19:24:49.772Z" },
+    { url = "https://files.pythonhosted.org/packages/4b/65/06fa456d375b71672affd292dd79f199b21a574eb0501afa142f85133b99/tinyscaler-1.2.8-cp312-cp312-macosx_10_9_universal2.whl", hash = "sha256:fcafd6a8b7ac8c8eabc560f99f987e3e9c00b32a5f3472b28ee865db9bf264b2", size = 179781, upload-time = "2024-08-02T19:24:52.129Z" },
+    { url = "https://files.pythonhosted.org/packages/b7/cf/528a73de4ad128de99bf7cc0e80f236aeeb36fda1e2768a7eb73210a91ff/tinyscaler-1.2.8-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7474fe93740b0aa045e4e2ad60f8df6d5d570c4ea903c6d63ca3868efd8f4e22", size = 563642, upload-time = "2024-08-02T19:24:54.1Z" },
+    { url = "https://files.pythonhosted.org/packages/68/d0/0b0abfde6acdf79b41ea685067a52d3e47f3b1fb4a0f4f49d9c6f281a3c7/tinyscaler-1.2.8-cp312-cp312-win_amd64.whl", hash = "sha256:6a7c18d9c082f30193bd23a6eb8ad84d2ee9b224138c8c25a76db96cba71a473", size = 83779, upload-time = "2024-08-02T19:24:56.186Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/1b/b291ab1c819a1bca3e6fa1f924d5fa14fc12603504bc7f5cf63599fe7878/tinyscaler-1.2.8-cp39-cp39-macosx_10_9_universal2.whl", hash = "sha256:3143352056dc9ac2ab87795fa3f36498c52ae603b76b3b73189544c588f46d77", size = 179705, upload-time = "2024-08-02T19:25:05.649Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/31/c54ebf036e092cc31ecfd7ccc2970165ce72679f3c1be43f7cddc1aa5e2d/tinyscaler-1.2.8-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:aa5eb3d4ba1fb803e1616fde7f58126355a47c6ca79c3393907e21c677bc5d37", size = 524826, upload-time = "2024-08-02T19:25:07.617Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/2f/263d8d100c501959662986b065e91f9fc59e5ff4cecc0b511009eac97711/tinyscaler-1.2.8-cp39-cp39-win_amd64.whl", hash = "sha256:17409e85ff23d5eb29da65d6cdfdeafeb7d94b7c8051b1ab8457886ceb61b234", size = 84507, upload-time = "2024-08-02T19:25:09.431Z" },
 ]
 
 [[package]]
@@ -2722,7 +2734,7 @@ name = "triton"
 version = "3.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "filelock" },
+    { name = "filelock", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/45/27/14cc3101409b9b4b9241d2ba7deaa93535a217a211c86c4cc7151fb12181/triton-3.0.0-1-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:e1efef76935b2febc365bfadf74bcb65a6f959a9872e5bddf44cc9e0adce1e1a", size = 209376304, upload-time = "2024-07-19T20:56:41.483Z" },

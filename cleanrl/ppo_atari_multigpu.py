@@ -18,7 +18,7 @@ from rich.pretty import pprint
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
-from cleanrl_utils.atari_wrappers import (  # isort:skip
+from cleanrl_utils.atari_wrappers import (
     ClipRewardEnv,
     EpisodicLifeEnv,
     FireResetEnv,
@@ -182,7 +182,7 @@ if __name__ == "__main__":
 Not using distributed mode!
 If you want to use distributed mode, please execute this script with 'torchrun'.
 E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py`
-        """
+"""
         )
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     writer = None
@@ -278,7 +278,7 @@ E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py
             if not writer:
                 continue
 
-            if "final_info" in infos:
+            if "final_info" in infos and "episode" in infos["final_info"]:
                 episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
                 episodic_returns = infos["final_info"]["episode"]["r"][episodes_over]
                 episodic_lengths = infos["final_info"]["episode"]["l"][episodes_over]

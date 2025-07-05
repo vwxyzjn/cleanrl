@@ -200,7 +200,7 @@ if __name__ == "__main__":
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
-        if "final_info" in infos:
+        if "final_info" in infos and "episode" in infos["final_info"]:
             episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
             episodic_returns = infos["final_info"]["episode"]["r"][episodes_over]
             episodic_lengths = infos["final_info"]["episode"]["l"][episodes_over]

@@ -43,8 +43,8 @@ dm_control = [
     "h5py>=3.7.0",
 ]
 pettingzoo = [
-    "PettingZoo==1.18.1",
-    "SuperSuit==3.4.0",
+    "PettingZoo>=1.23.0",
+    "SuperSuit>=3.8.0",
     "multi-agent-ale-py==0.1.11",
     "AutoROM==0.6.1"
 ]

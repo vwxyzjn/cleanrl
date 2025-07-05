@@ -14,7 +14,7 @@ import tyro
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
-from cleanrl_utils.atari_wrappers import (  # isort:skip
+from cleanrl_utils.atari_wrappers import (
     ClipRewardEnv,
     EpisodicLifeEnv,
     FireResetEnv,
@@ -260,7 +260,7 @@ if __name__ == "__main__":
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
 
-            if "final_info" in infos:
+            if "final_info" in infos and "episode" in infos["final_info"]:
                 print(infos["final_info"].keys())
                 episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
                 episodic_returns = infos["final_info"]["episode"]["r"][episodes_over]
