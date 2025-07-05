@@ -5,6 +5,7 @@ import time
 from collections import deque
 from dataclasses import dataclass
 
+import ale_py
 import gymnasium as gym
 import numpy as np
 import torch
@@ -26,6 +27,8 @@ from cleanrl_utils.atari_wrappers import (
 )
 from cleanrl_utils.buffers import ReplayBuffer
 from cleanrl_utils.evals.dqn_eval import evaluate
+
+gym.register_envs(ale_py)
 
 
 @dataclass

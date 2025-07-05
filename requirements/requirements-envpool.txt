@@ -79,9 +79,7 @@ graphviz==0.20.1
 grpcio==1.54.0
     # via tensorboard
 gym==0.23.1
-    # via
-    #   cleanrl
-    #   envpool
+    # via envpool
 gym-notices==0.0.8
     # via gym
 gymnasium==1.1.1 ; python_full_version < '3.10'

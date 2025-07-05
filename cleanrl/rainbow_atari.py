@@ -7,6 +7,7 @@ import time
 from collections import deque
 from dataclasses import dataclass
 
+import ale_py
 import gymnasium as gym
 import numpy as np
 import torch
@@ -23,6 +24,8 @@ from cleanrl_utils.atari_wrappers import (
     MaxAndSkipEnv,
     NoopResetEnv,
 )
+
+gym.register_envs(ale_py)
 
 
 @dataclass

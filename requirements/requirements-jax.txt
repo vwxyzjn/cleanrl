@@ -26,9 +26,7 @@ chex==0.1.5
 click==8.1.3
     # via wandb
 cloudpickle==2.2.1
-    # via
-    #   gym
-    #   gymnasium
+    # via gymnasium
 colorama==0.4.4
     # via
     #   click
@@ -77,10 +75,6 @@ google-auth-oauthlib==0.4.6
     # via tensorboard
 grpcio==1.54.0
     # via tensorboard
-gym==0.23.1
-    # via cleanrl
-gym-notices==0.0.8
-    # via gym
 gymnasium==1.1.1 ; python_full_version < '3.10'
     # via cleanrl
 gymnasium==1.2.0 ; python_full_version >= '3.10'
@@ -97,7 +91,6 @@ imageio-ffmpeg==0.3.0
     # via moviepy
 importlib-metadata==5.2.0 ; python_full_version < '3.10'
     # via
-    #   gym
     #   gymnasium
     #   markdown
 importlib-resources==5.12.0
@@ -145,7 +138,6 @@ numpy==1.24.4
     # via
     #   chex
     #   flax
-    #   gym
     #   gymnasium
     #   imageio
     #   jax

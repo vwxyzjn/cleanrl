@@ -6,6 +6,7 @@ import warnings
 from dataclasses import dataclass, field
 from typing import List, Literal
 
+import ale_py
 import gymnasium as gym
 import numpy as np
 import torch
@@ -24,6 +25,8 @@ from cleanrl_utils.atari_wrappers import (  # isort:skip
     MaxAndSkipEnv,
     NoopResetEnv,
 )
+
+gym.register_envs(ale_py)
 
 
 @dataclass

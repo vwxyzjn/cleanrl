@@ -9,6 +9,7 @@ from typing import Sequence
 # see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.7"
 
+import ale_py
 import flax
 import flax.linen as nn
 import gymnasium as gym
@@ -32,6 +33,8 @@ from cleanrl_utils.atari_wrappers import (
 )
 from cleanrl_utils.buffers import ReplayBuffer
 from cleanrl_utils.evals.dqn_jax_eval import evaluate
+
+gym.register_envs(ale_py)
 
 
 @dataclass

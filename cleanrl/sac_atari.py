@@ -4,6 +4,7 @@ import random
 import time
 from dataclasses import dataclass
 
+import ale_py
 import gymnasium as gym
 import numpy as np
 import torch
@@ -22,6 +23,8 @@ from cleanrl_utils.atari_wrappers import (
     NoopResetEnv,
 )
 from cleanrl_utils.buffers import ReplayBuffer
+
+gym.register_envs(ale_py)
 
 
 @dataclass

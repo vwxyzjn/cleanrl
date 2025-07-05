@@ -60,7 +60,6 @@ grpcio==1.54.0
     # via tensorboard
 gym==0.23.1
     # via
-    #   cleanrl
     #   pettingzoo
     #   supersuit
 gym-notices==0.0.8
