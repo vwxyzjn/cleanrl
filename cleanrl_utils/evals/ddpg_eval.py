@@ -22,7 +22,7 @@ def evaluate(
     )
     actor = Model[0](envs).to(device)
     qf = Model[1](envs).to(device)
-    actor_params, qf_params = torch.load(model_path, map_location=device)
+    actor_params, qf_params = torch.load(model_path, map_location=device, weights_only=True)
     actor.load_state_dict(actor_params)
     actor.eval()
     qf.load_state_dict(qf_params)

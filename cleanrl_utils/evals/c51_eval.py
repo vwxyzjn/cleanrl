@@ -21,7 +21,7 @@ def evaluate(
     envs = gym.vector.SyncVectorEnv(
         [make_env(env_id, 0, 0, capture_video, run_name)], autoreset_mode=gym.vector.AutoresetMode.SAME_STEP
     )
-    model_data = torch.load(model_path, map_location="cpu")
+    model_data = torch.load(model_path, map_location=device, weights_only=True)
     args = Namespace(**model_data["args"])
     model = Model(envs, n_atoms=args.n_atoms, v_min=args.v_min, v_max=args.v_max)
     model.load_state_dict(model_data["model_weights"])
@@ -38,7 +38,7 @@ def evaluate(
             actions = actions.cpu().numpy()
         next_obs, _, _, _, infos = envs.step(actions)
 
-        if "final_info" in infos:
+        if "final_info" in infos and "episode" in infos["final_info"]:
             episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
             episode_returns = infos["final_info"]["episode"]["r"][episodes_over]
             for episode_return in episode_returns:

@@ -20,7 +20,7 @@ def evaluate(
         [make_env(env_id, 0, capture_video, run_name, gamma)], autoreset_mode=gym.vector.AutoresetMode.SAME_STEP
     )
     agent = Model(envs).to(device)
-    agent.load_state_dict(torch.load(model_path, map_location=device))
+    agent.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     agent.eval()
 
     obs, _ = envs.reset()
@@ -28,7 +28,7 @@ def evaluate(
     while len(episodic_returns) < eval_episodes:
         actions, _, _, _ = agent.get_action_and_value(torch.Tensor(obs).to(device))
         next_obs, _, _, _, infos = envs.step(actions.cpu().numpy())
-        if "final_info" in infos:
+        if "final_info" in infos and "episode" in infos["final_info"]:
             episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
             episode_returns = infos["final_info"]["episode"]["r"][episodes_over]
             for episode_return in episode_returns:

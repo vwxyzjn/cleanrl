@@ -33,7 +33,7 @@ def evaluate(
             q_values = model(torch.Tensor(obs).to(device))
             actions = torch.argmax(q_values, dim=1).cpu().numpy()
         next_obs, _, _, _, infos = envs.step(actions)
-        if "final_info" in infos:
+        if "final_info" in infos and "episode" in infos["final_info"]:
             episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
             episode_returns = infos["final_info"]["episode"]["r"][episodes_over]
             for episode_return in episode_returns:

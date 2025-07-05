@@ -162,7 +162,7 @@ if __name__ == "__main__":
     envs.metadata["autoreset_mode"] = gym.vector.AutoresetMode.SAME_STEP
     envs = gym.wrappers.vector.RecordEpisodeStatistics(envs)
     # if args.capture_video:  # gymnasium doesn't support recording vector environments currently
-        # envs = gym.wrappers.RecordVideo(envs, f"videos/{run_name}")
+    #     envs = gym.wrappers.RecordVideo(envs, f"videos/{run_name}")
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent = Agent(envs).to(device)
