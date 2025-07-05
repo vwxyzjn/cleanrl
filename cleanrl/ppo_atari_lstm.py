@@ -105,7 +105,7 @@ def make_env(env_id, idx, capture_video, run_name):
         env = ClipRewardEnv(env)
         env = gym.wrappers.ResizeObservation(env, (84, 84))
         env = gym.wrappers.GrayscaleObservation(env)
-        env = gym.wrappers.FrameStack(env, 1)
+        env = gym.wrappers.FrameStackObservation(env, 1)
         return env
 
     return thunk
@@ -261,6 +261,7 @@ if __name__ == "__main__":
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
 
             if "final_info" in infos:
+                print(infos["final_info"].keys())
                 episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
                 episodic_returns = infos["final_info"]["episode"]["r"][episodes_over]
                 episodic_lengths = infos["final_info"]["episode"]["l"][episodes_over]

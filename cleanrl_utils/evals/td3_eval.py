@@ -3,6 +3,7 @@ from typing import Callable
 import gymnasium as gym
 import torch
 import torch.nn as nn
+import numpy as np
 
 
 def evaluate(
@@ -41,11 +42,11 @@ def evaluate(
 
         next_obs, _, _, _, infos = envs.step(actions)
         if "final_info" in infos:
-            for info in infos["final_info"]:
-                if "episode" not in info:
-                    continue
-                print(f"eval_episode={len(episodic_returns)}, episodic_return={info['episode']['r']}")
-                episodic_returns += [info["episode"]["r"]]
+            episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
+            episode_returns = infos["final_info"]["episode"]["r"][episodes_over]
+            for episode_return in episode_returns:
+                print(f"eval_episode={len(episodic_returns)}, episodic_return={episode_return}")
+                episodic_returns.append(episode_return)
         obs = next_obs
 
     return episodic_returns

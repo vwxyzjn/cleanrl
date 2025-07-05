@@ -117,7 +117,7 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         env = ClipRewardEnv(env)
         env = gym.wrappers.ResizeObservation(env, (84, 84))
         env = gym.wrappers.GrayscaleObservation(env)
-        env = gym.wrappers.FrameStack(env, 4)
+        env = gym.wrappers.FrameStackObservation(env, 4)
         env.action_space.seed(seed)
 
         return env
@@ -247,7 +247,7 @@ if __name__ == "__main__":
         repo_id=args.teacher_policy_hf_repo, filename=f"{args.teacher_model_exp_name}.cleanrl_model"
     )
     teacher_model = TeacherModel(envs).to(device)
-    teacher_model.load_state_dict(torch.load(teacher_model_path, map_location=device))
+    teacher_model.load_state_dict(torch.load(teacher_model_path, map_location=device, weights_only=True))
     teacher_model.eval()
 
     # evaluate the teacher model
