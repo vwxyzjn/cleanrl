@@ -188,11 +188,13 @@ if __name__ == "__main__":
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
-            for info in infos["final_info"]:
-                if info and "episode" in info:
-                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+            episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
+            episodic_returns = infos["final_info"]["episode"]["r"][episodes_over]
+            episodic_lengths = infos["final_info"]["episode"]["l"][episodes_over]
+            for episodic_return, episodic_length in zip(episodic_returns, episodic_lengths):
+                print(f"global_step={global_step}, episodic_return={episodic_return}")
+                writer.add_scalar("charts/episodic_return", episodic_return, global_step)
+                writer.add_scalar("charts/episodic_length", episodic_length, global_step)
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()

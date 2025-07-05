@@ -120,7 +120,7 @@ def make_env(env_id, idx, capture_video, run_name):
             env = FireResetEnv(env)
         env = ClipRewardEnv(env)
         env = gym.wrappers.ResizeObservation(env, (84, 84))
-        env = gym.wrappers.GrayScaleObservation(env)
+        env = gym.wrappers.GrayscaleObservation(env)
         env = gym.wrappers.FrameStack(env, 4)
         return env
 
@@ -279,11 +279,13 @@ E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py
                 continue
 
             if "final_info" in infos:
-                for info in infos["final_info"]:
-                    if info and "episode" in info:
-                        print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
+                episodic_returns = infos["final_info"]["episode"]["r"][episodes_over]
+                episodic_lengths = infos["final_info"]["episode"]["l"][episodes_over]
+                for episodic_return, episodic_length in zip(episodic_returns, episodic_lengths):
+                    print(f"global_step={global_step}, episodic_return={episodic_return}")
+                    writer.add_scalar("charts/episodic_return", episodic_return, global_step)
+                    writer.add_scalar("charts/episodic_length", episodic_length, global_step)
 
         print(
             f"local_rank: {local_rank}, action.sum(): {action.sum()}, iteration: {iteration}, agent.actor.weight.sum(): {agent.actor.weight.sum()}"

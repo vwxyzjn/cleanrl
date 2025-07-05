@@ -1095,7 +1095,7 @@ See other logged metrics in the [related docs](/rl-algorithms/ppo/#explanation-o
     -    env = FireResetEnv(env)
     -env = ClipRewardEnv(env)
     -env = gym.wrappers.ResizeObservation(env, (84, 84))
-    -env = gym.wrappers.GrayScaleObservation(env)
+    -env = gym.wrappers.GrayscaleObservation(env)
     -env = gym.wrappers.FrameStack(env, 4)
     +env = importlib.import_module(f"pettingzoo.atari.{args.env_id}").parallel_env()
     +env = ss.max_observation_v0(env, 2)
