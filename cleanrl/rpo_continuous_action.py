@@ -13,6 +13,14 @@ import tyro
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
 
+try:
+    import dm_control
+    import shimmy  # optional for training with dm-control environments
+
+    gym.register_envs((shimmy, dm_control))
+except ImportError as e:
+    print(e)
+
 
 @dataclass
 class Args:
