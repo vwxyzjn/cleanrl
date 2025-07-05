@@ -55,9 +55,7 @@ You can install them using the following command
 
 ```bash
 uv pip install ".[atari]"
-uv pip install ".[atari]"
 uv pip install ".[mujoco]"
-uv pip install ".[mujoco_py]"
 uv pip install ".[dm_control]"
 uv pip install ".[procgen]"
 uv pip install ".[envpool]"

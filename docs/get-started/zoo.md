@@ -29,12 +29,12 @@ We have a simple utility `enjoy.py` to load models from the hub and run them in 
 ```bash
 uv pip install ".[dqn]"
 uv run python -m cleanrl_utils.enjoy --exp-name dqn --env-id CartPole-v1
-uv pip install ".[dqn_jax]"
+uv pip install ".[dqn, jax]"
 uv run python -m cleanrl_utils.enjoy --exp-name dqn_jax --env-id CartPole-v1
 
-uv pip install ".[dqn_atari]"
+uv pip install ".[atari]"
 uv run python -m cleanrl_utils.enjoy --exp-name dqn_atari --env-id BreakoutNoFrameskip-v4
-uv pip install ".[dqn_atari_jax]"
+uv pip install ".[atari, jax]"
 uv run python -m cleanrl_utils.enjoy --exp-name dqn_atari_jax --env-id BreakoutNoFrameskip-v4
 ```
 
