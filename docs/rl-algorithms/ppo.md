@@ -26,6 +26,7 @@ All our PPO implementations below are augmented with the same code-level optimiz
 | :material-github: [`ppo.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppopy) | For classic control tasks like `CartPole-v1`. |
 | :material-github: [`ppo_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_ataripy) |  For Atari games. It uses convolutional layers and common atari-based pre-processing techniques. |
 | :material-github: [`ppo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_continuous_actionpy) | For continuous action space. Also implemented Mujoco-specific code-level optimizations. |
+| :material-github: [`ppo_continuous_action_envpool_xla_jax_scan.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action_envpool_xla_jax_scan.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_continuous_action_envpool_xla_jax_scanpy) | Uses native `jax.scan` as opposed to python loops for faster compilation time. |
 | :material-github: [`ppo_atari_lstm.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_lstmpy) | For Atari games using LSTM without stacked frames. |
 | :material-github: [`ppo_atari_envpool.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool.py), :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_envpoolpy) | Uses the blazing fast Envpool Atari vectorized environment. |
 | :material-github: [`ppo_atari_envpool_xla_jax.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_envpool_xla_jaxpy) | Uses the blazing fast Envpool Atari vectorized environment with EnvPool's XLA interface and JAX. |
@@ -405,6 +406,81 @@ If you'd like to learn `ppo_continuous_action.py` in-depth, consider checking ou
 
 <div style="text-align: center;"><iframe width="560" height="315" src="https://www.youtube.com/embed/BvZvx7ENZBw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>
 
+
+## `ppo_continuous_action_envpool_xla_jax_scan.py`
+
+The [ppo_continuous_action_envpool_xla_jax_scan.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action_envpool_xla_jax_scan.py) has the following features:
+
+* It utilizes [Jax](https://github.com/google/jax), [Flax](https://github.com/google/flax), and [Optax](https://github.com/deepmind/optax) instead of torch.
+* It employs a jax-style environment wrapper.
+* It has the same hyperparameters and a similar training process as the state-of-the-art Mujoco approach in Tianshou.
+
+### Usage
+
+```bash
+poetry install -E "envpool jax"
+poetry run pip install --upgrade "jax[cuda]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+python cleanrl/ppo_continuous_action_envpool_xla_jax_scan.py --help
+python cleanrl/ppo_continuous_action_envpool_xla_jax_scan.py --env-id Ant-v4
+```
+
+### Explanation of the logged metrics
+
+See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `ppo.py`. The metrics are the same as those in [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py).
+
+### Implementation details
+
+[ppo_continuous_action_envpool_xla_jax_scan.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action_envpool_xla_jax_scan.py) has the following differences from [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py)
+
+
+1. It employs a "recompute advantage" strategy, which is reported to [contribute significantly to the state-of-the-art (SOTA) benchmarks](https://github.com/thu-ml/tianshou/tree/master/examples/mujoco#hints-for-ppo). It's worth noting that this implementation differs significantly from the original "reward scaling" approach. Instead of computing a forward discounted return and normalizing rewards on a per-step basis, this implementation normalizes the returns calculated by the Generalized Advantage Estimator (GAE). As a result, the rewards received from rollouts are not themselves normalized.
+
+2. The main body of this code implementation uses a gymnasium API that returns five values, while the Envpool 0.6.4 adopts a gym API that returns four values. The conversion was implemented inside the Observation Normalization wrapper.The switch to the gymnasium API will make it more convenient if a higher gymnasium version is adopted in the future.
+
+3. This implementation utilizes a customized `EnvWrapper` class to wrap the environment. Unlike traditional Gym-style wrappers, which have `step` and `reset` methods, EnvWrapper requires three methods: `recv`, `send`, and `reset`. These methods must be pure functions to be transformed in Jax. The recv method modifies the observation received after a step, and the send method modifies the action sent to the environment.
+
+
+???+ warning
+
+    The wrapped environment leads to an API change. After a reset, we will receive a new return handle from the reset API. This is because the XLA API provided by envpool is not a pure function, and the handle passed to the send function is simply a fat pointer pointing to the envpool class. When all state is kept inside a handle tuple, resetting the environment leaves the pointer unchanged, and other parts (such as new statistics state) also require a reset state. Hence, there must be a change to the envpool API. In order to have a less confusing API, it may be possible to remove the handle from the return values of envs.xla(). However, at present, it is not possible to make things consistent with envpool. 
+
+### Experiment results
+
+
+| env_id            | 1M steps  | 3M steps    |
+|:--------------------------|:----------------------|:----------------------|
+| Ant-v4                    | 2965.28 +- 664.13     | 3510.94 +- 711.55     |
+| HalfCheetah-v4            | 5547.87 +- 1407.09    | 6684.53 +- 1216.31    |
+| Hopper-v4                 | 2297.56 +- 426.33     | 2461.79 +- 428.26     |
+| Humanoid-v4               | 502.92 +- 31.91       | 611.45 +- 51.19       |
+| HumanoidStandup-v4        | 109515.65 +- 17869.43 | 119289.62 +- 21005.06 |
+| InvertedDoublePendulum-v4 | 7591.31 +- 1088.53    | 6129.24 +- 2029.02    |
+| InvertedPendulum-v4       | 967.05 +- 104.20      | 842.89 +- 307.85      |
+| Pusher-v4                 | -56.24 +- 8.90        | -40.08 +- 14.35       |
+| Reacher-v4                | -8.35 +- 1.92         | -6.73 +- 1.82         |
+| Swimmer-v4                | 27.78 +- 18.22        | 45.00 +- 10.12        |
+| Walker2d-v4               | 2980.62 +- 737.03     | 3631.59 +- 931.09     |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Learning curves:
+
+
+
+<iframe loading="lazy" src="https://wandb.ai/costa-huang/cleanRL/reports/Regression-Report-ppo_continuous_action_envpool_xla_jax_scan--VmlldzozNDgzMzM4" style="width:100%; height:500px" title="MuJoCo-CleanRL-s-PPO"></iframe>
 
 ## `ppo_atari_lstm.py`
 
