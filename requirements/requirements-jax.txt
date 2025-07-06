@@ -128,7 +128,11 @@ markupsafe==2.1.2
     # via
     #   jinja2
     #   werkzeug
-ml-dtypes==0.2.0
+ml-dtypes==0.2.0 ; python_full_version < '3.10'
+    # via
+    #   jax
+    #   jaxlib
+ml-dtypes==0.5.1 ; python_full_version >= '3.10'
     # via
     #   jax
     #   jaxlib
@@ -266,6 +270,7 @@ rsa==4.7.2
     # via google-auth
 scipy==1.10.1
     # via
+    #   cleanrl
     #   jax
     #   jaxlib
 sentry-sdk==1.22.2
