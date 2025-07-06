@@ -134,6 +134,7 @@ numpy==1.24.4
     #   gymnasium
     #   imageio
     #   moviepy
+    #   opencv-python
     #   tensorboard
 nvidia-cublas-cu12==12.1.3.1 ; platform_machine == 'x86_64' and sys_platform == 'linux'
     # via
@@ -172,6 +173,8 @@ nvidia-nvtx-cu12==12.1.105 ; platform_machine == 'x86_64' and sys_platform == 'l
     # via torch
 oauthlib==3.2.2
     # via requests-oauthlib
+opencv-python==4.7.0.72
+    # via cleanrl
 packaging==23.1
     # via
     #   envpool
