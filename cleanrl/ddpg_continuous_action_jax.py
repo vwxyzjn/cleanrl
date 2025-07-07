@@ -60,8 +60,6 @@ class Args:
     """timestep to start learning"""
     policy_frequency: int = 2
     """the frequency of training policy (delayed)"""
-    noise_clip: float = 0.5
-    """noise clip parameter of the Target Policy Smoothing Regularization"""
 
 
 def make_env(env_id, seed, idx, capture_video, run_name):

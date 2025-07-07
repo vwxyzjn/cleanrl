@@ -252,7 +252,7 @@ if __name__ == "__main__":
         eval_episodes=args.teacher_eval_episodes,
         run_name=f"{run_name}-teacher-eval",
         Model=TeacherModel,
-        epsilon=0.05,
+        epsilon=args.end_e,
         capture_video=False,
     )
     writer.add_scalar("charts/teacher/avg_episodic_return", np.mean(teacher_episodic_returns), 0)
@@ -351,7 +351,7 @@ if __name__ == "__main__":
                 eval_episodes=10,
                 run_name=f"{run_name}-eval",
                 Model=QNetwork,
-                epsilon=0.05,
+                epsilon=args.end_e,
             )
             print(episodic_returns)
             writer.add_scalar("charts/offline/avg_episodic_return", np.mean(episodic_returns), global_step)
@@ -459,7 +459,7 @@ if __name__ == "__main__":
             eval_episodes=10,
             run_name=f"{run_name}-eval",
             Model=QNetwork,
-            epsilon=0.05,
+            epsilon=args.end_e,
         )
         for idx, episodic_return in enumerate(episodic_returns):
             writer.add_scalar("eval/episodic_return", episodic_return, idx)
