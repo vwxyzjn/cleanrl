@@ -29,12 +29,12 @@ Below are our single-file implementations of PPG:
 
 ### Usage
 
-=== "poetry"
+=== "uv"
 
     ```bash
-    poetry install -E procgen
-    poetry run python cleanrl/ppg_procgen.py --help
-    poetry run python cleanrl/ppg_procgen.py --env-id starpilot
+    uv pip install ".[procgen]"
+    uv run python cleanrl/ppg_procgen.py --help
+    uv run python cleanrl/ppg_procgen.py --env-id starpilot
     ```
 
 === "pip"

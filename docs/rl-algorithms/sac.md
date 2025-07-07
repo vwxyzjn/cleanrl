@@ -50,12 +50,12 @@ The [sac_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 
     ```bash
     poetry install
-    poetry install -E mujoco
-    poetry run python cleanrl/sac_continuous_action.py --help
-    poetry run python cleanrl/sac_continuous_action.py --env-id Hopper-v4
-    poetry install -E mujoco_py # only works in Linux
-    poetry run python cleanrl/sac_continuous_action.py --env-id Hopper-v2
-    poetry run python cleanrl/sac_continuous_action.py --env-id Hopper-v2 --autotune False --alpha 0.2 ## Without Automatic entropy coef. tuning
+    uv pip install ".[mujoco]"
+    uv run python cleanrl/sac_continuous_action.py --help
+    uv run python cleanrl/sac_continuous_action.py --env-id Hopper-v4
+    uv pip install ".[mujoco_py]" # only works in Linux
+    uv run python cleanrl/sac_continuous_action.py --env-id Hopper-v2
+    uv run python cleanrl/sac_continuous_action.py --env-id Hopper-v2 --autotune False --alpha 0.2 ## Without Automatic entropy coef. tuning
     ```
 
 === "pip"
@@ -251,10 +251,9 @@ The [sac_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_at
 === "poetry"
 
     ```bash
-    poetry install
-    poetry install -E atari
-    poetry run python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4
-    poetry run python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4 --autotune False --alpha 0.2
+    uv pip install ".[atari]"
+    uv run python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4
+    uv run python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4 --autotune False --alpha 0.2
     ```
 
 === "pip"
@@ -363,7 +362,7 @@ Surpassing Human-Level Performance on ImageNet Classification"](https://arxiv.or
 
     ```python hl_lines="3"
     if args.autotune:
-        # re-use action probabilities for temperature loss
+        # reuse action probabilities for temperature loss
         alpha_loss = (action_probs.detach() * (-log_alpha.exp() * (log_pi + target_entropy).detach())).mean()
 
         a_optimizer.zero_grad()

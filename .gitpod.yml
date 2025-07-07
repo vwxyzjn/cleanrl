@@ -2,7 +2,7 @@ image:
   file: .gitpod.Dockerfile
 
 tasks:
-  - init: poetry install
+  - init: uv pip install .
 
 # vscode:
 #   extensions:

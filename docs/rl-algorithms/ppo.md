@@ -46,12 +46,12 @@ The [ppo.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py) has 
 
 ### Usage
 
-=== "poetry"
+=== "uv"
 
     ```bash
-    poetry install
-    poetry run python cleanrl/ppo.py --help
-    poetry run python cleanrl/ppo.py --env-id CartPole-v1
+    uv pip install .
+    uv run python cleanrl/ppo.py --help
+    uv run python cleanrl/ppo.py --env-id CartPole-v1
     ```
 
 === "pip"
@@ -150,9 +150,9 @@ The [ppo_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_at
 === "poetry"
 
     ```bash
-    poetry install -E atari
-    poetry run python cleanrl/ppo_atari.py --help
-    poetry run python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
+    uv pip install ".[atari]"
+    uv run python cleanrl/ppo_atari.py --help
+    uv run python cleanrl/ppo_atari.py --env-id BreakoutNoFrameskip-v4
     ```
 
 === "pip"
@@ -244,11 +244,11 @@ The [ppo_continuous_action.py](https://github.com/vwxyzjn/cleanrl/blob/master/cl
 
     ```bash
     # mujoco v4 environments
-    poetry install -E mujoco
+    uv pip install ".[mujoco]"
     python cleanrl/ppo_continuous_action.py --help
     python cleanrl/ppo_continuous_action.py --env-id Hopper-v4
     # dm_control environments
-    poetry install -E "mujoco dm_control"
+    uv pip install ".[mujoco, dm_control]"
     python cleanrl/ppo_continuous_action.py --env-id dm_control/cartpole-balance-v0
     ```
 
@@ -420,9 +420,9 @@ The [ppo_atari_lstm.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/p
 === "poetry"
 
     ```bash
-    poetry install -E atari
-    poetry run python cleanrl/ppo_atari_lstm.py --help
-    poetry run python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
+    uv pip install ".[atari]"
+    uv run python cleanrl/ppo_atari_lstm.py --help
+    uv run python cleanrl/ppo_atari_lstm.py --env-id BreakoutNoFrameskip-v4
     ```
 
 === "pip"
@@ -514,9 +514,9 @@ The [ppo_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanr
 === "poetry"
 
     ```bash
-    poetry install -E envpool
-    poetry run python cleanrl/ppo_atari_envpool.py --help
-    poetry run python cleanrl/ppo_atari_envpool.py --env-id Breakout-v5
+    uv pip install ".[envpool]"
+    uv run python cleanrl/ppo_atari_envpool.py --help
+    uv run python cleanrl/ppo_atari_envpool.py --env-id Breakout-v5
     ```
 
 === "pip"
@@ -595,10 +595,10 @@ The [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/maste
 === "poetry"
 
     ```bash
-    poetry install -E "envpool jax"
-    poetry run pip install --upgrade "jax[cuda11_cudnn82]==0.4.8" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-    poetry run python cleanrl/ppo_atari_envpool_xla_jax.py --help
-    poetry run python cleanrl/ppo_atari_envpool_xla_jax.py --env-id Breakout-v5
+    uv pip install ".[envpool, jax]"
+    uv pip install --upgrade "jax[cuda11_cudnn82]==0.4.8" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    uv run python cleanrl/ppo_atari_envpool_xla_jax.py --help
+    uv run python cleanrl/ppo_atari_envpool_xla_jax.py --env-id Breakout-v5
     ```
 
 === "pip"
@@ -699,10 +699,10 @@ The [ppo_atari_envpool_xla_jax_scan.py](https://github.com/vwxyzjn/cleanrl/blob/
 === "poetry"
 
     ```bash
-    poetry install -E "envpool jax"
-    poetry run pip install --upgrade "jax[cuda11_cudnn82]==0.4.8" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-    poetry run python cleanrl/ppo_atari_envpool_xla_jax_scan.py --help
-    poetry run python cleanrl/ppo_atari_envpool_xla_jax_scan.py --env-id Breakout-v5
+    uv pip install ".[envpool, jax]"
+    uv pip install --upgrade "jax[cuda11_cudnn82]==0.4.8" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
+    uv run python cleanrl/ppo_atari_envpool_xla_jax_scan.py --help
+    uv run python cleanrl/ppo_atari_envpool_xla_jax_scan.py --env-id Breakout-v5
     ```
 
 === "pip"
@@ -749,7 +749,7 @@ Learning curves:
 
 ???+ info
 
-    The trainig time of this variant and that of [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) are very similar but the compilation time is reduced significantly (see [vwxyzjn/cleanrl#328](https://github.com/vwxyzjn/cleanrl/pull/328#issuecomment-1340474894)). Note that the hardware also affects the speed in the learning curve below. Runs from [`costa-huang`](https://github.com/vwxyzjn/) (red) are slower from those of [`51616`](https://github.com/51616/) (blue and orange) because of hardware differences.
+    The training time of this variant and that of [ppo_atari_envpool_xla_jax.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_envpool_xla_jax.py) are very similar but the compilation time is reduced significantly (see [vwxyzjn/cleanrl#328](https://github.com/vwxyzjn/cleanrl/pull/328#issuecomment-1340474894)). Note that the hardware also affects the speed in the learning curve below. Runs from [`costa-huang`](https://github.com/vwxyzjn/) (red) are slower from those of [`51616`](https://github.com/51616/) (blue and orange) because of hardware differences.
 
     ![](../ppo/ppo_atari_envpool_xla_jax_scan/compare.png)
     ![](../ppo/ppo_atari_envpool_xla_jax_scan/compare-time.png)
@@ -774,9 +774,9 @@ The [ppo_procgen.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_
 === "poetry"
 
     ```bash
-    poetry install -E procgen
-    poetry run python cleanrl/ppo_procgen.py --help
-    poetry run python cleanrl/ppo_procgen.py --env-id starpilot
+    uv pip install ".[procgen]"
+    uv run python cleanrl/ppo_procgen.py --help
+    uv run python cleanrl/ppo_procgen.py --env-id starpilot
     ```
 
 === "pip"
@@ -867,19 +867,19 @@ The [ppo_atari_multigpu.py](https://github.com/vwxyzjn/cleanrl/blob/master/clean
 === "poetry"
 
     ```bash
-    poetry install -E atari
-    poetry run python cleanrl/ppo_atari_multigpu.py --help
+    uv pip install ".[atari]"
+    uv run python cleanrl/ppo_atari_multigpu.py --help
 
     # `--nproc_per_node=2` specifies how many subprocesses we spawn for training with data parallelism
     # note it is possible to run this with a *single GPU*: each process will simply share the same GPU
-    poetry run torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4
+    uv run torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4
 
     # by default we use the `gloo` backend, but you can use the `nccl` backend for better multi-GPU performance
-    poetry run torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --backend nccl
+    uv run torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --backend nccl
 
     # it is possible to spawn more processes than the amount of GPUs you have via `--device-ids`
     # e.g., the command below spawns two processes using GPU 0 and two processes using GPU 1
-    poetry run torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --device-ids 0 0 1 1
+    uv run torchrun --standalone --nnodes=1 --nproc_per_node=2 cleanrl/ppo_atari_multigpu.py --env-id BreakoutNoFrameskip-v4 --device-ids 0 0 1 1
     ```
 
 === "pip"
@@ -1017,7 +1017,7 @@ Under the same hardware, we see that `ppo_atari_multigpu.py` is about **30% fast
         <img src="../ppo/Breakout-time-a.png">
     </div>
 
-    The purpose of `ppo_atari_multigpu.py` is not (yet) to achieve the fastest PPO + Atari example. Rather, its purpose is to *rigorously validate data paralleism does provide performance benefits*. We could do something like `ppo_atari_multigpu_envpool.py` to possibly obtain the fastest PPO + Atari possible, but that is for another day. Note we may need `numba` to pin the threads `envpool` is using in each subprocess to avoid threads fighting each other and lowering the throughput.
+    The purpose of `ppo_atari_multigpu.py` is not (yet) to achieve the fastest PPO + Atari example. Rather, its purpose is to *rigorously validate data parallelism does provide performance benefits*. We could do something like `ppo_atari_multigpu_envpool.py` to possibly obtain the fastest PPO + Atari possible, but that is for another day. Note we may need `numba` to pin the threads `envpool` is using in each subprocess to avoid threads fighting each other and lowering the throughput.
 
 
 Tracked experiments and game play videos:
@@ -1046,11 +1046,11 @@ Tracked experiments and game play videos:
 === "poetry"
 
     ```bash
-    poetry install -E "pettingzoo atari"
-    poetry run AutoROM --accept-license
-    poetry run  cleanrl/ppo_pettingzoo_ma_atari.py --help
-    poetry run  cleanrl/ppo_pettingzoo_ma_atari.py --env-id pong_v3
-    poetry run  cleanrl/ppo_pettingzoo_ma_atari.py --env-id surround_v2
+    uv pip install ".[pettingzoo, atari]"
+    uv run AutoROM --accept-license
+    uv run  cleanrl/ppo_pettingzoo_ma_atari.py --help
+    uv run  cleanrl/ppo_pettingzoo_ma_atari.py --env-id pong_v3
+    uv run  cleanrl/ppo_pettingzoo_ma_atari.py --env-id surround_v2
     ```
 
 === "pip"

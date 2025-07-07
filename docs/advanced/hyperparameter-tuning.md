@@ -44,7 +44,7 @@ tuner.tune(
 You can run the tuner with the following command:
 
 ```bash
-poetry install -E optuna
+uv pip install ".[optuna]"
 python tuner_example.py
 ```
 
@@ -107,7 +107,7 @@ Note that we are using 3 random seeds for each environment in `["CartPole-v1","A
 Running `python tuner_example.py` will create a sqlite database containing all of the hyperparameter trials in `./cleanrl_hpopt.db`  We can use [optuna-dashboard](https://github.com/optuna/optuna-dashboard) to visualize the process.
 
 ```bash
-poetry run optuna-dashboard sqlite:///cleanrl_hpopt.db
+uv run optuna-dashboard sqlite:///cleanrl_hpopt.db
 ```
 
 ![](./optuna-dashboard-1.png)

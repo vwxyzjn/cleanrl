@@ -158,15 +158,12 @@ We also added a new tool for running benchmark experiments. The tool is designed
 ```bash
 OMP_NUM_THREADS=1 xvfb-run -a python -m cleanrl_utils.benchmark \
     --env-ids CartPole-v1 Acrobot-v1 MountainCar-v0 \
-    --command "poetry run python cleanrl/ppo.py --no_cuda --track --capture_video" \
+    --command "uv run python cleanrl/ppo.py --no_cuda --track --capture_video" \
     --num-seeds 3 \
     --workers 5
 ```
 
 which will run the `ppo.py` script with `--no_cuda --track --capture_video` arguments across 3 random seeds for 3 environments. It uses `multiprocessing` to create a pool of 5 workers run the experiments in parallel.
-
-
-
 
 ## What’s next?
 
@@ -174,7 +171,7 @@ It is an exciting time and new improvements are coming to CleanRL. We plan to ad
 
 ### More JAX implementations
 
-More JAX-based implementation are coming. [Antonin Raffin](https://github.com/araffin), the core maintainer of [Stable-baselines3](https://github.com/DLR-RM/stable-baselines3), [SBX](https://github.com/araffin/sbx), and [rl-baselines3-zoo](https://github.com/DLR-RM/rl-baselines3-zoo), is contributing an optimized Soft Actor Critic implementation in JAX ([:material-github: vwxyzjn/cleanrl#300](https://github.com/vwxyzjn/cleanrl/pull/300)) and TD3+TQC, and DroQ ([:material-github: vwxyzjn/cleanrl#272](https://github.com/vwxyzjn/cleanrl/pull/272). These are incredibly exciting new algorithms. For example, DroQ is extremely sample effcient and can obtain ~5000 return in `HalfCheetah-v3` in just 100k steps ([tracked sbx experiment](https://wandb.ai/openrlbenchmark/sbx/runs/1tyzq3tu)).
+More JAX-based implementation are coming. [Antonin Raffin](https://github.com/araffin), the core maintainer of [Stable-baselines3](https://github.com/DLR-RM/stable-baselines3), [SBX](https://github.com/araffin/sbx), and [rl-baselines3-zoo](https://github.com/DLR-RM/rl-baselines3-zoo), is contributing an optimized Soft Actor Critic implementation in JAX ([:material-github: vwxyzjn/cleanrl#300](https://github.com/vwxyzjn/cleanrl/pull/300)) and TD3+TQC, and DroQ ([:material-github: vwxyzjn/cleanrl#272](https://github.com/vwxyzjn/cleanrl/pull/272). These are incredibly exciting new algorithms. For example, DroQ is extremely sample efficient and can obtain ~5000 return in `HalfCheetah-v3` in just 100k steps ([tracked sbx experiment](https://wandb.ai/openrlbenchmark/sbx/runs/1tyzq3tu)).
 
 ### Huggingface integration
 

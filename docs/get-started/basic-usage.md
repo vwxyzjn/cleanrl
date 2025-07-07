@@ -2,13 +2,13 @@
 
 ## Two Ways to Run
 After the dependencies have been installed, there are **two ways** to run 
-the CleanRL script under the poetry virtual environments.
+the CleanRL script under the uv virtual environments.
 
 
-1. Using `poetry run`:
+1. Using `uv run`:
 
     ```bash
-    poetry run python cleanrl/ppo.py \
+    uv run python cleanrl/ppo.py \
         --seed 1 \
         --env-id CartPole-v0 \
         --total-timesteps 50000
@@ -16,17 +16,17 @@ the CleanRL script under the poetry virtual environments.
     <script id="asciicast-443649" src="https://asciinema.org/a/443649.js" async></script>
 
 
-2. Using `poetry shell`:
+2. Using `uv venv`:
 
     1. We first activate the virtual environment by using
-    `poetry shell`
+    `uv venv`
     2. Then, run any desired CleanRL script
    
     Attention: Each step must be executed separately!
 
 
     ```bash
-    poetry shell
+    uv venv
     ```
     ```bash
     python cleanrl/ppo.py \
@@ -38,7 +38,7 @@ the CleanRL script under the poetry virtual environments.
 
 !!! note
 
-    We recommend `poetry shell` workflow for development. When the shell is activated, you should
+    We recommend `uv venv` workflow for development. When the shell is activated, you should
     be seeing a prefix like `(cleanrl-iXg02GqF-py3.9)` in your shell's prompt, which is the name
     of the poetry's virtual environment.
     **We will assume to run other commands (e.g. `tensorboard`) in the documentation within the poetry's shell.**
@@ -50,7 +50,7 @@ Currently, `ddpg_continuous_action_jax.py`, `ddpg_continuous_action.py` have bee
 Please note that, `stable-baselines3` version `1.2` does not support `gymnasium`. To use these scripts, please install the `alpha1` version like, 
 
 ```
-poetry run pip install sb3==2.0.0a1
+uv pip install sb3==2.0.0a1
 ```
 
 !!! warning
@@ -75,7 +75,7 @@ poetry run pip install sb3==2.0.0a1
 
     This is because the `torch` wheel on PyPi is built with cuda 10.2. You would need to manually install the cuda 11.3 wheel like this:
     ```bash
-    poetry run pip install torch==1.12.1 --upgrade --extra-index-url https://download.pytorch.org/whl/cu113
+    uv pip install torch==1.12.1 --upgrade --extra-index-url https://download.pytorch.org/whl/cu113
     ```
     Then, you can run the script again.
 

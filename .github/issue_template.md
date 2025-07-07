@@ -2,7 +2,7 @@
 <!--- Provide a general summary of the issue in the Title above -->
 
 ## Checklist
-- [ ] I have installed dependencies via `poetry install` (see [CleanRL's installation guideline](https://docs.cleanrl.dev/get-started/installation/).
+- [ ] I have installed dependencies via `uv pip install` (see [CleanRL's installation guideline](https://docs.cleanrl.dev/get-started/installation/).
 - [ ] I have checked that there is no similar [issue](https://github.com/vwxyzjn/cleanrl/issues) in the repo.
 - [ ] I have checked the [documentation site](https://docs.cleanrl.dev/) and found not relevant information in [GitHub issues](https://github.com/vwxyzjn/cleanrl/issues).
 

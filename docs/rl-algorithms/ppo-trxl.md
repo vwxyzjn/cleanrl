@@ -47,8 +47,8 @@ As the recommended way, the requirements default to PyTorch's CUDA packages.
     ```bash
     cd cleanrl/ppo_trxl
     poetry install
-    poetry run python ppo_trxl.py --help
-    poetry run python ppo_trxl.py --env-id Endless-MortarMayhem-v0
+    uv run python ppo_trxl.py --help
+    uv run python ppo_trxl.py --env-id Endless-MortarMayhem-v0
     ```
   
 === "pip"
@@ -86,7 +86,7 @@ Most details are derived from [`ppo.py`](/rl-algorithms/ppo#ppopy). These are ad
 1. The policy and value function share parameters.
 2. Multi-head attention is implemented so that all heads share parameters.
 3. Absolute positional encoding is used as default. Learned positional encodings are supported.
-4. Previously computed hidden states of the TrXL layers are cached and re-used for up to `trxl_memory_length`. Only 1 hidden state is computed anew.
+4. Previously computed hidden states of the TrXL layers are cached and reused for up to `trxl_memory_length`. Only 1 hidden state is computed anew.
 5. TrXL layers adhere to pre-layer normalization.
 6. Support for multi-discrete action spaces.
 7. Support for an auxiliary observation reconstruction loss, which reconstructs TrXL's output to the fed visual observation.
@@ -126,7 +126,7 @@ Please refer to the defaults in [`ppo_trxl.py`](https://github.com/vwxyzjn/clean
 
 ProofofMemory-v0
 ```bash
-poetry run python ppo_trxl.py \
+uv run python ppo_trxl.py \
   --env_id ProofofMemory-v0 \
   --total_timesteps 25000 \
   --num_envs 16 \
@@ -147,7 +147,7 @@ poetry run python ppo_trxl.py \
 
 MiniGrid-MemoryS9-v0
 ```bash
-poetry run python ppo_trxl.py \
+uv run python ppo_trxl.py \
   --env_id MiniGrid-MemoryS9-v0 \
   --total_timesteps 2048000 \
   --num_envs 16 \

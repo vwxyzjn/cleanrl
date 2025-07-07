@@ -205,6 +205,7 @@ PrioritizedBatch = collections.namedtuple(
     "PrioritizedBatch", ["observations", "actions", "rewards", "next_observations", "dones", "indices", "weights"]
 )
 
+
 # adapted from: https://github.com/openai/baselines/blob/master/baselines/common/segment_tree.py
 class SumSegmentTree:
     def __init__(self, capacity):

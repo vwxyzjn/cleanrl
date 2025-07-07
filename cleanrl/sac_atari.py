@@ -177,7 +177,7 @@ if __name__ == "__main__":
         raise ValueError(
             """Ongoing migration: run the following command to install the new dependencies:
 
-poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-license]==0.28.1"  "ale-py==0.8.1" 
+uv pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-license]==0.28.1"  "ale-py==0.8.1" 
 """
         )
     args = tyro.cli(Args)
@@ -319,7 +319,7 @@ poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-
                 actor_optimizer.step()
 
                 if args.autotune:
-                    # re-use action probabilities for temperature loss
+                    # reuse action probabilities for temperature loss
                     alpha_loss = (action_probs.detach() * (-log_alpha.exp() * (log_pi + target_entropy).detach())).mean()
 
                     a_optimizer.zero_grad()

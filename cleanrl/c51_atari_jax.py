@@ -4,9 +4,8 @@ import random
 import time
 from dataclasses import dataclass
 
-os.environ[
-    "XLA_PYTHON_CLIENT_MEM_FRACTION"
-] = "0.7"  # see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
+# see https://github.com/google/jax/discussions/6332#discussioncomment-1279991
+os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.7"
 
 import flax
 import flax.linen as nn
@@ -150,7 +149,7 @@ if __name__ == "__main__":
         raise ValueError(
             """Ongoing migration: run the following command to install the new dependencies:
 
-poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-license]==0.28.1"  "ale-py==0.8.1" 
+uv pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-license]==0.28.1"  "ale-py==0.8.1" 
 """
         )
     args = tyro.cli(Args)

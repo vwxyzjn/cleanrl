@@ -11,260 +11,207 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
-        poetry-version: ["1.7"]
-        os: [ubuntu-22.04, windows-latest]
+        os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Run image
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ matrix.poetry-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
 
       # classic control tests
       - name: Install core dependencies
-        run: poetry install -E pytest
+        run: uv pip install ".[pytest]"
       - name: Downgrade setuptools
-        run: poetry run pip install setuptools==59.5.0
+        run: uv pip install setuptools==59.5.0
       - name: Run core tests
-        run: poetry run pytest tests/test_classic_control.py
+        run: uv run pytest tests/test_classic_control.py
       - name: Install jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
-        run: poetry install -E "pytest jax"
+        run: uv pip install ".[pytest, jax]"
       - name: Run gymnasium migration dependencies
-        run: poetry run pip install "stable_baselines3==2.0.0a1"
+        run: uv pip install "stable_baselines3==2.0.0a1"
       - name: Run gymnasium tests
-        run: poetry run pytest tests/test_classic_control_gymnasium.py
+        run: uv run pytest tests/test_classic_control_gymnasium.py
       - name: Run core tests with jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
-        run: poetry run pytest tests/test_classic_control_jax_gymnasium.py
+        run: uv run pytest tests/test_classic_control_jax_gymnasium.py
       - name: Run gae tests with jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
-        run: poetry run pytest tests/test_jax_compute_gae.py
+        run: uv run pytest tests/test_jax_compute_gae.py
       - name: Install tuner dependencies
-        run: poetry install -E "pytest optuna"
+        run: uv pip install ".[pytest, optuna]"
       - name: Run tuner tests
-        run: poetry run pytest tests/test_tuner.py
+        run: uv run pytest tests/test_tuner.py
 
   test-atari-envs:
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
-        poetry-version: ["1.7"]
-        os: [ubuntu-22.04, windows-latest]
+        os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Run image
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ matrix.poetry-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
 
       # atari tests
       - name: Install atari dependencies
-        run: poetry install -E "pytest atari"
+        run: uv pip install ".[pytest, atari]"
       - name: Downgrade setuptools
-        run: poetry run pip install setuptools==59.5.0
+        run: uv run pip install setuptools==59.5.0
       - name: Run atari tests
-        run: poetry run pytest tests/test_atari.py
+        run: uv run pytest tests/test_atari.py
       - name: Install jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
-        run: poetry install -E "pytest atari jax"
+        run: uv pip install ".[pytest, atari, jax]"
       - name: Run gymnasium migration dependencies
-        run: poetry run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-license]==0.28.1"  "ale-py==0.8.1" 
+        run: uv run pip install "stable_baselines3==2.0.0a1" "gymnasium[atari,accept-rom-license]==0.28.1" "ale-py==0.8.1"
       - name: Run gymnasium tests
-        run: poetry run pytest tests/test_atari_gymnasium.py
+        run: uv run pytest tests/test_atari_gymnasium.py
       - name: Run gymnasium tests with jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
-        run: poetry run pytest tests/test_atari_jax_gymnasium.py
+        run: uv run pytest tests/test_atari_jax_gymnasium.py
 
   test-procgen-envs:
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
-        poetry-version: ["1.7"]
-        os: [ubuntu-22.04, windows-latest]
+        os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Run image
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ matrix.poetry-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
 
       # procgen tests
       - name: Install core dependencies
-        run: poetry install -E "pytest procgen"
+        run: uv pip install ".[pytest, procgen]"
       - name: Downgrade setuptools
-        run: poetry run pip install setuptools==59.5.0
+        run: uv run pip install setuptools==59.5.0
       - name: Run procgen tests
-        run: poetry run pytest tests/test_procgen.py
+        run: uv run pytest tests/test_procgen.py
 
   test-mujoco-envs:
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
-        poetry-version: ["1.7"]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Run image
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ matrix.poetry-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
+      - name: Setup virtual display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
 
       # mujoco tests
       - name: Install dependencies
-        run: poetry install -E "pytest mujoco dm_control jax"
+        run: uv pip install ".[pytest, mujoco, dm_control, jax]"
       - name: Downgrade setuptools
-        run: poetry run pip install setuptools==59.5.0
+        run: uv run pip install setuptools==59.5.0
       - name: Run gymnasium migration dependencies
-        run: poetry run pip install "stable_baselines3==2.0.0a1"
+        run: uv run pip install "stable_baselines3==2.0.0a1"
       - name: install mujoco dependencies
         run: |
           sudo apt-get update && sudo apt-get -y install libgl1-mesa-glx libosmesa6 libglfw3
       - name: Run mujoco tests
-        continue-on-error: true # MUJOCO_GL=osmesa results in `free(): invalid pointer`
-        run: poetry run pytest tests/test_mujoco.py
-
-  # test-mujoco-envs-mac:
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       python-version: [3.8]
-  #       poetry-version: [1.3.1]
-  #       os: [macos-latest]
-  #   runs-on: ${{ matrix.os }}
-  #   steps:
-  #     - uses: actions/checkout@v2
-  #     - uses: actions/setup-python@v2
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-  #     - name: Run image
-  #       uses: abatilo/actions-poetry@v2.0.0
-  #       with:
-  #         poetry-version: ${{ matrix.poetry-version }}
-
-  #     # mujoco tests
-  #     - name: Install dependencies
-  #       run: poetry install -E "pytest mujoco dm_control jax"
-  #     - name: Downgrade setuptools
-  #       run: poetry run pip install setuptools==59.5.0
-  #     - name: Run gymnasium migration dependencies
-  #       run: poetry run pip install "stable_baselines3==2.0.0a1"
-  #     - name: Run mujoco tests
-  #       run: poetry run pytest tests/test_mujoco.py
-
-  test-mujoco_py-envs:
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.8", "3.9", "3.10"]
-        poetry-version: ["1.7"]
-        os: [ubuntu-22.04]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Run image
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ matrix.poetry-version }}
+        run: uv run pytest tests/test_mujoco.py
+        env:
+          DISPLAY: :99
 
   test-envpool-envs:
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
-        poetry-version: ["1.7"]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Run image
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ matrix.poetry-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
 
       # envpool tests
       - name: Install envpool dependencies
-        run: poetry install -E "pytest envpool jax ppo_atari_envpool_xla_jax_scan"
+        run: uv pip install ".[pytest, envpool, jax, ppo_atari_envpool_xla_jax_scan]"
       - name: Downgrade setuptools
-        run: poetry run pip install setuptools==59.5.0
+        run: uv pip install setuptools==59.5.0
       - name: Run envpool tests
-        run: poetry run pytest tests/test_envpool.py
+        run: uv run pytest tests/test_envpool.py
 
   test-atari-multigpu-envs:
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
-        poetry-version: ["1.7"]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Run image
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ matrix.poetry-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
 
       # atari multigpu tests
       - name: Install atari dependencies
-        run: poetry install -E "pytest atari"
+        run: uv pip install ".[pytest, atari]"
       - name: Downgrade setuptools
-        run: poetry run pip install setuptools==59.5.0
+        run: uv pip install setuptools==59.5.0
       - name: Run atari tests
-        run: poetry run pytest tests/test_atari_multigpu.py
+        run: uv run pytest tests/test_atari_multigpu.py
 
   test-pettingzoo-envs:
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
-        poetry-version: ["1.7"]
         os: [ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Run image
-        uses: abatilo/actions-poetry@v2.0.0
-        with:
-          poetry-version: ${{ matrix.poetry-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
 
       # pettingzoo tests
       - name: Install pettingzoo dependencies
-        run: poetry install -E "pytest pettingzoo atari"
+        run: uv pip install ".[pytest, pettingzoo, atari]"
       - name: Downgrade setuptools
-        run: poetry run pip install setuptools==59.5.0
+        run: uv pip install setuptools==59.5.0
       - name: Install ROMs
-        run: poetry run AutoROM --accept-license
+        run: uv run AutoROM --accept-license
       - name: Run pettingzoo tests
-        run: poetry run pytest tests/test_pettingzoo_ma_atari.py
+        run: uv run pytest tests/test_pettingzoo_ma_atari.py
