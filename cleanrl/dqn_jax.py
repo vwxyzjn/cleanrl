@@ -13,8 +13,9 @@ import numpy as np
 import optax
 import tyro
 from flax.training.train_state import TrainState
-from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
+
+from cleanrl_utils.buffers import ReplayBuffer
 
 
 @dataclass
@@ -108,15 +109,6 @@ def linear_schedule(start_e: float, end_e: float, duration: int, t: int):
 
 
 if __name__ == "__main__":
-    import stable_baselines3 as sb3
-
-    if sb3.__version__ < "2.0":
-        raise ValueError(
-            """Ongoing migration: run the following command to install the new dependencies:
-
-uv pip install "stable_baselines3==2.0.0a1"
-"""
-        )
     args = tyro.cli(Args)
     assert args.num_envs == 1, "vectorized envs are not supported at the moment"
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
@@ -261,7 +253,7 @@ uv pip install "stable_baselines3==2.0.0a1"
             eval_episodes=10,
             run_name=f"{run_name}-eval",
             Model=QNetwork,
-            epsilon=0.05,
+            epsilon=args.end_e,
         )
         for idx, episodic_return in enumerate(episodic_returns):
             writer.add_scalar("eval/episodic_return", episodic_return, idx)

@@ -12,22 +12,17 @@ keywords = [
     "research",
 ]
 dependencies = [
-    "tensorboard>=2.10.0,<3",
-    "wandb>=0.13.11,<0.14",
+    "tensorboard>=2.10.0",
+    "wandb>=0.13.11",
     "gym==0.23.1",
-    "torch>=1.12.1",
-    "stable-baselines3==2.0.0",
-    "gymnasium>=0.28.1",
-    "moviepy>=1.0.3,<2",
-    "pygame==2.1.0",
-    "huggingface-hub>=0.11.1,<0.12",
+    "gymnasium==0.29.1",
+    "torch==2.4.1",
+    "moviepy>=1.0.3",
+    "pygame>=2.1",
+    "huggingface-hub>=0.11.1",
     "rich<12.0",
-    "tenacity>=8.2.2,<9",
-    "tyro>=0.5.10,<0.6",
-    "pyyaml>=6.0.1,<7",
-    "optax==0.1.4",
-    "chex==0.1.5",
-    "numpy>=1.21.6",
+    "tenacity>=8.2.2",
+    "tyro>=0.5.10",
 ]
 
 [project.optional-dependencies]
@@ -37,37 +32,11 @@ atari = [
     "opencv-python>=4.6.0.66,<5",
     "shimmy>=1.1.0",
 ]
+envpool = ["envpool>=0.6.4,<0.7", "opencv-python>=4.6.0.66,<5",]
 procgen = ["procgen>=0.10.7,<0.11"]
-plot = []
-pytest = ["pytest>=7.1.3,<8"]
 mujoco = [
     "mujoco<=2.3.3",
     "imageio>=2.14.1,<3",
-]
-jax = [
-    "jax==0.4.8",
-    "jaxlib==0.4.7",
-    "flax==0.6.8",
-]
-docs = [
-    "mkdocs-material>=8.4.3,<9",
-    "markdown-include>=0.7.0,<0.8",
-    "openrlbenchmark>=0.1.1b4,<0.2",
-]
-envpool = ["envpool>=0.6.4,<0.7"]
-optuna = [
-    "optuna>=3.0.1,<4",
-    "optuna-dashboard>=0.7.2,<0.8",
-    "typing_extensions>=4.6.0"
-]
-pettingzoo = [
-    "PettingZoo==1.18.1",
-    "SuperSuit==3.4.0",
-    "multi-agent-ale-py==0.1.11",
-]
-cloud = [
-    "boto3>=1.24.70,<2",
-    "awscli>=1.31.0,<2",
 ]
 dm_control = [
     "shimmy>=1.1.0",
@@ -75,66 +44,35 @@ dm_control = [
     "dm-control>=1.0.10",
     "h5py>=3.7.0",
 ]
-dqn = []
-dqn_atari = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
-    "opencv-python>=4.6.0.66,<5",
+pettingzoo = [
+    "PettingZoo==1.18.1",
+    "SuperSuit==3.4.0",
+    "multi-agent-ale-py==0.1.11",
 ]
-dqn_jax = [
+jax = [
     "jax==0.4.8",
     "jaxlib==0.4.7",
     "flax==0.6.8",
+    "optax==0.1.4",
+    "chex==0.1.5",
+    "scipy<1.13.0"
 ]
-dqn_atari_jax = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
-    "opencv-python>=4.6.0.66,<5",
-    "jax==0.4.8",
-    "jaxlib==0.4.7",
-    "flax==0.6.8",
+optuna = [
+    "optuna>=3.0.1,<4",
+    "optuna-dashboard>=0.7.2,<0.8",
+    "typing_extensions>=4.6.0"
 ]
-c51 = []
-c51_atari = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
-    "opencv-python>=4.6.0.66,<5",
+docs = [
+    "mkdocs-material>=8.4.3,<9",
+    "markdown-include>=0.7.0,<0.8",
+    "openrlbenchmark>=0.1.1b4,<0.2",
 ]
-c51_jax = [
-    "jax==0.4.8",
-    "jaxlib==0.4.7",
-    "flax==0.6.8",
+cloud = [
+    "boto3>=1.24.70,<2",
+    "awscli>=1.31.0,<2",
 ]
-c51_atari_jax = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
-    "opencv-python>=4.6.0.66,<5",
-    "jax==0.4.8",
-    "jaxlib==0.4.7",
-    "flax==0.6.8",
-]
-ppo_atari_envpool_xla_jax_scan = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
-    "opencv-python>=4.6.0.66,<5",
-    "jax==0.4.8",
-    "jaxlib==0.4.7",
-    "flax==0.6.8",
-    "envpool>=0.6.4,<0.7",
-]
-qdagger_dqn_atari_impalacnn = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
-    "opencv-python>=4.6.0.66,<5",
-]
-qdagger_dqn_atari_jax_impalacnn = [
-    "ale-py==0.8.1",
-    "AutoROM[accept-rom-license]~=0.4.2",
-    "opencv-python>=4.6.0.66,<5",
-    "jax==0.4.8",
-    "jaxlib==0.4.7",
-    "flax==0.6.8",
-]
+plot = []
+pytest = ["pytest>=7.1.3,<8"]
 
 [dependency-groups]
 dev = ["pre-commit>=2.20.0,<3"]

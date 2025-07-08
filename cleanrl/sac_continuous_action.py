@@ -11,8 +11,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import tyro
-from stable_baselines3.common.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
+
+from cleanrl_utils.buffers import ReplayBuffer
 
 
 @dataclass
@@ -151,14 +152,6 @@ class Actor(nn.Module):
 
 
 if __name__ == "__main__":
-    import stable_baselines3 as sb3
-
-    if sb3.__version__ < "2.0":
-        raise ValueError(
-            """Ongoing migration: run the following command to install the new dependencies:
-uv pip install "stable_baselines3==2.0.0a1"
-"""
-        )
 
     args = tyro.cli(Args)
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
