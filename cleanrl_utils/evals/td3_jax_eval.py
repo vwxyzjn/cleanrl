@@ -18,7 +18,9 @@ def evaluate(
     exploration_noise: float = 0.1,
     seed=1,
 ):
-    envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(env_id, 0, 0, capture_video, run_name)], autoreset_mode=gym.vector.AutoresetMode.SAME_STEP
+    )
     max_action = float(envs.single_action_space.high[0])
     obs, _ = envs.reset()
 
@@ -58,11 +60,11 @@ def evaluate(
 
         next_obs, _, _, _, infos = envs.step(actions)
         if "final_info" in infos:
-            for info in infos["final_info"]:
-                if "episode" not in info:
-                    continue
-                print(f"eval_episode={len(episodic_returns)}, episodic_return={info['episode']['r']}")
-                episodic_returns += [info["episode"]["r"]]
+            episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
+            episode_returns = infos["final_info"]["episode"]["r"][episodes_over]
+            for episode_return in episode_returns:
+                print(f"eval_episode={len(episodic_returns)}, episodic_return={episode_return}")
+                episodic_returns.append(episode_return)
         obs = next_obs
 
     return episodic_returns

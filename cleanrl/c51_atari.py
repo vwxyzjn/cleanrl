@@ -4,6 +4,7 @@ import random
 import time
 from dataclasses import dataclass
 
+import ale_py
 import gymnasium as gym
 import numpy as np
 import torch
@@ -20,6 +21,8 @@ from cleanrl_utils.atari_wrappers import (
     NoopResetEnv,
 )
 from cleanrl_utils.buffers import ReplayBuffer
+
+gym.register_envs(ale_py)
 
 
 @dataclass
@@ -98,8 +101,8 @@ def make_env(env_id, seed, idx, capture_video, run_name):
             env = FireResetEnv(env)
         env = ClipRewardEnv(env)
         env = gym.wrappers.ResizeObservation(env, (84, 84))
-        env = gym.wrappers.GrayScaleObservation(env)
-        env = gym.wrappers.FrameStack(env, 4)
+        env = gym.wrappers.GrayscaleObservation(env)
+        env = gym.wrappers.FrameStackObservation(env, 4)
 
         env.action_space.seed(seed)
         return env
@@ -175,7 +178,8 @@ if __name__ == "__main__":
 
     # env setup
     envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
+        [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)],
+        autoreset_mode=gym.vector.AutoresetMode.SAME_STEP,
     )
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
@@ -210,11 +214,13 @@ if __name__ == "__main__":
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
-            for info in infos["final_info"]:
-                if info and "episode" in info:
-                    print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                    writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+            episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
+            episodic_returns = infos["final_info"]["episode"]["r"][episodes_over]
+            episodic_lengths = infos["final_info"]["episode"]["l"][episodes_over]
+            for episodic_return, episodic_length in zip(episodic_returns, episodic_lengths):
+                print(f"global_step={global_step}, episodic_return={episodic_return}")
+                writer.add_scalar("charts/episodic_return", episodic_return, global_step)
+                writer.add_scalar("charts/episodic_length", episodic_length, global_step)
 
         # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
         real_next_obs = next_obs.copy()

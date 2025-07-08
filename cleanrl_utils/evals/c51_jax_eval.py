@@ -21,7 +21,9 @@ def evaluate(
     capture_video: bool = True,
     seed=1,
 ):
-    envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(env_id, 0, 0, capture_video, run_name)], autoreset_mode=gym.vector.AutoresetMode.SAME_STEP
+    )
     obs, _ = envs.reset()
     model_data = None
     with open(model_path, "rb") as f:
@@ -43,12 +45,12 @@ def evaluate(
             actions = q_vals.argmax(axis=-1)
             actions = jax.device_get(actions)
         next_obs, _, _, _, infos = envs.step(actions)
-        if "final_info" in infos:
-            for info in infos["final_info"]:
-                if "episode" not in info:
-                    continue
-                print(f"eval_episode={len(episodic_returns)}, episodic_return={info['episode']['r']}")
-                episodic_returns += [info["episode"]["r"]]
+        if "final_info" in infos and "episode" in infos["final_info"]:
+            episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
+            episode_returns = infos["final_info"]["episode"]["r"][episodes_over]
+            for episode_return in episode_returns:
+                print(f"eval_episode={len(episodic_returns)}, episodic_return={episode_return}")
+                episodic_returns.append(episode_return)
         obs = next_obs
 
     return episodic_returns

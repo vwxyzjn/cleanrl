@@ -6,6 +6,7 @@ import warnings
 from dataclasses import dataclass, field
 from typing import List, Literal
 
+import ale_py
 import gymnasium as gym
 import numpy as np
 import torch
@@ -17,13 +18,15 @@ from rich.pretty import pprint
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
-from cleanrl_utils.atari_wrappers import (  # isort:skip
+from cleanrl_utils.atari_wrappers import (
     ClipRewardEnv,
     EpisodicLifeEnv,
     FireResetEnv,
     MaxAndSkipEnv,
     NoopResetEnv,
 )
+
+gym.register_envs(ale_py)
 
 
 @dataclass
@@ -117,8 +120,8 @@ def make_env(env_id, idx, capture_video, run_name):
             env = FireResetEnv(env)
         env = ClipRewardEnv(env)
         env = gym.wrappers.ResizeObservation(env, (84, 84))
-        env = gym.wrappers.GrayScaleObservation(env)
-        env = gym.wrappers.FrameStack(env, 4)
+        env = gym.wrappers.GrayscaleObservation(env)
+        env = gym.wrappers.FrameStackObservation(env, 4)
         return env
 
     return thunk
@@ -179,7 +182,7 @@ if __name__ == "__main__":
 Not using distributed mode!
 If you want to use distributed mode, please execute this script with 'torchrun'.
 E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py`
-        """
+"""
         )
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     writer = None
@@ -224,6 +227,7 @@ E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py
     # env setup
     envs = gym.vector.SyncVectorEnv(
         [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.local_num_envs)],
+        autoreset_mode=gym.vector.AutoresetMode.SAME_STEP,
     )
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
@@ -274,12 +278,14 @@ E.g., `torchrun --standalone --nnodes=1 --nproc_per_node=2 ppo_atari_multigpu.py
             if not writer:
                 continue
 
-            if "final_info" in infos:
-                for info in infos["final_info"]:
-                    if info and "episode" in info:
-                        print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+            if "final_info" in infos and "episode" in infos["final_info"]:
+                episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
+                episodic_returns = infos["final_info"]["episode"]["r"][episodes_over]
+                episodic_lengths = infos["final_info"]["episode"]["l"][episodes_over]
+                for episodic_return, episodic_length in zip(episodic_returns, episodic_lengths):
+                    print(f"global_step={global_step}, episodic_return={episodic_return}")
+                    writer.add_scalar("charts/episodic_return", episodic_return, global_step)
+                    writer.add_scalar("charts/episodic_length", episodic_length, global_step)
 
         print(
             f"local_rank: {local_rank}, action.sum(): {action.sum()}, iteration: {iteration}, agent.actor.weight.sum(): {agent.actor.weight.sum()}"
