@@ -393,6 +393,9 @@ optuna = [
     { name = "typing-extensions", version = "4.13.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.9'" },
     { name = "typing-extensions", version = "4.14.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.9'" },
 ]
+pbar = [
+    { name = "tqdm" },
+]
 pettingzoo = [
     { name = "multi-agent-ale-py" },
     { name = "pettingzoo" },
@@ -451,11 +454,12 @@ requires-dist = [
     { name = "tenacity", specifier = ">=8.2.2" },
     { name = "tensorboard", specifier = ">=2.10.0" },
     { name = "torch", specifier = "==2.4.1" },
+    { name = "tqdm", marker = "extra == 'pbar'", specifier = ">=4.65" },
     { name = "typing-extensions", marker = "extra == 'optuna'", specifier = ">=4.6.0" },
     { name = "tyro", specifier = ">=0.5.10" },
     { name = "wandb", specifier = ">=0.13.11" },
 ]
-provides-extras = ["atari", "envpool", "procgen", "mujoco", "dm-control", "pettingzoo", "jax", "optuna", "docs", "cloud", "plot", "pytest"]
+provides-extras = ["atari", "envpool", "procgen", "mujoco", "dm-control", "pettingzoo", "jax", "optuna", "docs", "cloud", "plot", "pytest", "pbar"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pre-commit", specifier = ">=2.20.0,<3" }]
