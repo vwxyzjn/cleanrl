@@ -17,11 +17,10 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 import tyro
-
-
 from flax.training.train_state import TrainState
-from cleanrl_utils.buffers import ReplayBuffer
 from torch.utils.tensorboard import SummaryWriter
+
+from cleanrl_utils.buffers import ReplayBuffer
 
 # Add progress bar if available
 try:
@@ -80,7 +79,6 @@ class Args:
     """automatic tuning of the entropy coefficient"""
 
 
-
 def make_env(env_id, seed, idx, capture_video, run_name):
     def thunk():
         if capture_video and idx == 0:
@@ -93,7 +91,6 @@ def make_env(env_id, seed, idx, capture_video, run_name):
         return env
 
     return thunk
-
 
 
 class Critic(nn.Module):
@@ -423,7 +420,6 @@ if __name__ == "__main__":
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
-
 
         # ALGO LOGIC: training.
         if global_step > args.learning_starts:
