@@ -384,7 +384,8 @@ if __name__ == "__main__":
     obs, _ = envs.reset(seed=args.seed)
 
     # Display progress bar if available
-    generator = tqdm(range(args.total_timesteps)) if tqdm is not None else range(args.total_timesteps)
+    t_range = range(1, args.total_timesteps + 1)
+    generator = tqdm(t_range) if tqdm is not None else t_range
     for global_step in generator:
         # ALGO LOGIC: put action logic here
         if global_step < args.learning_starts:
