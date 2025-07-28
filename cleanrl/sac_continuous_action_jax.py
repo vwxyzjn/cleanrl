@@ -359,9 +359,11 @@ if __name__ == "__main__":
 
     @jax.jit
     def update_temperature(ent_coef_state: TrainState, entropy: float):
-        def temperature_loss(params):
+        def temperature_loss(params: flax.core.FrozenDict):
+            # Note: we optimize the log of the entropy coeff which is slightly different from the paper
+            # as discussed in https://github.com/rail-berkeley/softlearning/issues/37
             ent_coef_value = ent_coef.apply({"params": params})
-            ent_coef_loss = ent_coef_value * (entropy - target_entropy).mean()
+            ent_coef_loss = jnp.log(ent_coef_value) * (entropy - target_entropy).mean()
             return ent_coef_loss
 
         ent_coef_loss, grads = jax.value_and_grad(temperature_loss)(ent_coef_state.params)
