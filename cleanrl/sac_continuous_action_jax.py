@@ -281,15 +281,15 @@ if __name__ == "__main__":
     )
 
     # Automatic entropy tuning
+    ent_coef = EntropyCoef(ent_coef_init=1.0)
+    ent_coef_state = TrainState.create(
+        apply_fn=ent_coef.apply,
+        params=ent_coef.init(ent_key)["params"],
+        tx=optax.adam(learning_rate=args.q_lr),
+    )
     if args.autotune:
-        ent_coef = EntropyCoef(ent_coef_init=1.0)
         target_entropy = -np.prod(envs.single_action_space.shape).astype(np.float32)
-        ent_coef_state = TrainState.create(
-            apply_fn=ent_coef.apply,
-            params=ent_coef.init(ent_key)["params"],
-            tx=optax.adam(learning_rate=args.q_lr),
-        )
-
+        ent_coef_value = ent_coef.apply({"params": ent_coef_state.params})
     else:
         ent_coef_value = jnp.array(args.alpha)
 
@@ -371,6 +371,85 @@ if __name__ == "__main__":
 
         return ent_coef_state, ent_coef_loss
 
+    def update_actor_and_temperature(
+        actor_state: RLTrainState,
+        qf_state: RLTrainState,
+        ent_coef_state: TrainState,
+        ent_coef_value: jnp.ndarray,
+        observations: np.ndarray,
+        key: jax.random.KeyArray,
+    ):
+        (actor_state, qf_state, actor_loss_value, key, entropy) = update_actor(
+            actor_state,
+            qf_state,
+            ent_coef_value,
+            observations,
+            key,
+        )
+
+        ent_coef_state, ent_coef_loss = jax.lax.cond(
+            args.autotune,
+            # If True:
+            update_temperature,
+            # If False:
+            lambda *_: (ent_coef_state, jnp.array(0.0)),
+            ent_coef_state,
+            entropy,
+        )
+
+        return actor_state, qf_state, actor_loss_value, key, ent_coef_state, ent_coef_loss
+
+    @jax.jit
+    def one_update(
+        global_step: int,
+        actor_state: RLTrainState,
+        qf_state: RLTrainState,
+        ent_coef_state: TrainState,
+        ent_coef_value: jnp.ndarray,
+        observations: np.ndarray,
+        actions: np.ndarray,
+        next_observations: np.ndarray,
+        rewards: np.ndarray,
+        dones: np.ndarray,
+        key: jax.random.KeyArray,
+    ):
+        qf_state, (qf_loss_value, qf_values), key = update_critic(
+            actor_state,
+            qf_state,
+            ent_coef_value,
+            observations,
+            actions,
+            next_observations,
+            rewards,
+            dones,
+            key,
+        )
+
+        qf_state = jax.lax.cond(
+            global_step % args.target_network_frequency == 0,  # update the target networks
+            # If True:
+            soft_update,
+            # If False:
+            lambda *_: qf_state,
+            args.tau,
+            qf_state,
+        )
+
+        (actor_state, qf_state, actor_loss_value, key, ent_coef_state, ent_coef_loss) = jax.lax.cond(
+            global_step % args.policy_frequency == 0,  # TD3 Delayed update support,
+            # If True:
+            update_actor_and_temperature,
+            # If False:
+            lambda *_: (actor_state, qf_state, jnp.array(0.0), key, ent_coef_state, jnp.array(0.0)),
+            actor_state,
+            qf_state,
+            ent_coef_state,
+            ent_coef_value,
+            observations,
+            key,
+        )
+        return actor_state, qf_state, (qf_loss_value, qf_values), actor_loss_value, key, ent_coef_state, ent_coef_loss
+
     envs.single_observation_space.dtype = np.float32
     rb = ReplayBuffer(
         args.buffer_size,
@@ -430,6 +509,22 @@ if __name__ == "__main__":
 
             if args.autotune:
                 ent_coef_value = ent_coef.apply({"params": ent_coef_state.params})
+
+            # actor_state, qf_state, (qf_loss_value, qf_values), actor_loss_value, key, ent_coef_state, ent_coef_loss = (
+            #     one_update(
+            #         global_step,
+            #         actor_state,
+            #         qf_state,
+            #         ent_coef_state,
+            #         ent_coef_value,
+            #         data.observations.numpy(),
+            #         data.actions.numpy(),
+            #         data.next_observations.numpy(),
+            #         data.rewards.numpy(),
+            #         data.dones.numpy(),
+            #         key,
+            #     )
+            # )
 
             qf_state, (qf_loss_value, qf_values), key = update_critic(
                 actor_state,
