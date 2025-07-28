@@ -155,9 +155,9 @@ class RLTrainState(TrainState):
 def sample_action(
     actor: Actor,
     actor_state: TrainState,
-    observations: jnp.ndarray,
-    key: jax.random.KeyArray,
-) -> jnp.array:
+    observations: jax.Array,
+    key: jax.Array,
+):
     key, subkey = jax.random.split(key, 2)
     mean, log_std = actor.apply(actor_state.params, observations)
     action_std = jnp.exp(log_std)
@@ -168,9 +168,9 @@ def sample_action(
 
 @jax.jit
 def sample_action_and_log_prob(
-    mean: jnp.ndarray,
-    log_std: jnp.ndarray,
-    subkey: jax.random.KeyArray,
+    mean: jax.Array,
+    log_std: jax.Array,
+    subkey: jax.Array,
 ):
     action_std = jnp.exp(log_std)
     gaussian_action = mean + action_std * jax.random.normal(subkey, shape=mean.shape)
@@ -182,7 +182,7 @@ def sample_action_and_log_prob(
 
 
 @partial(jax.jit, static_argnames="actor")
-def select_action(actor: Actor, actor_state: TrainState, observations: jnp.ndarray) -> jnp.array:
+def select_action(actor: Actor, actor_state: TrainState, observations: jax.Array) -> jax.Array:
     return actor.apply(actor_state.params, observations)[0]
 
 
@@ -299,12 +299,12 @@ if __name__ == "__main__":
         actor_state: TrainState,
         qf_state: RLTrainState,
         ent_coef_value: jnp.ndarray,
-        observations: np.ndarray,
-        actions: np.ndarray,
-        next_observations: np.ndarray,
-        rewards: np.ndarray,
-        dones: np.ndarray,
-        key: jax.random.KeyArray,
+        observations: jax.Array,
+        actions: jax.Array,
+        next_observations: jax.Array,
+        rewards: jax.Array,
+        dones: jax.Array,
+        key: jax.Array,
     ):
         key, subkey = jax.random.split(key, 2)
         mean, log_std = actor.apply(actor_state.params, next_observations)
@@ -339,7 +339,7 @@ if __name__ == "__main__":
         qf_state: RLTrainState,
         ent_coef_value: jnp.ndarray,
         observations: np.ndarray,
-        key: jax.random.KeyArray,
+        key: jax.Array,
     ):
         key, subkey = jax.random.split(key, 2)
 
