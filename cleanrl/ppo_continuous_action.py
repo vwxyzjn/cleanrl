@@ -256,6 +256,10 @@ if __name__ == "__main__":
         # Optimizing the policy and value network
         b_inds = np.arange(args.batch_size)
         clipfracs = []
+
+        # tracking KL vals
+        old_kl_vals = []
+        kl_vals = []
         for epoch in range(args.update_epochs):
             np.random.shuffle(b_inds)
             for start in range(0, args.batch_size, args.minibatch_size):
@@ -271,6 +275,8 @@ if __name__ == "__main__":
                     old_approx_kl = (-logratio).mean()
                     approx_kl = ((ratio - 1) - logratio).mean()
                     clipfracs += [((ratio - 1.0).abs() > args.clip_coef).float().mean().item()]
+                    old_kl_vals.append(old_approx_kl)
+                    kl_vals.append(approx_kl)
 
                 mb_advantages = b_advantages[mb_inds]
                 if args.norm_adv:
@@ -318,6 +324,15 @@ if __name__ == "__main__":
         writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
         writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
+        # Aggregate KL stats across minibatches/epochs
+        if old_kl_vals:
+            _old_kl = torch.stack(old_kl_vals)
+            writer.add_scalar("losses/old_approx_kl_mean", _old_kl.mean().item(), global_step)
+            writer.add_scalar("losses/old_approx_kl_max", _old_kl.max().item(), global_step)
+        if kl_vals:
+            _kl = torch.stack(kl_vals)
+            writer.add_scalar("losses/approx_kl_mean", _kl.mean().item(), global_step)
+            writer.add_scalar("losses/approx_kl_max", _kl.max().item(), global_step)
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         print("SPS:", int(global_step / (time.time() - start_time)))
