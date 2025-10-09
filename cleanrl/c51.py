@@ -180,7 +180,7 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
-        tau = max(1.0 * (1 - global_step / args.total_timesteps*0.75), 0.01)
+        tau = max(1.0 * (1 - global_step / args.total_timesteps * 0.75), 0.01)
         logits = q_network.network(torch.Tensor(obs).to(device))
         batch_size = logits.shape[0]
         n_actions = q_network.n
@@ -244,7 +244,11 @@ if __name__ == "__main__":
                     old_val = (old_pmfs * q_network.atoms).sum(1)
                     writer.add_scalar("losses/q_values", old_val.mean().item(), global_step)
                     print("SPS:", int(global_step / (time.time() - start_time)))
-                    writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+                    writer.add_scalar(
+                        "charts/SPS",
+                        int(global_step / (time.time() - start_time)),
+                        global_step,
+                    )
 
                 # optimize the model
                 optimizer.zero_grad()
@@ -283,7 +287,14 @@ if __name__ == "__main__":
 
             repo_name = f"{args.env_id}-{args.exp_name}-seed{args.seed}"
             repo_id = f"{args.hf_entity}/{repo_name}" if args.hf_entity else repo_name
-            push_to_hub(args, episodic_returns, repo_id, "C51", f"runs/{run_name}", f"videos/{run_name}-eval")
+            push_to_hub(
+                args,
+                episodic_returns,
+                repo_id,
+                "C51",
+                f"runs/{run_name}",
+                f"videos/{run_name}-eval",
+            )
 
     envs.close()
     writer.close()
