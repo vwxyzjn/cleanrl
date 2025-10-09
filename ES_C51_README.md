@@ -141,11 +141,11 @@ python c51_atari.py --env-id BreakoutNoFrameskip-v4 --total-timesteps 10000000
 If you use this code in your research, please cite our paper:
 
 ```bibtex
-@article{tandon2024esc51,
+@article{tandon2025esc51,
   title={ES-C51: Expected Sarsa Based C51 Distributional Reinforcement Learning Algorithm},
   author={Tandon, Rijul and Vamplew, Peter and Foale, Cameron},
   journal={Neurocomputing},
-  year={2024},
+  year={2025},
   note={Submitted}
 }
 ```
