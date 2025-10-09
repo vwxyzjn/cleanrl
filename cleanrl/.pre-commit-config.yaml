@@ -1,0 +1,78 @@
+repos:
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.20.0
+    hooks:
+      - id: pyupgrade
+        args: 
+          - --py37-plus
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args:
+          - --profile=black
+          - --skip-glob=wandb/**/*
+          - --thirdparty=wandb
+  - repo: https://github.com/python/black
+    rev: 25.1.0
+    hooks:
+      - id: black
+        args:
+          - --line-length=127
+          - --exclude=wandb
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        args:
+          - --ignore-words-list=nd,reacher,thist,ths,magent,ba,Meger
+          - --skip=docs/css/termynal.css,docs/js/termynal.js,docs/get-started/CleanRL_Huggingface_Integration_Demo.ipynb
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.7.19
+    hooks:
+      - id: uv-export
+        name: uv-export requirements.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements.txt"]
+        stages: [manual]
+      - id: uv-export
+        name: uv-export requirements-atari.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-atari.txt", "--extra", "atari"]
+        stages: [manual]
+      - id: uv-export
+        name: uv-export requirements-mujoco.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-mujoco.txt", "--extra", "mujoco"]
+        stages: [manual]
+      - id: uv-export
+        name: uv-export requirements-dm_control.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-dm_control.txt", "--extra", "dm_control"]
+        stages: [manual]
+      - id: uv-export
+        name: uv-export requirements-procgen.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-procgen.txt", "--extra", "procgen"]
+        stages: [manual]
+      - id: uv-export
+        name: uv-export requirements-envpool.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-envpool.txt", "--extra", "envpool"]
+        stages: [manual]
+      - id: uv-export
+        name: uv-export requirements-pettingzoo.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-pettingzoo.txt", "--extra", "pettingzoo"]
+        stages: [manual]
+      - id: uv-export
+        name: uv-export requirements-jax.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-jax.txt", "--extra", "jax"]
+        stages: [manual]
+      - id: uv-export
+        name: uv-export requirements-optuna.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-optuna.txt", "--extra", "optuna"]
+        stages: [manual]
+      - id: uv-export
+        name: uv-export requirements-docs.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-docs.txt", "--extra", "docs"]
+        stages: [manual]
+      - id: uv-export
+        name: uv-export requirements-cloud.txt
+        args: ["--no-hashes", "--output-file", "requirements/requirements-cloud.txt", "--extra", "cloud"]
+        stages: [manual]
+      # requirements-memory-gym.txt must be hand updated,
+      #   `cd cleanrl/ppo_trxl`, `uv export --no-hashes --output-file ../../requirements/requirements-memory_gym.txt`

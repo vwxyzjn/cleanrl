@@ -1,0 +1,201 @@
+name: tests
+on:
+  pull_request:
+    paths-ignore:
+      - '**/README.md'
+      - 'docs/**/*'
+      - 'cloud/**/*'
+jobs:
+  test-core-envs:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+        os: [ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
+
+      # classic control tests
+      - name: Install core dependencies
+        run: uv pip install ".[pytest]"
+      - name: Run core tests
+        run: uv run pytest tests/test_classic_control.py
+      - name: Install jax
+        if: runner.os == 'Linux' || runner.os == 'macOS'
+        run: uv pip install ".[pytest, jax]"
+      - name: Run gymnasium tests
+        run: uv run pytest tests/test_classic_control_gymnasium.py
+      - name: Run core tests with jax
+        if: runner.os == 'Linux' || runner.os == 'macOS'
+        run: uv run pytest tests/test_classic_control_jax_gymnasium.py
+      - name: Run gae tests with jax
+        if: runner.os == 'Linux' || runner.os == 'macOS'
+        run: uv run pytest tests/test_jax_compute_gae.py
+      - name: Install tuner dependencies
+        run: uv pip install ".[pytest, optuna]"
+      - name: Run tuner tests
+        run: uv run pytest tests/test_tuner.py
+
+  test-atari-envs:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+        os: [ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
+
+      # atari tests
+      - name: Install atari dependencies
+        run: uv pip install ".[pytest, atari]"
+      - name: Run atari tests
+        run: uv run pytest tests/test_atari.py
+      - name: Install jax
+        if: runner.os == 'Linux' || runner.os == 'macOS'
+        run: uv pip install ".[pytest, atari, jax]"
+      - name: Run gymnasium migration dependencies
+        run: uv run pip install "gymnasium[atari,accept-rom-license]==0.28.1" "ale-py==0.8.1"
+      - name: Run gymnasium tests
+        run: uv run pytest tests/test_atari_gymnasium.py
+      - name: Run gymnasium tests with jax
+        if: runner.os == 'Linux' || runner.os == 'macOS'
+        run: uv run pytest tests/test_atari_jax_gymnasium.py
+
+  test-procgen-envs:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+        os: [ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
+
+      # procgen tests
+      - name: Install core dependencies
+        run: uv pip install ".[pytest, procgen]"
+      - name: Downgrade setuptools
+        run: uv run pip install setuptools==59.5.0
+      - name: Run procgen tests
+        run: uv run pytest tests/test_procgen.py
+
+  test-mujoco-envs:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+        os: [ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
+      - name: Setup virtual display
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          export DISPLAY=:99
+          Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+
+      # mujoco tests
+      - name: Install dependencies
+        run: uv pip install ".[pytest, mujoco, dm_control, jax]"
+      - name: install mujoco dependencies
+        run: |
+          sudo apt-get update && sudo apt-get -y install libgl1-mesa-glx libosmesa6 libglfw3
+      - name: Run mujoco tests
+        run: uv run pytest tests/test_mujoco.py
+        env:
+          DISPLAY: :99
+
+  test-envpool-envs:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+        os: [ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
+
+      # envpool tests
+      - name: Install envpool dependencies
+        run: uv pip install ".[pytest, envpool, jax]"
+      - name: Run envpool tests
+        run: uv run pytest tests/test_envpool.py
+
+  test-atari-multigpu-envs:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+        os: [ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
+
+      # atari multigpu tests
+      - name: Install atari dependencies
+        run: uv pip install ".[pytest, atari]"
+      - name: Run atari tests
+        run: uv run pytest tests/test_atari_multigpu.py
+
+  test-pettingzoo-envs:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+        os: [ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
+
+      # pettingzoo tests
+      - name: Install pettingzoo dependencies
+        run: uv pip install ".[pytest, pettingzoo, atari]"
+      - name: Install ROMs
+        run: uv run AutoROM --accept-license
+      - name: Run pettingzoo tests
+        run: uv run pytest tests/test_pettingzoo_ma_atari.py

@@ -1,0 +1,94 @@
+[project]
+name = "cleanrl"
+version = "2.0.0b1"
+description = "High-quality single file implementation of Deep Reinforcement Learning algorithms with research-friendly features"
+authors = [{ name = "Costa Huang", email = "costa.huang@outlook.com" }]
+requires-python = ">=3.8,<3.11"
+readme = "README.md"
+license = "MIT"
+keywords = [
+    "reinforcement learning",
+    "machine learning",
+    "research",
+]
+dependencies = [
+    "tensorboard>=2.10.0",
+    "wandb>=0.13.11",
+    "gym==0.23.1",
+    "gymnasium==0.29.1",
+    "torch==2.4.1",
+    "moviepy>=1.0.3",
+    "pygame>=2.1",
+    "huggingface-hub>=0.11.1",
+    "rich<12.0",
+    "tenacity>=8.2.2",
+    "tyro>=0.5.10",
+]
+
+[project.optional-dependencies]
+atari = [
+    "ale-py==0.8.1",
+    "AutoROM[accept-rom-license]~=0.4.2",
+    "opencv-python>=4.6.0.66,<5",
+    "shimmy>=1.1.0",
+]
+envpool = ["envpool>=0.6.4,<0.7", "opencv-python>=4.6.0.66,<5",]
+procgen = ["procgen>=0.10.7,<0.11"]
+mujoco = [
+    "mujoco<=2.3.3",
+    "imageio>=2.14.1,<3",
+]
+dm_control = [
+    "shimmy>=1.1.0",
+    "mujoco<=2.3.3",
+    "dm-control>=1.0.10",
+    "h5py>=3.7.0",
+]
+pettingzoo = [
+    "PettingZoo==1.18.1",
+    "SuperSuit==3.4.0",
+    "multi-agent-ale-py==0.1.11",
+]
+jax = [
+    "jax==0.4.8",
+    "jaxlib==0.4.7",
+    "flax==0.6.8",
+    "optax==0.1.4",
+    "chex==0.1.5",
+    "scipy<1.13.0"
+]
+optuna = [
+    "optuna>=3.0.1,<4",
+    "optuna-dashboard>=0.7.2,<0.8",
+    "typing_extensions>=4.6.0"
+]
+docs = [
+    "mkdocs-material>=8.4.3,<9",
+    "markdown-include>=0.7.0,<0.8",
+    "openrlbenchmark>=0.1.1b4,<0.2",
+]
+cloud = [
+    "boto3>=1.24.70,<2",
+    "awscli>=1.31.0,<2",
+]
+plot = []
+pytest = ["pytest>=7.1.3,<8"]
+
+[dependency-groups]
+dev = ["pre-commit>=2.20.0,<3"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "cleanrl",
+    "cleanrl_utils",
+]
+
+[tool.hatch.build.targets.wheel]
+include = [
+    "cleanrl",
+    "cleanrl_utils",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

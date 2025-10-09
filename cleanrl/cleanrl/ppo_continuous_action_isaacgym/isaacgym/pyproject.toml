@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "isaacgym"
+version = "1.0.preview4"
+description = ""
+authors = ["Costa Huang <costa.huang@outlook.com>"]
+include = ["isaacgym/**/*", "examples/**/*"]
+packages = [
+    { include = "isaacgym" },
+]
+
+[tool.poetry.dependencies]
+python = ">=3.7.1"
+gym = "0.23.1"
+torch = "^1.12.0"
+torchvision = "^0.13.0"
+PyYAML = ">=5.3.1"
+scipy = ">=1.5.0"
+numpy = ">=1.16.4"
+Pillow = "^9.2.0"
+imageio = "^2.19.5"
+ninja = "^1.10.2"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

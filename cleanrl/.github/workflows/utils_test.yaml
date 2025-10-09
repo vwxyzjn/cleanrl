@@ -1,0 +1,32 @@
+name: utils_test
+on:
+  pull_request:
+    paths-ignore:
+      - '**/README.md'
+      - 'docs/**/*'
+      - 'cloud/**/*'
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10"]
+        os: [ubuntu-22.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - run: uv venv
+
+      - name: Install test dependencies
+        run: uv pip install ".[pytest]"
+      - name: Install cloud dependencies
+        run: uv pip install ".[pytest, cloud]"
+      - name: Downgrade setuptools
+        run: uv pip install setuptools==59.5.0
+      - name: Run utils tests
+        run: uv run pytest tests/test_utils.py
