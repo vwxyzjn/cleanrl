@@ -1,4 +1,10 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/c51/#c51py
+#
+# MODIFICATION: This version uses softmax action selection instead of epsilon-greedy
+# for fair comparison with ES-C51 algorithm. Referred to as QL-C51 in the paper:
+# "ES-C51: Expected Sarsa Based C51 Distributional Reinforcement Learning Algorithm"
+# Authors: Rijul Tandon, Peter Vamplew, Cameron Foale (Neurocomputing, 2024)
+#
 import os
 import random
 import time
@@ -174,13 +180,17 @@ if __name__ == "__main__":
     # TRY NOT TO MODIFY: start the game
     obs, _ = envs.reset(seed=args.seed)
     for global_step in range(args.total_timesteps):
-        # ALGO LOGIC: put action logic here
-        epsilon = linear_schedule(args.start_e, args.end_e, args.exploration_fraction * args.total_timesteps, global_step)
-        if random.random() < epsilon:
-            actions = np.array([envs.single_action_space.sample() for _ in range(envs.num_envs)])
-        else:
-            actions, pmf = q_network.get_action(torch.Tensor(obs).to(device))
-            actions = actions.cpu().numpy()
+        tau = max(1.0 * (1 - global_step / args.total_timesteps*0.75), 0.01)
+        logits = q_network.network(torch.Tensor(obs).to(device))
+        batch_size = logits.shape[0]
+        n_actions = q_network.n
+        n_atoms = q_network.n_atoms
+        atoms = q_network.atoms
+        pmfs_all = torch.softmax(logits.view(batch_size, n_actions, n_atoms), dim=2)
+        q_values = (pmfs_all * atoms).sum(2)
+        # Use softmax policy for action selection
+        policy = torch.softmax(q_values / tau, dim=1)  # [batch_size, n_actions]
+        actions = torch.multinomial(policy, 1).squeeze(1).cpu().numpy()
 
         # TRY NOT TO MODIFY: execute the game and log data.
         next_obs, rewards, terminations, truncations, infos = envs.step(actions)
@@ -277,3 +287,17 @@ if __name__ == "__main__":
 
     envs.close()
     writer.close()
+
+    # Log runtime to CSV
+    # import csv
+    # runtime_csv = os.path.join(os.path.dirname(__file__), "run_time_comparison.csv")
+    # total_time = time.time() - start_time
+    # algo_name = args.exp_name
+    # seed = args.seed
+    # env = args.env_id
+    # file_exists = os.path.isfile(runtime_csv)
+    # with open(runtime_csv, "a", newline="") as csvfile:
+    #     writer = csv.writer(csvfile)
+    #     if not file_exists:
+    #         writer.writerow(["algo_name", "seed", "env", "total_time_sec"])
+    #     writer.writerow([algo_name, seed, env, total_time])
