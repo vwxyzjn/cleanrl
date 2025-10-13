@@ -1,4 +1,5 @@
- It considers only the final 10\% of episodes from each training run, as this segment reflects the agent’s mean performance after reaching a stable, fully trained state. This approach ensures that the reported results represent the agent’s proficiency at the culmination of the learning process, minimizing the influence of early-stage variability.
+ It considers only the final 10\% of episodes from each training run, as this segment reflects the agent’s mean performance after reaching a stable, fully trained state. 
+This approach ensures that the reported results represent the agent’s proficiency at the culmination of the learning process, minimizing the influence of early-stage variability.
 
 
 
@@ -443,5 +444,6 @@ c51_expected_sarsa,CartPole-v1,7,CartPole-v1__c51_expected_sarsa__7__1756494411,
 c51_expected_sarsa,CartPole-v1,8,CartPole-v1__c51_expected_sarsa__8__1756494412,222.156
 c51_expected_sarsa,CartPole-v1,9,CartPole-v1__c51_expected_sarsa__9__1756494413,201.245974
 c51_expected_sarsa,CartPole-v1,10,CartPole-v1__c51_expected_sarsa__10__1756494411,225.154123
+
 
 
