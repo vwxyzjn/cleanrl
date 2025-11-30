@@ -6,8 +6,8 @@ This directory contains implementations of ES-C51 (Expected Sarsa based C51) and
 
 **Title**: ES-C51: Expected Sarsa Based C51 Distributional Reinforcement Learning Algorithm  
 **Authors**: Rijul Tandon, Peter Vamplew, Cameron Foale  
-**Submitted to**: Neurocomputing  
-**ArXiv Link**: [To be added upon publication]
+**Submitted to**: Neural Networks
+**ArXiv Link**: https://doi.org/10.48550/arXiv.2510.15006
 
 ## Overview
 
@@ -141,12 +141,12 @@ python c51_atari.py --env-id BreakoutNoFrameskip-v4 --total-timesteps 10000000
 If you use this code in your research, please cite our paper:
 
 ```bibtex
-@article{tandon2025esc51,
+@article{tandon2025c51,
   title={ES-C51: Expected Sarsa Based C51 Distributional Reinforcement Learning Algorithm},
   author={Tandon, Rijul and Vamplew, Peter and Foale, Cameron},
-  journal={Neurocomputing},
-  year={2025},
-  note={Submitted}
+  journal={arXiv preprint arXiv:2510.15006},
+  year={2025}
+}
 }
 ```
 
