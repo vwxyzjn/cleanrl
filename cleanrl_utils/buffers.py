@@ -184,11 +184,11 @@ class BaseBuffer(ABC):
         # Validating input dimensions
         if arr.ndim < 2:
             raise ValueError(f"The array must have at least 2 dimensions (n_steps, n_envs), but got {arr.ndim}")
-        
+
         # Explicitly handle scalar features (2D arrays) by expanding dims
         if arr.ndim == 2:
             arr = arr.reshape(*arr.shape, 1)
-        
+
         shape = arr.shape
         return arr.swapaxes(0, 1).reshape(shape[0] * shape[1], *shape[2:])
 
