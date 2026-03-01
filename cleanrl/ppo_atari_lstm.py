@@ -257,11 +257,12 @@ if __name__ == "__main__":
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
 
             if "final_info" in infos:
-                for info in infos["final_info"]:
+                for i, info in enumerate(infos["final_info"]):
                     if info and "episode" in info:
+                        logging_step = global_step - args.num_envs + i
                         print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], logging_step)
+                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], logging_step)
 
         # bootstrap value if not done
         with torch.no_grad():
