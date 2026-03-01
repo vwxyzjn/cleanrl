@@ -241,12 +241,12 @@ if __name__ == "__main__":
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
 
-            for item in info:
+            for i, item in enumerate(info):
                 if "episode" in item.keys():
+                    logging_step = global_step - args.num_envs + i
                     print(f"global_step={global_step}, episodic_return={item['episode']['r']}")
-                    writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
-                    writer.add_scalar("charts/episodic_length", item["episode"]["l"], global_step)
-                    break
+                    writer.add_scalar("charts/episodic_return", item["episode"]["r"], logging_step)
+                    writer.add_scalar("charts/episodic_length", item["episode"]["l"], logging_step)
 
         # bootstrap value if not done
         with torch.no_grad():
