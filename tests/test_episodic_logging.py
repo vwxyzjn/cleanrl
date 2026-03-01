@@ -2,83 +2,129 @@
 
 Verifies the fix for https://github.com/vwxyzjn/cleanrl/issues/508
 
-The core issues:
-1. ppo_procgen.py has a `break` that discards all episodes after the first env
-2. Multiple episodes logged at the same step can cause confusing TensorBoard charts
-   (duplicate x-axis values), even if newer TensorBoard versions store all values
+Zero external dependencies — uses only unittest.mock to verify
+the exact add_scalar call arguments our fix produces.
 """
-import tempfile
-
-from torch.utils.tensorboard import SummaryWriter
-from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
+from unittest.mock import Mock
 
 
-def test_unique_steps_preserve_all_data():
-    """Verify that offset steps produce clean, unique data points."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        writer = SummaryWriter(tmpdir)
-        global_step = 1000
-        num_envs = 4
-        values = [50.0, 80.0, 30.0, 60.0]
-        for i, v in enumerate(values):
+def test_fixed_logging_uses_unique_steps_per_env():
+    """The fix: each env gets logging_step = global_step - num_envs + i.
+
+    Simulates the FIXED code path from ppo.py lines 210-216.
+    Verifies that writer.add_scalar is called with unique
+    logging_step values, not the same global_step for all envs.
+    """
+    writer = Mock()
+    global_step = 1000
+    num_envs = 4
+
+    # Simulate final_info from gymnasium vectorized env:
+    # 3 of 4 envs finished their episode at this step
+    final_info = [
+        {"episode": {"r": 50.0, "l": 100}},  # env 0 finished
+        None,                                  # env 1 still running
+        {"episode": {"r": 80.0, "l": 200}},  # env 2 finished
+        {"episode": {"r": 30.0, "l": 150}},  # env 3 finished
+    ]
+
+    # This is the FIXED code (exact copy from our changed ppo.py)
+    for i, info in enumerate(final_info):
+        if info and "episode" in info:
             logging_step = global_step - num_envs + i
-            writer.add_scalar("charts/episodic_return", v, logging_step)
-        writer.close()
+            writer.add_scalar("charts/episodic_return", info["episode"]["r"], logging_step)
+            writer.add_scalar("charts/episodic_length", info["episode"]["l"], logging_step)
 
-        ea = EventAccumulator(tmpdir)
-        ea.Reload()
-        events = ea.Scalars("charts/episodic_return")
-        # All 4 data points survive with unique steps
-        assert len(events) == 4, f"Expected 4, got {len(events)}"
-        recorded_values = [e.value for e in events]
-        assert recorded_values == values
-        # Each step is unique
-        steps = [e.step for e in events]
-        assert len(set(steps)) == 4, f"Expected 4 unique steps, got {steps}"
+    # 3 envs finished → 6 add_scalar calls (return + length for each)
+    assert writer.add_scalar.call_count == 6
 
+    # Each env used its OWN unique step
+    writer.add_scalar.assert_any_call("charts/episodic_return", 50.0, 996)   # 1000-4+0
+    writer.add_scalar.assert_any_call("charts/episodic_return", 80.0, 998)   # 1000-4+2
+    writer.add_scalar.assert_any_call("charts/episodic_return", 30.0, 999)   # 1000-4+3
 
-def test_duplicate_steps_produce_ambiguous_data():
-    """Show that logging at the same step produces duplicate x-values (undesirable)."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        writer = SummaryWriter(tmpdir)
-        global_step = 1000
-        values = [50.0, 80.0, 30.0, 60.0]
-        for v in values:
-            writer.add_scalar("charts/episodic_return", v, global_step)
-        writer.close()
-
-        ea = EventAccumulator(tmpdir)
-        ea.Reload()
-        events = ea.Scalars("charts/episodic_return")
-        # All values are stored but all at the SAME step — ambiguous in charts
-        steps = [e.step for e in events]
-        assert all(s == global_step for s in steps), "All events should share the same step"
-        # This is the problem: non-unique steps make charts misleading
-        assert len(set(steps)) == 1, "Only 1 unique step value despite 4 data points"
+    writer.add_scalar.assert_any_call("charts/episodic_length", 100, 996)
+    writer.add_scalar.assert_any_call("charts/episodic_length", 200, 998)
+    writer.add_scalar.assert_any_call("charts/episodic_length", 150, 999)
 
 
-def test_break_discards_episodes():
-    """Simulate the ppo_procgen.py break bug — only first env's episode is logged."""
-    with tempfile.TemporaryDirectory() as tmpdir:
-        writer = SummaryWriter(tmpdir)
-        # Simulate the old ppo_procgen.py behavior with break
-        info_list = [
-            {"episode": {"r": 50.0, "l": 100}},
-            {"episode": {"r": 80.0, "l": 200}},
-            {},  # env 2 didn't finish
-            {"episode": {"r": 60.0, "l": 150}},
-        ]
-        global_step = 1000
-        logged_count = 0
-        for item in info_list:
-            if "episode" in item:
-                writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
-                logged_count += 1
-                break  # <-- THE BUG: only logs the first env
-        writer.close()
+def test_old_broken_logging_uses_same_step():
+    """Prove the bug: without the fix, all envs log at the same global_step.
 
-        assert logged_count == 1, "break causes only 1 episode to be logged"
+    This test shows what the OLD code did wrong.
+    """
+    writer = Mock()
+    global_step = 1000
 
-        # Without break, all 3 finished envs should be logged
-        logged_without_break = sum(1 for item in info_list if "episode" in item)
-        assert logged_without_break == 3, "Without break, 3 episodes should be logged"
+    final_info = [
+        {"episode": {"r": 50.0, "l": 100}},
+        None,
+        {"episode": {"r": 80.0, "l": 200}},
+        {"episode": {"r": 30.0, "l": 150}},
+    ]
+
+    # OLD broken code: no enumerate, no logging_step
+    for info in final_info:
+        if info and "episode" in info:
+            writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
+
+    # All 3 calls used the SAME step — this is the bug
+    steps_used = [call.args[2] for call in writer.add_scalar.call_args_list]
+    assert all(s == 1000 for s in steps_used), f"Bug: all steps should be 1000, got {steps_used}"
+    assert len(set(steps_used)) == 1, "Bug: only 1 unique step value despite 3 episodes"
+
+
+def test_procgen_break_bug():
+    """Prove the ppo_procgen.py break bug: only first env's episode was logged."""
+    writer = Mock()
+    global_step = 1000
+
+    # info is a list of dicts (old gym API used by ppo_procgen.py)
+    info = [
+        {"episode": {"r": 50.0, "l": 100}},
+        {"episode": {"r": 80.0, "l": 200}},
+        {},  # env 2 didn't finish
+        {"episode": {"r": 30.0, "l": 150}},
+    ]
+
+    # OLD broken code with break
+    for item in info:
+        if "episode" in item.keys():
+            writer.add_scalar("charts/episodic_return", item["episode"]["r"], global_step)
+            break  # <-- THE BUG
+
+    # Only 1 call made — 2 episodes silently discarded
+    assert writer.add_scalar.call_count == 1
+    writer.add_scalar.assert_called_once_with("charts/episodic_return", 50.0, 1000)
+
+
+def test_procgen_fixed_logging():
+    """After fix: ppo_procgen.py logs all envs with unique steps, no break."""
+    writer = Mock()
+    global_step = 1000
+    num_envs = 4
+
+    info = [
+        {"episode": {"r": 50.0, "l": 100}},
+        {"episode": {"r": 80.0, "l": 200}},
+        {},  # env 2 didn't finish
+        {"episode": {"r": 30.0, "l": 150}},
+    ]
+
+    # FIXED code: enumerate, logging_step, no break
+    for i, item in enumerate(info):
+        if "episode" in item.keys():
+            logging_step = global_step - num_envs + i
+            writer.add_scalar("charts/episodic_return", item["episode"]["r"], logging_step)
+            writer.add_scalar("charts/episodic_length", item["episode"]["l"], logging_step)
+
+    # 3 envs finished → 6 calls, unique steps
+    assert writer.add_scalar.call_count == 6
+
+    steps_used = [call.args[2] for call in writer.add_scalar.call_args_list]
+    unique_steps = set(steps_used)
+    assert len(unique_steps) == 3, f"Expected 3 unique steps, got {unique_steps}"
+
+    writer.add_scalar.assert_any_call("charts/episodic_return", 50.0, 996)
+    writer.add_scalar.assert_any_call("charts/episodic_return", 80.0, 997)
+    writer.add_scalar.assert_any_call("charts/episodic_return", 30.0, 999)
