@@ -51,7 +51,7 @@ pettingzoo = [
 ]
 jax = [
     "jax==0.4.8",
-    "jaxlib==0.4.7",
+    "jaxlib==0.4.8",
     "flax==0.6.8",
     "optax==0.1.4",
     "chex==0.1.5",
