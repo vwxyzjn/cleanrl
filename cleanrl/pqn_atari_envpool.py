@@ -238,11 +238,12 @@ if __name__ == "__main__":
 
             for idx, d in enumerate(next_done):
                 if d and info["lives"][idx] == 0:
+                    logging_step = global_step - args.num_envs + idx
                     print(f"global_step={global_step}, episodic_return={info['r'][idx]}")
                     avg_returns.append(info["r"][idx])
-                    writer.add_scalar("charts/avg_episodic_return", np.average(avg_returns), global_step)
-                    writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
-                    writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
+                    writer.add_scalar("charts/avg_episodic_return", np.average(avg_returns), logging_step)
+                    writer.add_scalar("charts/episodic_return", info["r"][idx], logging_step)
+                    writer.add_scalar("charts/episodic_length", info["l"][idx], logging_step)
 
         # Compute Q(lambda) targets
         with torch.no_grad():

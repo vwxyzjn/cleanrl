@@ -291,15 +291,15 @@ if __name__ == "__main__":
             if 0 <= step <= 2:
                 for idx, d in enumerate(next_done):
                     if d:
+                        logging_step = global_step - args.num_envs + idx
                         episodic_return = info["r"][idx].item()
                         print(f"global_step={global_step}, episodic_return={episodic_return}")
-                        writer.add_scalar("charts/episodic_return", episodic_return, global_step)
-                        writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
+                        writer.add_scalar("charts/episodic_return", episodic_return, logging_step)
+                        writer.add_scalar("charts/episodic_length", info["l"][idx], logging_step)
                         if "consecutive_successes" in info:  # ShadowHand and AllegroHand metric
                             writer.add_scalar(
-                                "charts/consecutive_successes", info["consecutive_successes"].item(), global_step
+                                "charts/consecutive_successes", info["consecutive_successes"].item(), logging_step
                             )
-                        break
 
         # bootstrap value if not done
         with torch.no_grad():
