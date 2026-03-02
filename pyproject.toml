@@ -3,7 +3,7 @@ name = "cleanrl"
 version = "2.0.0b1"
 description = "High-quality single file implementation of Deep Reinforcement Learning algorithms with research-friendly features"
 authors = [{ name = "Costa Huang", email = "costa.huang@outlook.com" }]
-requires-python = ">=3.8,<3.11"
+requires-python = ">=3.9,<3.11"
 readme = "README.md"
 license = "MIT"
 keywords = [
