@@ -51,8 +51,7 @@ args = parser.parse_args()
 if args.build:
     output_type_str = "--output=type=registry" if args.push else "--output=type=docker"
     subprocess.run(
-        f"docker buildx build {output_type_str} --platform {args.archs} -t {args.docker_tag} .",
-        shell=True,
+        ["docker", "buildx", "build", output_type_str, "--platform", args.archs, "-t", args.docker_tag, "."],
         check=True,
     )
 
