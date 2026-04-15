@@ -248,16 +248,16 @@ The [sac_atari.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/sac_at
 
     ```bash
     uv pip install ".[atari]"
-    uv run python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4
-    uv run python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4 --autotune False --alpha 0.2
+    uv run python cleanrl/sac_atari.py --env-id PongNoFrameskip-v4
+    uv run python cleanrl/sac_atari.py --env-id PongNoFrameskip-v4 --autotune False --alpha 0.2
     ```
 
 === "pip"
 
     ```bash
     pip install -r requirements/requirements-atari.txt
-    python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4
-    python cleanrl/sac_atari.py.py --env-id PongNoFrameskip-v4 --autotune False --alpha 0.2
+    python cleanrl/sac_atari.py --env-id PongNoFrameskip-v4
+    python cleanrl/sac_atari.py --env-id PongNoFrameskip-v4 --autotune False --alpha 0.2
     ```
 
 ### Explanation of the logged metrics
