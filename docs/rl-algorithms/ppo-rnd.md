@@ -3,7 +3,7 @@
 
 ## Overview
 
-RND is an exploration bonus for RL methods that's easy to implement and enables significant progress in some hard exploration Atari games such as Montezuma's Revenge. We use [Proximal Policy Gradient](/rl-algorithms/ppo/#ppopy) as our RL method as used by original paper's [implementation](https://github.com/openai/random-network-distillation)
+RND is an exploration bonus for RL methods that's easy to implement and enables significant progress in some hard exploration Atari games such as Montezuma's Revenge. We use [Proximal Policy Optimization](/rl-algorithms/ppo/#ppopy) as our RL method as used by original paper's [implementation](https://github.com/openai/random-network-distillation)
 
 
 Original paper: 

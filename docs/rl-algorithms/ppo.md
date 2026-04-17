@@ -1,4 +1,4 @@
-# Proximal Policy Gradient (PPO)
+# Proximal Policy Optimization (PPO)
 
 
 ## Overview
@@ -73,7 +73,7 @@ Running `python cleanrl/ppo.py` will automatically record various metrics such a
 * `losses/policy_loss`: the mean policy loss across all data points
 * `losses/entropy`: the mean entropy value across all data points
 * `losses/old_approx_kl`: the approximate Kullback–Leibler divergence, measured by `(-logratio).mean()`, which corresponds to the k1 estimator in John Schulman’s blog post on [approximating KL](http://joschu.net/blog/kl-approx.html)
-* `losses/approx_kl`: better alternative to `olad_approx_kl` measured by `(logratio.exp() - 1) - logratio`, which corresponds to the k3 estimator in [approximating KL](http://joschu.net/blog/kl-approx.html)
+* `losses/approx_kl`: better alternative to `old_approx_kl` measured by `(logratio.exp() - 1) - logratio`, which corresponds to the k3 estimator in [approximating KL](http://joschu.net/blog/kl-approx.html)
 * `losses/clipfrac`: the fraction of the training data that triggered the clipped objective
 * `losses/explained_variance`: the explained variance for the value function
 
@@ -104,9 +104,9 @@ To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://g
 --8<-- "benchmark/ppo.sh:3:8"
 ```
 
-Below are the average episodic returns for `ppo.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
+Below are the average episodic returns for `ppo.py`. To ensure the quality of the implementation, we compared the results against `openai/baselines`' PPO.
 
-| Environment      | `ppo.py` | `openai/baselies`' PPO (Huang et al., 2022)[^1]
+| Environment      | `ppo.py` | `openai/baselines`' PPO (Huang et al., 2022)[^1]
 | ----------- | ----------- | ----------- |
 | CartPole-v1      | 490.04 ± 6.12     |497.54 ± 4.02  |
 | Acrobot-v1       | -86.36 ± 1.32     |  -81.82 ± 5.58 |
@@ -192,9 +192,9 @@ To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://g
 ```
 
 
-Below are the average episodic returns for `ppo_atari.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
+Below are the average episodic returns for `ppo_atari.py`. To ensure the quality of the implementation, we compared the results against `openai/baselines`' PPO.
 
-| Environment      | `ppo_atari.py` | `openai/baselies`' PPO (Huang et al., 2022)[^1]
+| Environment      | `ppo_atari.py` | `openai/baselines`' PPO (Huang et al., 2022)[^1]
 | ----------- | ----------- | ----------- |
 | BreakoutNoFrameskip-v4      | 414.66 ± 28.09     | 406.57 ± 31.554  |
 | PongNoFrameskip-v4   | 20.36 ± 0.20    |  20.512 ± 0.50 |
@@ -460,10 +460,10 @@ To run benchmark experiments, see :material-github: [benchmark/ppo.sh](https://g
 --8<-- "benchmark/ppo.sh:47:52"
 ```
 
-Below are the average episodic returns for `ppo_atari_lstm.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
+Below are the average episodic returns for `ppo_atari_lstm.py`. To ensure the quality of the implementation, we compared the results against `openai/baselines`' PPO.
 
 
-| Environment      | `ppo_atari_lstm.py` | `openai/baselies`' PPO (Huang et al., 2022)[^1]
+| Environment      | `ppo_atari_lstm.py` | `openai/baselines`' PPO (Huang et al., 2022)[^1]
 | ----------- | ----------- | ----------- |
 | BreakoutNoFrameskip-v4      | 128.92 ± 31.10    | 138.98 ± 50.76  |
 | PongNoFrameskip-v4   | 19.78 ± 1.58    | 19.79 ± 0.67 |
@@ -815,9 +815,9 @@ We try to match the default setting in [openai/train-procgen](https://github.com
 1. Reward scaling and reward clipping is used
 
 
-Below are the average episodic returns for `ppo_procgen.py`. To ensure the quality of the implementation, we compared the results against `openai/baselies`' PPO.
+Below are the average episodic returns for `ppo_procgen.py`. To ensure the quality of the implementation, we compared the results against `openai/baselines`' PPO.
 
-| Environment      | `ppo_procgen.py` | `openai/baselies`' PPO (Huang et al., 2022)[^1]
+| Environment      | `ppo_procgen.py` | `openai/baselines`' PPO (Huang et al., 2022)[^1]
 | ----------- | ----------- | ----------- |
 | StarPilot (easy)      | 30.99 ± 1.96      | 33.97 ± 7.86  |
 | BossFight (easy)   | 8.85 ± 0.33    |  9.35 ± 2.04 |

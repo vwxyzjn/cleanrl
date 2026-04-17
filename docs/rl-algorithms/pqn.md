@@ -247,7 +247,7 @@ See [related docs](/rl-algorithms/pqn/#explanation-of-the-logged-metrics) for `p
 
 ### Implementation details
 
-[pqn_atari_envpool_lstm.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/pqn_atari_envpool_lstm.py) is based on the "5 LSTM implementation details" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/pqn-implementation-details/), which are as follows:
+[pqn_atari_envpool_lstm.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/pqn_atari_envpool_lstm.py) is based on the "5 LSTM implementation details" in [The 37 Implementation Details of Proximal Policy Optimization](https://iclr-blog-track.github.io/2022/03/25/ppo-implementation-details/), which are as follows:
 
 1. Layer initialization for LSTM layers (:material-github: [a2c/utils.py#L84-L86](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L84-L86))
 2. Initialize the LSTM states to be zeros (:material-github: [common/models.py#L179](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/common/models.py#L179))
