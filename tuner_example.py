@@ -6,7 +6,7 @@ tuner = Tuner(
     script="cleanrl/ppo.py",
     metric="charts/episodic_return",
     metric_last_n_average_window=50,
-    direction="maximize",
+    directions=["maximize", "minimize"],
     aggregation_type="average",
     target_scores={
         "CartPole-v1": [0, 500],
