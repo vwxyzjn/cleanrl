@@ -448,7 +448,7 @@ See [related docs](/rl-algorithms/ppo/#explanation-of-the-logged-metrics) for `p
 4. Prepare sequential rollouts in mini-batches (:material-github: [a2c/utils.py#L81](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L81))
 5. Reconstruct LSTM states during training (:material-github: [a2c/utils.py#L81](https://github.com/openai/baselines/blob/ea25b9e8b234e6ee1bca43083f8f3cf974143998/baselines/a2c/utils.py#L81))
 
-To help test out the memory, we remove the 4 stacked frames from the observation (i.e., using `env = gym.wrappers.FrameStack(env, 1)` instead of `env = gym.wrappers.FrameStack(env, 4)` like in `ppo_atari.py` )
+To help test out the memory, we remove the 4 stacked frames from the observation (i.e., using `env = gym.wrappers.FrameStackObservation(env, 1)` instead of `env = gym.wrappers.FrameStackObservation(env, 4)` like in `ppo_atari.py` )
 
 
 
@@ -929,7 +929,8 @@ We use [Pytorch's distributed API](https://pytorch.org/tutorials/intermediate/di
     # ...
 
     envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)]
+        [make_env(args.env_id, args.seed + i, i, args.capture_video, run_name) for i in range(args.num_envs)],
+        autoreset_mode=gym.vector.AutoresetMode.SAME_STEP
     )
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
@@ -1094,8 +1095,8 @@ See other logged metrics in the [related docs](/rl-algorithms/ppo/#explanation-o
     -    env = FireResetEnv(env)
     -env = ClipRewardEnv(env)
     -env = gym.wrappers.ResizeObservation(env, (84, 84))
-    -env = gym.wrappers.GrayScaleObservation(env)
-    -env = gym.wrappers.FrameStack(env, 4)
+    -env = gym.wrappers.GrayscaleObservation(env)
+    -env = gym.wrappers.FrameStackObservation(env, 4)
     +env = importlib.import_module(f"pettingzoo.atari.{args.env_id}").parallel_env()
     +env = ss.max_observation_v0(env, 2)
     +env = ss.frame_skip_v0(env, 4)

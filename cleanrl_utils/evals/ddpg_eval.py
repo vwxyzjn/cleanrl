@@ -1,6 +1,7 @@
 from typing import Callable
 
 import gymnasium as gym
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -16,10 +17,12 @@ def evaluate(
     capture_video: bool = True,
     exploration_noise: float = 0.1,
 ):
-    envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, 0, capture_video, run_name)])
+    envs = gym.vector.SyncVectorEnv(
+        [make_env(env_id, 0, 0, capture_video, run_name)], autoreset_mode=gym.vector.AutoresetMode.SAME_STEP
+    )
     actor = Model[0](envs).to(device)
     qf = Model[1](envs).to(device)
-    actor_params, qf_params = torch.load(model_path, map_location=device)
+    actor_params, qf_params = torch.load(model_path, map_location=device, weights_only=True)
     actor.load_state_dict(actor_params)
     actor.eval()
     qf.load_state_dict(qf_params)
@@ -36,11 +39,11 @@ def evaluate(
 
         next_obs, _, _, _, infos = envs.step(actions)
         if "final_info" in infos:
-            for info in infos["final_info"]:
-                if "episode" not in info:
-                    continue
-                print(f"eval_episode={len(episodic_returns)}, episodic_return={info['episode']['r']}")
-                episodic_returns += [info["episode"]["r"]]
+            episodes_over = np.nonzero(infos["final_info"]["_episode"])[0]
+            episode_returns = infos["final_info"]["episode"]["r"][episodes_over]
+            for episode_return in episode_returns:
+                print(f"eval_episode={len(episodic_returns)}, episodic_return={episode_return}")
+                episodic_returns.append(episode_return)
         obs = next_obs
 
     return episodic_returns

@@ -30,7 +30,7 @@ if __name__ == "__main__":
         path = cli_args.name
 
     # Load the pre-trained model and the original args used to train it
-    checkpoint = torch.load(path)
+    checkpoint = torch.load(path, weights_only=True)
     args = checkpoint["args"]
     args = type("Args", (), args)
 
