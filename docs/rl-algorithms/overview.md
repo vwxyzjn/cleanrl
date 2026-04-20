@@ -2,7 +2,7 @@
 
 | Algorithm      | Variants Implemented |
 | ----------- | ----------- |
-| ✅ [Proximal Policy Gradient (PPO)](https://arxiv.org/pdf/1707.06347.pdf)  | :material-github: [`ppo.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppopy) |
+| ✅ [Proximal Policy Optimization (PPO)](https://arxiv.org/pdf/1707.06347.pdf)  | :material-github: [`ppo.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppopy) |
 | | :material-github: [`ppo_atari.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_ataripy)
 | | :material-github: [`ppo_continuous_action.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_continuous_actionpy)
 | | :material-github: [`ppo_atari_lstm.py`](https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_atari_lstm.py),  :material-file-document: [docs](/rl-algorithms/ppo/#ppo_atari_lstmpy)
