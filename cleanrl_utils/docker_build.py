@@ -6,7 +6,6 @@ parser.add_argument("--tag", type=str, default="cleanrl:latest", help="the name 
 args = parser.parse_args()
 
 subprocess.run(
-    f"docker build -t {args.tag} .",
-    shell=True,
+    ["docker", "build", "-t", args.tag, "."],
     check=True,
 )
