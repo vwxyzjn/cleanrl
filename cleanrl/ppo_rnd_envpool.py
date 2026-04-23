@@ -373,19 +373,20 @@ if __name__ == "__main__":
             curiosity_rewards[step] = ((target_next_feature - predict_next_feature).pow(2).sum(1) / 2).data
             for idx, d in enumerate(done):
                 if d and info["lives"][idx] == 0:
+                    logging_step = global_step - args.num_envs + idx
                     avg_returns.append(info["r"][idx])
                     epi_ret = np.average(avg_returns)
                     print(
                         f"global_step={global_step}, episodic_return={info['r'][idx]}, curiosity_reward={np.mean(curiosity_rewards[step].cpu().numpy())}"
                     )
-                    writer.add_scalar("charts/avg_episodic_return", epi_ret, global_step)
-                    writer.add_scalar("charts/episodic_return", info["r"][idx], global_step)
+                    writer.add_scalar("charts/avg_episodic_return", epi_ret, logging_step)
+                    writer.add_scalar("charts/episodic_return", info["r"][idx], logging_step)
                     writer.add_scalar(
                         "charts/episode_curiosity_reward",
                         curiosity_rewards[step][idx],
-                        global_step,
+                        logging_step,
                     )
-                    writer.add_scalar("charts/episodic_length", info["l"][idx], global_step)
+                    writer.add_scalar("charts/episodic_length", info["l"][idx], logging_step)
 
         curiosity_reward_per_env = np.array(
             [discounted_reward.update(reward_per_step) for reward_per_step in curiosity_rewards.cpu().data.numpy().T]

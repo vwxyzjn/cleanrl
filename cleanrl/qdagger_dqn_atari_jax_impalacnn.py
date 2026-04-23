@@ -389,13 +389,14 @@ if __name__ == "__main__":
 
         # TRY NOT TO MODIFY: record rewards for plotting purposes
         if "final_info" in infos:
-            for info in infos["final_info"]:
+            for i, info in enumerate(infos["final_info"]):
                 # Skip the envs that are not done
                 if "episode" not in info:
                     continue
+                        logging_step = global_step - args.num_envs + i
                 print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                writer.add_scalar("charts/episodic_return", info["episode"]["r"], logging_step)
+                writer.add_scalar("charts/episodic_length", info["episode"]["l"], logging_step)
                 writer.add_scalar("charts/epsilon", epsilon, global_step)
                 episodic_returns.append(info["episode"]["r"])
                 break
