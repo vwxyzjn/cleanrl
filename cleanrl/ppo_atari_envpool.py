@@ -235,8 +235,9 @@ if __name__ == "__main__":
 
             # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, next_done, info = envs.step(action.cpu().numpy())
-            rewards[step] = torch.tensor(reward).to(device).view(-1)
-            next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
+            rewards[step] = torch.as_tensor(reward, device=device).view(-1)
+            next_obs = torch.as_tensor(next_obs, device=device)
+            next_done = torch.as_tensor(next_done, device=device, dtype=torch.float32)
 
             for idx, d in enumerate(next_done):
                 if d and info["lives"][idx] == 0:
