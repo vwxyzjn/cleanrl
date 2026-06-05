@@ -50,11 +50,11 @@ pettingzoo = [
     "multi-agent-ale-py==0.1.11",
 ]
 jax = [
-    "jax==0.4.28",
-    "jaxlib==0.4.28",
-    "flax==0.8.4",
-    "optax==0.2.2",
-    "chex==0.1.86",
+    "jax==0.4.28; python_version >= '3.9'",
+    "jaxlib==0.4.28; python_version >= '3.9'",
+    "flax==0.8.4; python_version >= '3.9'",
+    "optax==0.2.2; python_version >= '3.9'",
+    "chex==0.1.86; python_version >= '3.9'",
     "scipy<1.13.0"
 ]
 optuna = [
