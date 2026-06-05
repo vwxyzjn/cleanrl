@@ -5,12 +5,10 @@ absl-py==1.4.0
     # via
     #   chex
     #   optax
-    #   orbax
+    #   orbax-checkpoint
     #   tensorboard
 appdirs==1.4.4
     # via wandb
-cached-property==1.5.2
-    # via orbax
 cachetools==5.3.0
     # via google-auth
 certifi==2023.5.7
@@ -21,7 +19,7 @@ cfgv==3.3.1
     # via pre-commit
 charset-normalizer==3.1.0
     # via requests
-chex==0.1.5
+chex==0.1.86 ; python_full_version >= '3.9'
     # via
     #   cleanrl
     #   optax
@@ -34,7 +32,6 @@ cloudpickle==2.2.1
 colorama==0.4.4
     # via
     #   click
-    #   pytest
     #   rich
     #   tqdm
     #   tyro
@@ -44,16 +41,12 @@ decorator==4.4.2
     # via moviepy
 distlib==0.3.6
     # via virtualenv
-dm-tree==0.1.8
-    # via chex
 docker-pycreds==0.4.0
     # via wandb
 docstring-parser==0.15
     # via tyro
-etils==0.9.0
-    # via orbax
-exceptiongroup==1.1.1
-    # via pytest
+etils==0.9.0 ; python_full_version >= '3.9'
+    # via orbax-checkpoint
 farama-notifications==0.0.4
     # via gymnasium
 filelock==3.12.0
@@ -62,10 +55,8 @@ filelock==3.12.0
     #   torch
     #   triton
     #   virtualenv
-flax==0.6.8
-    # via
-    #   cleanrl
-    #   orbax
+flax==0.8.4 ; python_full_version >= '3.9'
+    # via cleanrl
 fsspec==2025.3.0 ; python_full_version < '3.9'
     # via torch
 fsspec==2025.5.1 ; python_full_version >= '3.9'
@@ -90,6 +81,10 @@ gymnasium==0.29.1
     # via cleanrl
 huggingface-hub==0.11.1
     # via cleanrl
+humanize==4.13.0 ; python_full_version == '3.9.*'
+    # via orbax-checkpoint
+humanize==4.15.0 ; python_full_version >= '3.10'
+    # via orbax-checkpoint
 identify==2.5.24
     # via pre-commit
 idna==3.4
@@ -102,24 +97,23 @@ importlib-metadata==5.2.0 ; python_full_version < '3.10'
     # via
     #   gym
     #   gymnasium
+    #   jax
     #   markdown
-importlib-resources==5.12.0
-    # via orbax
-iniconfig==2.0.0
-    # via pytest
-jax==0.4.8
+importlib-resources==5.12.0 ; python_full_version >= '3.9'
+    # via etils
+jax==0.4.28 ; python_full_version >= '3.9'
     # via
     #   chex
     #   cleanrl
     #   flax
     #   optax
-    #   orbax
-jaxlib==0.4.7
+    #   orbax-checkpoint
+jaxlib==0.4.28 ; python_full_version >= '3.9'
     # via
     #   chex
     #   cleanrl
     #   optax
-    #   orbax
+    #   orbax-checkpoint
 jinja2==3.1.2
     # via torch
 markdown==3.3.7
@@ -128,20 +122,21 @@ markupsafe==2.1.2
     # via
     #   jinja2
     #   werkzeug
-ml-dtypes==0.2.0 ; python_full_version < '3.10'
+ml-dtypes==0.5.1 ; python_full_version >= '3.9'
     # via
     #   jax
     #   jaxlib
-ml-dtypes==0.5.1 ; python_full_version >= '3.10'
-    # via
-    #   jax
-    #   jaxlib
+    #   tensorstore
 moviepy==1.0.3
     # via cleanrl
 mpmath==1.3.0
     # via sympy
-msgpack==1.0.5
-    # via flax
+msgpack==1.0.5 ; python_full_version >= '3.9'
+    # via
+    #   flax
+    #   orbax-checkpoint
+nest-asyncio==1.6.0 ; python_full_version >= '3.9'
+    # via orbax-checkpoint
 networkx==3.1 ; python_full_version < '3.9'
     # via torch
 networkx==3.2.1 ; python_full_version == '3.9.*'
@@ -163,7 +158,7 @@ numpy==1.24.4
     #   moviepy
     #   opt-einsum
     #   optax
-    #   orbax
+    #   orbax-checkpoint
     #   scipy
     #   tensorboard
     #   tensorstore
@@ -204,31 +199,28 @@ nvidia-nvtx-cu12==12.1.105 ; platform_machine == 'x86_64' and sys_platform == 'l
     # via torch
 oauthlib==3.2.2
     # via requests-oauthlib
-opt-einsum==3.3.0
+opt-einsum==3.3.0 ; python_full_version >= '3.9'
     # via jax
-optax==0.1.4
+optax==0.2.2 ; python_full_version >= '3.9'
     # via
     #   cleanrl
     #   flax
-orbax==0.1.0
+orbax-checkpoint==0.6.4 ; python_full_version >= '3.9'
     # via flax
 packaging==23.1
-    # via
-    #   huggingface-hub
-    #   pytest
+    # via huggingface-hub
 pathtools==0.1.2
     # via wandb
 pillow==9.5.0
     # via imageio
 platformdirs==3.5.0
     # via virtualenv
-pluggy==1.0.0
-    # via pytest
 pre-commit==2.21.0
 proglog==0.1.10
     # via moviepy
 protobuf==3.20.3
     # via
+    #   orbax-checkpoint
     #   tensorboard
     #   wandb
 psutil==5.9.5
@@ -243,13 +235,11 @@ pygame==2.1.0
     # via cleanrl
 pygments==2.15.1
     # via rich
-pytest==7.3.1
-    # via orbax
 pyyaml==6.0.1
     # via
     #   flax
     #   huggingface-hub
-    #   orbax
+    #   orbax-checkpoint
     #   pre-commit
     #   wandb
 requests==2.30.0
@@ -302,13 +292,15 @@ tensorboard-data-server==0.6.1
     # via tensorboard
 tensorboard-plugin-wit==1.8.1
     # via tensorboard
-tensorstore==0.1.28
+tensorstore==0.1.69 ; python_full_version == '3.9.*'
     # via
     #   flax
-    #   orbax
-tomli==2.0.1
-    # via pytest
-toolz==0.12.0
+    #   orbax-checkpoint
+tensorstore==0.1.78 ; python_full_version >= '3.10'
+    # via
+    #   flax
+    #   orbax-checkpoint
+toolz==0.12.0 ; python_full_version >= '3.9'
     # via chex
 torch==2.4.1
     # via cleanrl
@@ -321,19 +313,19 @@ triton==3.0.0 ; platform_machine == 'x86_64' and sys_platform == 'linux'
     # via torch
 typing-extensions==4.13.2 ; python_full_version < '3.9'
     # via
-    #   flax
     #   gymnasium
     #   huggingface-hub
-    #   optax
     #   torch
     #   tyro
     #   wandb
 typing-extensions==4.14.1 ; python_full_version >= '3.9'
     # via
+    #   chex
+    #   etils
     #   flax
     #   gymnasium
     #   huggingface-hub
-    #   optax
+    #   orbax-checkpoint
     #   torch
     #   tyro
     #   wandb
@@ -352,7 +344,8 @@ werkzeug==2.2.3
     # via tensorboard
 wheel==0.40.0
     # via tensorboard
-zipp==3.15.0 ; python_full_version < '3.10'
+zipp==3.15.0
     # via
+    #   etils
     #   importlib-metadata
     #   importlib-resources
