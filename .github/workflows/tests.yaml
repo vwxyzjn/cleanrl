@@ -150,7 +150,9 @@ jobs:
 
       # envpool tests
       - name: Install envpool dependencies
-        run: uv pip install ".[pytest, envpool, jax]"
+        run: uv pip install ".[pytest, envpool]"
+      - name: Install jax dependencies
+        run: uv pip install ".[jax]"
       - name: Run envpool tests
         run: uv run pytest tests/test_envpool.py
 
