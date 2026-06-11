@@ -325,7 +325,14 @@ if __name__ == "__main__":
 
     if args.save_model:
         model_path = f"runs/{run_name}/{args.exp_name}.cleanrl_model"
-        torch.save(agent.state_dict(), model_path)
+        # save the observation normalization statistics alongside the weights so that
+        # evaluation envs can reproduce the observation scaling seen during training
+        obs_rms = envs.envs[0].get_wrapper_attr("obs_rms")
+        model_data = {
+            "model_weights": agent.state_dict(),
+            "obs_rms": {"mean": obs_rms.mean, "var": obs_rms.var, "count": obs_rms.count},
+        }
+        torch.save(model_data, model_path)
         print(f"model saved to {model_path}")
         from cleanrl_utils.evals.ppo_eval import evaluate
 
