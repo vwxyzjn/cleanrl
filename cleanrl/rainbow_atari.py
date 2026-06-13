@@ -211,7 +211,11 @@ PrioritizedBatch = collections.namedtuple(
 class SumSegmentTree:
     def __init__(self, capacity):
         self.capacity = capacity
-        self.tree_size = 2 * capacity - 1
+        # pad the leaves to the next power of two: the implicit heap layout only keeps
+        # the left-to-right leaf order (and hence correct prefix-sum retrieval) when the
+        # leaf count is a power of two (openai/baselines asserts this instead of padding)
+        self.tree_capacity = 1 << (capacity - 1).bit_length()
+        self.tree_size = 2 * self.tree_capacity - 1
         self.tree = np.zeros(self.tree_size, dtype=np.float32)
 
     def _propagate(self, idx):
@@ -221,9 +225,12 @@ class SumSegmentTree:
             parent = (parent - 1) // 2
 
     def update(self, idx, value):
-        tree_idx = idx + self.capacity - 1
+        tree_idx = idx + self.tree_capacity - 1
         self.tree[tree_idx] = value
         self._propagate(tree_idx)
+
+    def get(self, idx):
+        return self.tree[idx + self.tree_capacity - 1]
 
     def total(self):
         return self.tree[0]
@@ -238,14 +245,19 @@ class SumSegmentTree:
             else:
                 value -= self.tree[left]
                 idx = right
-        return idx - (self.capacity - 1)
+        # floating-point round-off can push the descent one leaf past the last real index
+        # when value is within an ulp of total(); clamp so we never return a padding leaf
+        return min(idx - (self.tree_capacity - 1), self.capacity - 1)
 
 
 # adapted from: https://github.com/openai/baselines/blob/master/baselines/common/segment_tree.py
 class MinSegmentTree:
     def __init__(self, capacity):
         self.capacity = capacity
-        self.tree_size = 2 * capacity - 1
+        # pad the leaves to the next power of two (see SumSegmentTree); the padding
+        # leaves keep the float("inf") fill value, so min() is unaffected
+        self.tree_capacity = 1 << (capacity - 1).bit_length()
+        self.tree_size = 2 * self.tree_capacity - 1
         self.tree = np.full(self.tree_size, float("inf"), dtype=np.float32)
 
     def _propagate(self, idx):
@@ -255,7 +267,7 @@ class MinSegmentTree:
             parent = (parent - 1) // 2
 
     def update(self, idx, value):
-        tree_idx = idx + self.capacity - 1
+        tree_idx = idx + self.tree_capacity - 1
         self.tree[tree_idx] = value
         self._propagate(tree_idx)
 
@@ -349,7 +361,7 @@ class PrioritizedReplayBuffer:
             "dones": torch.from_numpy(self.buffer_dones[indices]).to(self.device).unsqueeze(1),
         }
 
-        probs = np.array([self.sum_tree.tree[idx + self.capacity - 1] for idx in indices])
+        probs = np.array([self.sum_tree.get(idx) for idx in indices])
         weights = (self.size * probs / p_total) ** -self.beta
         weights = weights / weights.max()
         samples["weights"] = torch.from_numpy(weights).to(self.device).unsqueeze(1)

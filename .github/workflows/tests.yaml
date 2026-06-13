@@ -27,6 +27,8 @@ jobs:
         run: uv pip install ".[pytest]"
       - name: Run core tests
         run: uv run pytest tests/test_classic_control.py
+      - name: Run rainbow segment tree tests
+        run: uv run pytest tests/test_rainbow_segment_tree.py
       - name: Install jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: uv pip install ".[pytest, jax]"
