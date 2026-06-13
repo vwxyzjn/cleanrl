@@ -17,7 +17,19 @@ def evaluate(
 ):
     envs = gym.vector.SyncVectorEnv([make_env(env_id, 0, capture_video, run_name, gamma)])
     agent = Model(envs).to(device)
-    agent.load_state_dict(torch.load(model_path, map_location=device))
+    model_data = torch.load(model_path, map_location=device)
+    if "model_weights" in model_data:
+        agent.load_state_dict(model_data["model_weights"])
+        # restore the observation normalization statistics from training and freeze them,
+        # otherwise the agent sees observations on a different scale than it was trained on
+        for env in envs.envs:
+            obs_rms = env.get_wrapper_attr("obs_rms")
+            obs_rms.mean = model_data["obs_rms"]["mean"]
+            obs_rms.var = model_data["obs_rms"]["var"]
+            obs_rms.count = model_data["obs_rms"]["count"]
+            obs_rms.update = lambda obs: None
+    else:  # checkpoints saved before the normalization statistics were added, e.g. the hub models
+        agent.load_state_dict(model_data)
     agent.eval()
 
     obs, _ = envs.reset()
