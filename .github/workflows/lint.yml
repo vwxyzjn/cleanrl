@@ -49,10 +49,32 @@ jobs:
       - name: Install ruff
         run: uv pip install ruff
 
-      - name: Run ruff check (rules from pyproject.toml)
+      - name: Collect changed Python files
+        id: changed-python
         run: |
-          uv run ruff check cleanrl cleanrl_utils tests benchmark tuner_example.py
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            base_ref="origin/${{ github.base_ref }}"
+          else
+            base_ref="${{ github.event.before }}"
+          fi
+
+          git diff --name-only --diff-filter=ACMRT "$base_ref"...HEAD -- '*.py' \
+            | grep -E '^(cleanrl/|cleanrl_utils/|tests/|benchmark/|tuner_example\.py$)' \
+            > changed-python-files.txt || true
+
+          if [[ -s changed-python-files.txt ]]; then
+            echo "has_files=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_files=false" >> "$GITHUB_OUTPUT"
+            echo "No changed Python files to lint."
+          fi
+
+      - name: Run ruff check
+        if: steps.changed-python.outputs.has_files == 'true'
+        run: |
+          xargs -a changed-python-files.txt uv run ruff check
 
       - name: Run ruff format --check
+        if: steps.changed-python.outputs.has_files == 'true'
         run: |
-          uv run ruff format --check cleanrl cleanrl_utils tests benchmark tuner_example.py
+          xargs -a changed-python-files.txt uv run ruff format --check
