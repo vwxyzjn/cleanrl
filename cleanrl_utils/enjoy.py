@@ -20,6 +20,8 @@ def parse_args():
         help="the id of the environment")
     parser.add_argument("--eval-episodes", type=int, default=10,
         help="the number of evaluation episodes")
+    parser.add_argument("--capture_video", action="store_true", default=False,
+        help="whether to capture videos of the agent performances (check out `videos` folder)")
     args = parser.parse_args()
     # fmt: on
     return args
