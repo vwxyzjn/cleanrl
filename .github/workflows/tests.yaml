@@ -27,6 +27,8 @@ jobs:
         run: uv pip install ".[pytest]"
       - name: Run core tests
         run: uv run pytest tests/test_classic_control.py
+      - name: Run PPO continuous-action GAE tests
+        run: uv run pytest tests/test_ppo_continuous_action_gae.py
       - name: Install jax
         if: runner.os == 'Linux' || runner.os == 'macOS'
         run: uv pip install ".[pytest, jax]"
