@@ -205,4 +205,8 @@ CleanRL is a community-powered by project and our contributors run experiments o
 
 * We thank many contributors for using their own computers to run experiments
 * We thank Google's [TPU research cloud](https://sites.research.google/trc/about/) for providing TPU resources.
-* We thank [Hugging Face](https://huggingface.co/)'s cluster for providing GPU resources. 
+* We thank [Hugging Face](https://huggingface.co/)'s cluster for providing GPU resources.
+
+---
+
+*[Mukller](https://github.com/Mukller)*
