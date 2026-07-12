@@ -17,14 +17,14 @@ CleanRL is a Deep Reinforcement Learning library that provides high-quality sing
 
 
 * 📜 Single-file implementation
-   * *Every detail about an algorithm variant is put into a single standalone file.* 
+   * *Every detail about an algorithm variant is put into a single standalone file.*
    * For example, our `ppo_atari.py` only has 340 lines of code but contains all implementation details on how PPO works with Atari games, **so it is a great reference implementation to read for folks who do not wish to read an entire modular library**.
 * 📊 Benchmarked Implementation (7+ algorithms and 34+ games at https://benchmark.cleanrl.dev)
 * 📈 Tensorboard Logging
 * 🪛 Local Reproducibility via Seeding
 * 🎮 Videos of Gameplay Capturing
 * 🧫 Experiment Management with [Weights and Biases](https://wandb.ai/site)
-* 💸 Cloud Integration with docker and AWS 
+* 💸 Cloud Integration with docker and AWS
 
 You can read more about CleanRL in our [JMLR paper](https://www.jmlr.org/papers/volume23/21-1342/21-1342.pdf) and [documentation](https://docs.cleanrl.dev/).
 
@@ -34,7 +34,7 @@ Notable CleanRL-related projects:
 * [pytorch-labs/LeanRL](https://github.com/pytorch-labs/LeanRL): Fast optimized PyTorch implementation of CleanRL RL algorithms using CUDAGraphs.
 
 
-> ℹ️ **Support for Gymnasium**: [Farama-Foundation/Gymnasium](https://github.com/Farama-Foundation/Gymnasium) is the next generation of [`openai/gym`](https://github.com/openai/gym) that will continue to be maintained and introduce new features. Please see their [announcement](https://farama.org/Announcing-The-Farama-Foundation) for further detail. We are migrating to `gymnasium` and the progress can be tracked in [vwxyzjn/cleanrl#277](https://github.com/vwxyzjn/cleanrl/pull/277). 
+> ℹ️ **Support for Gymnasium**: [Farama-Foundation/Gymnasium](https://github.com/Farama-Foundation/Gymnasium) is the next generation of [`openai/gym`](https://github.com/openai/gym) that will continue to be maintained and introduce new features. Please see their [announcement](https://farama.org/Announcing-The-Farama-Foundation) for further detail. We are migrating to `gymnasium` and the progress can be tracked in [vwxyzjn/cleanrl#277](https://github.com/vwxyzjn/cleanrl/pull/277).
 
 
 > ⚠️ **NOTE**: CleanRL is *not* a modular library and therefore it is not meant to be imported. At the cost of duplicate code, we make all implementation details of a DRL algorithm variant easy to understand, so CleanRL comes with its own pros and cons. You should consider using CleanRL if you want to 1) understand all implementation details of an algorithm's variant or 2) prototype advanced features that other modular DRL libraries do not support (CleanRL has minimal lines of code so it gives you great debugging experience and you don't have do a lot of subclassing like sometimes in modular DRL libraries).
@@ -168,7 +168,7 @@ You may also use a prebuilt development environment hosted in Gitpod:
 
 ## Open RL Benchmark
 
-To make our experimental data transparent, CleanRL participates in a related project called [Open RL Benchmark](https://github.com/openrlbenchmark/openrlbenchmark), which contains tracked experiments from popular DRL libraries such as ours, [Stable-baselines3](https://github.com/DLR-RM/stable-baselines3), [openai/baselines](https://github.com/openai/baselines), [jaxrl](https://github.com/ikostrikov/jaxrl), and others. 
+To make our experimental data transparent, CleanRL participates in a related project called [Open RL Benchmark](https://github.com/openrlbenchmark/openrlbenchmark), which contains tracked experiments from popular DRL libraries such as ours, [Stable-baselines3](https://github.com/DLR-RM/stable-baselines3), [openai/baselines](https://github.com/openai/baselines), [jaxrl](https://github.com/ikostrikov/jaxrl), and others.
 
 Check out https://benchmark.cleanrl.dev/ for a collection of Weights and Biases reports showcasing tracked DRL experiments. The reports are interactive, and researchers can easily query information such as GPU utilization and videos of an agent's gameplay that are normally hard to acquire in other RL benchmarks. In the future, Open RL Benchmark will likely provide an dataset API for researchers to easily access the data (see [repo](https://github.com/openrlbenchmark/openrlbenchmark)).
 
@@ -205,4 +205,4 @@ CleanRL is a community-powered by project and our contributors run experiments o
 
 * We thank many contributors for using their own computers to run experiments
 * We thank Google's [TPU research cloud](https://sites.research.google/trc/about/) for providing TPU resources.
-* We thank [Hugging Face](https://huggingface.co/)'s cluster for providing GPU resources. 
+* We thank [Hugging Face](https://huggingface.co/)'s cluster for providing GPU resources.

@@ -30,7 +30,7 @@ uv run pytest tests/.
 
 Also, we use [pre-commit](https://pre-commit.com/) to helps us automate a sequence of short tasks (called pre-commit "hooks") such as code formatting. In particular, we always use the following hooks when submitting code to the main repository.
 
-* [**pyupgrade**](https://github.com/asottile/pyupgrade): pyupgrade upgrades syntax for newer versions of the language. 
+* [**pyupgrade**](https://github.com/asottile/pyupgrade): pyupgrade upgrades syntax for newer versions of the language.
 * [**isort**](https://github.com/PyCQA/isort): isort sorts imported dependencies according to their type (e.g, standard library vs third-party library) and name.
 * [**black**](https://black.readthedocs.io/en/stable/): black enforces an uniform code style across the codebase.
 * [**codespell**](https://github.com/codespell-project/codespell): codespell helps avoid common incorrect spelling.
@@ -41,7 +41,7 @@ You can run the following command to run the following hooks:
 uv run pre-commit run --all-files
 ```
 
-which in most cases should automatically fix things as shown below: 
+which in most cases should automatically fix things as shown below:
 
 ![](static/pre-commit.png)
 
@@ -136,7 +136,7 @@ It also generates a table comparing the episodic return in the last 100 episodes
 
 !!! info
 
-    For more documentation on `openrlbenchmark.rlops`, please refer to its [documentation](https://github.com/openrlbenchmark/openrlbenchmark). 
+    For more documentation on `openrlbenchmark.rlops`, please refer to its [documentation](https://github.com/openrlbenchmark/openrlbenchmark).
 
 !!! tip
 
@@ -175,7 +175,7 @@ Walker2d-v2                             1661.14 ± 250.01
 Hopper-v2                               1007.44 ± 148.29
 ```
 
-We will use them to update the [experimental result section](https://github.com/vwxyzjn/cleanrl/blob/master/docs/rl-algorithms/ddpg.md#experiment-results) in the docs and replace the learning curves with the new ones. 
+We will use them to update the [experimental result section](https://github.com/vwxyzjn/cleanrl/blob/master/docs/rl-algorithms/ddpg.md#experiment-results) in the docs and replace the learning curves with the new ones.
 
 
 ![](./rlops/docs-update.png)

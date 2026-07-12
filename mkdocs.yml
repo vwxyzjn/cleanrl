@@ -12,14 +12,14 @@ theme:
     - search.suggest
     - search.highlight
   palette:
-    - media: "(prefers-color-scheme: dark)" 
+    - media: "(prefers-color-scheme: dark)"
       scheme: slate
       primary: teal
       accent: light green
       toggle:
         icon: material/lightbulb
         name: Switch to light mode
-    - media: "(prefers-color-scheme: light)" 
+    - media: "(prefers-color-scheme: light)"
       scheme: default
       primary: green
       accent: deep orange
@@ -58,17 +58,17 @@ nav:
   - Community:
     - contribution.md
     - cleanrl-supported-papers-projects.md
-  - Cloud Integration: 
+  - Cloud Integration:
     - cloud/installation.md
     - cloud/submit-experiments.md
 #adding git repo
 repo_url: https://github.com/vwxyzjn/cleanrl
 repo_name: vwxyzjn/cleanrl
-#markdown_extensions 
+#markdown_extensions
 markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
-      alternate_style: true 
+      alternate_style: true
   - abbr
   - pymdownx.highlight
   - pymdownx.inlinehilite
