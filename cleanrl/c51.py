@@ -193,11 +193,19 @@ if __name__ == "__main__":
                     writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                     writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
 
-        # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
+        # TRY NOT TO MODIFY: save data to reply buffer; handle final observation
+        # Gymnasium vector envs used `final_observation` (AutoResetWrapper / older APIs);
+        # Gymnasium >=1.0 SAME_STEP autoreset exposes `final_obs` / `_final_obs` instead.
         real_next_obs = next_obs.copy()
-        for idx, trunc in enumerate(truncations):
-            if trunc:
-                real_next_obs[idx] = infos["final_observation"][idx]
+        if "final_observation" in infos:
+            for idx, trunc in enumerate(truncations):
+                if trunc:
+                    real_next_obs[idx] = infos["final_observation"][idx]
+        elif "final_obs" in infos:
+            final_mask = infos.get("_final_obs", truncations)
+            for idx, has_final in enumerate(final_mask):
+                if has_final:
+                    real_next_obs[idx] = infos["final_obs"][idx]
         rb.add(obs, real_next_obs, actions, rewards, terminations, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook

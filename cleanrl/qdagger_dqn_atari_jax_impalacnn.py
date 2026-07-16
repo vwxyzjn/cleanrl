@@ -282,7 +282,11 @@ if __name__ == "__main__":
         real_next_obs = next_obs.copy()
         for idx, d in enumerate(truncated):
             if d:
-                real_next_obs[idx] = infos["final_observation"][idx]
+                # prefer Gymnasium legacy key, then SAME_STEP key
+                if "final_observation" in infos:
+                    real_next_obs[idx] = infos["final_observation"][idx]
+                elif "final_obs" in infos:
+                    real_next_obs[idx] = infos["final_obs"][idx]
         teacher_rb.add(obs, real_next_obs, actions, rewards, terminated, infos)
         obs = next_obs
 
@@ -400,11 +404,15 @@ if __name__ == "__main__":
                 episodic_returns.append(info["episode"]["r"])
                 break
 
-        # TRY NOT TO MODIFY: save data to reply buffer; handle `final_observation`
+        # TRY NOT TO MODIFY: save data to reply buffer; handle final observation (final_observation / final_obs)
         real_next_obs = next_obs.copy()
         for idx, d in enumerate(truncated):
             if d:
-                real_next_obs[idx] = infos["final_observation"][idx]
+                # prefer Gymnasium legacy key, then SAME_STEP key
+                if "final_observation" in infos:
+                    real_next_obs[idx] = infos["final_observation"][idx]
+                elif "final_obs" in infos:
+                    real_next_obs[idx] = infos["final_obs"][idx]
         rb.add(obs, real_next_obs, actions, rewards, terminated, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
