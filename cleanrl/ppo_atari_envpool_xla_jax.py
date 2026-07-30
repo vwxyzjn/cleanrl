@@ -5,6 +5,7 @@ import time
 from dataclasses import dataclass
 from typing import Sequence
 
+import cleanrl_utils.jax_compat  # noqa: F401
 import envpool
 import flax
 import flax.linen as nn
@@ -15,7 +16,7 @@ import numpy as np
 import optax
 import tyro
 from flax.linen.initializers import constant, orthogonal
-from flax.training.train_state import TrainState
+from cleanrl_utils.jax_compat import TrainState
 from torch.utils.tensorboard import SummaryWriter
 
 # Fix weird OOM https://github.com/google/jax/discussions/6332#discussioncomment-1279991
