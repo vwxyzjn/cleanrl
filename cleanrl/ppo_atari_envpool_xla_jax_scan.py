@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from functools import partial
 from typing import Sequence
 
-import cleanrl_utils.jax_compat  # noqa: F401
 import envpool
 import flax
 import flax.linen as nn
@@ -17,8 +16,10 @@ import numpy as np
 import optax
 import tyro
 from flax.linen.initializers import constant, orthogonal
-from cleanrl_utils.jax_compat import TrainState
 from torch.utils.tensorboard import SummaryWriter
+
+import cleanrl_utils.jax_compat  # noqa: F401
+from cleanrl_utils.jax_compat import TrainState
 
 # Fix weird OOM https://github.com/google/jax/discussions/6332#discussioncomment-1279991
 os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"] = "0.6"
