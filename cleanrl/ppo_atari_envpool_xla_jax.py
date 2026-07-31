@@ -5,6 +5,13 @@ import time
 from dataclasses import dataclass
 from typing import Sequence
 
+# envpool decides whether XLA is available while it is imported, so install the
+# compatibility shims first. Keep isort from moving this below third-party imports.
+# isort: off
+import cleanrl_utils.jax_compat  # noqa: F401
+
+# isort: on
+
 import envpool
 import flax
 import flax.linen as nn
@@ -17,7 +24,6 @@ import tyro
 from flax.linen.initializers import constant, orthogonal
 from torch.utils.tensorboard import SummaryWriter
 
-import cleanrl_utils.jax_compat  # noqa: F401
 from cleanrl_utils.jax_compat import TrainState
 
 # Fix weird OOM https://github.com/google/jax/discussions/6332#discussioncomment-1279991
