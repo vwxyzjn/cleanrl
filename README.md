@@ -58,7 +58,7 @@ uv run python cleanrl/ppo.py \
     --env-id CartPole-v0 \
     --total-timesteps 50000
 
-# open another terminal and enter `cd cleanrl/cleanrl`
+# open another terminal in the same directory (the repository root, where `runs/` is created)
 tensorboard --logdir runs
 ```
 
