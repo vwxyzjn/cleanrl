@@ -17,6 +17,8 @@ from gym.wrappers.normalize import RunningMeanStd
 from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
+from cleanrl_utils.gae import compute_gae
+
 
 @dataclass
 class Args:
@@ -403,31 +405,28 @@ if __name__ == "__main__":
         with torch.no_grad():
             next_value_ext, next_value_int = agent.get_value(next_obs)
             next_value_ext, next_value_int = next_value_ext.reshape(1, -1), next_value_int.reshape(1, -1)
-            ext_advantages = torch.zeros_like(rewards, device=device)
-            int_advantages = torch.zeros_like(curiosity_rewards, device=device)
-            ext_lastgaelam = 0
-            int_lastgaelam = 0
-            for t in reversed(range(args.num_steps)):
-                if t == args.num_steps - 1:
-                    ext_nextnonterminal = 1.0 - next_done
-                    int_nextnonterminal = 1.0
-                    ext_nextvalues = next_value_ext
-                    int_nextvalues = next_value_int
-                else:
-                    ext_nextnonterminal = 1.0 - dones[t + 1]
-                    int_nextnonterminal = 1.0
-                    ext_nextvalues = ext_values[t + 1]
-                    int_nextvalues = int_values[t + 1]
-                ext_delta = rewards[t] + args.gamma * ext_nextvalues * ext_nextnonterminal - ext_values[t]
-                int_delta = curiosity_rewards[t] + args.int_gamma * int_nextvalues * int_nextnonterminal - int_values[t]
-                ext_advantages[t] = ext_lastgaelam = (
-                    ext_delta + args.gamma * args.gae_lambda * ext_nextnonterminal * ext_lastgaelam
-                )
-                int_advantages[t] = int_lastgaelam = (
-                    int_delta + args.int_gamma * args.gae_lambda * int_nextnonterminal * int_lastgaelam
-                )
-            ext_returns = ext_advantages + ext_values
-            int_returns = int_advantages + int_values
+            ext_advantages, ext_returns = compute_gae(
+                rewards,
+                ext_values,
+                next_value_ext,
+                dones,
+                next_done,
+                args.gamma,
+                args.gae_lambda,
+            )
+            # Intrinsic rewards intentionally bootstrap across true episode
+            # ends, but the terminal observation emitted by EnvPool is still
+            # a dummy transition and must cut the trace.
+            int_advantages, int_returns = compute_gae(
+                curiosity_rewards,
+                int_values,
+                next_value_int,
+                dones,
+                next_done,
+                args.int_gamma,
+                args.gae_lambda,
+                bootstrap_on_terminal=False,
+            )
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
