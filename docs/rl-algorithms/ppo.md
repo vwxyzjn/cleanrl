@@ -505,8 +505,10 @@ The [ppo_atari_envpool.py](https://github.com/vwxyzjn/cleanrl/blob/master/cleanr
     * Under the vectorized environment of `envpool<=0.6.4`, the `obs` in `obs, reward, done, info = env.step(action)` is the truncated state $s_{last}$
     * Under the vectorized environment of `gym==0.23.1`, the `obs` in `obs, reward, done, info = env.step(action)` is the initial state $s_{new}$.
 
-    This causes the $s_{last}$ to be off by one. 
-    See [:material-github: sail-sg/envpool#194](https://github.com/sail-sg/envpool/issues/194) for more detail. However, it does not seem to impact performance, so we take a note here and await for the upstream fix.
+    This causes the $s_{last}$ to be off by one. The EnvPool PPO variants
+    account for this by cutting GAE traces on both the transition that emits
+    $s_{last}$ and the following terminal-observation (dummy) transition.
+    See [:material-github: sail-sg/envpool#194](https://github.com/sail-sg/envpool/issues/194) for more detail.
 
 
 ### Usage

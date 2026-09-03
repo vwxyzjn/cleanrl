@@ -151,6 +151,8 @@ jobs:
       # envpool tests
       - name: Install envpool dependencies
         run: uv pip install ".[pytest, envpool, jax]"
+      - name: Run EnvPool GAE regression tests
+        run: uv run pytest tests/test_gae.py
       - name: Run envpool tests
         run: uv run pytest tests/test_envpool.py
 

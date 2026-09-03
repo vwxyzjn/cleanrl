@@ -338,11 +338,16 @@ if __name__ == "__main__":
         lastgaelam = 0
         for t in reversed(range(args.num_steps)):
             if t == args.num_steps - 1:
-                nextnonterminal = 1.0 - next_done
+                following_done = next_done
                 nextvalues = next_value
             else:
-                nextnonterminal = 1.0 - storage.dones[t + 1]
+                following_done = storage.dones[t + 1]
                 nextvalues = storage.values[t + 1]
+            # EnvPool exposes the terminal frame for one extra (dummy) step.
+            # Cut traces both when that observation is current and when the
+            # preceding transition reports ``done``.
+            boundary = jnp.logical_or(storage.dones[t], following_done)
+            nextnonterminal = 1.0 - boundary.astype(storage.rewards.dtype)
             delta = storage.rewards[t] + args.gamma * nextvalues * nextnonterminal - storage.values[t]
             lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
             storage = storage.replace(advantages=storage.advantages.at[t].set(lastgaelam))
