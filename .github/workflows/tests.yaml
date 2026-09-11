@@ -25,6 +25,8 @@ jobs:
       # classic control tests
       - name: Install core dependencies
         run: uv pip install ".[pytest]"
+      - name: Run reproduction utility tests
+        run: uv run pytest tests/test_reproduce.py
       - name: Run core tests
         run: uv run pytest tests/test_classic_control.py
       - name: Install jax
