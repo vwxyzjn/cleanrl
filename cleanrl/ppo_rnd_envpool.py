@@ -116,8 +116,9 @@ class RecordEpisodeStatistics(gym.Wrapper):
         self.episode_lengths += 1
         self.returned_episode_returns[:] = self.episode_returns
         self.returned_episode_lengths[:] = self.episode_lengths
-        self.episode_returns *= 1 - infos["terminated"]
-        self.episode_lengths *= 1 - infos["terminated"]
+        episode_end = infos["terminated"] | infos["TimeLimit.truncated"]
+        self.episode_returns *= 1 - episode_end
+        self.episode_lengths *= 1 - episode_end
         infos["r"] = self.returned_episode_returns
         infos["l"] = self.returned_episode_lengths
         return (
@@ -371,8 +372,8 @@ if __name__ == "__main__":
             target_next_feature = rnd_model.target(rnd_next_obs)
             predict_next_feature = rnd_model.predictor(rnd_next_obs)
             curiosity_rewards[step] = ((target_next_feature - predict_next_feature).pow(2).sum(1) / 2).data
-            for idx, d in enumerate(done):
-                if d and info["lives"][idx] == 0:
+            for idx, episode_end in enumerate(info["terminated"] | info["TimeLimit.truncated"]):
+                if episode_end:
                     avg_returns.append(info["r"][idx])
                     epi_ret = np.average(avg_returns)
                     print(
