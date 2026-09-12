@@ -1,0 +1,12 @@
+**
+!pyproject.toml
+!uv.lock
+!README.md
+!cleanrl/
+!cleanrl/**
+!cleanrl_utils/
+!cleanrl_utils/**
+!cloud/
+!cloud/nebius/
+!cloud/nebius/*.py
+**/__pycache__

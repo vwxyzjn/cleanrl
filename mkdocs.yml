@@ -61,6 +61,7 @@ nav:
   - Cloud Integration: 
     - cloud/installation.md
     - cloud/submit-experiments.md
+    - cloud/nebius.md
 #adding git repo
 repo_url: https://github.com/vwxyzjn/cleanrl
 repo_name: vwxyzjn/cleanrl
