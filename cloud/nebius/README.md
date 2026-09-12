@@ -260,7 +260,7 @@ docker run --rm --platform linux/amd64 --network none --cpus 2 --memory 4g \
 Without it, a missing CUDA device fails before training. The image smoke checks
 FFmpeg evaluation and policy export; it cannot validate the Nebius runtime.
 
-Live validation on September 12, 2026 used six single-GPU Jobs with the frozen
+Live validation on September 12, 2026 used seven single-GPU Jobs with the frozen
 Python 3.10 / Torch 2.4.1+cu121 worker built from CleanRL revision
 `0652c16c2289d20c5caaaf358887b774f782b45c` plus this example. The controller includes
 the compatibility fixes found during those runs:
@@ -269,6 +269,7 @@ the compatibility fixes found during those runs:
 |---|---|
 | Tracking disabled | 20,000 DQN steps on NVIDIA L40S; ten evaluation episodes; verified export and independent checkpoint reload |
 | Offline W&B | Two 1,024-step seeds completed, with 19 verified output files each, including offline run data |
+| Online W&B | A 20,000-step seed finished in a private project; run ID/group/config, 471 history rows, 1,107 training values and ten evaluation returns verified against TensorBoard; exported checkpoint reloaded independently |
 | Concurrency and reconnect | Second seed stayed planned until the first completed under a one-Job cap; a new controller process resumed the first experiment from its receipt |
 | Private registry and secrets | Digest-pinned private image pulled; string secret payloads delivered; known temporary credentials absent from checked logs and downloaded bundles |
 | Running cancellation | Job reached CANCELLED; worker recorded SIGTERM and a partial manifest without a success marker |
@@ -276,13 +277,13 @@ the compatibility fixes found during those runs:
 | Invalid storage credentials | Worker failed its initial storage check; no manifest or success marker |
 | Corrupt output | Independent downloader rejected a corrupted completion marker in live Object Storage; the original marker was restored |
 | API preflight | Binary secret entries and a missing image were rejected before allocation |
-| Cleanup | All six Job records, test storage/registry/secrets and temporary keys removed; a final paginated listing found no validation Jobs |
+| Cleanup | All seven Job records, test storage/registry/secrets and temporary keys removed; a final paginated listing found no validation Jobs |
 
 The API fills in parent secret IDs for version references and adds its own labels.
 Ownership checks normalize the resolved reference and require the CleanRL identity
 labels and workload fields, allowing additional server labels.
 
-Online W&B authentication, a storage outage after training starts, the service's
+A storage outage after training starts, the service's
 full one-hour timeout, cancellation during provisioning and a cancellation/completion
 race were not exercised live. Offline tests cover several of these failure paths.
 The live seed test used a one-Job cap; simultaneous two-Job dispatch within one
