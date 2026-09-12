@@ -1,0 +1,28 @@
+name: Nebius example (offline)
+on:
+  pull_request:
+    paths:
+      - 'cloud/nebius/**'
+      - 'docs/cloud/nebius.md'
+      - '.github/workflows/nebius-example.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  controller:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: '0.7.19'
+      - run: |
+          uv venv /tmp/cleanrl-controller --python 3.12
+          uv pip sync --python /tmp/cleanrl-controller/bin/python cloud/nebius/requirements-test.txt
+          /tmp/cleanrl-controller/bin/python -m pytest -c cloud/nebius/pytest.ini cloud/nebius/tests
+        env:
+          AWS_EC2_METADATA_DISABLED: 'true'

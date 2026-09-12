@@ -1,0 +1,7 @@
+*.sqlite*
+*.lock
+run.json
+config.json
+outputs/
+source-revision.txt
+.venv*/

@@ -1,0 +1,4 @@
+-r requirements-controller.in
+pytest==8.3.5
+pytest-asyncio==0.26.0
+moto[s3,server]==5.1.5

@@ -1,0 +1,19 @@
+{
+  "project_id": "project-replace",
+  "subnet_id": "vpcsubnet-replace",
+  "image": "registry.example/cleanrl@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "source_revision": "fe8d8a03c41a7ef5b523e2e354bd01c363e786bb",
+  "storage": {
+    "bucket": "replace-with-your-bucket",
+    "region": "eu-north1",
+    "secret_version": "mbsecver-replace"
+  },
+  "tracking": {"mode": "disabled"},
+  "training": {
+    "total_timesteps": 20000,
+    "learning_starts": 1000,
+    "train_frequency": 4,
+    "buffer_size": 10000,
+    "batch_size": 128
+  }
+}
