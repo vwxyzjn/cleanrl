@@ -10,7 +10,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from cloud.nebius.config import TERMINAL, encode, load
+from cloud.nebius.config import TERMINAL, encode, error_summary, load
 from cloud.nebius.controller import Controller
 from cloud.nebius.journal import Journal, locked
 
@@ -47,7 +47,7 @@ def parser():
     p.add_argument("--attempt", required=True)
     p.add_argument("--output", required=True)
     commands.add_parser("show", help="Read local receipts only")
-    for name in ("submit", "status", "wait", "reconcile", "cancel"):
+    for name in ("validate", "submit", "status", "wait", "reconcile", "cancel"):
         p = commands.add_parser(name)
         p.add_argument("--credentials-file", required=True, help="Dedicated renewable service-account credentials file")
         if name in ("reconcile", "cancel"):
@@ -86,7 +86,12 @@ async def remote(args, journal):
         user_agent_prefix="cleanrl-example/1",
     ) as sdk:
         controller = Controller(journal, Nebius(sdk))
-        if args.command == "reconcile":
+        if args.command == "validate":
+            for row in journal.rows():
+                if row["phase"] == "PLANNED":
+                    await controller.transport.validate(journal.settings[0], row)
+                    print(json.dumps({"attempt": row["id"], "dry_run": "accepted"}))
+        elif args.command == "reconcile":
             await controller.refresh()
             print(json.dumps(await controller.reconcile(args.attempt, args.adopt_job_id), indent=2))
         elif args.command == "cancel":
@@ -214,5 +219,5 @@ if __name__ == "__main__":
         print(str(exc), file=sys.stderr)
         raise SystemExit(2) from None
     except Exception as exc:
-        print(f"Command failed ({type(exc).__name__}); inspect the receipt with show/status", file=sys.stderr)
+        print(f"Command failed ({error_summary(exc)}); inspect the receipt with show/status", file=sys.stderr)
         raise SystemExit(1) from None

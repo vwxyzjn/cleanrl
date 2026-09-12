@@ -1,6 +1,7 @@
 """Nebius SDK transport. Every mutation uses one static-token RPC attempt."""
 
 import json
+import uuid
 
 from cloud.nebius.config import digest, encode
 
@@ -85,6 +86,12 @@ class Nebius:
     async def create(self, config, row):
         return await self.mutate("create", self.request(config, row), row["idempotency"])
 
+    async def validate(self, config, row):
+        request = self.request(config, row)
+        request.dry_run = True
+        key = str(uuid.uuid5(uuid.UUID(row["idempotency"]), "dry-run"))
+        return await self.mutate("create", request, key)
+
     async def cancel(self, job_id, key):
         from nebius.api.nebius.ai.v1 import CancelJobRequest
 
@@ -131,7 +138,14 @@ class Nebius:
                 "ssh_keys": list(spec.ssh_authorized_keys),
                 "files": [f.container_path for f in spec.injected_files],
                 "env": sorted(
-                    (e.name, e.value, e.mysterybox_secret.secret_id, e.mysterybox_secret.version_id)
+                    (
+                        e.name,
+                        e.value,
+                        # Get fills in the parent secret ID for a pinned version.
+                        # The immutable version remains the ownership comparison key.
+                        "" if e.mysterybox_secret.version_id else e.mysterybox_secret.secret_id,
+                        e.mysterybox_secret.version_id,
+                    )
                     for e in spec.environment_variables
                 ),
                 "registry_version": spec.registry_credentials.mysterybox_secret_version,
@@ -144,7 +158,11 @@ class Nebius:
 
         expected = self.request(config, row)
         view = self.snapshot(Job(metadata=expected.metadata, spec=expected.spec))
-        return all(job[key] == view[key] for key in ("parent", "name", "labels", "spec"))
+        # The service adds vmapp-id/vmapp-image labels. Require our identity labels
+        # while allowing server metadata that does not change the workload.
+        return all(job[key] == view[key] for key in ("parent", "name", "spec")) and all(
+            job["labels"].get(key) == value for key, value in view["labels"].items()
+        )
 
     async def get(self, job_id):
         from nebius.api.nebius.ai.v1 import GetJobRequest

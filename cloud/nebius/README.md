@@ -5,9 +5,11 @@ The optional controller plans experiments locally, records submission identity b
 sending a request, and exports final policy weights and diagnostics to Nebius Object
 Storage. CleanRL's algorithms, AWS launcher and base dependencies are unchanged.
 
-This example has offline SDK tests and a local Linux CPU container smoke test.
-**Live Nebius GPU, secrets, storage and cancellation validation is still pending.**
-Treat it as experimental until the live checklist below passes in your project.
+This experimental example has offline SDK tests, a local Linux CPU container smoke
+test and live validation on an L40S in `eu-north1` on September 12, 2026. Private
+image pulls, secret injection, CUDA training, Object Storage exports, offline
+tracking and cancellation were exercised. See the validation scope below before
+using it in another environment.
 
 CartPole environments run on CPU; the network updates use CUDA. This small workload
 checks the execution path and is not a GPU throughput or cost-efficiency benchmark.
@@ -24,9 +26,10 @@ An interrupted seed must be rerun from the beginning in a fresh attempt.
   [service-account authentication](https://docs.nebius.com/iam/service-accounts/authentication).
 - An existing Nebius Object Storage bucket and access keys stored in a versioned
   SecretStash secret, with exactly `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
-  payload keys. The worker identity needs read/write access to this bucket.
+  payload keys, using `string_value` entries rather than `binary_value`. The worker
+  identity needs read/write access to this bucket.
 - A registry reachable from Serverless. Private pulls may need a separate secret
-  version with `REGISTRY_USERNAME` and `REGISTRY_PASSWORD` payload keys.
+  version with `REGISTRY_USERNAME` and `REGISTRY_PASSWORD` string payload keys.
 
 The controller only uses Serverless Jobs APIs. It does not manage Compute VMs,
 Endpoints, Token Factory or AI Studio. No resources are provisioned by `plan`.
@@ -92,11 +95,18 @@ controller and is never injected into the worker:
 
 ```sh
 CREDENTIALS_FILE=/absolute/path/to/cleanrl-service-account.json
+"$CONTROLLER" -m cloud.nebius.submit --journal cloud/nebius/run.sqlite validate \
+  --credentials-file "$CREDENTIALS_FILE"
 "$CONTROLLER" -m cloud.nebius.submit --journal cloud/nebius/run.sqlite submit \
   --credentials-file "$CREDENTIALS_FILE"
 "$CONTROLLER" -m cloud.nebius.submit --journal cloud/nebius/run.sqlite wait \
   --credentials-file "$CREDENTIALS_FILE"
 ```
+
+`validate` calls the live API with `dry_run=true` for planned attempts. It checks
+the image and secret configuration without allocating a Job or changing receipts.
+It is optional and requires credentials, unlike the offline `plan` command.
+A successful dry run does not guarantee later capacity or runtime success.
 
 `submit` dispatches only available slots; `wait` polls and dispatches remaining
 planned seeds within the cap. Provisioning, image pulling, unknown submission and
@@ -170,7 +180,7 @@ Tracking is optional and independent of durable checkpoints:
  "secret_version": "mbsecver-replace"}
 ```
 
-Use that value for `tracking`, with a secret payload key `WANDB_API_KEY`. The worker
+Use that value for `tracking`, with a string secret payload key `WANDB_API_KEY`. The worker
 passes only that tracking credential to the training child, not its S3 keys or the
 controller's IAM credential. Each attempt has a distinct W&B run ID and the
 experiment ID is the W&B group. No `.netrc` lookup or secret-bearing Docker script
@@ -250,13 +260,34 @@ docker run --rm --platform linux/amd64 --network none --cpus 2 --memory 4g \
 Without it, a missing CUDA device fails before training. The image smoke checks
 FFmpeg evaluation and policy export; it cannot validate the Nebius runtime.
 
-Before treating the recipe as cloud-validated, record evidence for:
+Live validation on September 12, 2026 used six single-GPU Jobs with the frozen
+Python 3.10 / Torch 2.4.1+cu121 worker built from CleanRL revision
+`0652c16c2289d20c5caaaf358887b774f782b45c` plus this example. The controller includes
+the compatibility fixes found during those runs:
 
-- Actual CUDA training on one regular GPU, with successful independent output reload.
-- Private image pull if used; storage and W&B secret delivery, redaction and permission denial.
-- Tracking disabled/offline/online, storage outage and incomplete export handling.
-- Two-seed bounded concurrency, controller loss/reconnect and cancellation during provisioning/running.
-- Image-pull failure, nonzero workload exit, timeouts, cancellation/completion races and actual resource cleanup.
+| Check | Observed result |
+|---|---|
+| Tracking disabled | 20,000 DQN steps on NVIDIA L40S; ten evaluation episodes; verified export and independent checkpoint reload |
+| Offline W&B | Two 1,024-step seeds completed, with 19 verified output files each, including offline run data |
+| Concurrency and reconnect | Second seed stayed planned until the first completed under a one-Job cap; a new controller process resumed the first experiment from its receipt |
+| Private registry and secrets | Digest-pinned private image pulled; string secret payloads delivered; known temporary credentials absent from checked logs and downloaded bundles |
+| Running cancellation | Job reached CANCELLED; worker recorded SIGTERM and a partial manifest without a success marker |
+| Worker deadline | A one-second test deadline stopped the child; Job failed and only a partial manifest was exported |
+| Invalid storage credentials | Worker failed its initial storage check; no manifest or success marker |
+| Corrupt output | Independent downloader rejected a corrupted completion marker in live Object Storage; the original marker was restored |
+| API preflight | Binary secret entries and a missing image were rejected before allocation |
+| Cleanup | All six Job records, test storage/registry/secrets and temporary keys removed; a final paginated listing found no validation Jobs |
+
+The API fills in parent secret IDs for version references and adds its own labels.
+Ownership checks normalize the resolved reference and require the CleanRL identity
+labels and workload fields, allowing additional server labels.
+
+Online W&B authentication, a storage outage after training starts, the service's
+full one-hour timeout, cancellation during provisioning and a cancellation/completion
+race were not exercised live. Offline tests cover several of these failure paths.
+The live seed test used a one-Job cap; simultaneous two-Job dispatch within one
+experiment remains unvalidated. Other regions, GPU types, least-privilege IAM policies
+and performance comparisons also require their own validation.
 
 There is no multi-node, distributed training, automatic retry, full-state resume,
 Endpoint serving or cross-host scheduler support in this example.

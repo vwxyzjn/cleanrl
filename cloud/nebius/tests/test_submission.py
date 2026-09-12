@@ -181,6 +181,22 @@ def test_invalid_config(config, change):
         validate(config)
 
 
+def test_error_summary_keeps_identifiers_without_secret_message():
+    from types import SimpleNamespace
+
+    from cloud.nebius.config import error_summary
+
+    error = Exception("secret-value must never appear")
+    error.status = SimpleNamespace(
+        code=SimpleNamespace(name="INVALID_ARGUMENT"), request_id="f49fb676-2dac-4395-8b91-16a19ab02cdb"
+    )
+    summary = error_summary(error)
+    assert "INVALID_ARGUMENT" in summary and error.status.request_id in summary
+    assert "secret-value" not in summary
+    error.status.request_id = "secret-value"
+    assert "secret-value" not in error_summary(error)
+
+
 def test_job_spec_and_ownership(journal):
     from nebius.api.nebius.ai.v1 import Job
 
@@ -196,6 +212,17 @@ def test_job_spec_and_ownership(journal):
     transport = object.__new__(Nebius)
     snapshot = transport.snapshot(job)
     assert transport.owned(snapshot, config, row)
+    snapshot["labels"].update({"vmapp-id": "aijob-service-added", "vmapp-image": config["image"]})
+    assert transport.owned(snapshot, config, row)
+    changed_label = copy.deepcopy(snapshot)
+    changed_label["labels"]["cleanrl-config"] = "different"
+    assert not transport.owned(changed_label, config, row)
+    for env in job.spec.environment_variables:
+        if env.mysterybox_secret.version_id:
+            env.mysterybox_secret.secret_id = "mbsec-resolved-parent"
+    assert transport.owned(transport.snapshot(job), config, row)
+    job.spec.environment_variables[1].mysterybox_secret.version_id = "mbsecver-different"
+    assert not transport.owned(transport.snapshot(job), config, row)
     changed = copy.deepcopy(snapshot)
     changed["spec"]["image"] = "other-image"
     assert not transport.owned(changed, config, row)

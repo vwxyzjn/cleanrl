@@ -35,8 +35,12 @@ class Service:
         self.failure, self.creates, self.jobs, self.tokens = failure, [], [], []
         self.cancel_count = 0
         self.missing_resource_id = False
+        self.dry_runs = 0
 
     async def Create(self, request, context):
+        if request.dry_run:
+            self.dry_runs += 1
+            return Operation(id="operation-dry-run")
         self.creates.append(dict(context.invocation_metadata()))
         job = Job(metadata=request.metadata, spec=request.spec, status=JobStatus(state=JobStatus.State.RUNNING))
         job.metadata.id = "aijob-local"
@@ -156,3 +160,15 @@ async def test_acknowledged_operation_recovers_missing_job_id(journal):
         await controller.refresh()
         assert journal.row(row["id"])["job_id"] == "aijob-local"
         assert journal.row(row["id"])["phase"] == "RUNNING"
+
+
+@pytest.mark.asyncio
+async def test_dry_run_does_not_dispatch_or_change_receipt(journal):
+    service = Service()
+    before = journal.rows()
+    async with transport(service) as adapter:
+        await adapter.validate(journal.settings[0], before[0])
+        assert service.dry_runs == 1 and not service.creates and not service.jobs
+        assert journal.rows() == before
+        await Controller(journal, adapter).submit()
+        assert len(service.creates) == 1

@@ -23,6 +23,19 @@ def digest(value):
     return hashlib.sha256(encode(value)).hexdigest()
 
 
+def error_summary(exc):
+    """Keep support identifiers without logging free-form RPC messages or payloads."""
+    result = type(exc).__name__
+    status = getattr(exc, "status", None)
+    code = getattr(getattr(status, "code", None), "name", "")
+    request_id = getattr(status, "request_id", "")
+    if isinstance(code, str) and re.fullmatch(r"[A-Z_]{1,40}", code):
+        result += f"; code={code}"
+    if isinstance(request_id, str) and re.fullmatch(r"[0-9a-f-]{36}", request_id):
+        result += f"; request_id={request_id}"
+    return result
+
+
 def fields(value, required, optional=()):
     if not isinstance(value, dict) or set(value) - set(required) - set(optional) or set(required) - set(value):
         raise ValueError("Missing or unknown configuration fields; see cartpole.json")

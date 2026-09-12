@@ -3,7 +3,7 @@
 import time
 import uuid
 
-from cloud.nebius.config import TERMINAL
+from cloud.nebius.config import TERMINAL, error_summary
 
 
 class Controller:
@@ -47,8 +47,12 @@ class Controller:
             try:
                 result = await self.transport.create(config, row)
                 self.journal.update(row["id"], phase="SUBMITTED", operation_id=result["operation_id"], job_id=result["job_id"])
-            except BaseException:
-                self.journal.update(row["id"], phase="SUBMISSION_UNKNOWN", detail="Create outcome unknown; never replay")
+            except BaseException as exc:
+                self.journal.update(
+                    row["id"],
+                    phase="SUBMISSION_UNKNOWN",
+                    detail=f"Create outcome unknown; never replay ({error_summary(exc)})",
+                )
                 raise
 
     async def cancel(self, attempt, repeat=False):
