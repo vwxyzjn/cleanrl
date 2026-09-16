@@ -409,12 +409,15 @@ if __name__ == "__main__":
             int_lastgaelam = 0
             for t in reversed(range(args.num_steps)):
                 if t == args.num_steps - 1:
-                    ext_nextnonterminal = 1.0 - next_done
+                    # EnvPool emits a dummy transition from a terminal
+                    # observation back to the reset observation.  Cut the
+                    # extrinsic trace when either side is terminal.
+                    ext_nextnonterminal = 1.0 - torch.maximum(dones[t], next_done)
                     int_nextnonterminal = 1.0
                     ext_nextvalues = next_value_ext
                     int_nextvalues = next_value_int
                 else:
-                    ext_nextnonterminal = 1.0 - dones[t + 1]
+                    ext_nextnonterminal = 1.0 - torch.maximum(dones[t], dones[t + 1])
                     int_nextnonterminal = 1.0
                     ext_nextvalues = ext_values[t + 1]
                     int_nextvalues = int_values[t + 1]

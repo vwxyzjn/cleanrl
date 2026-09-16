@@ -319,8 +319,10 @@ if __name__ == "__main__":
 
     def compute_gae_once(carry, inp, gamma, gae_lambda):
         advantages = carry
-        nextdone, nextvalues, curvalues, reward = inp
-        nextnonterminal = 1.0 - nextdone
+        done, nextdone, nextvalues, curvalues, reward = inp
+        # EnvPool emits a dummy transition from a terminal observation back
+        # to the reset observation.  Cut the trace at either side.
+        nextnonterminal = 1.0 - jnp.logical_or(done, nextdone)
 
         delta = reward + gamma * nextvalues * nextnonterminal - curvalues
         advantages = delta + gamma * gae_lambda * nextnonterminal * advantages
@@ -343,7 +345,10 @@ if __name__ == "__main__":
         dones = jnp.concatenate([storage.dones, next_done[None, :]], axis=0)
         values = jnp.concatenate([storage.values, next_value[None, :]], axis=0)
         _, advantages = jax.lax.scan(
-            compute_gae_once, advantages, (dones[1:], values[1:], values[:-1], storage.rewards), reverse=True
+            compute_gae_once,
+            advantages,
+            (dones[:-1], dones[1:], values[1:], values[:-1], storage.rewards),
+            reverse=True,
         )
         storage = storage.replace(
             advantages=advantages,

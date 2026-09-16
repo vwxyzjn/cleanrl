@@ -253,10 +253,13 @@ if __name__ == "__main__":
             lastgaelam = 0
             for t in reversed(range(args.num_steps)):
                 if t == args.num_steps - 1:
-                    nextnonterminal = 1.0 - next_done
+                    # EnvPool emits a dummy transition from a terminal
+                    # observation back to the reset observation.  Cut the
+                    # trace when either side of the transition is terminal.
+                    nextnonterminal = 1.0 - torch.maximum(dones[t], next_done)
                     nextvalues = next_value
                 else:
-                    nextnonterminal = 1.0 - dones[t + 1]
+                    nextnonterminal = 1.0 - torch.maximum(dones[t], dones[t + 1])
                     nextvalues = values[t + 1]
                 delta = rewards[t] + args.gamma * nextvalues * nextnonterminal - values[t]
                 advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam

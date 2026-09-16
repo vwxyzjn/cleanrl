@@ -19,8 +19,10 @@ def test_compute_gae():
 
     def compute_gae_once(carry, inp, gamma, gae_lambda):
         advantages = carry
-        nextdone, nextvalues, curvalues, reward = inp
-        nextnonterminal = 1.0 - nextdone
+        done, nextdone, nextvalues, curvalues, reward = inp
+        # EnvPool can return a dummy transition immediately after a terminal
+        # observation.  A trace must stop when either side is terminal.
+        nextnonterminal = 1.0 - jnp.logical_or(done, nextdone)
 
         delta = reward + gamma * nextvalues * nextnonterminal - curvalues
         advantages = delta + gamma * gae_lambda * nextnonterminal * advantages
@@ -37,7 +39,10 @@ def test_compute_gae():
         dones = jnp.concatenate([storage.dones, next_done[None, :]], axis=0)
         values = jnp.concatenate([storage.values, next_value[None, :]], axis=0)
         _, advantages = jax.lax.scan(
-            compute_gae_once_fn, advantages, (dones[1:], values[1:], values[:-1], storage.rewards), reverse=True
+            compute_gae_once_fn,
+            advantages,
+            (dones[:-1], dones[1:], values[1:], values[:-1], storage.rewards),
+            reverse=True,
         )
         storage = storage.replace(
             advantages=advantages,
@@ -52,10 +57,10 @@ def test_compute_gae():
         lastgaelam = 0
         for t in reversed(range(num_steps)):
             if t == num_steps - 1:
-                nextnonterminal = 1.0 - next_done
+                nextnonterminal = 1.0 - jnp.logical_or(storage.dones[t], next_done)
                 nextvalues = next_value
             else:
-                nextnonterminal = 1.0 - storage.dones[t + 1]
+                nextnonterminal = 1.0 - jnp.logical_or(storage.dones[t], storage.dones[t + 1])
                 nextvalues = storage.values[t + 1]
             delta = storage.rewards[t] + gamma * nextvalues * nextnonterminal - storage.values[t]
             lastgaelam = delta + gamma * gae_lambda * nextnonterminal * lastgaelam
@@ -89,3 +94,33 @@ def test_compute_gae():
     storage2 = compute_gae_python_loop(next_done, next_value, storage2)
     assert (storage1.advantages == storage2.advantages).all()
     assert (storage1.returns == storage2.returns).all()
+
+
+def test_compute_gae_cuts_envpool_dummy_transition():
+    """A terminal observation must not bootstrap from EnvPool's reset state."""
+    gamma = 0.99
+    gae_lambda = 0.95
+    # The middle observation is terminal.  Its following EnvPool dummy step
+    # reports done=False, so looking only at next_done would incorrectly use
+    # next_value=10.0 in the target.
+    dones = np.array([False, True, False])
+    values = np.array([1.0, 2.0, 10.0])
+    rewards = np.array([0.0, 0.0])
+    next_done = np.array(False)
+    next_value = np.array(10.0)
+
+    advantages = np.zeros(2)
+    lastgaelam = 0.0
+    for t in reversed(range(2)):
+        if t == 1:
+            nextnonterminal = 1.0 - np.logical_or(dones[t], next_done)
+            nextvalues = next_value
+        else:
+            nextnonterminal = 1.0 - np.logical_or(dones[t], dones[t + 1])
+            nextvalues = values[t + 1]
+        delta = rewards[t] + gamma * nextvalues * nextnonterminal - values[t]
+        lastgaelam = delta + gamma * gae_lambda * nextnonterminal * lastgaelam
+        advantages[t] = lastgaelam
+
+    # The terminal observation's advantage is -2, not gamma*10 - 2.
+    assert np.allclose(advantages, [-1.0, -2.0])

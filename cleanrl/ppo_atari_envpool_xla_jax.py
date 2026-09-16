@@ -338,10 +338,13 @@ if __name__ == "__main__":
         lastgaelam = 0
         for t in reversed(range(args.num_steps)):
             if t == args.num_steps - 1:
-                nextnonterminal = 1.0 - next_done
+                # EnvPool emits a dummy transition from a terminal
+                # observation back to the reset observation.  Cut the trace
+                # when either side of the transition is terminal.
+                nextnonterminal = 1.0 - jnp.maximum(storage.dones[t], next_done)
                 nextvalues = next_value
             else:
-                nextnonterminal = 1.0 - storage.dones[t + 1]
+                nextnonterminal = 1.0 - jnp.maximum(storage.dones[t], storage.dones[t + 1])
                 nextvalues = storage.values[t + 1]
             delta = storage.rewards[t] + args.gamma * nextvalues * nextnonterminal - storage.values[t]
             lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
