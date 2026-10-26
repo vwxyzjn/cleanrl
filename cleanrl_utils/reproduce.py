@@ -1,5 +1,6 @@
 import argparse
 from distutils.util import strtobool
+from pathlib import Path
 
 import requests
 
@@ -40,7 +41,7 @@ if __name__ == "__main__":
     else:
         a = metadata["args"]
 
-    program = ["python"] + [metadata["program"]] + a
+    program = ["python"] + [Path(metadata["codePath"]).name] + a
 
     print(
         f"""
